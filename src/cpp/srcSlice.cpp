@@ -18,15 +18,6 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
- /*
-
-  Count each the occurrences of each srcML element.
-
-  Input: input_file.xml
-  Useage: element_count input_file.xml
-  
-  */
-
 #include "srcSliceHandler.hpp"
 #include <srcSAXController.hpp>
 
