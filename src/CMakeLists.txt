@@ -3,8 +3,6 @@ file(GLOB SRCSAXHANDLER_INCLUDE ../../srcSAX/src/srcsax/*.h* ../../srcSAX/src/cp
 file(GLOB SRCSLICEHANDLER_SOURCE cpp/*.cpp)
 file(GLOB SRCSLICEHANDLER_INCLUDE headers/*.hpp)
 
-
 add_executable(srcSlice ${SRCSLICEHANDLER_SOURCE} ${SRCSLICEHANDLER_INCLUDE})
-add_library(srcsax ${SRCSAXHANDLER_SOURCE} ${SRCSAXHANDLER_INCLUDE})
 
 target_link_libraries(srcSlice srcsax ${LIBXML2_LIBRARIES})
