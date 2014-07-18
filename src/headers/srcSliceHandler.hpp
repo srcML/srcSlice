@@ -38,14 +38,14 @@
 class srcSliceHandler : public srcSAXHandler {
 
 private :
-    enum ParserState {decl, expr, call, param, ctrlflow, endflow, name, function, nonterminal, empty};
+    enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, call, ctrlflow, endflow, name, function, nonterminal, empty};
     struct SliceMetaData{
         SliceMetaData(unsigned int line, ParserState current, ParserState prev): lineNumber(line), currentState(current), previousState(prev){};
         unsigned int lineNumber;
         ParserState currentState;
         ParserState previousState;
     };
-    std::vector<SliceMetaData> open_elements;
+    std::vector<SliceMetaData> SliceVarMetaDataStack;
 public :
 
 #pragma GCC diagnostic push
@@ -76,7 +76,7 @@ public :
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
         
-        push_element(localname, prefix);
+        //push_element(localname, prefix);
     }
 
     /**
@@ -102,8 +102,28 @@ public :
         }
         push_element(localname, prefix, lineNum);
     }
-    void Dispatch(){
-        //std::cerr<<str<<std::endl;
+    void UpdateSliceProfile(std::string varName){
+        //std::cerr<<SliceVarMetaDataStack.back().currentState<<std::endl;
+        if(SliceVarMetaDataStack.front().currentState == decl_stmt){   
+            SliceMetaData data = SliceVarMetaDataStack.back();
+            if(data.currentState == name && data.previousState == decl){
+                //std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
+            }
+        }else if(SliceVarMetaDataStack.front().currentState == parameter_list){
+            SliceMetaData data = SliceVarMetaDataStack.back();
+            if(data.currentState == name && data.previousState == decl){
+                //std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
+            }
+        }else if(SliceVarMetaDataStack.front().currentState == expr_stmt){
+            SliceMetaData data = SliceVarMetaDataStack.back();
+            if(data.currentState == name && data.previousState == expr){
+                std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
+            }
+        }
+        /*
+                            if(data.previousState == function);
+                        //std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
+                    if(data.previousState == name);*/
     }
     /**
      * charactersUnit
@@ -116,12 +136,11 @@ public :
     virtual void charactersUnit(const char * ch, int len) {
         std::string content = "";
         content.append(ch, len);
-
-        auto elementIter = open_elements.rbegin();
+        
+        if(!SliceVarMetaDataStack.empty())
+            UpdateSliceProfile(content);
         //std::cerr<<elementIter->currentState<<" "<<(++elementIter)->currentState<<elementIter->previousState<<std::endl;
-        if(elementIter->currentState == name && elementIter->previousState == decl){
-            std::cerr<<content<<" "<<elementIter->lineNumber<<std::endl;
-        }
+
         /*Names are equivalent to terminal nodes. There has to be some kind of state when I see one.
          *So the idea is that maybe I can keep track of what state I'm in by recording a small amount
          *of information while I parse the doc. Enums or something.*/
@@ -144,8 +163,8 @@ public :
     virtual void startUnit(const char * localname, const char * prefix, const char * URI,
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
-        
-        push_element(localname, prefix);
+        //Take filename attribute and hash it.      
+        //push_element(localname, prefix);
     }
     void push_element(const char * localname, const char * prefix, unsigned int line = 0) {
 
@@ -160,14 +179,28 @@ public :
 
         full_name += localname;
 
-        ParserState prev = open_elements.empty() ? empty : open_elements.back().currentState;
+        ParserState prev = SliceVarMetaDataStack.empty() ? empty : SliceVarMetaDataStack.back().currentState;
         
-        if(full_name == "decl"){
-            open_elements.push_back(SliceMetaData(line, decl, prev));
+        if(full_name == "decl_stmt"){
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, decl_stmt, prev));
+        }else if (full_name == "expr_stmt"){
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, expr_stmt, prev));
+        }else if (full_name == "parameter_list"){
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, parameter_list, prev));
+        }else if (full_name == "param"){
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, param, prev));
+        }else if(full_name == "decl"){
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, decl, prev));
+        }else if (full_name == "expr"){
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, expr, prev));
+        }else if (full_name == "call"){
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, call, prev));
         }else if (full_name == "name"){
-            open_elements.push_back(SliceMetaData(line, name, prev));
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, name, prev));
         }else{
-            open_elements.push_back(SliceMetaData(line, nonterminal, prev));
+            if(!SliceVarMetaDataStack.empty()){
+                SliceVarMetaDataStack.push_back(SliceMetaData(line, nonterminal, prev));
+            }
         }
 
     }
@@ -175,13 +208,13 @@ public :
 
     // end elements may need to be used if you want to collect only on per file basis or some other granularity.
     virtual void endRoot(const char * localname, const char * prefix, const char * URI) {
-         open_elements.pop_back();
+         //if(!SliceVarMetaDataStack.empty()) SliceVarMetaDataStack.pop_back();
     }
     virtual void endUnit(const char * localname, const char * prefix, const char * URI) {
-         open_elements.pop_back();
+         //if(!SliceVarMetaDataStack.empty()) SliceVarMetaDataStack.pop_back();
     }
     virtual void endElement(const char * localname, const char * prefix, const char * URI) {
-         open_elements.pop_back();
+         if(!SliceVarMetaDataStack.empty()) SliceVarMetaDataStack.pop_back();
     }
     /*
     virtual void comment(const char * value) {}
