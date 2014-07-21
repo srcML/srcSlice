@@ -1,5 +1,5 @@
 /**
- * @file element_count_handler.hpp
+ * @file srcSliceHandler.hpp
  *
  * @copyright Copyright (C) 2013-2014 SDML (www.srcML.org)
  *
@@ -18,8 +18,8 @@
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
 
-#ifndef INCLUDED_ELEMENT_COUNT_HANDLER_HPP
-#define INCLUDED_ELEMENT_COUNT_HANDLER_HPP
+#ifndef INCLUDED_SRCSLICEHANDLER_HPP
+#define INCLUDED_SRCSLICEHANDLER_HPP
 
 #include <srcSAXHandler.hpp>
 #include <SliceProfile.hpp>
@@ -29,8 +29,9 @@
 #include <vector>
 #include <sstream>
 
+
 /**
- * element_count_handler
+ * srcSliceHandler
  *
  * Base class that provides hooks for SAX processing.
  */
@@ -39,15 +40,26 @@ class srcSliceHandler : public srcSAXHandler {
 
 private :
     enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, call, ctrlflow, endflow, name, function, nonterminal, empty};
+    typedef std::pair<ParserState, std::string> StateFunctionPair;
     struct SliceMetaData{
         SliceMetaData(unsigned int line, ParserState current, ParserState prev): lineNumber(line), currentState(current), previousState(prev){};
         unsigned int lineNumber;
         ParserState currentState;
         ParserState previousState;
     };
-    std::vector<SliceMetaData> SliceVarMetaDataStack;
-public :
+    int fileNumber;
+    int functionNumber;
 
+    std::vector<SliceMetaData> SliceVarMetaDataStack;
+    std::vector<StateFunctionPair> ParserContext;
+
+    std::unordered_map<int, std::string> FunctionMap;
+    std::unordered_map<int, std::string> FileMap;
+    bool collectFunctionData;
+public :
+    srcSliceHandler(){
+        collectFunctionData = false;
+    }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
 
@@ -100,6 +112,9 @@ public :
         if(num_attributes){
             lineNum = strtoul(attributes[0].value, NULL, 0);
         }
+        if(std::string(localname) == "function"){
+            collectFunctionData = true;
+        }
         push_element(localname, prefix, lineNum);
     }
     void UpdateSliceProfile(std::string varName){
@@ -107,23 +122,34 @@ public :
         if(SliceVarMetaDataStack.front().currentState == decl_stmt){   
             SliceMetaData data = SliceVarMetaDataStack.back();
             if(data.currentState == name && data.previousState == decl){
-                //std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
+                std::cerr<<"VAR: "<<varName<<" "<<data.lineNumber<<std::endl;
             }
         }else if(SliceVarMetaDataStack.front().currentState == parameter_list){
             SliceMetaData data = SliceVarMetaDataStack.back();
             if(data.currentState == name && data.previousState == decl){
-                //std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
+                std::cerr<<"VAR: "<<varName<<" "<<data.lineNumber<<std::endl;
             }
         }else if(SliceVarMetaDataStack.front().currentState == expr_stmt){
             SliceMetaData data = SliceVarMetaDataStack.back();
             if(data.currentState == name && data.previousState == expr){
-                std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
+                std::cerr<<"VAR: "<<varName<<" "<<data.lineNumber<<std::endl;
             }
         }
         /*
                             if(data.previousState == function);
                         //std::cerr<<varName<<" "<<data.lineNumber<<std::endl;
                     if(data.previousState == name);*/
+    }
+    void UpdateFunctionContext(std::string functionName){
+        if(ParserContext.back().first == name){
+            ParserContext.back().second = functionName;
+        }else if (ParserContext.back().first == parameter_list){
+            ParserContext.pop_back();
+            FunctionMap.insert(std::make_pair(functionNumber, ParserContext.back().second));
+            ++functionNumber;
+            std::cerr<<"FUNCTION: "<<ParserContext.back().second<<std::endl;
+            collectFunctionData = false;
+        }        
     }
     /**
      * charactersUnit
@@ -139,6 +165,9 @@ public :
         
         if(!SliceVarMetaDataStack.empty())
             UpdateSliceProfile(content);
+        if(collectFunctionData)
+            UpdateFunctionContext(content);
+
         //std::cerr<<elementIter->currentState<<" "<<(++elementIter)->currentState<<elementIter->previousState<<std::endl;
 
         /*Names are equivalent to terminal nodes. There has to be some kind of state when I see one.
@@ -163,6 +192,10 @@ public :
     virtual void startUnit(const char * localname, const char * prefix, const char * URI,
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
+        
+        FileMap.insert(std::make_pair(fileNumber, attributes[1].value));
+        ++fileNumber;
+        std::cerr<<attributes[1].value<<std::endl;
         //Take filename attribute and hash it.      
         //push_element(localname, prefix);
     }
@@ -186,6 +219,7 @@ public :
         }else if (full_name == "expr_stmt"){
             SliceVarMetaDataStack.push_back(SliceMetaData(line, expr_stmt, prev));
         }else if (full_name == "parameter_list"){
+            ParserContext.push_back(StateFunctionPair(parameter_list, ""));
             SliceVarMetaDataStack.push_back(SliceMetaData(line, parameter_list, prev));
         }else if (full_name == "param"){
             SliceVarMetaDataStack.push_back(SliceMetaData(line, param, prev));
@@ -196,11 +230,17 @@ public :
         }else if (full_name == "call"){
             SliceVarMetaDataStack.push_back(SliceMetaData(line, call, prev));
         }else if (full_name == "name"){
-            SliceVarMetaDataStack.push_back(SliceMetaData(line, name, prev));
-        }else{
-            if(!SliceVarMetaDataStack.empty()){
-                SliceVarMetaDataStack.push_back(SliceMetaData(line, nonterminal, prev));
+            if(collectFunctionData){
+               ParserContext.push_back(StateFunctionPair(name, ""));
             }
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, name, prev));
+        }else if (full_name == "function"){
+            ParserContext.push_back(StateFunctionPair(function, ""));
+        }else if(!SliceVarMetaDataStack.empty()){
+            if(!collectFunctionData){
+                ParserContext.push_back(StateFunctionPair(nonterminal, ""));
+            }
+            SliceVarMetaDataStack.push_back(SliceMetaData(line, nonterminal, prev));
         }
 
     }
