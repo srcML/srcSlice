@@ -29,17 +29,21 @@
 #include <vector>
 #include <bitset>
 #include <list>
-
+#include <locale>
+#include <algorithm>
 /**
  * srcSliceHandler
  *
  * Base class that provides hooks for SAX processing.
  */
-
+inline std::string RemoveWhiteSpace(std::string str){
+    str.erase(std::remove(str.begin(), str.end(), ' '), str.end());
+    return str;
+}
 class srcSliceHandler : public srcSAXHandler {
 
 private :
-    enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, argument_list, call, ctrlflow, endflow, name, function, argument, block, type, init, op, nonterminal, empty};
+    enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, argument_list, call, ctrlflow, endflow, name, function, argument, block, type, init, op, literal, nonterminal, empty, MAXENUMVALUE = empty};
     typedef std::pair<ParserState, std::string> StateFunctionPair;
     struct SliceMetaData{
         SliceMetaData(unsigned int line, ParserState current, std::string dat): lineNumber(line), currentState(current), data(dat){};
@@ -49,12 +53,12 @@ private :
     };
     struct ExprStmt{
         ExprStmt(){
-            numNames = 0;
+            ln = 0;
         }
         std::string lhs;
         std::string op;
         std::string rhs;
-        int numNames; //So I know if I'm looking at lhs or rhs.
+        int ln;
     };
     unsigned int fileNumber;
     unsigned int functionNumber;
@@ -62,8 +66,9 @@ private :
     
     std::string currentFunction;
     
-    ExprStmt exprstmt;
     ExprStmt compoundName;
+    
+    bool opeq;
 
     std::list<std::vector<SliceMetaData>> SliceVarMetaDataStack;
     std::vector<unsigned short int> triggerField;
@@ -77,8 +82,9 @@ public :
         fileNumber = 0;
         functionNumber = 0;
         functionLineNumber = 0;
+        opeq = false;
         currentFunction = "";
-        triggerField = std::vector<unsigned short int>(19, 0);
+        triggerField = std::vector<unsigned short int>(MAXENUMVALUE, 0);
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -182,6 +188,7 @@ public :
             }
         }else if(std::string(localname) == "operator"){
             if(!SliceVarMetaDataStack.empty()){
+                //compoundName.op = "";
                 ++triggerField[op];
                 SliceVarMetaDataStack.back().push_back(SliceMetaData(lineNum, op, ""));
             }
@@ -199,6 +206,11 @@ public :
             if(!SliceVarMetaDataStack.empty()){
                 ++triggerField[argument];
                 SliceVarMetaDataStack.back().push_back(SliceMetaData(lineNum, argument, ""));
+            }
+        }else if (std::string(localname) == "literal"){
+            if(!SliceVarMetaDataStack.empty()){
+                ++triggerField[literal];
+                SliceVarMetaDataStack.back().push_back(SliceMetaData(lineNum, literal, ""));
             }
         }else if(std::string(localname) == "decl"){
             if(!SliceVarMetaDataStack.empty()){
@@ -220,8 +232,11 @@ public :
                 ++triggerField[name];
                 if(triggerField[function] && triggerField[type] && !triggerField[block]){
                     if(num_attributes){
-                        auto dat = SliceVarMetaDataStack.back().back();
                         functionLineNumber = strtoul(attributes[0].value, NULL, 0);
+                    }
+                }else if(triggerField[expr_stmt] && triggerField[expr]){
+                    if(num_attributes){
+                        compoundName.ln = strtoul(attributes[0].value, NULL, 0);
                     }
                 }
                 SliceVarMetaDataStack.back().push_back(SliceMetaData(lineNum, name, ""));
@@ -247,14 +262,39 @@ public :
     virtual void charactersUnit(const char * ch, int len) {
         std::string content = "";
         content.append(ch, len);
-        
+        /*everything below the first nested if-statement is to handle expr_stmts because they're currently a huge corner case.
+        The first else if deals with collecting the left and right hand side data from an expr_stmt
+        The second else if deals with collecting operator information like . and = and ->
+        I'm certain there's a better way to accompish this, but it's a pain in the ass so I'm not dealing with it
+        just yet.*/ 
         if(!SliceVarMetaDataStack.empty()){
             //auto currentStack = SliceVarMetaDataStack.back();
-            if(SliceVarMetaDataStack.back().back().currentState == name){
+            if(SliceVarMetaDataStack.back().back().currentState == name && !triggerField[expr_stmt]){
                 SliceVarMetaDataStack.back().back().data = content;
                 //std::cerr<<content<<std::endl;
-            }else if(SliceVarMetaDataStack.back().back().currentState == op && triggerField[name] == 0){
-                SliceVarMetaDataStack.back().back().data = content;
+            }else if(SliceVarMetaDataStack.back().back().currentState == name && triggerField[expr_stmt] && !triggerField[call]){
+                if(!opeq){
+                    compoundName.lhs += content;
+                }else{
+                    compoundName.rhs += content;
+                }
+            }else if(SliceVarMetaDataStack.back().back().currentState == op){
+                
+                //compoundName.lhs += content;
+                if(content == "=" && triggerField[expr_stmt]){
+                    compoundName.op = "=";
+                    opeq = true;
+                }else if (content != "=" && !opeq && triggerField[expr_stmt]){
+                    SliceVarMetaDataStack.back().back().data = content;
+                    compoundName.lhs += content;
+                }else if(content != "=" && opeq && triggerField[expr_stmt]){
+                    SliceVarMetaDataStack.back().back().data = content;
+                    compoundName.rhs += content;
+                }
+            }
+            if(triggerField[literal]){ //'cause I don't care about literals
+                compoundName.rhs="";
+                compoundName.lhs="";
             }
         }
     }
@@ -292,7 +332,14 @@ public :
             SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "expr_stmt"){
             --triggerField[expr_stmt];
-            exprstmt.numNames = 0;
+            
+            compoundName.lhs = "";
+            compoundName.rhs = "";
+            compoundName.op = "";
+            compoundName.ln = 0;
+
+            opeq = false;
+            
             SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "parameter_list"){
             --triggerField[parameter_list];
@@ -306,6 +353,10 @@ public :
             SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "param"){
             --triggerField[param];
+        }else if (std::string(localname) == "literal"){
+            if(!SliceVarMetaDataStack.empty()){
+                --triggerField[literal];
+            }
         }else if (std::string(localname) == "argument"){
             if(!SliceVarMetaDataStack.empty()){
                 --triggerField[argument];
@@ -324,6 +375,37 @@ public :
             }
         }else if (std::string(localname) == "expr"){
             if(!SliceVarMetaDataStack.empty()){
+                if(triggerField[expr_stmt] && !triggerField[call]){
+                    if(!(compoundName.lhs.empty() || compoundName.rhs.empty() || compoundName.op.empty())){
+                        compoundName.lhs = RemoveWhiteSpace(std::move(compoundName.lhs));
+                        compoundName.rhs = RemoveWhiteSpace(std::move(compoundName.rhs));
+                        
+                        int posOfDotRhs = compoundName.rhs.find('.');
+                        if(posOfDotRhs != std::string::npos){
+                            compoundName.rhs.erase(posOfDotRhs, compoundName.rhs.size()-1);
+                        }
+
+                        int posOfDotLhs = compoundName.lhs.find('.');
+                        if(posOfDotLhs != std::string::npos){
+                            compoundName.lhs.erase(posOfDotLhs, compoundName.lhs.size()-1);
+                        }
+                        if(compoundName.lhs != compoundName.rhs){
+                            auto varNumIt = sysDict.reverseNameTable.find(compoundName.lhs);
+                            if(varNumIt != sysDict.reverseNameTable.end()){
+                                auto spIt = openSliceProfiles.find(varNumIt->second);
+                                if(spIt != openSliceProfiles.end()){
+                                    spIt->second.dvars.push_back(varNumIt->second);
+                                    spIt->second.slines.push_back(compoundName.ln);
+                                }
+    
+                            }
+                        }//TODO: Implement the rest of this for aliases.
+
+                        std::cerr<<"RHS: "<<compoundName.lhs<<compoundName.op<<compoundName.rhs<<std::endl;
+                        //OK, strip the words before '.' and then compare to what variables have been declared.
+                        //if it's found then record that there's some dependancy
+                    }
+                }
                 --triggerField[expr]; 
             }
         }else if (std::string(localname) == "type"){
@@ -336,7 +418,7 @@ public :
                 if(triggerField[expr_stmt] && triggerField[expr] && triggerField[op]){
                     auto dat = SliceVarMetaDataStack.back().back();
                     //std::cerr<<"op: "<<dat.data<<std::endl;
-                    exprstmt.op = dat.data;
+                    
                     //std::cerr<<SliceVarMetaDataStack.back().back().data<<std::endl;
                 }
                 --triggerField[op]; 
@@ -364,7 +446,7 @@ public :
                     sysDict.reverseNameTable.insert(std::make_pair(dat.data, dat.lineNumber));
                     
                     openSliceProfiles.insert(std::make_pair(dat.lineNumber, SliceProfile(dat.lineNumber, fileNumber, functionNumber, dat.lineNumber)));
-                    //std::cerr<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
+                    std::cerr<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
                 }
                 //Get Param names
                 if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !triggerField[type]){
@@ -375,21 +457,6 @@ public :
                     
                     openSliceProfiles.insert(std::make_pair(dat.lineNumber, SliceProfile(dat.lineNumber, fileNumber, functionNumber, dat.lineNumber)));
                     //std::cerr<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
-                }
-                //Get Expression Statement lhs
-                if(triggerField[expr_stmt] && triggerField[expr] && exprstmt.numNames == 0){
-                    auto dat = SliceVarMetaDataStack.back().back();
-                    //std::cerr<<"Lhs"<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
-                    exprstmt.lhs = dat.data;
-                    ++exprstmt.numNames;
-                    //std::cerr<<SliceVarMetaDataStack.back().back().data<<std::endl;
-                }
-                //get rhs
-                if(triggerField[expr_stmt] && triggerField[expr] && exprstmt.numNames > 0){
-                    auto dat = SliceVarMetaDataStack.back().back();
-                    exprstmt.rhs = dat.data;
-                    std::cerr<<"expr: "<<exprstmt.lhs<<" "<<exprstmt.op<<" "<<exprstmt.rhs<<std::endl;
-                    //std::cerr<<SliceVarMetaDataStack.back().back().data<<std::endl;
                 }
                 //Name of function being called
                 if(triggerField[call] && triggerField[name] == 1 && !(triggerField[argument_list])){
@@ -443,3 +510,18 @@ public :
 };
 
 #endif
+/*
+
+                //get rhs
+                if(triggerField[expr_stmt] && triggerField[expr] && exprstmt.numNames > 0){
+                    auto dat = SliceVarMetaDataStack.back().back();
+                    exprstmt.rhs = dat.data;
+                    std::cerr<<"expr: "<<exprstmt.lhs<<" "<<exprstmt.op<<" "<<exprstmt.rhs<<std::endl;
+                    //std::cerr<<SliceVarMetaDataStack.back().back().data<<std::endl;
+                }
+                //Name of function being called
+                if(triggerField[call] && triggerField[name] == 1 && !(triggerField[argument_list])){
+                    auto dat = SliceVarMetaDataStack.back().back();
+                    currentFunction = dat.data;
+                    //std::cerr<<currentFunction<<std::endl;
+                }*/
