@@ -69,6 +69,7 @@ private :
     ExprStmt compoundName;
     
     bool opeq;
+    int numArguments;
 
     std::list<std::vector<SliceMetaData>> SliceVarMetaDataStack;
     std::vector<unsigned short int> triggerField;
@@ -82,6 +83,7 @@ public :
         fileNumber = 0;
         functionNumber = 0;
         functionLineNumber = 0;
+        numArguments = 0;
         opeq = false;
         currentFunction = "";
         triggerField = std::vector<unsigned short int>(MAXENUMVALUE, 0);
@@ -204,6 +206,7 @@ public :
             }
         }else if (std::string(localname) == "argument"){
             if(!SliceVarMetaDataStack.empty()){
+                ++numArguments;
                 ++triggerField[argument];
                 SliceVarMetaDataStack.back().push_back(SliceMetaData(lineNum, argument, ""));
             }
@@ -345,6 +348,7 @@ public :
             --triggerField[parameter_list];
             SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "argument_list"){
+            numArguments = 0;
             --triggerField[argument_list];
             SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "call"){
@@ -401,7 +405,7 @@ public :
                             }
                         }//TODO: Implement the rest of this for aliases.
 
-                        std::cerr<<"RHS: "<<compoundName.lhs<<compoundName.op<<compoundName.rhs<<std::endl;
+                        //std::cerr<<"RHS: "<<compoundName.lhs<<compoundName.op<<compoundName.rhs<<std::endl;
                         //OK, strip the words before '.' and then compare to what variables have been declared.
                         //if it's found then record that there's some dependancy
                     }
@@ -484,10 +488,11 @@ public :
                         if(sp != openSliceProfiles.end()){
                             sp->second.slines.push_back(dat.lineNumber);
                             sp->second.index = dat.lineNumber -functionLineNumber;
-                            sp->second.cfunctions.push_back(std::make_pair(localFuncNum, dat.lineNumber - functionLineNumber));
+                            sp->second.cfunctions.push_back(std::make_pair(localFuncNum, numArguments));
+                            //dat.lineNumber - functionLineNumber
                         }
                     }
-                    //std::cerr<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
+                    std::cerr<<numArguments<<" "<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
                     //std::cerr<<SliceVarMetaDataStack.back().back().data<<std::endl;
                 }
                 --triggerField[name]; 
