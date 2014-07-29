@@ -6,16 +6,18 @@
 class SliceProfile{
 	public:
 		SliceProfile() = default;
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline){
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, bool alias = 0){
 			index = idx;
 			file = fle;
 			function = fcn;
 			slines.push_back(sline);
+			isAlias = alias;
 		}
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn){
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, bool alias = 0){
 			index = idx;
 			file = fle;
 			function = fcn;
+			isAlias = alias;
 		}
 		SliceProfile(unsigned int num){
 			index = num;
@@ -25,10 +27,12 @@ class SliceProfile{
 		unsigned int index;
 		unsigned int file;
 		unsigned int function;
+		bool isAlias;
+
 		std::string variableName;
 		std::vector<unsigned int> slines;
 		std::vector<std::pair<unsigned int, unsigned int>> cfunctions;
-		std::deque<unsigned int> dvars;//maybe hash
+		std::deque<std::string> dvars;//maybe hash
 		std::deque<unsigned int> aliases;//maybe hash
 };
 class SystemDictionary{
@@ -40,8 +44,5 @@ class SystemDictionary{
 		std::unordered_map<unsigned int, std::string> fileTable;
 		
 		std::unordered_map<unsigned int, std::string> functionTable;
-		std::unordered_map<unsigned int, std::string> nameTable;
-
-		std::unordered_map<std::string, unsigned int> reverseNameTable;
 		std::unordered_map<std::string, unsigned int> reverseFunctionTable;
 };

@@ -43,7 +43,7 @@ inline std::string RemoveWhiteSpace(std::string str){
 class srcSliceHandler : public srcSAXHandler {
 
 private :
-    enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, argument_list, call, ctrlflow, endflow, name, function, argument, block, type, init, op, literal, nonterminal, empty, MAXENUMVALUE = empty};
+    enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, argument_list, call, ctrlflow, endflow, name, function, argument, block, type, init, op, literal, modifier, nonterminal, empty, MAXENUMVALUE = empty};
     typedef std::pair<ParserState, std::string> StateFunctionPair;
     struct SliceMetaData{
         SliceMetaData(unsigned int line, ParserState current, std::string dat): lineNumber(line), currentState(current), data(dat){};
@@ -61,21 +61,29 @@ private :
         int ln;
     };
     unsigned int fileNumber;
+    
+    unsigned int numOfCurrentFcn; //Number of the function we're currently processing
+    
     unsigned int functionNumber;
     unsigned int functionLineNumber;
     
-    std::string currentFunction;
-    
+    std::string previousDeclVarName;
+
+    std::string nameOfCurrentClldFcn;
+    std::string nameOfCurrentCntxtFcn;
+
     ExprStmt compoundName;
     
-    bool opeq;
+    bool opeq; //flag to tell me when I've seen an assignment op
+    bool potentialAlias; //flag to tell me when the last name could be used as an alias.
+
     int numArguments;
 
     std::list<std::vector<SliceMetaData>> SliceVarMetaDataStack;
     std::vector<unsigned short int> triggerField;
 
     SystemDictionary sysDict;
-    std::unordered_map<unsigned int, SliceProfile> openSliceProfiles;
+    std::unordered_map<std::string, SliceProfile> openSliceProfiles;
 
 
 public :
@@ -84,8 +92,13 @@ public :
         functionNumber = 0;
         functionLineNumber = 0;
         numArguments = 0;
+        
+        nameOfCurrentClldFcn = "global";
+
         opeq = false;
-        currentFunction = "";
+        potentialAlias = false;
+
+        nameOfCurrentClldFcn = "";
         triggerField = std::vector<unsigned short int>(MAXENUMVALUE, 0);
     }
 #pragma GCC diagnostic push
@@ -171,6 +184,9 @@ public :
         }else if(std::string(localname) == "function"){
             ++triggerField[function];
             SliceVarMetaDataStack.push_back(std::vector<SliceMetaData>({SliceMetaData(lineNum, function, "")}));   
+        }else if(std::string(localname) == "constructor"){
+            ++triggerField[function];
+            SliceVarMetaDataStack.push_back(std::vector<SliceMetaData>({SliceMetaData(lineNum, function, "")}));   
         }else if (std::string(localname) == "expr_stmt"){
             ++triggerField[expr_stmt];
             SliceVarMetaDataStack.push_back(std::vector<SliceMetaData>({SliceMetaData(lineNum, expr_stmt, "")}));
@@ -214,6 +230,11 @@ public :
             if(!SliceVarMetaDataStack.empty()){
                 ++triggerField[literal];
                 SliceVarMetaDataStack.back().push_back(SliceMetaData(lineNum, literal, ""));
+            }
+        }else if (std::string(localname) == "modifier"){
+            if(!SliceVarMetaDataStack.empty()){
+                ++triggerField[modifier];
+                SliceVarMetaDataStack.back().push_back(SliceMetaData(lineNum, modifier, ""));
             }
         }else if(std::string(localname) == "decl"){
             if(!SliceVarMetaDataStack.empty()){
@@ -333,6 +354,9 @@ public :
         }else if(std::string(localname) == "function"){
             --triggerField[function];
             SliceVarMetaDataStack.pop_back();
+        }else if(std::string(localname) == "constructor"){
+            --triggerField[function];
+            SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "expr_stmt"){
             --triggerField[expr_stmt];
             
@@ -352,7 +376,7 @@ public :
             --triggerField[argument_list];
             SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "call"){
-            //currentFunction = "";
+            //nameOfCurrentClldFcn = "";
             --triggerField[call];
             SliceVarMetaDataStack.pop_back();
         }else if (std::string(localname) == "param"){
@@ -360,6 +384,13 @@ public :
         }else if (std::string(localname) == "literal"){
             if(!SliceVarMetaDataStack.empty()){
                 --triggerField[literal];
+            }
+        }else if (std::string(localname) == "modifier"){
+            if(!SliceVarMetaDataStack.empty()){
+                if(triggerField[decl]){ //only care about modifiers in decls
+                    potentialAlias = true;
+                }
+                --triggerField[modifier];
             }
         }else if (std::string(localname) == "argument"){
             if(!SliceVarMetaDataStack.empty()){
@@ -381,6 +412,7 @@ public :
             if(!SliceVarMetaDataStack.empty()){
                 if(triggerField[expr_stmt] && !triggerField[call]){
                     if(!(compoundName.lhs.empty() || compoundName.rhs.empty() || compoundName.op.empty())){
+                        ///TODO: This won't work for all expressions
                         compoundName.lhs = RemoveWhiteSpace(std::move(compoundName.lhs));
                         compoundName.rhs = RemoveWhiteSpace(std::move(compoundName.rhs));
                         
@@ -394,15 +426,12 @@ public :
                             compoundName.lhs.erase(posOfDotLhs, compoundName.lhs.size()-1);
                         }
                         if(compoundName.lhs != compoundName.rhs){
-                            auto varNumIt = sysDict.reverseNameTable.find(compoundName.lhs);
-                            if(varNumIt != sysDict.reverseNameTable.end()){
-                                auto spIt = openSliceProfiles.find(varNumIt->second);
-                                if(spIt != openSliceProfiles.end()){
-                                    spIt->second.dvars.push_back(varNumIt->second);
-                                    spIt->second.slines.push_back(compoundName.ln);
-                                }
-    
+                            auto spIt = openSliceProfiles.find(nameOfCurrentCntxtFcn+":"+compoundName.lhs);
+                            if(spIt != openSliceProfiles.end()){
+                                spIt->second.dvars.push_back(compoundName.rhs);
+                                spIt->second.slines.push_back(compoundName.ln);
                             }
+
                         }//TODO: Implement the rest of this for aliases.
 
                         //std::cerr<<"RHS: "<<compoundName.lhs<<compoundName.op<<compoundName.rhs<<std::endl;
@@ -434,65 +463,80 @@ public :
                 if(triggerField[function] && 
                    !(triggerField[argument_list] || triggerField[block] || triggerField[type] || triggerField[parameter_list]) 
                    && triggerField[name] == 1){
-                      //PROBLEM: I MIGHT NOT RUN INTO THE FUNCTION BEFORE IT GETS CALLED. Solve.
                       auto dat = SliceVarMetaDataStack.back().back();
+                      
                       ++functionNumber;
+                      numOfCurrentFcn = functionNumber;
+                      nameOfCurrentCntxtFcn = dat.data;
+                      
                       sysDict.reverseFunctionTable.insert(std::make_pair(dat.data, functionNumber));
                       sysDict.functionTable.insert(std::make_pair(functionNumber,dat.data));
-
                       //std::cerr<<dat.data<<" "<<dat.lineNumber<<" "<<functionNumber<<std::endl;
                 }
                 //Get variable decls
                 if(triggerField[decl_stmt] && triggerField[decl] && !(triggerField[type] || triggerField[init])){
                     auto dat = SliceVarMetaDataStack.back().back();
-                    
-                    sysDict.nameTable.insert(std::make_pair(dat.lineNumber, dat.data));
-                    sysDict.reverseNameTable.insert(std::make_pair(dat.data, dat.lineNumber));
-                    
-                    openSliceProfiles.insert(std::make_pair(dat.lineNumber, SliceProfile(dat.lineNumber, fileNumber, functionNumber, dat.lineNumber)));
-                    std::cerr<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
+                                        
+                    previousDeclVarName = dat.data; //keep track of last declared var, need it for init.
+
+                    openSliceProfiles.insert(std::make_pair(nameOfCurrentCntxtFcn+":"+dat.data, SliceProfile(dat.lineNumber - functionLineNumber , fileNumber, numOfCurrentFcn, dat.lineNumber)));
+                    std::cerr<<dat.lineNumber<<" "<<nameOfCurrentCntxtFcn+":"+dat.data<<" "<<numOfCurrentFcn<<std::endl;
+                    potentialAlias = false;
                 }
                 //Get Param names
                 if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !triggerField[type]){
                     auto dat = SliceVarMetaDataStack.back().back();
-                    
-                    sysDict.nameTable.insert(std::make_pair(dat.lineNumber, dat.data));
-                    sysDict.reverseNameTable.insert(std::make_pair(dat.data, dat.lineNumber));
-                    
-                    openSliceProfiles.insert(std::make_pair(dat.lineNumber, SliceProfile(dat.lineNumber, fileNumber, functionNumber, dat.lineNumber)));
-                    //std::cerr<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
+
+                    openSliceProfiles.insert(std::make_pair(nameOfCurrentCntxtFcn+":"+dat.data, SliceProfile(dat.lineNumber - functionLineNumber, fileNumber, functionNumber, dat.lineNumber)));
+                    //std::cerr<<dat.lineNumber<<" "<<nameOfCurrentCntxtFcn+":"+dat.data<<std::endl;
                 }
+                //Deal with decl's that have an init in them.
+                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init]){
+                    auto dat = SliceVarMetaDataStack.back().back();
+                    std::cerr<<nameOfCurrentCntxtFcn+":"+dat.data<<std::endl;
+                    auto sp = openSliceProfiles.find(nameOfCurrentCntxtFcn+":"+dat.data);
+                    if(sp != openSliceProfiles.end()){
+                        //Either has to be a variable local to this function or a global variable (function == 0)
+                        //std::cerr<<dat.data<<" "<<nameOfCurrentCntxtFcn+":"+previousDeclVarName<<" "<<sp->second.function<<" "<<numOfCurrentFcn<<sysDict.functionTable.find(sp->second.function)->second<<std::endl;
+                        if(sp->second.function == numOfCurrentFcn || sp->second.function == 0){
+                            auto lastSp = openSliceProfiles.find(nameOfCurrentCntxtFcn+":"+previousDeclVarName);
+                            if(lastSp != openSliceProfiles.end()){                                    
+                            //    std::cerr<<"dat: "<<dat.data<<" "<<previousDeclVarName<<" "<<sp->second.function<<" "<<numOfCurrentFcn<<std::endl;
+                                lastSp->second.dvars.push_back(dat.data); 
+                            }
+                        }
+                    }
+                        //It's good. This primarily to make sure I dn't get stupid things like T
+                }
+
                 //Name of function being called
                 if(triggerField[call] && triggerField[name] == 1 && !(triggerField[argument_list])){
                     auto dat = SliceVarMetaDataStack.back().back();
-                    currentFunction = dat.data;
-                    //std::cerr<<currentFunction<<std::endl;
+                    nameOfCurrentClldFcn = dat.data;
+                    //std::cerr<<nameOfCurrentClldFcn<<std::endl;
                 }
                 //function args
                 if(triggerField[call] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] && triggerField[name] == 1){
                     auto dat = SliceVarMetaDataStack.back().back();
-                    auto nameStr = sysDict.reverseNameTable.find(dat.data);
-                    //std::cerr<<currentFunction<<std::endl;
-                    auto calledFuncIt = sysDict.reverseFunctionTable.find(currentFunction);
-                    unsigned int localFuncNum = 0;
+                    //std::cerr<<nameOfCurrentClldFcn<<std::endl;
+                    int localFunc = 0;
+                    auto calledFuncIt = sysDict.reverseFunctionTable.find(nameOfCurrentClldFcn);
                     if(calledFuncIt != sysDict.reverseFunctionTable.end()){
-                        localFuncNum = calledFuncIt->second;
+                        localFunc = calledFuncIt->second;
                     }else{
-                        sysDict.reverseFunctionTable.insert(std::make_pair(currentFunction, functionNumber));
-                        sysDict.functionTable.insert(std::make_pair(functionNumber,currentFunction));
-                        localFuncNum = functionNumber;
+                        sysDict.reverseFunctionTable.insert(std::make_pair(nameOfCurrentClldFcn, functionNumber));
+                        sysDict.functionTable.insert(std::make_pair(functionNumber,nameOfCurrentClldFcn));
+                        localFunc = functionNumber;
                         ++functionNumber;
                     }
-                    if(nameStr != sysDict.reverseNameTable.end()){
-                        auto sp = openSliceProfiles.find(nameStr->second);
-                        if(sp != openSliceProfiles.end()){
-                            sp->second.slines.push_back(dat.lineNumber);
-                            sp->second.index = dat.lineNumber -functionLineNumber;
-                            sp->second.cfunctions.push_back(std::make_pair(localFuncNum, numArguments));
-                            //dat.lineNumber - functionLineNumber
-                        }
+                    auto sp = openSliceProfiles.find(nameOfCurrentCntxtFcn+":"+dat.data);
+                    if(sp != openSliceProfiles.end()){
+                        sp->second.slines.push_back(dat.lineNumber);
+                        sp->second.index = dat.lineNumber - functionLineNumber;
+                        sp->second.cfunctions.push_back(std::make_pair(localFunc, numArguments));
+                        //dat.lineNumber - functionLineNumber
                     }
-                    std::cerr<<numArguments<<" "<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
+                    //std::cerr<<numArguments<<" "<<dat.lineNumber<<" "<<dat.data<<" "<<functionNumber<<std::endl;
                     //std::cerr<<SliceVarMetaDataStack.back().back().data<<std::endl;
                 }
                 --triggerField[name]; 
@@ -527,6 +571,6 @@ public :
                 //Name of function being called
                 if(triggerField[call] && triggerField[name] == 1 && !(triggerField[argument_list])){
                     auto dat = SliceVarMetaDataStack.back().back();
-                    currentFunction = dat.data;
-                    //std::cerr<<currentFunction<<std::endl;
+                    nameOfCurrentClldFcn = dat.data;
+                    //std::cerr<<nameOfCurrentClldFcn<<std::endl;
                 }*/
