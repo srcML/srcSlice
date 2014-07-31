@@ -27,9 +27,12 @@ class SliceProfile{
 		unsigned int index;
 		unsigned int file;
 		unsigned int function;
+		
 		bool isAlias;
 
 		std::string variableName;
+		std::string variableType;
+		
 		std::vector<unsigned int> slines;
 		std::vector<std::pair<unsigned int, unsigned int>> cfunctions;
 		std::deque<std::string> dvars;//maybe hash
