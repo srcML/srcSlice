@@ -310,8 +310,18 @@ public :
                         //std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
                         spIt->second.dvars.push_back(functionTmplt.exprstmt.rhs);
                         spIt->second.slines.push_back(functionTmplt.exprstmt.ln);
+                    
+                        if(spIt->second.potentialAlias){
+                            std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs<<std::endl;
+                            auto spaIt = openSliceProfiles.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs);
+                            if(spaIt != openSliceProfiles.end()){
+                                spaIt->second.dvars.push_back(functionTmplt.exprstmt.lhs);
+                                spaIt->second.slines.push_back(functionTmplt.exprstmt.ln);
+                            }
+                        }
                     }
-                }//TODO: Implement the rest of this for aliases.
+                }
+                //TODO:look for aliases in decl and then check for them above.
             }
             --triggerField[expr_stmt];
 
@@ -487,7 +497,7 @@ public :
             
             openSliceProfiles.insert(std::make_pair(functionTmplt.functionName+":"+functionTmplt.arg.name, 
                 SliceProfile(functionTmplt.arg.ln - functionTmplt.functionLineNumber, fileNumber, 
-                    NumOfMostRecentlySeenFunction, functionTmplt.arg.ln, functionTmplt.arg.name)));
+                    NumOfMostRecentlySeenFunction, functionTmplt.arg.ln, functionTmplt.arg.name, functionTmplt.arg.potentialAlias)));
         }
 
         
@@ -507,7 +517,7 @@ public :
 
             openSliceProfiles.insert(std::make_pair(functionTmplt.functionName+":"+functionTmplt.declstmt.name, 
                 SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
-                    functionTmplt.functionNumber, functionTmplt.declstmt.ln, functionTmplt.declstmt.name)));
+                    functionTmplt.functionNumber, functionTmplt.declstmt.ln, functionTmplt.declstmt.name, functionTmplt.declstmt.potentialAlias)));
 
             //std::cerr<<"Decl: "<<functionTmplt.declstmt.type <<" "<<functionTmplt.functionName+":"+functionTmplt.declstmt.name<<std::endl;
             //functionTmplt.declstmt.potentialAlias = false;

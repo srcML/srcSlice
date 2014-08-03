@@ -68,14 +68,14 @@ class SliceProfile{
 			file = fle;
 			function = fcn;
 			slines.push_back(sline);
-			isAlias = alias;
+			potentialAlias = alias;
 			variableName = name;
 		}
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, std::string name, bool alias = 0){
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, std::string name, bool alias){
 			index = idx;
 			file = fle;
 			function = fcn;
-			isAlias = alias;
+			potentialAlias = alias;
 			variableName = name;
 		}
 		SliceProfile(unsigned int num){
@@ -88,12 +88,13 @@ class SliceProfile{
 		unsigned int function;
 		
 		bool isAlias;
+		bool potentialAlias;
 
 		std::string variableName;
 		std::string variableType;
 		
 		std::vector<unsigned int> slines;
-		std::vector<std::pair<std::string, unsigned int>> cfunctions;
+	std::vector<std::pair<std::string, unsigned int>> cfunctions;
 		std::deque<std::string> dvars;//maybe hash
 		std::deque<unsigned int> aliases;//maybe hash
 };
