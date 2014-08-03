@@ -305,15 +305,15 @@ public :
                 }
                 //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
                 if(functionTmplt.exprstmt.lhs != functionTmplt.exprstmt.rhs){
-                    auto spIt = openSliceProfiles.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                    auto spIt = openSliceProfiles.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs);
                     if(spIt != openSliceProfiles.end()){
-                        //std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
-                        spIt->second.dvars.push_back(functionTmplt.exprstmt.rhs);
+                        //std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
+                        spIt->second.dvars.push_back(functionTmplt.exprstmt.lhs);
                         spIt->second.slines.push_back(functionTmplt.exprstmt.ln);
                     
-                        if(spIt->second.potentialAlias){
-                            std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs<<std::endl;
-                            auto spaIt = openSliceProfiles.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs);
+                        if(spIt->second.isAlias){
+                            //std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs<<std::endl;
+                            auto spaIt = openSliceProfiles.find(spIt->second.aliases.back());
                             if(spaIt != openSliceProfiles.end()){
                                 spaIt->second.dvars.push_back(functionTmplt.exprstmt.lhs);
                                 spaIt->second.slines.push_back(functionTmplt.exprstmt.ln);
@@ -321,7 +321,7 @@ public :
                         }
                     }
                 }
-                //TODO:look for aliases in decl and then check for them above.
+                //TODO:check to see if lhs is an alias of rhs. Then done.
             }
             --triggerField[expr_stmt];
 
@@ -334,8 +334,8 @@ public :
             
             sysDict.functionTable.insert(std::make_pair(functionTmplt.functionName, functionTmplt));
 
-            //std::cerr<<functionTmplt.returnType<<" "<<functionTmplt.functionName<<std::endl;
-/*            
+            std::cerr<<functionTmplt.returnType<<" "<<functionTmplt.functionName<<std::endl;
+
             for(auto argn : functionTmplt.arguments){
                 if(argn.potentialAlias == true)
                 std::cerr<<"Arg: "<<argn.type<<" "<<argn.name<<std::endl;
@@ -535,12 +535,18 @@ public :
             if(sp != openSliceProfiles.end()){
                 //Either has to be a variable local to this function or a global variable (function == 0)
                 //std::cerr<<"Found: "<<functionTmplt.declstmt.name<<" "<<functionTmplt.functionName+":"+dat.first<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<" "<<functionTmplt.functionName+":"+previousDeclVarName<<std::endl;
+
                 if(sp->second.function == functionTmplt.functionNumber || sp->second.function == 0){
                     auto lastSp = openSliceProfiles.find(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
                     if(lastSp != openSliceProfiles.end()){                                    
                         //std::cerr<<"dat: "<<dat.first<<" "<<functionTmplt.declstmt.name<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<std::endl;
                         lastSp->second.dvars.push_back(dat.first);
                         //check for aliases
+                    }
+                    if(!triggerField[call]){
+                        //it's an alias for the rhs.
+                        sp->second.isAlias = true;
+                        sp->second.aliases.push_back(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
                     }
                 }
             }

@@ -70,6 +70,7 @@ class SliceProfile{
 			slines.push_back(sline);
 			potentialAlias = alias;
 			variableName = name;
+			isAlias = false;
 		}
 		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, std::string name, bool alias){
 			index = idx;
@@ -77,11 +78,13 @@ class SliceProfile{
 			function = fcn;
 			potentialAlias = alias;
 			variableName = name;
+			isAlias = false;
 		}
 		SliceProfile(unsigned int num){
 			index = num;
 			file = num;
 			function = num;
+			isAlias = false;
 		}
 		unsigned int index;
 		unsigned int file;
@@ -94,9 +97,9 @@ class SliceProfile{
 		std::string variableType;
 		
 		std::vector<unsigned int> slines;
-	std::vector<std::pair<std::string, unsigned int>> cfunctions;
+		std::vector<std::pair<std::string, unsigned int>> cfunctions;
 		std::deque<std::string> dvars;//maybe hash
-		std::deque<unsigned int> aliases;//maybe hash
+		std::vector<std::string> aliases;//maybe hash
 };
 class SystemDictionary{
 	public:
