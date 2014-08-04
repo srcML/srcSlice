@@ -331,7 +331,7 @@ public :
             functionTmplt.exprstmt.opeq = false;
             
         }else if(std::string(localname) == "function" || std::string(localname) == "constructor" || std::string(localname) == "destructor"){
-            
+            /*
             sysDict.functionTable.insert(std::make_pair(functionTmplt.functionName, functionTmplt));
 
             std::cerr<<functionTmplt.returnType<<" "<<functionTmplt.functionName<<std::endl;
@@ -344,7 +344,7 @@ public :
             std::cerr<<functionTmplt.functionNumber<<std::endl;
 
             std::cerr<<"----------------------------"<<std::endl;
-            /**/
+            */
             functionTmplt.clear();
             SliceVarMetaDataStack.back().first = "";
             --triggerField[function];
@@ -493,7 +493,7 @@ public :
             functionTmplt.arg.name = dat.first;
             functionTmplt.arguments.push_back(functionTmplt.arg);
             
-            //std::cerr<<"Param: "<<functionTmplt.declstmt.type <<" "<<functionTmplt.functionName+":"+functionTmplt.arg.name<<std::endl;
+            //std::cerr<<"Param: "<<functionTmplt.arg.type <<" "<<functionTmplt.functionName+":"+functionTmplt.arg.name<<std::endl;
             
             openSliceProfiles.insert(std::make_pair(functionTmplt.functionName+":"+functionTmplt.arg.name, 
                 SliceProfile(functionTmplt.arg.ln - functionTmplt.functionLineNumber, fileNumber, 
