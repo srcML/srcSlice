@@ -58,7 +58,7 @@ private :
     std::string nameOfCurrentClldFcn;
     std::string currentOp;
 
-    NameLineNumberPair SliceVarMetaDataStack;
+    NameLineNumberPair currentNameAndLine;
     std::vector<unsigned short int> triggerField;
 
     SystemDictionary sysDict;
@@ -159,43 +159,43 @@ public :
         }
         std::string lname(localname);
         if(lname == "decl_stmt"){
-            SliceVarMetaDataStack.first.clear();
+            currentNameAndLine.first.clear();
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
-            SliceVarMetaDataStack.first.clear();
+            currentNameAndLine.first.clear();
             ++triggerField[function];
         }else if (lname == "expr_stmt"){
-            SliceVarMetaDataStack.first.clear();
+            currentNameAndLine.first.clear();
             ++triggerField[expr_stmt];
         }else if (lname == "parameter_list"){
             ++triggerField[parameter_list];
         }else if (lname == "argument_list"){
             ++triggerField[argument_list];
         }else if (lname == "call"){
-            SliceVarMetaDataStack.first.clear();
+            currentNameAndLine.first.clear();
             ++triggerField[call];
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
             triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
             if (lname == "param"){
-                    SliceVarMetaDataStack.first.clear();
+                    currentNameAndLine.first.clear();
                     ++triggerField[param];
             }else if(lname == "operator"){
                     currentOp = "";
                     //functionTmplt.exprstmt.op = "";SliceMetaData(lineNum, op, "")
-                    //SliceVarMetaDataStack.push_back(std::make_pair("", lineNum));
+                    //currentNameAndLine.push_back(std::make_pair("", lineNum));
                     ++triggerField[op];
             }else if (lname == "block"){ //So I can discriminate against things in or outside of blocks
-                    SliceVarMetaDataStack.first.clear();
+                    currentNameAndLine.first.clear();
                     ++triggerField[block];
             }else if (lname == "init"){ //So I can discriminate against things in or outside of blocks
-                    SliceVarMetaDataStack.first.clear(); //so that I can get more stuff after the decl's name
+                    currentNameAndLine.first.clear(); //so that I can get more stuff after the decl's name
                     ++triggerField[init];
             }else if (lname == "argument"){
                     ++numArgs;
                     if(triggerField[init]){
                         //Only if we're in init because templates can have arguments too
-                        SliceVarMetaDataStack.first.clear();
+                        currentNameAndLine.first.clear();
                     }
                     ++triggerField[argument];
             }else if (lname == "literal"){
@@ -243,10 +243,10 @@ public :
         The second else if deals with collecting operator information like . and = and ->
         I'm certain there's a better way to accompish this, but it's a pain in the ass so I'm not dealing with it
         just yet.*/ 
-        //auto currentStack = SliceVarMetaDataStack.first;
+        //auto currentStack = currentNameAndLine.first;
         if((triggerField[name] || triggerField[op]) && content != "="){
-            SliceVarMetaDataStack.first.append(content);
-            //std::cerr<<SliceVarMetaDataStack.first<<std::endl;
+            currentNameAndLine.first.append(content);
+            //std::cerr<<currentNameAndLine.first<<std::endl;
         }
         if(triggerField[op]){
             currentOp = content;
@@ -272,14 +272,14 @@ public :
         std::string lname(localname);
         if(lname == "decl_stmt"){
             //std::cerr<<functionTmplt.declstmt.type<<" "<<functionTmplt.declstmt.name<<std::endl;
-            auto dat = SliceVarMetaDataStack;
+            auto dat = currentNameAndLine;
             
             if(functionTmplt.declstmt.potentialAlias){
                 //std::cerr<<"decl: "<<functionTmplt.functionName<<" "<<functionTmplt.declstmt.name<<std::endl;
 
             }
 
-            SliceVarMetaDataStack.first.clear();
+            currentNameAndLine.first.clear();
             functionTmplt.declstmt.clear();
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
@@ -325,7 +325,7 @@ public :
             }
             --triggerField[expr_stmt];
 
-            SliceVarMetaDataStack.first.clear();
+            currentNameAndLine.first.clear();
             
             functionTmplt.exprstmt.clear();
             functionTmplt.exprstmt.opeq = false;
@@ -346,7 +346,7 @@ public :
             std::cerr<<"----------------------------"<<std::endl;
             */
             functionTmplt.clear();
-            SliceVarMetaDataStack.first.clear();
+            currentNameAndLine.first.clear();
             --triggerField[function];
         }else if (lname == "parameter_list"){
             --triggerField[parameter_list];
@@ -385,12 +385,12 @@ public :
                 --triggerField[expr]; 
             }else if (lname == "type"){
                 if(triggerField[decl_stmt] || (triggerField[function] && ! triggerField[block])) {
-                    SliceVarMetaDataStack.first.clear();
+                    currentNameAndLine.first.clear();
                 }
                 --triggerField[type]; 
             }else if (lname == "operator"){
                 if(currentOp == "=")
-                    SliceVarMetaDataStack.first.clear();
+                    currentNameAndLine.first.clear();
                 
                 --triggerField[op];
             }
@@ -412,14 +412,14 @@ public :
                     if(triggerField[name] > 1){
                         flag = true;
                     }
-                    auto dat = SliceVarMetaDataStack;
+                    auto dat = currentNameAndLine;
                     if(triggerField[name] == 1 && flag == false){
                         nameOfCurrentClldFcn = dat.first;
                     }else if(triggerField[name] == 2){
                         nameOfCurrentClldFcn = dat.first;
                     }
                     
-                    //SliceVarMetaDataStack.first.clear();
+                    //currentNameAndLine.first.clear();
                     //std::cerr<<dat.first<<std::endl;
                 }
                 //Get function arguments
@@ -438,7 +438,7 @@ public :
             triggerField[expr] && triggerField[name]){
            
             
-            NameLineNumberPair dat = SliceVarMetaDataStack;
+            NameLineNumberPair dat = currentNameAndLine;
             
             dat.first.erase(
                 std::find_if(dat.first.begin(), dat.first.end(), 
@@ -460,13 +460,13 @@ public :
     void GetFunctionData(){
         //Get function type
         if(triggerField[type] && !(triggerField[parameter_list] || triggerField[block])){
-            NameLineNumberPair dat = SliceVarMetaDataStack;
+            NameLineNumberPair dat = currentNameAndLine;
             functionTmplt.returnType = dat.first;
         }
         //Get function name
         if(triggerField[name] == 1 && !(triggerField[argument_list] || 
             triggerField[block] || triggerField[type] || triggerField[parameter_list])){
-            NameLineNumberPair dat = SliceVarMetaDataStack;
+            NameLineNumberPair dat = currentNameAndLine;
 
             
             std::size_t pos = dat.first.find("::");
@@ -483,12 +483,12 @@ public :
         }
         //Get param types
         if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){
-            functionTmplt.arg.type = SliceVarMetaDataStack.first;
-            //functionTmplt.arguments.push_back(std::make_pair(SliceVarMetaDataStack.first, ""));
+            functionTmplt.arg.type = currentNameAndLine.first;
+            //functionTmplt.arguments.push_back(std::make_pair(currentNameAndLine.first, ""));
         }
         //Get Param names
         if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
-            NameLineNumberPair dat = SliceVarMetaDataStack;
+            NameLineNumberPair dat = currentNameAndLine;
 
             functionTmplt.arg.name = dat.first;
             functionTmplt.arguments.push_back(functionTmplt.arg);
@@ -504,14 +504,14 @@ public :
     }
     void GetDeclStmtData(){
         if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
-            NameLineNumberPair dat = SliceVarMetaDataStack;
+            NameLineNumberPair dat = currentNameAndLine;
             //std::cerr<<dat.first<<std::endl;
             functionTmplt.declstmt.type = dat.first;
             //agglomerate string into type. Clear when we exit the decl_stmt
         }
         //Get name of decl stmt
         if(triggerField[decl] && !(triggerField[type] || triggerField[init])){
-            NameLineNumberPair dat = SliceVarMetaDataStack;
+            NameLineNumberPair dat = currentNameAndLine;
             functionTmplt.declstmt.name = dat.first;
             functionTmplt.declstmt.ln = dat.second;
 
@@ -524,7 +524,7 @@ public :
         }
         //Deal with decl's that have an init in them.
         if(triggerField[decl] && triggerField[init] && (triggerField[call] || triggerField[expr])){
-            NameLineNumberPair dat = SliceVarMetaDataStack;
+            NameLineNumberPair dat = currentNameAndLine;
             dat.first.erase(
                 std::find_if(dat.first.begin(), dat.first.end(), 
                     [](char x){
@@ -557,7 +557,7 @@ public :
     void GetExprStmtParts(){
         //std::cerr<<"op: "<<currentOp<<std::endl;
         if(triggerField[expr_stmt] && !triggerField[call]){
-            auto dat = SliceVarMetaDataStack;
+            auto dat = currentNameAndLine;
             if(functionTmplt.exprstmt.opeq == false){
                 functionTmplt.exprstmt.lhs = dat.first;
             }else{
