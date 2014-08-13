@@ -40,6 +40,40 @@ inline std::string RemoveWhiteSpace(std::string str){
     str.erase(std::remove(str.begin(), str.end(), ' '), str.end());
     return str;
 }
+inline std::vector<std::string> Split(const std::string& str, const char tok){
+    std::size_t tokPos = str.find_first_of(tok);
+    std::vector<std::string> result;
+    std::size_t nextPos = 0, curPos = 0;
+    while(curPos != std::string::npos){
+        result.push_back(str.substr(nextPos, tokPos - nextPos));
+        nextPos = tokPos+1;
+        curPos = tokPos;
+        tokPos = str.find_first_of(tok, nextPos);
+    }
+    return result;
+}
+inline std::string StripModifier(std::string str){
+    if(str[0] == '&' || str[0] == '*'){
+        auto posOfDotRhs = std::find_if(str.begin(), 
+                str.end(), [](const char x){
+                    return (x == '&' || x=='*');
+                });
+        if(posOfDotRhs != str.end()){
+            str.erase(posOfDotRhs, posOfDotRhs+1);
+        }
+    }else{
+        auto posOfDotRhs = std::find_if(str.begin(), 
+            str.end(), [](char x){
+                return !std::isalnum(x);
+            });
+        if(posOfDotRhs != str.end()){
+            str.erase(posOfDotRhs, str.end());
+        }
+    }
+
+    return str;
+}
+
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<std::string, std::string> TypeNamePair;
 
@@ -51,6 +85,8 @@ private :
     unsigned int fileNumber;
     unsigned int numArgs;
     
+    char constructorNum;
+    
     std::hash<std::string> hash_fn;
 
     FunctionData functionTmplt;
@@ -61,18 +97,23 @@ private :
     NameLineNumberPair currentNameAndLine;
     std::vector<unsigned short int> triggerField;
 
-    SystemDictionary sysDict;
+    
     
     FileFunctionVarMap::iterator FileIt;
     FunctionVarMap::iterator FunctionIt;
 
-    bool flag;
 
+    bool flag;
+    bool isConstructor;
 public :
+    SystemDictionary sysDict;
     srcSliceHandler(){
         fileNumber = 0;
         numArgs = 0;
+        constructorNum = '0';
+
         flag = false;
+        isConstructor = false;
 
         nameOfCurrentClldFcn = "global";
 
@@ -162,6 +203,10 @@ public :
             currentNameAndLine.first.clear();
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
+            if(lname == "constructor"){
+                ++constructorNum;
+                isConstructor = true;
+            }
             currentNameAndLine.first.clear();
             ++triggerField[function];
         }else if (lname == "expr_stmt"){
@@ -193,7 +238,7 @@ public :
                     ++triggerField[init];
             }else if (lname == "argument"){
                     ++numArgs;
-                    if(triggerField[init]){
+                    if(triggerField[init] || triggerField[call]){
                         //Only if we're in init because templates can have arguments too
                         currentNameAndLine.first.clear();
                     }
@@ -210,15 +255,7 @@ public :
                     ++triggerField[expr];
             }else if (lname == "name"){
                 ++triggerField[name];
-                if(triggerField[function] && triggerField[type] && !triggerField[block]){
-                    if(num_attributes){
-                        functionTmplt.functionLineNumber = strtoul(attributes[0].value, NULL, 0);
-                    }
-                }else if(triggerField[expr_stmt] && triggerField[expr]){
-                    if(num_attributes){
-                        functionTmplt.exprstmt.ln = strtoul(attributes[0].value, NULL, 0);
-                    }
-                }
+                currentNameAndLine.second = lineNum;
             }else{
                     ++triggerField[nonterminal]; 
             }   
@@ -244,20 +281,20 @@ public :
         I'm certain there's a better way to accompish this, but it's a pain in the ass so I'm not dealing with it
         just yet.*/ 
         //auto currentStack = currentNameAndLine.first;
-        if((triggerField[name] || triggerField[op]) && content != "="){
+        if((triggerField[name] || triggerField[op] || triggerField[literal]) && content != "="){
             currentNameAndLine.first.append(content);
             //std::cerr<<currentNameAndLine.first<<std::endl;
         }
         if(triggerField[op]){
-            currentOp = content;
+            currentOp.append(content);
         }
         if(content == "="){
             functionTmplt.exprstmt.opeq = true;
             functionTmplt.exprstmt.op = "=";
         }
         if(triggerField[literal]){
-            functionTmplt.declstmt.clear();
-            functionTmplt.exprstmt.clear();
+            //functionTmplt.declstmt.clear();
+            //functionTmplt.exprstmt.clear();
         }        
     }
 
@@ -273,7 +310,7 @@ public :
         if(lname == "decl_stmt"){
             //std::cerr<<functionTmplt.declstmt.type<<" "<<functionTmplt.declstmt.name<<std::endl;
             auto dat = currentNameAndLine;
-            
+            ProcessDeclStmtInit();
             if(functionTmplt.declstmt.potentialAlias){
                 //std::cerr<<"decl: "<<functionTmplt.functionName<<" "<<functionTmplt.declstmt.name<<std::endl;
 
@@ -284,45 +321,9 @@ public :
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
             //std::cerr<<"expr: "<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.op<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
-            if(!(functionTmplt.exprstmt.lhs.empty() || functionTmplt.exprstmt.rhs.empty() || functionTmplt.exprstmt.op.empty())){
-                ///TODO: This won't work for all expressions
-                //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.lhs<<std::endl;
-                functionTmplt.exprstmt.lhs = RemoveWhiteSpace(std::move(functionTmplt.exprstmt.lhs));
-                functionTmplt.exprstmt.rhs = RemoveWhiteSpace(std::move(functionTmplt.exprstmt.rhs));                        
-                auto posOfDotRhs = std::find_if(functionTmplt.exprstmt.rhs.begin(), 
-                    functionTmplt.exprstmt.rhs.end(), [](char x){
-                        return !std::isalnum(x);
-                    });
-                if(posOfDotRhs != functionTmplt.exprstmt.rhs.end()){
-                    functionTmplt.exprstmt.rhs.erase(posOfDotRhs, functionTmplt.exprstmt.rhs.end());
-                }
-                auto posOfDotLhs = std::find_if(functionTmplt.exprstmt.lhs.begin(), 
-                    functionTmplt.exprstmt.lhs.end(), [](char x){
-                        return !std::isalnum(x);
-                    });
-                if(posOfDotLhs != functionTmplt.exprstmt.rhs.end()){
-                    functionTmplt.exprstmt.lhs.erase(posOfDotLhs, functionTmplt.exprstmt.lhs.end());
-                }
-                //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
-                if(functionTmplt.exprstmt.lhs != functionTmplt.exprstmt.rhs){
-                    auto spIt = FunctionIt->second.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs);
-                    if(spIt != FunctionIt->second.end()){
-                        //std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs<<" "<<functionTmplt.exprstmt.lhs<<std::endl;
-                        spIt->second.dvars.push_back(functionTmplt.exprstmt.lhs);
-                        spIt->second.slines.push_back(functionTmplt.exprstmt.ln);
-                    
-                        if(spIt->second.isAlias){
-                            //std::cerr<<functionTmplt.functionName+":"+functionTmplt.exprstmt.rhs<<std::endl;
-                            auto spaIt = FunctionIt->second.find(spIt->second.aliases.back());
-                            if(spaIt != FunctionIt->second.end()){
-                                spaIt->second.dvars.push_back(functionTmplt.exprstmt.lhs);
-                                spaIt->second.slines.push_back(functionTmplt.exprstmt.ln);
-                            }
-                        }
-                    }
-                }
-                //TODO:check to see if lhs is an alias of rhs. Then done.
-            }
+            ProcessExprStmtRhs();
+            //TODO:check to see if lhs is an alias of rhs. Then done.
+            
             --triggerField[expr_stmt];
 
             currentNameAndLine.first.clear();
@@ -334,6 +335,7 @@ public :
             
             sysDict.functionTable.insert(std::make_pair(functionTmplt.functionNumber, functionTmplt));
             FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionNumber, VarMap())).first;
+
             //std::cerr<<functionTmplt.returnType<<" "<<functionTmplt.functionName<<std::endl;
             /*
             for(auto argn : functionTmplt.arguments){
@@ -345,6 +347,9 @@ public :
 
             std::cerr<<"----------------------------"<<std::endl;
             */
+            if(lname == "constructor"){
+                isConstructor = false;
+            }
             functionTmplt.clear();
             currentNameAndLine.first.clear();
             --triggerField[function];
@@ -364,6 +369,9 @@ public :
             if (lname == "param"){
                 --triggerField[param];
             }else if (lname == "literal"){
+                if(triggerField[expr_stmt]){
+                    functionTmplt.exprstmt.rhs = currentNameAndLine.first;
+                }
                 --triggerField[literal];
             }else if (lname == "modifier"){
                 if(triggerField[decl_stmt] && triggerField[decl]){ //only care about modifiers in decls
@@ -439,18 +447,13 @@ public :
            
             
             NameLineNumberPair dat = currentNameAndLine;
-            
-            dat.first.erase(
-                std::find_if(dat.first.begin(), dat.first.end(), 
-                    [](char x){
-                        return !std::isalnum(x);
-                    }), dat.first.end());
-
+            //std::cerr<<"CALLED: "<<functionTmplt.functionName+":"+dat.first<<std::endl;
             auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+dat.first);
             if(sp != FunctionIt->second.end()){
-                sp->second.slines.push_back(dat.second);
+                sp->second.slines.insert(dat.second);
                 sp->second.index = dat.second - functionTmplt.functionLineNumber;
                 sp->second.cfunctions.push_back(std::make_pair(nameOfCurrentClldFcn, numArgs));
+                
                 //dat.second - functionTmplt.functionLineNumber
             }
             
@@ -473,9 +476,12 @@ public :
             if(pos != std::string::npos){
                 dat.first.erase(0, pos+2);
             }
-            
-
+            if(isConstructor){
+                dat.first+=constructorNum;
+                //std::cerr<<"NAME: "<<dat.first<<std::endl;
+            }
             functionTmplt.functionName = dat.first;
+            functionTmplt.functionLineNumber = dat.second;
             functionTmplt.functionNumber = hash_fn(dat.first); //give me the hash num for this name.
 
             //std::cerr<<dat.first<<std::endl;
@@ -491,6 +497,7 @@ public :
             NameLineNumberPair dat = currentNameAndLine;
 
             functionTmplt.arg.name = dat.first;
+            functionTmplt.arg.ln = dat.second;
             functionTmplt.arguments.push_back(functionTmplt.arg);
             
             //std::cerr<<"Param: "<<functionTmplt.arg.type <<" "<<functionTmplt.functionName+":"+functionTmplt.arg.name<<std::endl;
@@ -517,40 +524,11 @@ public :
 
             FunctionIt->second.insert(std::make_pair(functionTmplt.functionName+":"+functionTmplt.declstmt.name, 
                 SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
-                    functionTmplt.functionNumber, functionTmplt.declstmt.ln, functionTmplt.declstmt.name, functionTmplt.declstmt.potentialAlias)));
+                    functionTmplt.functionNumber, functionTmplt.declstmt.ln, 
+                    functionTmplt.declstmt.name, functionTmplt.declstmt.potentialAlias)));
 
-            //std::cerr<<"Decl: "<<functionTmplt.declstmt.type <<" "<<functionTmplt.functionName+":"+functionTmplt.declstmt.name<<std::endl;
+            //std::cerr<<"Decl: "<<functionTmplt.declstmt.type<<" "<<functionTmplt.declstmt.ln<<" "<<functionTmplt.functionName+":"+functionTmplt.declstmt.name<<std::endl;
             //functionTmplt.declstmt.potentialAlias = false;
-        }
-        //Deal with decl's that have an init in them.
-        if(triggerField[decl] && triggerField[init] && (triggerField[call] || triggerField[expr])){
-            NameLineNumberPair dat = currentNameAndLine;
-            dat.first.erase(
-                std::find_if(dat.first.begin(), dat.first.end(), 
-                    [](char x){
-                        return !std::isalnum(x);
-                    }), dat.first.end());
-            //std::cerr<<"Tried: "<<functionTmplt.functionName+":"+dat.first<<std::endl;
-            auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+dat.first);
-            if(sp != FunctionIt->second.end()){
-                //Either has to be a variable local to this function or a global variable (function == 0)
-                //std::cerr<<"Found: "<<functionTmplt.declstmt.name<<" "<<functionTmplt.functionName+":"+dat.first<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<" "<<functionTmplt.functionName+":"+<<std::endl;
-
-                if(sp->second.function == functionTmplt.functionNumber || sp->second.function == 0){
-                    std::string fdname(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
-                    auto lastSp = FunctionIt->second.find(fdname);
-                    if(lastSp != FunctionIt->second.end()){                                    
-                        //std::cerr<<"dat: "<<dat.first<<" "<<functionTmplt.declstmt.name<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<std::endl;
-                        lastSp->second.dvars.push_back(dat.first);
-                        //check for aliases
-                    }
-                    if(!triggerField[call]){
-                        //it's an alias for the rhs.
-                        sp->second.isAlias = true;
-                        sp->second.aliases.push_back(fdname);
-                    }
-                }
-            }
         }
         //Get Init of decl stmt
     }
@@ -558,15 +536,86 @@ public :
         //std::cerr<<"op: "<<currentOp<<std::endl;
         if(triggerField[expr_stmt] && !triggerField[call]){
             auto dat = currentNameAndLine;
+            functionTmplt.exprstmt.ln = dat.second;
             if(functionTmplt.exprstmt.opeq == false){
                 functionTmplt.exprstmt.lhs = dat.first;
+                functionTmplt.exprstmt.lhs = StripModifier(std::move(functionTmplt.exprstmt.lhs));
+                std::cerr<<"Got lhs: "<<functionTmplt.exprstmt.lhs<<std::endl;
             }else{
                 functionTmplt.exprstmt.rhs = dat.first;
+                std::cerr<<"Got rhs: "<<functionTmplt.exprstmt.rhs<<std::endl;
             }
 
         }
+        //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<currentOp<<functionTmplt.exprstmt.rhs<<std::endl;
     }
-
+    void ProcessDeclStmtInit(){
+        auto resultVec = Split(currentNameAndLine.first, '+');
+        for(auto rVecIt = resultVec.begin(); rVecIt != resultVec.end(); ++rVecIt){
+            //std::cerr<<"Tried: "<<functionTmplt.declstmt.name<<" "<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
+            *rVecIt = StripModifier(std::move(*rVecIt));
+            if(functionTmplt.declstmt.name != *rVecIt){ //lhs != rhs
+                auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+ *rVecIt);
+                if(sp != FunctionIt->second.end()){
+                    //Either has to be a variable local to this function or a global variable (function == 0)
+                    //std::cerr<<"Found: "<<functionTmplt.declstmt.name<<" "<<functionTmplt.functionName+":"+*rVecIt<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<" "<<functionTmplt.functionName+":"+<<std::endl;
+                    if(sp->second.function == functionTmplt.functionNumber || sp->second.function == 0){
+                        std::string fdname(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
+                        auto lastSp = FunctionIt->second.find(fdname);
+                        //std::cerr<<"MMM: "<<fdname<<std::endl;
+                        if(lastSp != FunctionIt->second.end()){                                    
+                            //std::cerr<<"dat: "<<*rVecIt<<" "<<functionTmplt.declstmt.name<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<std::endl;
+                            sp->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
+                            sp->second.slines.insert(currentNameAndLine.second);
+                            //check for aliases
+                        }                        
+                        if(!triggerField[call] && sp->second.potentialAlias){
+                            //it's an alias for the rhs.
+                            sp->second.isAlias = true;
+                            sp->second.lastInsertedAlias = sp->second.aliases.insert(fdname).first;
+                        }                        
+                    }
+                }
+            }
+        }
+    }
+    void ProcessExprStmtRhs(){
+        if(!(functionTmplt.exprstmt.lhs.empty() || functionTmplt.exprstmt.rhs.empty() || functionTmplt.exprstmt.op.empty())){
+            ///TODO: This won't work for all expressions
+            //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
+            auto resultVec = Split(functionTmplt.exprstmt.rhs, '+');
+            for(auto rVecIt = resultVec.begin(); rVecIt != resultVec.end(); ++rVecIt){
+                //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;                    
+                *rVecIt = StripModifier(std::move(*rVecIt));
+                if(functionTmplt.exprstmt.lhs != *rVecIt){ //lhs !+ rhs
+                    auto splIt = FunctionIt->second.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                    if(splIt != FunctionIt->second.end()){ //Found it so add statement line.
+                        splIt->second.slines.insert(functionTmplt.exprstmt.ln);
+                        //std::cerr<<"This: "<<splIt->second.variableName<<" "<<splIt->second.potentialAlias<<std::endl;
+                    }
+                    
+                    auto sprIt = FunctionIt->second.find(functionTmplt.functionName+":"+*rVecIt);
+                    //std::cerr<<"That: "<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
+                    if(sprIt != FunctionIt->second.end()){ //lvalue depends on this rvalue
+                        //std::cerr<<"ERP: "<<functionTmplt.functionName+":"+*rVecIt<<" "<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.ln<<std::endl;
+                        sprIt->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                        sprIt->second.slines.insert(functionTmplt.exprstmt.ln);                            
+                        if(sprIt->second.isAlias){
+                            //std::cerr<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
+                            auto spaIt = FunctionIt->second.find(*sprIt->second.lastInsertedAlias);
+                            if(spaIt != FunctionIt->second.end()){
+                                spaIt->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                                spaIt->second.slines.insert(functionTmplt.exprstmt.ln);
+                            }
+                        }
+                        if(splIt != FunctionIt->second.end() && splIt->second.potentialAlias){
+                           sprIt->second.lastInsertedAlias = sprIt->second.aliases.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs).first;
+                        }
+                    }
+                }
+            }
+        }
+    }
     /*
     virtual void comment(const char * value) {}
     virtual void cdataBlock(const char * value, int len) {}
@@ -578,3 +627,22 @@ public :
 };
 
 #endif
+
+
+/*
+                functionTmplt.exprstmt.lhs = RemoveWhiteSpace(std::move(functionTmplt.exprstmt.lhs));
+                functionTmplt.exprstmt.rhs = RemoveWhiteSpace(std::move(functionTmplt.exprstmt.rhs));                        
+                auto posOfDotRhs = std::find_if(functionTmplt.exprstmt.rhs.begin(), 
+                    functionTmplt.exprstmt.rhs.end(), [](char x){
+                        return !std::isalnum(x);
+                    });
+                if(posOfDotRhs != functionTmplt.exprstmt.rhs.end()){
+                    functionTmplt.exprstmt.rhs.erase(posOfDotRhs, functionTmplt.exprstmt.rhs.end());
+                }
+                auto posOfDotLhs = std::find_if(functionTmplt.exprstmt.lhs.begin(), 
+                    functionTmplt.exprstmt.lhs.end(), [](char x){
+                        return !std::isalnum(x);
+                    });
+                if(posOfDotLhs != functionTmplt.exprstmt.rhs.end()){
+                    functionTmplt.exprstmt.lhs.erase(posOfDotLhs, functionTmplt.exprstmt.lhs.end());
+                }*/

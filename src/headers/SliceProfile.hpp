@@ -1,6 +1,6 @@
 #include <string>
 #include <vector>
-#include <deque>
+#include <unordered_set>
 #include <unordered_map>
 
 struct ExprStmt{
@@ -51,9 +51,12 @@ struct FunctionData{
     std::string functionName;        
     std::vector<DeclStmt> arguments;
     DeclStmt arg;
+
     ExprStmt exprstmt;
     DeclStmt declstmt;
+    
     std::string op;
+    
     unsigned int functionNumber;
     unsigned int functionLineNumber;
 };
@@ -64,7 +67,7 @@ class SliceProfile{
 			index = idx;
 			file = fle;
 			function = fcn;
-			slines.push_back(sline);
+			slines.insert(sline);
 			potentialAlias = alias;
 			variableName = name;
 			isAlias = false;
@@ -87,16 +90,18 @@ class SliceProfile{
 		unsigned int file;
 		unsigned int function;
 		
+        std::unordered_set<std::string>::iterator lastInsertedAlias;
+
 		bool isAlias;
 		bool potentialAlias;
 
 		std::string variableName;
 		std::string variableType;
 		
-		std::vector<unsigned int> slines;
+		std::unordered_set<unsigned int> slines;
 		std::vector<std::pair<std::string, unsigned int>> cfunctions;
-		std::deque<std::string> dvars;//maybe hash
-		std::vector<std::string> aliases;//maybe hash
+		std::unordered_set<std::string> dvars;//maybe hash
+		std::unordered_set<std::string> aliases;//maybe hash
 };
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
 typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
