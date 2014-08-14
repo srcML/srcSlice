@@ -534,16 +534,18 @@ public :
     }
     void GetExprStmtParts(){
         //std::cerr<<"op: "<<currentOp<<std::endl;
-        if(triggerField[expr_stmt] && !triggerField[call]){
+        if(triggerField[expr_stmt]){
             auto dat = currentNameAndLine;
             functionTmplt.exprstmt.ln = dat.second;
+            
             if(functionTmplt.exprstmt.opeq == false){
+                //std::cerr<<"Got lhs: "<<dat.first<<std::endl;
                 functionTmplt.exprstmt.lhs = dat.first;
                 functionTmplt.exprstmt.lhs = StripModifier(std::move(functionTmplt.exprstmt.lhs));
-                std::cerr<<"Got lhs: "<<functionTmplt.exprstmt.lhs<<std::endl;
+                //std::cerr<<"Got lhs: "<<functionTmplt.exprstmt.lhs<<std::endl;
             }else{
                 functionTmplt.exprstmt.rhs = dat.first;
-                std::cerr<<"Got rhs: "<<functionTmplt.exprstmt.rhs<<std::endl;
+                //std::cerr<<"Got rhs: "<<functionTmplt.exprstmt.rhs<<std::endl;
             }
 
         }
@@ -563,42 +565,52 @@ public :
                         std::string fdname(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
                         auto lastSp = FunctionIt->second.find(fdname);
                         //std::cerr<<"MMM: "<<fdname<<std::endl;
-                        if(lastSp != FunctionIt->second.end()){                                    
+                        sp->second.slines.insert(currentNameAndLine.second);
+                        if(lastSp != FunctionIt->second.end() && !lastSp->second.potentialAlias){ 
                             //std::cerr<<"dat: "<<*rVecIt<<" "<<functionTmplt.declstmt.name<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<std::endl;
                             sp->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
-                            sp->second.slines.insert(currentNameAndLine.second);
+                            
                             //check for aliases
-                        }                        
+                        }else if(lastSp != FunctionIt->second.end() && lastSp->second.potentialAlias){
+                            //it's an alias for the rhs.
+                            sp->second.isAlias = true;
+                            sp->second.lastInsertedAlias = sp->second.aliases.insert(fdname).first;                            
+                        }/*
                         if(!triggerField[call] && sp->second.potentialAlias){
                             //it's an alias for the rhs.
                             sp->second.isAlias = true;
                             sp->second.lastInsertedAlias = sp->second.aliases.insert(fdname).first;
-                        }                        
+                        }*/
                     }
                 }
             }
         }
     }
     void ProcessExprStmtRhs(){
+        
+        ///TODO: This won't work for all expressions
+        //std::cerr<<"DIS: "<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
+        auto splIt = FunctionIt->second.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+        if(splIt != FunctionIt->second.end()){ //Found it so add statement line.
+            splIt->second.slines.insert(functionTmplt.exprstmt.ln);
+            //std::cerr<<"This: "<<splIt->second.variableName<<" "<<splIt->second.potentialAlias<<std::endl;
+        }
         if(!(functionTmplt.exprstmt.lhs.empty() || functionTmplt.exprstmt.rhs.empty() || functionTmplt.exprstmt.op.empty())){
-            ///TODO: This won't work for all expressions
-            //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
             auto resultVec = Split(functionTmplt.exprstmt.rhs, '+');
             for(auto rVecIt = resultVec.begin(); rVecIt != resultVec.end(); ++rVecIt){
                 //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;                    
                 *rVecIt = StripModifier(std::move(*rVecIt));
-                if(functionTmplt.exprstmt.lhs != *rVecIt){ //lhs !+ rhs
-                    auto splIt = FunctionIt->second.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
-                    if(splIt != FunctionIt->second.end()){ //Found it so add statement line.
-                        splIt->second.slines.insert(functionTmplt.exprstmt.ln);
-                        //std::cerr<<"This: "<<splIt->second.variableName<<" "<<splIt->second.potentialAlias<<std::endl;
-                    }
-                    
+                if(functionTmplt.exprstmt.lhs != *rVecIt){//lhs !+ rhs    
                     auto sprIt = FunctionIt->second.find(functionTmplt.functionName+":"+*rVecIt);
                     //std::cerr<<"That: "<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
                     if(sprIt != FunctionIt->second.end()){ //lvalue depends on this rvalue
                         //std::cerr<<"ERP: "<<functionTmplt.functionName+":"+*rVecIt<<" "<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.ln<<std::endl;
-                        sprIt->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                        if(!(splIt != FunctionIt->second.end() && splIt->second.potentialAlias)){
+                            sprIt->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                            
+                        }else{
+                            sprIt->second.lastInsertedAlias = sprIt->second.aliases.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs).first;
+                        }
                         sprIt->second.slines.insert(functionTmplt.exprstmt.ln);                            
                         if(sprIt->second.isAlias){
                             //std::cerr<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
@@ -609,7 +621,7 @@ public :
                             }
                         }
                         if(splIt != FunctionIt->second.end() && splIt->second.potentialAlias){
-                           sprIt->second.lastInsertedAlias = sprIt->second.aliases.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs).first;
+                           
                         }
                     }
                 }

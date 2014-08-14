@@ -75,6 +75,6 @@ int main(int argc, char * argv[]) {
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
-  TestSlice(handler.sysDict.dictionary);
+  //TestSlice(handler.sysDict.dictionary);
   return 0;
 }
