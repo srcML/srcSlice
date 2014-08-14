@@ -40,7 +40,7 @@ inline std::string RemoveWhiteSpace(std::string str){
     str.erase(std::remove(str.begin(), str.end(), ' '), str.end());
     return str;
 }
-inline std::vector<std::string> Split(const std::string& str, const char tok){
+inline std::vector<std::string> Split(const std::string& str, const char* tok){
     std::size_t tokPos = str.find_first_of(tok);
     std::vector<std::string> result;
     std::size_t nextPos = 0, curPos = 0;
@@ -217,7 +217,7 @@ public :
         }else if (lname == "argument_list"){
             ++triggerField[argument_list];
         }else if (lname == "call"){
-            currentNameAndLine.first.clear();
+
             ++triggerField[call];
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
@@ -281,7 +281,7 @@ public :
         I'm certain there's a better way to accompish this, but it's a pain in the ass so I'm not dealing with it
         just yet.*/ 
         //auto currentStack = currentNameAndLine.first;
-        if((triggerField[name] || triggerField[op] || triggerField[literal]) && content != "="){
+        if((triggerField[name] || triggerField[op] || triggerField[literal]) && content != "=" && content != "new"){
             currentNameAndLine.first.append(content);
             //std::cerr<<currentNameAndLine.first<<std::endl;
         }
@@ -541,7 +541,7 @@ public :
             if(functionTmplt.exprstmt.opeq == false){
                 //std::cerr<<"Got lhs: "<<dat.first<<std::endl;
                 functionTmplt.exprstmt.lhs = dat.first;
-                functionTmplt.exprstmt.lhs = StripModifier(std::move(functionTmplt.exprstmt.lhs));
+                //functionTmplt.exprstmt.lhs = StripModifier(std::move(functionTmplt.exprstmt.lhs));
                 //std::cerr<<"Got lhs: "<<functionTmplt.exprstmt.lhs<<std::endl;
             }else{
                 functionTmplt.exprstmt.rhs = dat.first;
@@ -552,7 +552,7 @@ public :
         //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<currentOp<<functionTmplt.exprstmt.rhs<<std::endl;
     }
     void ProcessDeclStmtInit(){
-        auto resultVec = Split(currentNameAndLine.first, '+');
+        auto resultVec = Split(currentNameAndLine.first, "+");
         for(auto rVecIt = resultVec.begin(); rVecIt != resultVec.end(); ++rVecIt){
             //std::cerr<<"Tried: "<<functionTmplt.declstmt.name<<" "<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
             *rVecIt = StripModifier(std::move(*rVecIt));
@@ -589,34 +589,42 @@ public :
     void ProcessExprStmtRhs(){
         
         ///TODO: This won't work for all expressions
-        //std::cerr<<"DIS: "<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
-        auto splIt = FunctionIt->second.find(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
-        if(splIt != FunctionIt->second.end()){ //Found it so add statement line.
-            splIt->second.slines.insert(functionTmplt.exprstmt.ln);
-            //std::cerr<<"This: "<<splIt->second.variableName<<" "<<splIt->second.potentialAlias<<std::endl;
+        auto resultVecl = Split(functionTmplt.exprstmt.lhs, "+<.*->");
+        //std::cerr<<"lhs: "<<functionTmplt.exprstmt.lhs<<std::endl;
+        VarMap::iterator splIt;
+        for(auto rVecIt = resultVecl.begin(); rVecIt!= resultVecl.end(); ++rVecIt){
+            splIt = FunctionIt->second.find(functionTmplt.functionName+":"+*rVecIt);
+            std::cerr<<"lhs: "<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
+            if(splIt != FunctionIt->second.end()){ //Found it so add statement line.
+                splIt->second.slines.insert(functionTmplt.exprstmt.ln);
+                //std::cerr<<"This: "<<splIt->second.variableName<<std::endl;
+            }            
         }
-        if(!(functionTmplt.exprstmt.lhs.empty() || functionTmplt.exprstmt.rhs.empty() || functionTmplt.exprstmt.op.empty())){
-            auto resultVec = Split(functionTmplt.exprstmt.rhs, '+');
-            for(auto rVecIt = resultVec.begin(); rVecIt != resultVec.end(); ++rVecIt){
+        
+        
+        //std::cerr<<"DIS: "<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;
+        if(!(splIt == FunctionIt->second.end() || functionTmplt.exprstmt.rhs.empty() || functionTmplt.exprstmt.op.empty())){
+            auto resultVecr = Split(functionTmplt.exprstmt.rhs, "+<.*->");
+            for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){
                 //std::cerr<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.rhs<<std::endl;                    
                 *rVecIt = StripModifier(std::move(*rVecIt));
-                if(functionTmplt.exprstmt.lhs != *rVecIt){//lhs !+ rhs    
+                if(splIt->first != *rVecIt){//lhs !+ rhs    
                     auto sprIt = FunctionIt->second.find(functionTmplt.functionName+":"+*rVecIt);
-                    //std::cerr<<"That: "<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
+                    std::cerr<<"That: "<<*rVecIt<<std::endl;
                     if(sprIt != FunctionIt->second.end()){ //lvalue depends on this rvalue
-                        //std::cerr<<"ERP: "<<functionTmplt.functionName+":"+*rVecIt<<" "<<functionTmplt.exprstmt.lhs<<" "<<functionTmplt.exprstmt.ln<<std::endl;
-                        if(!(splIt != FunctionIt->second.end() && splIt->second.potentialAlias)){
-                            sprIt->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                        //std::cerr<<"ERP: "<<*rVecIt<<" "<<splIt->first<<" "<<functionTmplt.exprstmt.ln<<std::endl;
+                        if(!(splIt == FunctionIt->second.end() && splIt->second.potentialAlias)){
+                            sprIt->second.dvars.insert(splIt->first);
                             
                         }else{
-                            sprIt->second.lastInsertedAlias = sprIt->second.aliases.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs).first;
+                            sprIt->second.lastInsertedAlias = sprIt->second.aliases.insert(splIt->first).first;
                         }
                         sprIt->second.slines.insert(functionTmplt.exprstmt.ln);                            
                         if(sprIt->second.isAlias){
-                            //std::cerr<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
+                            //std::cerr<<*rVecIt<<std::endl;
                             auto spaIt = FunctionIt->second.find(*sprIt->second.lastInsertedAlias);
                             if(spaIt != FunctionIt->second.end()){
-                                spaIt->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.exprstmt.lhs);
+                                spaIt->second.dvars.insert(splIt->first);
                                 spaIt->second.slines.insert(functionTmplt.exprstmt.ln);
                             }
                         }
