@@ -47,10 +47,6 @@ std::vector<std::string> Split(const std::string& str, const char* tok){
     return result;
 }
 
-
-typedef std::pair<std::string, unsigned int> NameLineNumberPair;
-typedef std::pair<std::string, std::string> TypeNamePair;
-
 class srcSliceHandler : public srcSAXHandler {
 
 private :
@@ -70,8 +66,6 @@ private :
 
     NameLineNumberPair currentNameAndLine;
     std::vector<unsigned short int> triggerField;
-
-    
     
     FileFunctionVarMap::iterator FileIt;
     FunctionVarMap::iterator FunctionIt;
@@ -142,13 +136,8 @@ public :
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
         fileNumber = hash_fn(attributes[1].value);
-        FileIt = sysDict.dictionary.insert(std::make_pair(fileNumber, FunctionVarMap())).first; //insert and keep track of most recent. 
-        
+        FileIt = sysDict.dictionary.insert(std::make_pair(fileNumber, FunctionVarMap())).first; //insert and keep track of most recent.         
         FunctionIt = FileIt->second.insert(std::make_pair(hash_fn(std::string(attributes[1].value).append("0")), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
-        //sysDict.fileTable.insert(std::make_pair(fileNumber, attributes[1].value));
-        //std::cerr<<attributes[1].value<<std::endl;
-        //Take filename attribute and hash it.
-        //push_element(localname, prefix);
     }
     /**
      * startElementNs
@@ -282,10 +271,8 @@ public :
             functionTmplt.exprstmt.opeq = false;
             
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
-            
             sysDict.functionTable.insert(std::make_pair(functionTmplt.functionNumber, functionTmplt));
             FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionNumber, VarMap())).first;
-
             if(lname == "constructor"){
                 isConstructor = false;
             }
@@ -561,11 +548,6 @@ public :
             }
         }
     }
-    /*
-    virtual void comment(const char * value) {}
-    virtual void cdataBlock(const char * value, int len) {}
-    virtual void processingInstruction(const char * target, const char * data) {}
-    */
 
 #pragma GCC diagnostic pop
 

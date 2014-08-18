@@ -52,7 +52,7 @@ struct FunctionData{
     std::vector<DeclStmt> arguments;
     DeclStmt arg;
 
-    ExprStmt exprstmt;
+    ExprStmt exprstmt; //might be better to remove this and declstmt and have them separate from this class
     DeclStmt declstmt;
     
     std::string op;
@@ -103,9 +103,13 @@ class SliceProfile{
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
 };
+
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
 typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
 typedef std::unordered_map<unsigned int, FunctionVarMap> FileFunctionVarMap;
+typedef std::pair<std::string, unsigned int> NameLineNumberPair;
+typedef std::pair<std::string, std::string> TypeNamePair;
+
 class SystemDictionary{
 
 	public:
