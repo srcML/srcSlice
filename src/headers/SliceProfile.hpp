@@ -69,28 +69,12 @@ struct FunctionData{
 class SliceProfile{
 	public:
 		SliceProfile() = default;
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0){
-			index = idx;
-			file = fle;
-			function = fcn;
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0):
+        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isAlias(false){
 			slines.insert(sline);
-			potentialAlias = alias;
-			variableName = name;
-			isAlias = false;
 		}
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, std::string name, bool alias){
-			index = idx;
-			file = fle;
-			function = fcn;
-			potentialAlias = alias;
-			variableName = name;
-			isAlias = false;
-		}
-		SliceProfile(unsigned int num){
-			index = num;
-			file = num;
-			function = num;
-			isAlias = false;
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, std::string name, bool alias):
+        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isAlias(false){
 		}
 		unsigned int index;
 		unsigned int file;
