@@ -1,3 +1,6 @@
+#ifndef SLICEPROFILE_HPP
+#define SLICEPROFILE_HPP
+
 #include <string>
 #include <vector>
 #include <unordered_set>
@@ -119,3 +122,4 @@ class SystemDictionary{
 		std::unordered_map<unsigned int, std::string> fileTable;
 		std::unordered_map<unsigned int, FunctionData> functionTable;
 };
+#endif
