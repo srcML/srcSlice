@@ -28,12 +28,8 @@
 #include <iostream>
 #include <vector>
 #include <algorithm>
-/**
- * srcSliceHandler
- *
- * Base class that provides hooks for SAX processing.
- */
 
+/* Split function for splitting strings by tokens. Works on sets of tokens or just one token*/
 std::vector<std::string> Split(const std::string& str, const char* tok){
     std::size_t tokPos = str.find_first_of(tok);
     std::vector<std::string> result;
@@ -50,6 +46,9 @@ std::vector<std::string> Split(const std::string& str, const char* tok){
 class srcSliceHandler : public srcSAXHandler {
 
 private :
+    /*ParserState is a set of enums corresponding to srcML tags. Primarily, they're for addressing into the 
+     *triggerField vector and figuring out which tags have been seen. It keeps a count of how many of each
+     *tag is currently open. Increments at a start tag and decrements at an end tag*/
     enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, argument_list, call, ctrlflow, endflow, name, function, argument, block, type, init, op, literal, modifier, nonterminal, empty, MAXENUMVALUE = empty};
 
     unsigned int fileNumber;
@@ -57,21 +56,35 @@ private :
     
     char constructorNum;
     
-    std::hash<std::string> hash_fn;
+    /*Hashing function/file names. This will accomplish that.*/
+    std::hash<std::string> functionAndFileNameHash;
 
+    /*Holds data for functions as we parse. Useful for going back to figuring out which function we're in*/
     FunctionData functionTmplt;
 
+    /*keeps track of which functioni has been called. Useful for when argument slice profiles need to be updated*/
     std::string nameOfCurrentClldFcn;
-    std::string currentOp;
 
+    /*This is a pair of the current name and line number. Basically, this along with triggerfield
+     *make up the meat of this slicer. Check the triggerfield for context (E.g., triggerField[init])
+     *and then once you know the right tags are open, check currentNameAndLine to see what the name is
+     *at that position and its line number to be stored in the slice profile*/
     NameLineNumberPair currentNameAndLine;
     std::vector<unsigned short int> triggerField;
     
+    /*These two iterators keep track of where we are inside of the system dictionary. They're primarily so that
+     *there's no need to do any nasty map.finds on the dictionary (since it's a nested map of maps). These must
+     *be updated as the file is parsed*/
     FileFunctionVarMap::iterator FileIt;
     FunctionVarMap::iterator FunctionIt;
 
 
-    bool flag;
+    /*Their names basically say what they do. Nested calls are an issue so the first one is a flag to figure out
+     *if I need to do special processing on a name in a call. Might be a better way to do it. Investigate later. 
+     *The second bool checks to see if the function that was just seen is a constructor. Do this because
+     *functions and constructors are treated basically the same (and I mark them as the same thing in triggerfield)
+     *but constructors need to be counted so a number can be appended to them to differentiate*/
+    bool isNestedNameInCall;
     bool isConstructor;
 public :
     SystemDictionary sysDict;
@@ -80,7 +93,7 @@ public :
         numArgs = 0;
         constructorNum = '0';
 
-        flag = false;
+        isNestedNameInCall = false;
         isConstructor = false;
 
         nameOfCurrentClldFcn = "global";
@@ -135,9 +148,9 @@ public :
     virtual void startUnit(const char * localname, const char * prefix, const char * URI,
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
-        fileNumber = hash_fn(attributes[1].value);
+        fileNumber = functionAndFileNameHash(attributes[1].value);
         FileIt = sysDict.dictionary.insert(std::make_pair(fileNumber, FunctionVarMap())).first; //insert and keep track of most recent.         
-        FunctionIt = FileIt->second.insert(std::make_pair(hash_fn(std::string(attributes[1].value).append("0")), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
+        FunctionIt = FileIt->second.insert(std::make_pair(functionAndFileNameHash(std::string(attributes[1].value).append("0")), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
      * startElementNs
@@ -167,7 +180,7 @@ public :
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
             if(lname == "constructor"){
-                ++constructorNum;
+                ++constructorNum;//constructors have numbers appended to them since they all have the same name.
                 isConstructor = true;
             }
             currentNameAndLine.first.clear();
@@ -188,13 +201,12 @@ public :
                     currentNameAndLine.first.clear();
                     ++triggerField[param];
             }else if(lname == "operator"){
-                    currentOp = "";
                     ++triggerField[op];
-            }else if (lname == "block"){ //So I can discriminate against things in or outside of blocks
+            }else if (lname == "block"){ //So we can discriminate against things in or outside of blocks
                     currentNameAndLine.first.clear();
                     ++triggerField[block];
-            }else if (lname == "init"){ //So I can discriminate against things in or outside of blocks
-                    currentNameAndLine.first.clear(); //so that I can get more stuff after the decl's name
+            }else if (lname == "init"){//so that we can get more stuff after the decl's name
+                    currentNameAndLine.first.clear(); 
                     ++triggerField[init];
             }else if (lname == "argument"){
                     ++numArgs;
@@ -233,16 +245,15 @@ public :
         std::string content = "";
         content.append(ch, len);
 
+        /*This has two cases I don't particularly like and am certain aren't needed (content != "=" and content != "new").
+         *Fix at some point. For now, this solution works.*/
         if((triggerField[name] || triggerField[op] || triggerField[literal]) && content != "=" && content != "new"){
             currentNameAndLine.first.append(content);
             //std::cerr<<currentNameAndLine.first<<std::endl;
         }
-        if(triggerField[op]){
-            currentOp.append(content);
-        }
         if(content == "="){
+            currentNameAndLine.first.clear(); //now on rhs of statement. Clear lhs.
             functionTmplt.exprstmt.opeq = true;
-            functionTmplt.exprstmt.op = "=";
         }        
     }
 
@@ -286,7 +297,7 @@ public :
             --triggerField[argument_list];
         }else if (lname == "call"){
             //std::cerr<<nameOfCurrentClldFcn<<std::endl;
-            flag = false; //to tell me if I'm in a nested name because if I am I have to do special stuff. Only for calls.
+            isNestedNameInCall = false; //to tell me if I'm in a nested name because if I am I have to do special stuff. Only for calls.
             nameOfCurrentClldFcn = "";
             --triggerField[call];
         }
@@ -322,9 +333,6 @@ public :
                 }
                 --triggerField[type]; 
             }else if (lname == "operator"){
-                if(currentOp == "="){
-                    currentNameAndLine.first.clear();
-                }
                 --triggerField[op];
             }
             else if (lname == "name"){
@@ -342,14 +350,12 @@ public :
                 
                 //Name of function being called
                 if(triggerField[call] && triggerField[name] && !(triggerField[argument_list])){
-                    if(triggerField[name] > 1){
-                        flag = true;
+                    if(triggerField[name] > 1){ //have seen more than one name tag. In a complex name.
+                        isNestedNameInCall = true;
                     }
-                    auto dat = currentNameAndLine;
-                    if(triggerField[name] == 1 && flag == false){
-                        nameOfCurrentClldFcn = dat.first;
-                    }else if(triggerField[name] == 2){
-                        nameOfCurrentClldFcn = dat.first;
+                    //quirky and not a great way to do this. Fix. Primary issue is that it relies on too many happenstances.
+                    if(triggerField[name] == 2 || isNestedNameInCall == false){
+                        nameOfCurrentClldFcn = currentNameAndLine.first;
                     }
                 }
                 //Get function arguments
@@ -409,7 +415,7 @@ public :
             }
             functionTmplt.functionName = dat.first;
             functionTmplt.functionLineNumber = dat.second;
-            functionTmplt.functionNumber = hash_fn(dat.first); //give me the hash num for this name.
+            functionTmplt.functionNumber = functionAndFileNameHash(dat.first); //give me the hash num for this name.
 
             //std::cerr<<dat.first<<std::endl;
             
@@ -522,7 +528,7 @@ public :
         }
         
         //Doing rhs now. First check to see if there's anything to process (Note: Check to make sure Op even needs to be here anymore)
-        if(!(splIt == FunctionIt->second.end() || functionTmplt.exprstmt.rhs.empty() || functionTmplt.exprstmt.op.empty())){
+        if(!(splIt == FunctionIt->second.end() || functionTmplt.exprstmt.rhs.empty())){
             auto resultVecr = Split(functionTmplt.exprstmt.rhs, "+<.*->&"); //Split on tokens
             for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){ //loop over words and check them against map
                 std::string fullName = functionTmplt.functionName+":"+*rVecIt;

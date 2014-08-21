@@ -3,6 +3,13 @@
 #include <unordered_set>
 #include <unordered_map>
 
+class SliceProfile;
+typedef std::unordered_map<std::string, SliceProfile> VarMap;
+typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
+typedef std::unordered_map<unsigned int, FunctionVarMap> FileFunctionVarMap;
+typedef std::pair<std::string, unsigned int> NameLineNumberPair;
+typedef std::pair<std::string, std::string> TypeNamePair;
+
 struct ExprStmt{
     ExprStmt(){
         ln = 0;
@@ -10,12 +17,10 @@ struct ExprStmt{
     }
     void clear(){
         lhs.clear();
-        op.clear();
         rhs.clear();
     }
     bool opeq; //flag to tell me when I've seen an assignment op
     std::string lhs;
-    std::string op;
     std::string rhs;
     unsigned int ln;
 };
@@ -54,8 +59,6 @@ struct FunctionData{
 
     ExprStmt exprstmt; //might be better to remove this and declstmt and have them separate from this class
     DeclStmt declstmt;
-    
-    std::string op;
     
     unsigned int functionNumber;
     unsigned int functionLineNumber;
@@ -99,16 +102,12 @@ class SliceProfile{
 		std::string variableType;
 		
 		std::unordered_set<unsigned int> slines;
-		std::vector<std::pair<std::string, unsigned int>> cfunctions;
+		std::vector<NameLineNumberPair> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
 };
 
-typedef std::unordered_map<std::string, SliceProfile> VarMap;
-typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
-typedef std::unordered_map<unsigned int, FunctionVarMap> FileFunctionVarMap;
-typedef std::pair<std::string, unsigned int> NameLineNumberPair;
-typedef std::pair<std::string, std::string> TypeNamePair;
+
 
 class SystemDictionary{
 
@@ -118,6 +117,5 @@ class SystemDictionary{
 		FileFunctionVarMap dictionary;
 		
 		std::unordered_map<unsigned int, std::string> fileTable;
-		
 		std::unordered_map<unsigned int, FunctionData> functionTable;
 };
