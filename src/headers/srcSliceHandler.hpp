@@ -273,7 +273,7 @@ public :
             functionTmplt.declstmt.clear();
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
-            ProcessExprStmtRhs();
+            ProcessExprStmt();
  
             --triggerField[expr_stmt];
 
@@ -379,12 +379,11 @@ public :
         //Get function arguments
         if(triggerField[argument_list] && triggerField[argument] && 
             triggerField[expr] && triggerField[name]){
-            NameLineNumberPair dat = currentNameAndLine;
-            //std::cerr<<"CALLED: "<<functionTmplt.functionName+":"+dat.first<<std::endl;
-            auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+dat.first);
+            //std::cerr<<"CALLED: "<<functionTmplt.functionName+":"+currentNameAndLine.first<<std::endl;
+            auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+currentNameAndLine.first);
             if(sp != FunctionIt->second.end()){
-                sp->second.slines.insert(dat.second);
-                sp->second.index = dat.second - functionTmplt.functionLineNumber;
+                sp->second.slines.insert(currentNameAndLine.second);
+                sp->second.index = currentNameAndLine.second - functionTmplt.functionLineNumber;
                 sp->second.cfunctions.push_back(std::make_pair(nameOfCurrentClldFcn, numArgs));
             }       
         }
@@ -397,27 +396,25 @@ public :
     void GetFunctionData(){
         //Get function type
         if(triggerField[type] && !(triggerField[parameter_list] || triggerField[block])){
-            NameLineNumberPair dat = currentNameAndLine;
-            functionTmplt.returnType = dat.first;
+            functionTmplt.returnType = currentNameAndLine.first;
         }
         //Get function name
         if(triggerField[name] == 1 && !(triggerField[argument_list] || 
             triggerField[block] || triggerField[type] || triggerField[parameter_list])){
-            NameLineNumberPair dat = currentNameAndLine;
             
-            std::size_t pos = dat.first.find("::");
+            std::size_t pos = currentNameAndLine.first.find("::");
             if(pos != std::string::npos){
-                dat.first.erase(0, pos+2);
+                currentNameAndLine.first.erase(0, pos+2);
             }
             if(isConstructor){
-                dat.first+=constructorNum;
-                //std::cerr<<"NAME: "<<dat.first<<std::endl;
+                currentNameAndLine.first+=constructorNum;
+                //std::cerr<<"NAME: "<<currentNameAndLine.first<<std::endl;
             }
-            functionTmplt.functionName = dat.first;
-            functionTmplt.functionLineNumber = dat.second;
-            functionTmplt.functionNumber = functionAndFileNameHash(dat.first); //give me the hash num for this name.
+            functionTmplt.functionName = currentNameAndLine.first;
+            functionTmplt.functionLineNumber = currentNameAndLine.second;
+            functionTmplt.functionNumber = functionAndFileNameHash(currentNameAndLine.first); //give me the hash num for this name.
 
-            //std::cerr<<dat.first<<std::endl;
+            //std::cerr<<currentNameAndLine.first<<std::endl;
             
         }
         //Get param types
@@ -427,10 +424,9 @@ public :
         }
         //Get Param names
         if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
-            NameLineNumberPair dat = currentNameAndLine;
 
-            functionTmplt.arg.name = dat.first;
-            functionTmplt.arg.ln = dat.second;
+            functionTmplt.arg.name = currentNameAndLine.first;
+            functionTmplt.arg.ln = currentNameAndLine.second;
             functionTmplt.arguments.push_back(functionTmplt.arg);
             
             //std::cerr<<"Param: "<<functionTmplt.arg.type <<" "<<functionTmplt.functionName+":"+functionTmplt.arg.name<<std::endl;
@@ -449,16 +445,14 @@ public :
      */
     void GetDeclStmtData(){
         if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
-            NameLineNumberPair dat = currentNameAndLine;
-            //std::cerr<<dat.first<<std::endl;
-            functionTmplt.declstmt.type = dat.first;
+            //std::cerr<<currentNameAndLine.first<<std::endl;
+            functionTmplt.declstmt.type = currentNameAndLine.first;
             //agglomerate string into type. Clear when we exit the decl_stmt
         }
         //Get name of decl stmt
         if(triggerField[decl] && !(triggerField[type] || triggerField[init])){
-            NameLineNumberPair dat = currentNameAndLine;
-            functionTmplt.declstmt.name = dat.first;
-            functionTmplt.declstmt.ln = dat.second;
+            functionTmplt.declstmt.name = currentNameAndLine.first;
+            functionTmplt.declstmt.ln = currentNameAndLine.second;
 
             FunctionIt->second.insert(std::make_pair(functionTmplt.functionName+":"+functionTmplt.declstmt.name, 
                 SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
@@ -514,7 +508,7 @@ public :
             }
         }
     }
-    void ProcessExprStmtRhs(){
+    void ProcessExprStmt(){
         auto resultVecl = Split(functionTmplt.exprstmt.lhs, "+<.*->&");
         VarMap::iterator splIt;
         //First, take the left hand side and mark sline information. Doing it first because later I'll be iterating purely
