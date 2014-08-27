@@ -64,25 +64,25 @@ void srcSliceToCsv(const SystemDictionary& sd){
 			auto functionNameIt = sd.functionTable.find(fvmIt->first);
 			if(functionNameIt!=sd.functionTable.end())
 			for(VarMap::const_iterator vmIt = fvmIt->second.begin(); vmIt != fvmIt->second.end(); ++vmIt){
-				std::cerr<<fileNameIt->second<<" "<<functionNameIt->second.functionName;
+				std::cerr<<fileNameIt->second<<","<<functionNameIt->second.functionName;
 				std::cerr<<",sl{";
 				for(unsigned int sl : vmIt->second.slines){
-					std::cerr<<sl<<" | ";
+					std::cerr<<sl<<",";
 				}
 				std::cerr<<"},";
 				std::cerr<<"dv{";
 				for(std::string dv : vmIt->second.dvars){
-					std::cerr<<dv<<" | ";
+					std::cerr<<dv<<",";
 				}
 				std::cerr<<"},";
 				std::cerr<<"al{";
 				for(std::string al : vmIt->second.aliases){
-					std::cerr<<al<<" | ";
+					std::cerr<<al<<",";
 				}
 				std::cerr<<"},";
 				std::cerr<<"cfunc{";
 				for(auto cfunc : vmIt->second.cfunctions){
-					std::cerr<<cfunc.first<<" "<<cfunc.second<<" | ";
+					std::cerr<<cfunc.first<<" "<<cfunc.second<<",";
 				}
 				std::cerr<<"}";
 				std::cerr<<std::endl;
@@ -109,7 +109,7 @@ int main(int argc, char * argv[]) {
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
-  //TestSlice(handler.sysDict.dictionary);
-  srcSliceToCsv(handler.sysDict);
+  TestSlice(handler.sysDict.dictionary);
+  //srcSliceToCsv(handler.sysDict);
   return 0;
 }

@@ -359,10 +359,11 @@ public :
             }else if(lname == "init"){
                 --triggerField[init];                 
             }else if (lname == "expr"){
-                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && !(triggerField[type] || triggerField[argument_list] || triggerField[call])){ //do something if there's an init
+                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
+                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){ //do something if there's an init
                     //std::cerr<<"Init: "<<currentNameAndLine.first<<std::endl;
                     auto expr = SplitLhsRhs(currentNameAndLine.first);
-                    //std::cerr<<"GO: "<<expr.front()<<" : "<<expr.back()<<std::endl;
+                    std::cerr<<"GO: "<<expr.front()<<" : "<<expr.back()<<std::endl;
                     if(expr.size() > 1){ //found an expression of the form lhs = rhs. Make a new lhs slice profile and then iterate over rhs to insert.
                         auto strVec = Split(expr.back(), "+<.*->&=(),"); //split rhs
                         //std::cerr<<"Prof: " <<  functionTmplt.functionName+":"+expr.front()<<std::endl;
@@ -387,7 +388,7 @@ public :
 
                         }
                     }else{ //found an expression on the rhs of something. Because lhs gets strings first, we need to process that.
-                        auto strVec = Split(expr.front(), "+<.*->&=(),");
+                        auto strVec = Split(expr.front(), "+<:.*->&=(),");
                         for(std::string str : strVec){
                             //std::cerr<<"Name: "<<functionTmplt.functionName+":"+str<<std::endl;
                             auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str);
@@ -405,6 +406,16 @@ public :
                     currentNameAndLine.first.clear(); //because if it's a multi-init decl then inits will run into one another.
                     //ProcessDeclStmtInit();
                     //
+                }else if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
+                        !triggerField[type]){ //For the case where we need to get a constructor decl
+                        auto strVec = Split(currentNameAndLine.first, "+<.*->&=():,");
+                        for(std::string str : strVec){
+                            auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str);
+                            if(sp != FunctionIt->second.end()){
+                                varIt->second.dvars.insert(sp->second.variableName);
+                                std::cerr<<"This: "<<str<<std::endl;
+                            }
+                        }
                 }
                 --triggerField[expr]; 
             }else if (lname == "type"){
@@ -551,10 +562,10 @@ public :
         if(triggerField[decl] && !(triggerField[type] || triggerField[init] || triggerField[expr] || triggerField[index] || triggerField[classn])){
             functionTmplt.declstmt.name = currentNameAndLine.first;
             functionTmplt.declstmt.ln = currentNameAndLine.second;
-            if(functionTmplt.declstmt.name[0] == ','){
+            if(functionTmplt.declstmt.name[0] == ','){//corner case with decls like: int i, k, j. This is a patch, fix properly later.
                 functionTmplt.declstmt.name.erase(0,1);
             }
-            std::cout<<"Name: "<<functionTmplt.functionName+":"+functionTmplt.declstmt.name<<std::endl;
+            //std::cout<<"Name: "<<functionTmplt.functionName+":"+functionTmplt.declstmt.name<<std::endl;
             varIt = FunctionIt->second.insert(std::make_pair(functionTmplt.functionName+":"+functionTmplt.declstmt.name, 
                 SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
                     functionTmplt.functionNumber, functionTmplt.declstmt.ln, 
