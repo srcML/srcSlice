@@ -493,24 +493,25 @@ public :
         //Get function arguments
         if(triggerField[argument_list] && triggerField[argument] && 
             triggerField[expr] && triggerField[name]){
-            auto strVec = Split(currentNameAndLine.first, ":+<.*->&=(),");
+            auto strVec = Split(currentNameAndLine.first, ":+<.*->&=(),"); //Split the current string of call/arguments so we can get the variables being called
+            auto spltVec = Split(nameOfCurrentClldFcn.top(), ":+<.*->&=(),"); //Split the current string which contains the function name (might be object->function)
             for(std::string str : strVec){
                 //std::cerr<<"Attempt: "<<functionTmplt.functionName<<":"<<str<<std::endl;
-                auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str);
+                auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str); //check to find sp for the variable being called on fcn
                 if(sp != FunctionIt->second.end()){
                     sp->second.slines.insert(currentNameAndLine.second);
                     sp->second.index = currentNameAndLine.second - functionTmplt.functionLineNumber;
-                    
-                    
-                    nameOfCurrentClldFcn.top().erase(
-                        std::remove_if(nameOfCurrentClldFcn.top().begin(), nameOfCurrentClldFcn.top().end(), [](const char ch){return !std::isalnum(ch);}), 
-                        nameOfCurrentClldFcn.top().end());
-                    if(!nameOfCurrentClldFcn.top().empty()){
-                        std::cerr<<"Here: "<<sysDict.fileTable.find(FileIt->first)->second<<" : "<<nameOfCurrentClldFcn.top()<<" : "<<currentNameAndLine.second<<std::endl;
-                        sp->second.cfunctions.push_back(std::make_pair(nameOfCurrentClldFcn.top(), numArgs));
-                        std::size_t pos = currentNameAndLine.first.rfind(str);
-                        if(pos != std::string::npos){
-                            currentNameAndLine.first.erase(pos, str.size()); //remove the argument from the string so it won't concat with the next
+                    for(std::string spltStr : spltVec){ //iterate over strings split from the function being called (becaused it might be object -> function)
+                        spltStr.erase(//remove anything weird like empty arguments.
+                            std::remove_if(spltStr.begin(), spltStr.end(), [](const char ch){return !std::isalnum(ch);}), 
+                            spltStr.end());
+                        if(!spltStr.empty()){//If the string isn't empty, we got a good variable and can insert it.
+                            //std::cerr<<"Here: "<<sysDict.fileTable.find(FileIt->first)->second<<" : "<<spltStr<<" : "<<currentNameAndLine.second<<std::endl;
+                            sp->second.cfunctions.push_back(std::make_pair(spltStr, numArgs));
+                            std::size_t pos = currentNameAndLine.first.rfind(str);
+                            if(pos != std::string::npos){
+                                currentNameAndLine.first.erase(pos, str.size()); //remove the argument from the string so it won't concat with the next
+                            }
                         }
                     }
                 }
