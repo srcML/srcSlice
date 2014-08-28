@@ -29,13 +29,14 @@
 #include <vector>
 #include <algorithm>
 #include <sstream>
+#include <stack>
+
 std::vector<std::string> SplitLhsRhs(const std::string& str){
     std::vector<std::string> expr;
     expr.push_back(std::string());
     for(int i = 0; i<str.size(); ++i){
         if(str[i] == '='){
-            expr.push_back(std::string());
-            expr[1].append(str.substr(i+1, str.size()-1));
+            expr.push_back(str.substr(i+1, str.size()-1));
             break;
         }else{
             expr[0]+=str[i];
@@ -64,7 +65,11 @@ private :
     /*ParserState is a set of enums corresponding to srcML tags. Primarily, they're for addressing into the 
      *triggerField vector and figuring out which tags have been seen. It keeps a count of how many of each
      *tag is currently open. Increments at a start tag and decrements at an end tag*/
-    enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, argument_list, call, ctrlflow, endflow, name, function, argument, index, block, type, init, op, literal, modifier, member_list, classn, nonterminal, empty, MAXENUMVALUE = empty};
+    enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, 
+        argument_list, call, ctrlflow, endflow, name, function, 
+        argument, index, block, type, init, op, 
+        literal, modifier, member_list, classn, preproc,
+        nonterminal, empty, MAXENUMVALUE = empty};
 
     unsigned int fileNumber;
     unsigned int numArgs;
@@ -78,7 +83,7 @@ private :
     FunctionData functionTmplt;
 
     /*keeps track of which functioni has been called. Useful for when argument slice profiles need to be updated*/
-    std::string nameOfCurrentClldFcn;
+    std::stack<std::string> nameOfCurrentClldFcn;
 
     /*This is a pair of the current name and line number. Basically, this along with triggerfield
      *make up the meat of this slicer. Check the triggerfield for context (E.g., triggerField[init])
@@ -111,7 +116,7 @@ public :
         isNestedNameInCall = false;
         isConstructor = false;
 
-        nameOfCurrentClldFcn = "global";
+        nameOfCurrentClldFcn.push("global");
 
         triggerField = std::vector<unsigned short int>(MAXENUMVALUE, 0);
     }
@@ -191,6 +196,13 @@ public :
             lineNum = strtoul(attributes[0].value, NULL, 0);
         }
         std::string lname(localname);
+        std::string lnspace;
+        if(prefix){
+            lnspace.append(prefix);
+        }
+        if(lnspace == "cpp"){
+            ++triggerField[preproc];
+        }
         if(lname == "decl_stmt"){
             currentNameAndLine.first.clear();
             ++triggerField[decl_stmt];
@@ -208,15 +220,11 @@ public :
             currentNameAndLine.first.clear();
             ++triggerField[parameter_list];
         }else if (lname == "argument_list"){
-            if(triggerField[call]){
-                std::size_t pos = currentNameAndLine.first.find(nameOfCurrentClldFcn);
-                if(pos != std::string::npos){
-                    //currentNameAndLine.first.erase(pos, nameOfCurrentClldFcn.size());
-                }
-            }
             ++triggerField[argument_list];
         }else if (lname == "call"){
-
+            if(triggerField[call]){//for nested calls
+                --numArgs; //already in some sort of a call. Decrement counter to make up for the argument slot the function call took up.
+            }
             ++triggerField[call];
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
@@ -241,11 +249,6 @@ public :
             }else if (lname == "argument"){
                     ++numArgs;
                     currentNameAndLine.first.append(":"); //denote arguments so that I can parse them out later.
-                    if(triggerField[init] || triggerField[call]){
-                        //Only if we're in init because templates can have arguments too
-                        //currentNameAndLine.first.clear();
-                        //currentNameAndLine.first.clear(); //so function arguments and the name won't ram one another
-                    }
                     ++triggerField[argument];
             }else if (lname == "literal"){
                     ++triggerField[literal];
@@ -279,7 +282,7 @@ public :
 
         /*This has two cases I don't particularly like and am certain aren't needed (content != "=" and content != "new").
          *Fix at some point. For now, this solution works.*/
-        if((triggerField[name] || triggerField[op]) && content != "new" && !triggerField[index]){
+        if((triggerField[name] || triggerField[op]) && content != "new" && !(triggerField[index] || triggerField[preproc])){
             currentNameAndLine.first.append(content);
             //std::cerr<<currentNameAndLine.first<<std::endl;
         }
@@ -294,6 +297,13 @@ public :
     }
     virtual void endElement(const char * localname, const char * prefix, const char * URI) {
         std::string lname(localname);
+        std::string lnspace;
+        if(prefix){
+            lnspace.append(prefix);
+        }
+        if(lnspace == "cpp"){
+            --triggerField[preproc];
+        }
         if(lname == "decl_stmt"){
             ProcessDeclStmtInit();
 
@@ -318,14 +328,18 @@ public :
             currentNameAndLine.first.clear();
             --triggerField[function];
         }else if (lname == "parameter_list"){
+            currentNameAndLine.first.clear();
             --triggerField[parameter_list];
         }else if (lname == "argument_list"){
             numArgs = 0;
             --triggerField[argument_list];
         }else if (lname == "call"){
             isNestedNameInCall = false; //to tell me if I'm in a nested name because if I am I have to do special stuff. Only for calls.
-            nameOfCurrentClldFcn = "";
+            nameOfCurrentClldFcn.pop();
             --triggerField[call];
+            if(triggerField[call]){
+                ++numArgs; //we exited a call but we're still in another call. Increment to make up for decrementing when we entered the second call.
+            }
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
             || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
@@ -363,7 +377,7 @@ public :
                 !(triggerField[type] || triggerField[argument_list] || triggerField[call])){ //do something if there's an init
                     //std::cerr<<"Init: "<<currentNameAndLine.first<<std::endl;
                     auto expr = SplitLhsRhs(currentNameAndLine.first);
-                    std::cerr<<"GO: "<<expr.front()<<" : "<<expr.back()<<std::endl;
+                    //std::cerr<<"GO: "<<expr.front()<<" : "<<expr.back()<<std::endl;
                     if(expr.size() > 1){ //found an expression of the form lhs = rhs. Make a new lhs slice profile and then iterate over rhs to insert.
                         auto strVec = Split(expr.back(), "+<.*->&=(),"); //split rhs
                         //std::cerr<<"Prof: " <<  functionTmplt.functionName+":"+expr.front()<<std::endl;
@@ -413,7 +427,7 @@ public :
                             auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str);
                             if(sp != FunctionIt->second.end()){
                                 varIt->second.dvars.insert(sp->second.variableName);
-                                std::cerr<<"This: "<<str<<std::endl;
+                                //std::cerr<<"This: "<<str<<std::endl;
                             }
                         }
                 }
@@ -435,21 +449,27 @@ public :
                 if(triggerField[decl_stmt]){
                     GetDeclStmtData();
                 }
-                if(triggerField[expr_stmt]){
-                    GetExprStmtParts();
-                }
                 
                 //Name of function being called
-                if(triggerField[call] && triggerField[name] && !(triggerField[argument_list])){
+                if(triggerField[call] && triggerField[name]){
+                    //std::cerr<<"IN a call: "<<currentNameAndLine.first<<std::endl;
                     if(triggerField[name] > 1){ //have seen more than one name tag. In a complex name.
                         isNestedNameInCall = true;
                     }
                     //quirky and not a great way to do this. Fix. Primary issue is that it relies on too many happenstances.
                     if(triggerField[name] == 2 || isNestedNameInCall == false){
                         auto spltVec = SplitLhsRhs(currentNameAndLine.first);
-                        nameOfCurrentClldFcn = spltVec.back();
+                        auto fcnNameVec = Split(spltVec.back(), ":");
+                        std::size_t pos = currentNameAndLine.first.find_first_of(":");
+                        if(pos != std::string::npos){
+                            currentNameAndLine.first.erase(0, pos+1);
+                        }
+                        if(!fcnNameVec.front().empty()){
+                            //std::cerr<<"Name: "<<fcnNameVec.front()<<std::endl;
+                            nameOfCurrentClldFcn.push(fcnNameVec.front());
+                        }
                         //currentNameAndLine.first.clear();
-                        //std::cerr<<"CALLED"<<spltVec.back();
+                        //std::cerr<<"CALLED"<<spltVec.front()<<" "<<spltVec.back()<<std::endl;
                     }
                 }
                 //Get function arguments
@@ -480,10 +500,18 @@ public :
                 if(sp != FunctionIt->second.end()){
                     sp->second.slines.insert(currentNameAndLine.second);
                     sp->second.index = currentNameAndLine.second - functionTmplt.functionLineNumber;
-                    sp->second.cfunctions.push_back(std::make_pair(nameOfCurrentClldFcn, numArgs));
-                    std::size_t pos = currentNameAndLine.first.rfind(str);
-                    if(pos != std::string::npos){
-                        currentNameAndLine.first.erase(pos, str.size()); //remove the argument from the string so it won't concat with the next
+                    
+                    
+                    nameOfCurrentClldFcn.top().erase(
+                        std::remove_if(nameOfCurrentClldFcn.top().begin(), nameOfCurrentClldFcn.top().end(), [](const char ch){return !std::isalnum(ch);}), 
+                        nameOfCurrentClldFcn.top().end());
+                    if(!nameOfCurrentClldFcn.top().empty()){
+                        std::cerr<<"Here: "<<sysDict.fileTable.find(FileIt->first)->second<<" : "<<nameOfCurrentClldFcn.top()<<" : "<<currentNameAndLine.second<<std::endl;
+                        sp->second.cfunctions.push_back(std::make_pair(nameOfCurrentClldFcn.top(), numArgs));
+                        std::size_t pos = currentNameAndLine.first.rfind(str);
+                        if(pos != std::string::npos){
+                            currentNameAndLine.first.erase(pos, str.size()); //remove the argument from the string so it won't concat with the next
+                        }
                     }
                 }
             }
@@ -516,7 +544,7 @@ public :
                 //std::cerr<<"NAME: "<<currentNameAndLine.first<<std::endl;
             }
             if(functionTmplt.functionName.empty()){
-                functionTmplt.functionName = currentNameAndLine.first;  //to defend against general weirdness in srcML. Remember to clear at /function
+                functionTmplt.functionName = currentNameAndLine.first;  //to defend against general weirdness in srcML. Like names coming after the param list but before block. Remember to clear at /function
             }
 
             functionTmplt.functionLineNumber = currentNameAndLine.second;
@@ -575,39 +603,7 @@ public :
 
         //Get Init of decl stmt
     }
-    /**
-     * GetExorStmtParts
-     * Knows proper constraints for obtaining exprstmts left and (if applicable) right hand side
-     * this data is carried to a secondary function called ProcessExprSmtRhs
-     */
-    void GetExprStmtParts(){
 
-    }
-    /**
-     * ProcessDecleStmtInit
-     * Knows proper constraints for obtaining data bout the initialization part of a declstmt
-                 //std::cerr<<"Tried: "<<*rVecIt<<" "<<functionTmplt.declstmt.name<<std::endl;
-            if(functionTmplt.declstmt.name != *rVecIt){ //lhs != rhs
-                auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+ *rVecIt);
-                if(sp != FunctionIt->second.end()){
-                    //Either has to be a variable local to this function or a global variable (function == 0)
-                    //std::cerr<<"Found: "<<functionTmplt.declstmt.name<<" "<<functionTmplt.functionName+":"+*rVecIt<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<" "<<functionTmplt.functionName+":"+<<std::endl;
-                    if(sp->second.function == functionTmplt.functionNumber || sp->second.function == 0){
-                        std::string fdname(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
-                        auto lastSp = FunctionIt->second.find(fdname);
-                        sp->second.slines.insert(currentNameAndLine.second);
-                        if(lastSp != FunctionIt->second.end() && !lastSp->second.potentialAlias){ 
-                            //std::cerr<<"dat: "<<*rVecIt<<" "<<functionTmplt.declstmt.name<<" "<<sp->second.function<<" "<<functionTmplt.functionNumber<<std::endl;
-                            sp->second.dvars.insert(functionTmplt.functionName+":"+functionTmplt.declstmt.name);
-                        }else if(lastSp != FunctionIt->second.end() && sp->second.potentialAlias && lastSp->second.potentialAlias){
-                            //it's an alias for the rhs.
-                            sp->second.isAlias = true;
-                            sp->second.lastInsertedAlias = sp->second.aliases.insert(fdname).first;                            
-                        }
-                    }
-                }
-            }
-     */
     void ProcessDeclStmtInit(){
         auto resultVec = Split(currentNameAndLine.first, "+<.*->&=(),");
         for(auto rVecIt = resultVec.begin(); rVecIt != resultVec.end(); ++rVecIt){
