@@ -102,7 +102,7 @@ class SystemDictionary{
 		//per file system dictionary
 		/*This is a map of file, function/method, and variables. {file, {function, {SliceProfiles}}}*/
 		FileFunctionVarMap dictionary;
-		
+		VarMap globalMap;
 		std::unordered_map<unsigned int, std::string> fileTable;
 		std::unordered_map<unsigned int, FunctionData> functionTable;
 };

@@ -24,6 +24,33 @@
 #include <map>
 #include <iostream>
 
+void TestSlice2(const VarMap& mp){
+	for(VarMap::const_iterator vmIt = mp.begin(); vmIt != mp.end(); ++vmIt){
+		std::cerr<<"-------------------------"<<std::endl;
+		std::cerr<<"Variable: "<<vmIt->first<<std::endl;
+		std::cerr<<"Slines: {";
+		for(unsigned int sl : vmIt->second.slines){
+			std::cerr<<sl<<",";
+		}
+		std::cerr<<"}"<<std::endl;
+		std::cerr<<"dvars: {";
+		for(std::string dv : vmIt->second.dvars){
+			std::cerr<<dv<<",";
+		}
+		std::cerr<<"}"<<std::endl;
+		std::cerr<<"aliases: {";
+		for(std::string al : vmIt->second.aliases){
+			std::cerr<<al<<",";
+		}
+		std::cerr<<"}"<<std::endl;
+		std::cerr<<"cfuntions: {";
+		for(auto cfunc : vmIt->second.cfunctions){
+			std::cerr<<cfunc.first<<" "<<cfunc.second<<",";
+		}
+		std::cerr<<"}"<<std::endl;
+		std::cerr<<"-------------------------"<<std::endl;
+	}
+}
 void TestSlice(const FileFunctionVarMap& mp){
 	for(FileFunctionVarMap::const_iterator ffvmIt = mp.begin(); ffvmIt != mp.end(); ++ffvmIt){
 		for(FunctionVarMap::const_iterator fvmIt = ffvmIt->second.begin(); fvmIt != ffvmIt->second.end(); ++fvmIt){
@@ -110,6 +137,7 @@ int main(int argc, char * argv[]) {
   srcSliceHandler handler;
   control.parse(&handler);
   TestSlice(handler.sysDict.dictionary);
+  TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;
 }

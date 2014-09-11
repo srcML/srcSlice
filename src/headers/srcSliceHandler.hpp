@@ -30,6 +30,7 @@
 #include <algorithm>
 #include <sstream>
 #include <stack>
+#include <memory>
 
 std::vector<std::string> SplitLhsRhs(const std::string& str){
     std::vector<std::string> expr;
@@ -106,6 +107,9 @@ private :
      *but constructors need to be counted so a number can be appended to them to differentiate*/
     bool isNestedNameInCall;
     bool isConstructor;
+
+    /*bool to tell us when we're not in a function*/
+    bool inGlobalScope;
 public :
     SystemDictionary sysDict;
     srcSliceHandler(){
@@ -115,14 +119,27 @@ public :
 
         isNestedNameInCall = false;
         isConstructor = false;
-
-        nameOfCurrentClldFcn.push("global");
-
+        functionTmplt.functionName;
+        inGlobalScope = true;
         triggerField = std::vector<unsigned short int>(MAXENUMVALUE, 0);
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
+SliceProfile* Find(const std::string& varName, const std::string& functionName){
 
+        auto sp = FunctionIt->second.find(functionName+":"+varName);
+        if(sp != FunctionIt->second.end()){
+            return &(sp->second);
+        }else{
+            auto sp2 = sysDict.globalMap.find(varName);
+            if(sp2 != sysDict.globalMap.end()){
+                //std::cerr<<"functionName:"<<functionName<<"Varname:"<<varName<<std::endl;
+                return &(sp2->second);
+            }
+            //find global
+        }
+        return nullptr;
+}
 
     /*
     virtual void startDocument() {}
@@ -211,6 +228,7 @@ public :
                 ++constructorNum;//constructors have numbers appended to them since they all have the same name.
                 isConstructor = true;
             }
+            inGlobalScope = false;
             currentNameAndLine.first.clear();
             ++triggerField[function];
         }else if (lname == "expr_stmt"){
@@ -305,7 +323,6 @@ public :
             --triggerField[preproc];
         }
         if(lname == "decl_stmt"){
-            ProcessDeclStmtInit();
 
             currentNameAndLine.first.clear();
             functionTmplt.declstmt.clear();
@@ -324,6 +341,7 @@ public :
             if(lname == "constructor"){
                 isConstructor = false;
             }
+            inGlobalScope = true;
             functionTmplt.clear();
             currentNameAndLine.first.clear();
             --triggerField[function];
@@ -381,21 +399,28 @@ public :
                     if(expr.size() > 1){ //found an expression of the form lhs = rhs. Make a new lhs slice profile and then iterate over rhs to insert.
                         auto strVec = Split(expr.back(), "+<.*->&=(),"); //split rhs
                         //std::cerr<<"Prof: " <<  functionTmplt.functionName+":"+expr.front()<<std::endl;
-                        varIt = FunctionIt->second.insert(std::make_pair(functionTmplt.functionName+":"+expr.front(), 
+                        if(!inGlobalScope){
+                            varIt = FunctionIt->second.insert(std::make_pair(functionTmplt.functionName+":"+expr.front(), 
                             SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
                                 functionTmplt.functionNumber, currentNameAndLine.second, 
                                 functionTmplt.functionName+":"+expr.front(), functionTmplt.declstmt.potentialAlias))).first;
+                        }else{
+                            FunctionIt->second.insert(std::make_pair(expr.front(), 
+                            SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
+                                functionTmplt.functionNumber, currentNameAndLine.second, 
+                                functionTmplt.functionName+":"+expr.front(), functionTmplt.declstmt.potentialAlias))).first;
+                        }
                         for(std::string str : strVec){
                             if(str != expr.front()){
                                 //std::cerr<<"Name: "<<functionTmplt.functionName+":"+str<<std::endl;
-                                auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str);
-                                if(sp != FunctionIt->second.end()){
+                                auto sp = Find(str,functionTmplt.functionName);
+                                if(sp){
                                     varIt->second.slines.insert(currentNameAndLine.second);
-                                    sp->second.slines.insert(currentNameAndLine.second);
+                                    sp->slines.insert(currentNameAndLine.second);
                                     if(varIt->second.potentialAlias){
                                         varIt->second.aliases.insert(functionTmplt.functionName+":"+str);
                                     }else{
-                                        sp->second.dvars.insert(varIt->second.variableName);
+                                        sp->dvars.insert(varIt->second.variableName);
                                     }
                                 }
                             }
@@ -405,14 +430,14 @@ public :
                         auto strVec = Split(expr.front(), "+<:.*->&=(),");
                         for(std::string str : strVec){
                             //std::cerr<<"Name: "<<functionTmplt.functionName+":"+str<<std::endl;
-                            auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str);
-                            if(sp != FunctionIt->second.end()){
+                            auto sp = Find(str,functionTmplt.functionName);
+                            if(sp){
                                 varIt->second.slines.insert(currentNameAndLine.second);
-                                sp->second.slines.insert(currentNameAndLine.second);
+                                sp->slines.insert(currentNameAndLine.second);
                                 if(varIt->second.potentialAlias){
                                     varIt->second.aliases.insert(functionTmplt.functionName+":"+str);
                                 }else{
-                                    sp->second.dvars.insert(functionTmplt.functionName+":"+varIt->second.variableName);
+                                    sp->dvars.insert(functionTmplt.functionName+":"+varIt->second.variableName);
                                 }
                             }
                         }
@@ -424,9 +449,9 @@ public :
                         !triggerField[type]){ //For the case where we need to get a constructor decl
                         auto strVec = Split(currentNameAndLine.first, "+<.*->&=():,");
                         for(std::string str : strVec){
-                            auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str);
-                            if(sp != FunctionIt->second.end()){
-                                varIt->second.dvars.insert(sp->second.variableName);
+                            auto sp = Find(str,functionTmplt.functionName);
+                            if(sp){
+                                varIt->second.dvars.insert(sp->variableName);
                                 //std::cerr<<"This: "<<str<<std::endl;
                             }
                         }
@@ -461,9 +486,6 @@ public :
                         auto spltVec = SplitLhsRhs(currentNameAndLine.first);
                         auto fcnNameVec = Split(spltVec.back(), ":");
                         std::size_t pos = currentNameAndLine.first.find_first_of(":");
-                        if(pos != std::string::npos){
-                            currentNameAndLine.first.erase(0, pos+1);
-                        }
                         if(!fcnNameVec.front().empty()){
                             //std::cerr<<"Name: "<<fcnNameVec.front()<<std::endl;
                             nameOfCurrentClldFcn.push(fcnNameVec.front());
@@ -495,19 +517,23 @@ public :
             triggerField[expr] && triggerField[name]){
             auto strVec = Split(currentNameAndLine.first, ":+<.*->&=(),"); //Split the current string of call/arguments so we can get the variables being called
             auto spltVec = Split(nameOfCurrentClldFcn.top(), ":+<.*->&=(),"); //Split the current string which contains the function name (might be object->function)
+            //std::cerr<<"Func: "<<nameOfCurrentClldFcn.top()<<" "<<currentNameAndLine.first<<std::endl;
             for(std::string str : strVec){
                 //std::cerr<<"Attempt: "<<functionTmplt.functionName<<":"<<str<<std::endl;
-                auto sp = FunctionIt->second.find(functionTmplt.functionName+":"+str); //check to find sp for the variable being called on fcn
-                if(sp != FunctionIt->second.end()){
-                    sp->second.slines.insert(currentNameAndLine.second);
-                    sp->second.index = currentNameAndLine.second - functionTmplt.functionLineNumber;
+                auto sp = Find(str,functionTmplt.functionName); //check to find sp for the variable being called on fcn
+                //std::cerr<<std::endl<<sp<<std::endl;
+                if(sp){
+                    //std::cerr<<"in: "<<str<<std::endl;
+                    sp->slines.insert(currentNameAndLine.second);
+                    sp->index = currentNameAndLine.second - functionTmplt.functionLineNumber;
                     for(std::string spltStr : spltVec){ //iterate over strings split from the function being called (becaused it might be object -> function)
+                        //std::cerr<<"Pre if: "<<spltStr<<std::endl;
                         spltStr.erase(//remove anything weird like empty arguments.
                             std::remove_if(spltStr.begin(), spltStr.end(), [](const char ch){return !std::isalnum(ch);}), 
                             spltStr.end());
                         if(!spltStr.empty()){//If the string isn't empty, we got a good variable and can insert it.
                             //std::cerr<<"Here: "<<sysDict.fileTable.find(FileIt->first)->second<<" : "<<spltStr<<" : "<<currentNameAndLine.second<<std::endl;
-                            sp->second.cfunctions.push_back(std::make_pair(spltStr, numArgs));
+                            sp->cfunctions.push_back(std::make_pair(spltStr, numArgs));
                             std::size_t pos = currentNameAndLine.first.rfind(str);
                             if(pos != std::string::npos){
                                 currentNameAndLine.first.erase(pos, str.size()); //remove the argument from the string so it won't concat with the next
@@ -545,7 +571,9 @@ public :
                 //std::cerr<<"NAME: "<<currentNameAndLine.first<<std::endl;
             }
             if(functionTmplt.functionName.empty()){
-                functionTmplt.functionName = currentNameAndLine.first;  //to defend against general weirdness in srcML. Like names coming after the param list but before block. Remember to clear at /function
+                if(!currentNameAndLine.first.empty()){
+                    functionTmplt.functionName = currentNameAndLine.first;  //to defend against general weirdness in srcML. Like names coming after the param list but before block. Remember to clear at /function
+                }
             }
 
             functionTmplt.functionLineNumber = currentNameAndLine.second;
@@ -593,63 +621,65 @@ public :
             functionTmplt.declstmt.ln = currentNameAndLine.second;
             if(functionTmplt.declstmt.name[0] == ','){//corner case with decls like: int i, k, j. This is a patch, fix properly later.
                 functionTmplt.declstmt.name.erase(0,1);
-            }
-            //std::cout<<"Name: "<<functionTmplt.functionName+":"+functionTmplt.declstmt.name<<std::endl;
+            }//Globals won't be in FunctionIT
+            
+            if(!inGlobalScope){
             varIt = FunctionIt->second.insert(std::make_pair(functionTmplt.functionName+":"+functionTmplt.declstmt.name, 
                 SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
                     functionTmplt.functionNumber, functionTmplt.declstmt.ln, 
                     functionTmplt.declstmt.name, functionTmplt.declstmt.potentialAlias))).first;
-            currentNameAndLine.first.clear();
+            }else{
+                //std::cout<<"Name: "<<functionTmplt.functionName+":"+functionTmplt.declstmt.name<<std::endl;
+                sysDict.globalMap.insert(std::make_pair(functionTmplt.declstmt.name, 
+                SliceProfile(functionTmplt.declstmt.ln - functionTmplt.functionLineNumber, fileNumber, 
+                    functionTmplt.functionNumber, functionTmplt.declstmt.ln, 
+                    functionTmplt.declstmt.name, functionTmplt.declstmt.potentialAlias)));
+            }
         }
 
         //Get Init of decl stmt
-    }
-
-    void ProcessDeclStmtInit(){
-        auto resultVec = Split(currentNameAndLine.first, "+<.*->&=(),");
-        for(auto rVecIt = resultVec.begin(); rVecIt != resultVec.end(); ++rVecIt){
-            //std::cerr<<"Stuff: "<<*rVecIt<<std::endl;
-        }
-
     }
     void ProcessExprStmt(){
         //std::cerr<<"Curr"<<currentNameAndLine.first<<std::endl;
         auto lhsrhs = SplitLhsRhs(currentNameAndLine.first);
         auto resultVecl = Split(lhsrhs.front(), "+<.*->&");
-        VarMap::iterator splIt;
+        SliceProfile* splIt(nullptr);
+        
         //First, take the left hand side and mark sline information. Doing it first because later I'll be iterating purely
         //over the rhs.
         for(auto rVecIt = resultVecl.begin(); rVecIt!= resultVecl.end(); ++rVecIt){
-            //std::cerr<<"LHS: "<<functionTmplt.functionName+":"+*rVecIt<<std::endl;
-            splIt = FunctionIt->second.find(functionTmplt.functionName+":"+*rVecIt);
-            if(splIt != FunctionIt->second.end()){ //Found it so add statement line.
-                splIt->second.slines.insert(currentNameAndLine.second);
+            
+            splIt = Find(*rVecIt, functionTmplt.functionName);
+            if(splIt){ //Found it so add statement line.
+                splIt->slines.insert(currentNameAndLine.second);
                 break; //found it, don't care about the rest (ex. in: bottom -> next -- all I need is bottom.)
             }            
         }
         //std::cerr<<"MM: "<<currentNameAndLine.first<<std::endl;
         //Doing rhs now. First check to see if there's anything to process (Note: Check to make sure Op even needs to be here anymore)
-        if(!(splIt == FunctionIt->second.end())){
-            auto resultVecr = Split(lhsrhs.back(), "+<.*->&"); //Split on tokens
-            
+        if(splIt){
+            auto resultVecr = Split(lhsrhs.back(), "+<.*->&"); //Split on tokens. Make these const... or standardize them. Or both.
             for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){ //loop over words and check them against map
-                std::string fullName = functionTmplt.functionName+":"+*rVecIt;
+                std::string fullName = functionTmplt.functionName+":"+*rVecIt;//fix
                 
-                if(splIt->first != fullName){//lhs !+ rhs
-                    auto sprIt = FunctionIt->second.find(fullName);//find the sp for the rhs
-                    if(sprIt != FunctionIt->second.end()){ //lvalue depends on this rvalue
-                        if(!(splIt == FunctionIt->second.end() && splIt->second.potentialAlias)){
-                            sprIt->second.dvars.insert(splIt->first); //it's not an alias so it's a dvar
+                if(splIt->variableName != fullName){//lhs !+ rhs
+                    auto sprIt = Find(*rVecIt, functionTmplt.functionName);//find the sp for the rhs
+                    if(sprIt){ //lvalue depends on this rvalue
+                        //std::cerr<<"LHS: "<<splIt->variableName<<" RHS: "<<sprIt-><" "<<splIt->potentialAlias<<std::endl;
+                        if(splIt && !splIt->potentialAlias){
+                            sprIt->dvars.insert(splIt->variableName); //it's not an alias so it's a dvar
                         }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
-                            splIt->second.isAlias = true;
-                            sprIt->second.lastInsertedAlias = sprIt->second.aliases.insert(splIt->first).first;
+                            splIt->isAlias = true;
+                            sprIt->lastInsertedAlias = sprIt->aliases.insert(splIt->variableName).first;
                         }
-                        sprIt->second.slines.insert(currentNameAndLine.second);                            
-                        if(sprIt->second.isAlias){//Union things together. If this was an alias of anoter thing, update the other thing
-                            auto spaIt = FunctionIt->second.find(*sprIt->second.lastInsertedAlias);
-                            if(spaIt != FunctionIt->second.end()){
-                                spaIt->second.dvars.insert(splIt->first);
-                                spaIt->second.slines.insert(currentNameAndLine.second);
+                        sprIt->slines.insert(currentNameAndLine.second);                            
+                        if(sprIt->isAlias){//Union things together. If this was an alias of anoter thing, update the other thing
+                            if(!sprIt->aliases.empty()){
+                                auto spaIt = FunctionIt->second.find(*sprIt->lastInsertedAlias);
+                                if(spaIt != FunctionIt->second.end()){
+                                    spaIt->second.dvars.insert(splIt->variableName);
+                                    spaIt->second.slines.insert(currentNameAndLine.second);
+                                }
                             }
                         }
                     }
