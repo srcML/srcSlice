@@ -107,7 +107,7 @@ private :
 
     /*bool to tell us when we're not in a function*/
     bool inGlobalScope;
-    bool IsAFuckingCallName;
+    bool isACallName;
 
     std::string tmpFuncName;
 public:
@@ -117,7 +117,7 @@ public:
         numArgs = 0;
         constructorNum = 0;
 
-        IsAFuckingCallName = false;
+        isACallName = false;
         isConstructor = false;
         functionTmplt.functionName;
         inGlobalScope = true;
@@ -241,8 +241,8 @@ SliceProfile* Find(const std::string& varName, const std::string& functionName){
 
             ++triggerField[argument_list];
             if(triggerField[call]){
-                if(IsAFuckingCallName){
-                    IsAFuckingCallName = false;
+                if(isACallName){
+                    isACallName = false;
                     nameOfCurrentClldFcn.push(tmpFuncName);
                     tmpFuncName.clear();
                 }
@@ -251,7 +251,7 @@ SliceProfile* Find(const std::string& varName, const std::string& functionName){
             if(triggerField[call]){//for nested calls
                 --numArgs; //already in some sort of a call. Decrement counter to make up for the argument slot the function call took up.
             }
-            IsAFuckingCallName = true;
+            isACallName = true;
             ++triggerField[call];
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
