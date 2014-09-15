@@ -50,18 +50,10 @@ struct FunctionData{
     void clear(){
         returnType.clear();
         functionName.clear();
-        arguments.clear();
-        exprstmt.clear();
-        declstmt.clear();
-        arg.clear();
     }
     std::string returnType;
     std::string functionName;        
-    std::vector<DeclStmt> arguments;
-    DeclStmt arg;
-
-    ExprStmt exprstmt; //might be better to remove this and declstmt and have them separate from this class
-    DeclStmt declstmt;
+    
     
     unsigned int functionNumber;
     unsigned int functionLineNumber;
