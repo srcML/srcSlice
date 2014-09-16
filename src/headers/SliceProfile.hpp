@@ -13,35 +13,6 @@ typedef std::unordered_map<unsigned int, FunctionVarMap> FileFunctionVarMap;
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<std::string, std::string> TypeNamePair;
 
-struct ExprStmt{
-    ExprStmt(){
-        ln = 0;
-        opeq = false;
-    }
-    void clear(){
-        lhs.clear();
-        rhs.clear();
-    }
-    bool opeq; //flag to tell me when I've seen an assignment op
-    std::string lhs;
-    std::string rhs;
-    unsigned int ln;
-};
-struct DeclStmt{
-    DeclStmt(){
-        ln = 0;
-        potentialAlias = false;
-    }
-    void clear(){
-        type.clear();
-        name.clear();
-        potentialAlias = false;
-    }    
-    bool potentialAlias; //flag to tell me when the last name could be used as an alias.
-    std::string type;
-    std::string name;
-    unsigned int ln;
-};
 struct FunctionData{
     FunctionData(){
         functionNumber = 0;
