@@ -278,12 +278,10 @@ public:
 
         if((triggerField[decl_stmt] || triggerField[expr_stmt]) && (triggerField[name] || triggerField[op]) && !(triggerField[index] || triggerField[preproc])){
             currentCallArgData.first.append(ch, len);
-            //std::cerr<<currentCallArgData.first<<std::endl;
         }
         if((triggerField[function] && triggerField[name]) && !(triggerField[block] || triggerField[argument_list] 
             || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
             currentFunctionBody.functionName.append(ch, len);
-            //std::cerr<<"This is content:"<<currentFunctionBody.functionName<<std::endl;
         }
         if((triggerField[function] && triggerField[name]  && triggerField[parameter_list] && triggerField[param])){
             currentParam.first.append(ch, len);            
