@@ -5,7 +5,7 @@ void srcSliceHandler::ProcessConstructorDecl(){
     for(std::string str : strVec){
         auto sp = Find(str,currentFunctionBody.functionName);
         if(sp){
-            varIt->second.dvars.insert(currentFunctionBody.functionName+":"+sp->variableName);
+            varIt->second.dvars.insert(sp->variableName);
         }
     }
 }
@@ -16,15 +16,15 @@ void srcSliceHandler::ProcessDeclStmt(){
         if(expr.size() > 1){ //found an expression of the form lhs = rhs. Make a new lhs slice profile and then iterate over rhs to insert.
             auto strVec = SplitOnTok(expr.back(), "+<.*->&=(),"); //split rhs
             if(!inGlobalScope){
-                varIt = FunctionIt->second.insert(std::make_pair(currentFunctionBody.functionName+":"+expr.front(), 
+                varIt = FunctionIt->second.insert(std::make_pair(expr.front(), 
                 SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
                     functionTmplt.functionNumber, currentDeclStmt.second, 
-                    currentFunctionBody.functionName+":"+expr.front(), potentialAlias))).first;
+                    expr.front(), potentialAlias))).first;
             }else{
                 FunctionIt->second.insert(std::make_pair(expr.front(), 
                 SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
                     functionTmplt.functionNumber, currentDeclStmt.second, 
-                    currentFunctionBody.functionName+":"+expr.front(), potentialAlias))).first;
+                    expr.front(), potentialAlias))).first;
             }
             for(std::string str : strVec){
                 if(str != expr.front()){
@@ -33,9 +33,9 @@ void srcSliceHandler::ProcessDeclStmt(){
                         varIt->second.slines.insert(currentDeclStmt.second);
                         sp->slines.insert(currentDeclStmt.second);
                         if(varIt->second.potentialAlias){
-                            varIt->second.lastInsertedAlias = varIt->second.aliases.insert(currentFunctionBody.functionName+":"+str).first;
+                            varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first;
                         }else{
-                            sp->dvars.insert(currentFunctionBody.functionName+":"+varIt->second.variableName);
+                            sp->dvars.insert(varIt->second.variableName);
                         }
                     }
                 }
@@ -48,9 +48,9 @@ void srcSliceHandler::ProcessDeclStmt(){
                     varIt->second.slines.insert(currentDeclStmt.second);
                     sp->slines.insert(currentDeclStmt.second);
                     if(varIt->second.potentialAlias){
-                        varIt->second.lastInsertedAlias = varIt->second.aliases.insert(currentFunctionBody.functionName+":"+str).first;
+                        varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first;
                     }else{
-                        sp->dvars.insert(currentFunctionBody.functionName+":"+varIt->second.variableName);
+                        sp->dvars.insert(varIt->second.variableName);
                     }
                 }
             }
@@ -125,7 +125,7 @@ void srcSliceHandler::GetFunctionData(){
     }
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
-        varIt = FunctionIt->second.insert(std::make_pair(currentFunctionBody.functionName+":"+currentParam.first, 
+        varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile(currentParam.second - functionTmplt.functionLineNumber, fileNumber, 
                 currentFunctionBody.functionLineNumber, currentParam.second, currentParam.first, potentialAlias))).first;
     }        
@@ -146,12 +146,12 @@ void srcSliceHandler::GetDeclStmtData(){
             currentDeclStmt.first.erase(0,1);
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
-        varIt = FunctionIt->second.insert(std::make_pair(currentFunctionBody.functionName+":"+currentDeclStmt.first, 
+        varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
                 functionTmplt.functionNumber, currentDeclStmt.second, 
                 currentDeclStmt.first, potentialAlias))).first;
         }else{
-            //std::cout<<"Name: "<<currentFunctionBody.functionName+":"+currentDeclStmt.first<<std::endl;
+            //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
                 functionTmplt.functionNumber, currentDeclStmt.second, 
@@ -177,12 +177,12 @@ void srcSliceHandler::ProcessExprStmt(){
     if(splIt){
         auto resultVecr = SplitOnTok(lhsrhs.back(), "+<.*->&"); //Split on tokens. Make these const... or standardize them. Or both.
         for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){ //loop over words and check them against map
-            std::string fullName = currentFunctionBody.functionName+":"+*rVecIt;//fix                
-            if(currentFunctionBody.functionName+":"+splIt->variableName != fullName){//lhs != rhs
+            std::string fullName = *rVecIt;//fix                
+            if(splIt->variableName != fullName){//lhs != rhs
                 auto sprIt = Find(*rVecIt, currentFunctionBody.functionName);//find the sp for the rhs
                 if(sprIt){ //lvalue depends on this rvalue
                     if(splIt && !splIt->potentialAlias){
-                        sprIt->dvars.insert(currentFunctionBody.functionName+":"+splIt->variableName); //it's not an alias so it's a dvar
+                        sprIt->dvars.insert(splIt->variableName); //it's not an alias so it's a dvar
                     }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
                         splIt->isAlias = true;
                         sprIt->lastInsertedAlias = sprIt->aliases.insert(splIt->variableName).first;
@@ -192,7 +192,7 @@ void srcSliceHandler::ProcessExprStmt(){
                         if(!sprIt->aliases.empty()){
                             auto spaIt = FunctionIt->second.find(*sprIt->lastInsertedAlias);
                             if(spaIt != FunctionIt->second.end()){
-                                spaIt->second.dvars.insert(currentFunctionBody.functionName+":"+splIt->variableName);
+                                spaIt->second.dvars.insert(splIt->variableName);
                                 spaIt->second.slines.insert(currentExprStmt.second);
                             }
                         }
@@ -203,15 +203,14 @@ void srcSliceHandler::ProcessExprStmt(){
     }
 }
 SliceProfile* srcSliceHandler::Find(const std::string& varName, const std::string& functionName){    
-        auto sp = FunctionIt->second.find(functionName+":"+varName);
+        auto sp = FunctionIt->second.find(varName);
         if(sp != FunctionIt->second.end()){
             return &(sp->second);
-        }else{
+        }else{ //check global map
             auto sp2 = sysDict.globalMap.find(varName);
             if(sp2 != sysDict.globalMap.end()){
                 return &(sp2->second);
             }
-            //find global
         }
         return nullptr;
 }

@@ -32,14 +32,6 @@
 
 class srcSliceHandler : public srcSAXHandler {
 private :
-
-    void ProcessConstructorDecl();
-    void ProcessDeclStmt();
-    void GetCallData();
-    void GetFunctionData();
-    void GetDeclStmtData();
-    void ProcessExprStmt();
-    SliceProfile* Find(const std::string&, const std::string&);
     /*ParserState is a set of enums corresponding to srcML tags. Primarily, they're for addressing into the 
      *triggerField vector and figuring out which tags have been seen. It keeps a count of how many of each
      *tag is currently open. Increments at a start tag and decrements at an end tag*/
@@ -93,6 +85,15 @@ private :
     FunctionData currentFunctionBody;
     NameLineNumberPair currentDeclStmt;
     NameLineNumberPair currentExprStmt;
+
+    /*function headers*/
+    void GetCallData();
+    void ProcessDeclStmt();
+    void GetFunctionData();
+    void GetDeclStmtData();
+    void ProcessExprStmt();
+    void ProcessConstructorDecl();
+    SliceProfile* Find(const std::string&, const std::string&);
 public:
     SystemDictionary sysDict;
     srcSliceHandler(){
