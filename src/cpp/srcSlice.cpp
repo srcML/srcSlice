@@ -136,8 +136,8 @@ int main(int argc, char * argv[]) {
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
-  //TestSlice(handler.sysDict.dictionary);
-  //TestSlice2(handler.sysDict.globalMap);
+  TestSlice(handler.sysDict.dictionary);
+  TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;
 }

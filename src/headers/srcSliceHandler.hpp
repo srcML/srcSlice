@@ -93,7 +93,8 @@ private :
     void GetDeclStmtData();
     void ProcessExprStmt();
     void ProcessConstructorDecl();
-    SliceProfile* Find(const std::string&, const std::string&);
+    SliceProfile* Find(const std::string&);
+    
 public:
     SystemDictionary sysDict;
     srcSliceHandler(){

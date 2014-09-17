@@ -3,62 +3,28 @@
 void srcSliceHandler::ProcessConstructorDecl(){
     auto strVec = SplitOnTok(currentDeclStmt.first, "+<.*->&=():,");
     for(std::string str : strVec){
-        auto sp = Find(str,currentFunctionBody.functionName);
+        auto sp = Find(str);
         if(sp){
             varIt->second.dvars.insert(sp->variableName);
         }
     }
 }
 void srcSliceHandler::ProcessDeclStmt(){
-    if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
-    !(triggerField[type] || triggerField[argument_list] || triggerField[call])){ //do something if there's an init
-        auto expr = SplitLhsRhs(currentDeclStmt.first);
-        if(expr.size() > 1){ //found an expression of the form lhs = rhs. Make a new lhs slice profile and then iterate over rhs to insert.
-            auto strVec = SplitOnTok(expr.back(), "+<.*->&=(),"); //split rhs
-            if(!inGlobalScope){
-                varIt = FunctionIt->second.insert(std::make_pair(expr.front(), 
-                SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
-                    functionTmplt.functionNumber, currentDeclStmt.second, 
-                    expr.front(), potentialAlias))).first;
+    //std::cerr<<"Decl: "<<currentDeclStmt.first<<std::endl;//found an expression on the rhs of something. Because lhs gets strings first, we need to process that.
+    auto strVec = SplitOnTok(currentDeclStmt.first, "+<:.*->&=(),");
+    for(std::string str : strVec){
+        auto sp = Find(str);
+        if(sp){
+            varIt->second.slines.insert(currentDeclStmt.second);
+            sp->slines.insert(currentDeclStmt.second);
+            if(varIt->second.potentialAlias){
+                varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first; //issue if dvar has already been declared
             }else{
-                FunctionIt->second.insert(std::make_pair(expr.front(), 
-                SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
-                    functionTmplt.functionNumber, currentDeclStmt.second, 
-                    expr.front(), potentialAlias))).first;
-            }
-            for(std::string str : strVec){
-                if(str != expr.front()){
-                    auto sp = Find(str,currentFunctionBody.functionName);
-                    if(sp){
-                        varIt->second.slines.insert(currentDeclStmt.second);
-                        sp->slines.insert(currentDeclStmt.second);
-                        if(varIt->second.potentialAlias){
-                            varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first;
-                        }else{
-                            sp->dvars.insert(varIt->second.variableName);
-                        }
-                    }
-                }
-            }
-        }else{ //found an expression on the rhs of something. Because lhs gets strings first, we need to process that.
-            auto strVec = SplitOnTok(expr.front(), "+<:.*->&=(),");
-            for(std::string str : strVec){
-                auto sp = Find(str,currentFunctionBody.functionName);
-                if(sp){
-                    varIt->second.slines.insert(currentDeclStmt.second);
-                    sp->slines.insert(currentDeclStmt.second);
-                    if(varIt->second.potentialAlias){
-                        varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first;
-                    }else{
-                        sp->dvars.insert(varIt->second.variableName);
-                    }
-                }
+                sp->dvars.insert(varIt->second.variableName);
             }
         }
-        currentDeclStmt.first.clear(); //because if it's a multi-init decl then inits will run into one another.
-        //ProcessDeclStmtInit();
-        //
     }
+    currentDeclStmt.first.clear(); //because if it's a multi-init decl then inits will run into one another.
 }
 /**
     * GetCallData
@@ -74,7 +40,7 @@ void srcSliceHandler::GetCallData(){
         auto strVec = SplitOnTok(currentCallArgData.first, ":+<.*->&=(),"); //Split the current string of call/arguments so we can get the variables being called
         auto spltVec = SplitOnTok(nameOfCurrentClldFcn.top(), ":+<.*->&=(),"); //Split the current string which contains the function name (might be object->function)
         for(std::string str : strVec){
-            auto sp = Find(str,currentFunctionBody.functionName); //check to find sp for the variable being called on fcn
+            auto sp = Find(str); //check to find sp for the variable being called on fcn
             if(sp){
                 sp->slines.insert(currentCallArgData.second);
                 sp->index = currentCallArgData.second - functionTmplt.functionLineNumber;
@@ -115,7 +81,6 @@ void srcSliceHandler::GetFunctionData(){
             std::stringstream ststrm;
             ststrm<<constructorNum;
             currentFunctionBody.functionName+=ststrm.str(); //number the constructor. Find a better way than stringstreams someday.
-        }else{
         }
         functionTmplt.functionLineNumber = currentFunctionBody.functionLineNumber;
         functionTmplt.functionNumber = functionAndFileNameHash(currentFunctionBody.functionName); //give me the hash num for this name.            
@@ -161,27 +126,27 @@ void srcSliceHandler::GetDeclStmtData(){
     //Get Init of decl stmt
 }
 void srcSliceHandler::ProcessExprStmt(){
+    //std::cerr<<"expr: "<<currentExprStmt.first<<std::endl;
     auto lhsrhs = SplitLhsRhs(currentExprStmt.first);
     auto resultVecl = SplitOnTok(lhsrhs.front(), "+<.*->&");
     SliceProfile* splIt(nullptr);        
     //First, take the left hand side and mark sline information. Doing it first because later I'll be iterating purely
     //over the rhs.
     for(auto rVecIt = resultVecl.begin(); rVecIt!= resultVecl.end(); ++rVecIt){            
-        splIt = Find(*rVecIt, currentFunctionBody.functionName);
+        splIt = Find(*rVecIt);
         if(splIt){ //Found it so add statement line.
             splIt->slines.insert(currentExprStmt.second);
             break; //found it, don't care about the rest (ex. in: bottom -> next -- all I need is bottom.)
         }            
     }
-    //Doing rhs now. First check to see if there's anything to process (Note: Check to make sure Op even needs to be here anymore)
+    //Doing rhs now. First check to see if there's anything to process
     if(splIt){
         auto resultVecr = SplitOnTok(lhsrhs.back(), "+<.*->&"); //Split on tokens. Make these const... or standardize them. Or both.
         for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){ //loop over words and check them against map
-            std::string fullName = *rVecIt;//fix                
-            if(splIt->variableName != fullName){//lhs != rhs
-                auto sprIt = Find(*rVecIt, currentFunctionBody.functionName);//find the sp for the rhs
+            if(splIt->variableName != *rVecIt){//lhs != rhs
+                auto sprIt = Find(*rVecIt);//find the sp for the rhs
                 if(sprIt){ //lvalue depends on this rvalue
-                    if(splIt && !splIt->potentialAlias){
+                    if(!splIt->potentialAlias){
                         sprIt->dvars.insert(splIt->variableName); //it's not an alias so it's a dvar
                     }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
                         splIt->isAlias = true;
@@ -202,7 +167,7 @@ void srcSliceHandler::ProcessExprStmt(){
         }
     }
 }
-SliceProfile* srcSliceHandler::Find(const std::string& varName, const std::string& functionName){    
+SliceProfile* srcSliceHandler::Find(const std::string& varName){    
         auto sp = FunctionIt->second.find(varName);
         if(sp != FunctionIt->second.end()){
             return &(sp->second);
