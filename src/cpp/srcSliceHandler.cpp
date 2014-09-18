@@ -160,7 +160,7 @@ void srcSliceHandler::ProcessExprStmt(){
                             if(!dirtyAlias){
                                 auto spaIt = FunctionIt->second.find(*sprIt->lastInsertedAlias); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
                                 if(spaIt != FunctionIt->second.end()){
-                                    //spaIt->second.dvars.insert(splIt->variableName); 
+                                    spaIt->second.dvars.insert(splIt->variableName); 
                                     spaIt->second.slines.insert(currentExprStmt.second);
                                 }
                             }
