@@ -32,21 +32,19 @@ struct FunctionData{
 class SliceProfile{
 	public:
 		SliceProfile() = default;
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0):
-        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isAlias(false){
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
+        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isGlobal(global) {
 			slines.insert(sline);
 		}
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, std::string name, bool alias):
-        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isAlias(false){
-		}
+
 		unsigned int index;
 		unsigned int file;
 		unsigned int function;
 		
         std::unordered_set<std::string>::iterator lastInsertedAlias;
 
-		bool isAlias;
 		bool potentialAlias;
+        bool isGlobal;
 
 		std::string variableName;
 		std::string variableType;

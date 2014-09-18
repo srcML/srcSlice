@@ -73,8 +73,10 @@ private :
     bool inGlobalScope;
     bool isACallName;
 
+    bool dirtyAlias;
     bool potentialAlias;
 
+    std::string tmpCalledFunctionName;
     /*These along with triggerfield make up the meat of this slicer.Check the triggerfield for context (E.g., triggerField[init])
      *and then once you know the right tags are open, check the correct line/string pair to see what the name is
      *at that position and its line number to be stored in the slice profile*/ 
@@ -94,7 +96,7 @@ private :
     void ProcessExprStmt();
     void ProcessConstructorDecl();
     SliceProfile* Find(const std::string&);
-    
+
 public:
     SystemDictionary sysDict;
     srcSliceHandler(){
@@ -102,6 +104,7 @@ public:
         numArgs = 0;
         constructorNum = 0;
 
+        dirtyAlias = false;
         isACallName = false;
         isConstructor = false;
         inGlobalScope = true;
@@ -192,6 +195,7 @@ public:
         }
 
         if(lname == "decl_stmt"){
+            tmpCalledFunctionName.clear();
             currentCallArgData.first.clear();
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
@@ -203,6 +207,7 @@ public:
             currentFunctionBody.functionName.clear();
             ++triggerField[function];
         }else if (lname == "expr_stmt"){
+            tmpCalledFunctionName.clear();
             currentExprStmt.first.clear();
             currentCallArgData.first.clear();
             ++triggerField[expr_stmt];
@@ -213,6 +218,7 @@ public:
             if(triggerField[call]){
                 if(isACallName){
                     isACallName = false;
+                    tmpCalledFunctionName = calledFunctionName;
                     nameOfCurrentClldFcn.push(calledFunctionName);
                     calledFunctionName.clear();
                 }
@@ -330,6 +336,7 @@ public:
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
             sysDict.functionTable.insert(std::make_pair(functionTmplt.functionNumber, functionTmplt));
             FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionNumber, VarMap())).first;
+            dirtyAlias = false;
             if(lname == "constructor"){
                 isConstructor = false;
             }
@@ -399,6 +406,9 @@ public:
                 }
                 --triggerField[type]; 
             }else if (lname == "operator"){
+                if(currentDeclStmt.first == "new"){
+                    currentDeclStmt.first.append("-"); //separate new operator because we kinda need to know when we see it.
+                }
                 --triggerField[op];
             }
             else if (lname == "name"){

@@ -5,19 +5,22 @@ void srcSliceHandler::ProcessConstructorDecl(){
     for(std::string str : strVec){
         auto sp = Find(str);
         if(sp){
-            varIt->second.dvars.insert(sp->variableName);
+            sp->dvars.insert(varIt->second.variableName);
         }
     }
 }
 void srcSliceHandler::ProcessDeclStmt(){
     //std::cerr<<"Decl: "<<currentDeclStmt.first<<std::endl;//found an expression on the rhs of something. Because lhs gets strings first, we need to process that.
     auto strVec = SplitOnTok(currentDeclStmt.first, "+<:.*->&=(),");
+    bool seenNew = false;
     for(std::string str : strVec){
         auto sp = Find(str);
+        if(str == "new"){seenNew = true;}
         if(sp){
             varIt->second.slines.insert(currentDeclStmt.second);
             sp->slines.insert(currentDeclStmt.second);
-            if(varIt->second.potentialAlias){
+            if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
+                dirtyAlias = true;
                 varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first; //issue if dvar has already been declared
             }else{
                 sp->dvars.insert(varIt->second.variableName);
@@ -92,7 +95,7 @@ void srcSliceHandler::GetFunctionData(){
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile(currentParam.second - functionTmplt.functionLineNumber, fileNumber, 
-                currentFunctionBody.functionLineNumber, currentParam.second, currentParam.first, potentialAlias))).first;
+                currentFunctionBody.functionLineNumber, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
     }        
 }
 /**
@@ -114,19 +117,18 @@ void srcSliceHandler::GetDeclStmtData(){
         varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
                 functionTmplt.functionNumber, currentDeclStmt.second, 
-                currentDeclStmt.first, potentialAlias))).first;
+                currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
         }else{
             //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
                 functionTmplt.functionNumber, currentDeclStmt.second, 
-                currentDeclStmt.first, potentialAlias)));
+                currentDeclStmt.first, potentialAlias, inGlobalScope)));
         }
     }
     //Get Init of decl stmt
 }
 void srcSliceHandler::ProcessExprStmt(){
-    //std::cerr<<"expr: "<<currentExprStmt.first<<std::endl;
     auto lhsrhs = SplitLhsRhs(currentExprStmt.first);
     auto resultVecl = SplitOnTok(lhsrhs.front(), "+<.*->&");
     SliceProfile* splIt(nullptr);        
@@ -145,20 +147,22 @@ void srcSliceHandler::ProcessExprStmt(){
         for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){ //loop over words and check them against map
             if(splIt->variableName != *rVecIt){//lhs != rhs
                 auto sprIt = Find(*rVecIt);//find the sp for the rhs
-                if(sprIt){ //lvalue depends on this rvalue
+                if(sprIt && !sprIt->isGlobal){ //lvalue depends on this rvalue
                     if(!splIt->potentialAlias){
                         sprIt->dvars.insert(splIt->variableName); //it's not an alias so it's a dvar
                     }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
-                        splIt->isAlias = true;
+                        dirtyAlias = true;
                         sprIt->lastInsertedAlias = sprIt->aliases.insert(splIt->variableName).first;
                     }
                     sprIt->slines.insert(currentExprStmt.second);                            
-                    if(sprIt->isAlias){//Union things together. If this was an alias of anoter thing, update the other thing
+                    if(sprIt->potentialAlias){//Union things together. If this was an alias of anoter thing, update the other thing
                         if(!sprIt->aliases.empty()){
-                            auto spaIt = FunctionIt->second.find(*sprIt->lastInsertedAlias);
-                            if(spaIt != FunctionIt->second.end()){
-                                spaIt->second.dvars.insert(splIt->variableName);
-                                spaIt->second.slines.insert(currentExprStmt.second);
+                            if(!dirtyAlias){
+                                auto spaIt = FunctionIt->second.find(*sprIt->lastInsertedAlias); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
+                                if(spaIt != FunctionIt->second.end()){
+                                    //spaIt->second.dvars.insert(splIt->variableName); 
+                                    spaIt->second.slines.insert(currentExprStmt.second);
+                                }
                             }
                         }
                     }
@@ -170,10 +174,12 @@ void srcSliceHandler::ProcessExprStmt(){
 SliceProfile* srcSliceHandler::Find(const std::string& varName){    
         auto sp = FunctionIt->second.find(varName);
         if(sp != FunctionIt->second.end()){
+
             return &(sp->second);
         }else{ //check global map
             auto sp2 = sysDict.globalMap.find(varName);
             if(sp2 != sysDict.globalMap.end()){
+                //std::cerr<<"Found: "<<sp2->second.variableName<<" "<<sp2->second.isGlobal<<std::endl;
                 return &(sp2->second);
             }
         }
