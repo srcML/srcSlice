@@ -76,7 +76,6 @@ private :
     bool dirtyAlias;
     bool potentialAlias;
 
-    std::string tmpCalledFunctionName;
     /*These along with triggerfield make up the meat of this slicer.Check the triggerfield for context (E.g., triggerField[init])
      *and then once you know the right tags are open, check the correct line/string pair to see what the name is
      *at that position and its line number to be stored in the slice profile*/ 
@@ -195,7 +194,6 @@ public:
         }
 
         if(lname == "decl_stmt"){
-            tmpCalledFunctionName.clear();
             currentCallArgData.first.clear();
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
@@ -207,7 +205,6 @@ public:
             currentFunctionBody.functionName.clear();
             ++triggerField[function];
         }else if (lname == "expr_stmt"){
-            tmpCalledFunctionName.clear();
             currentExprStmt.first.clear();
             currentCallArgData.first.clear();
             ++triggerField[expr_stmt];
@@ -218,7 +215,6 @@ public:
             if(triggerField[call]){
                 if(isACallName){
                     isACallName = false;
-                    tmpCalledFunctionName = calledFunctionName;
                     nameOfCurrentClldFcn.push(calledFunctionName);
                     calledFunctionName.clear();
                 }

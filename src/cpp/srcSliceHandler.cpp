@@ -49,7 +49,7 @@ void srcSliceHandler::ProcessDeclStmt(){
         auto sp = Find(str);
         if(str == "new"){seenNew = true;}
         if(sp){
-            varIt->second.slines.insert(currentDeclStmt.second);
+            varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
             sp->slines.insert(currentDeclStmt.second);
             if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
                 dirtyAlias = true;
