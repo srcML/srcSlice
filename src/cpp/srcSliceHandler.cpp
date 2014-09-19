@@ -1,5 +1,32 @@
 #include <srcSliceHandler.hpp>
 #include <Utility.hpp>
+
+/**
+ * Find
+ * @param varName - Name of the variable whose slice profile we want
+ * @Return Pointer to Slice Profile or Null
+ * Find function takes a variable name and searches first the local table to the function it was in
+ * and if it's not found there, then it searches the global table to see if it's in there.
+ * If neither has the variable, it returns null otherwise returns a pointer to the slice profile
+ */
+SliceProfile* srcSliceHandler::Find(const std::string& varName){    
+        auto sp = FunctionIt->second.find(varName);
+        if(sp != FunctionIt->second.end()){
+
+            return &(sp->second);
+        }else{ //check global map
+            auto sp2 = sysDict.globalMap.find(varName);
+            if(sp2 != sysDict.globalMap.end()){
+                return &(sp2->second);
+            }
+        }
+        return nullptr;
+}
+
+/**
+ *ProcessConstructorDecl
+ *Processes decls of the form object(arg,arg)
+ */
 void srcSliceHandler::ProcessConstructorDecl(){
     auto strVec = SplitOnTok(currentDeclStmt.first, "+<.*->&=():,");
     for(std::string str : strVec){
@@ -9,8 +36,13 @@ void srcSliceHandler::ProcessConstructorDecl(){
         }
     }
 }
+
+/*
+* ProcessDeclStmt
+* Takes rhs of decl_stmt and processes it. Split by tokens and then throw against the map for an answer.
+* corner case at new operator because new makes an object even if its argument is an alias.
+*/
 void srcSliceHandler::ProcessDeclStmt(){
-    //std::cerr<<"Decl: "<<currentDeclStmt.first<<std::endl;//found an expression on the rhs of something. Because lhs gets strings first, we need to process that.
     auto strVec = SplitOnTok(currentDeclStmt.first, "+<:.*->&=(),");
     bool seenNew = false;
     for(std::string str : strVec){
@@ -21,7 +53,7 @@ void srcSliceHandler::ProcessDeclStmt(){
             sp->slines.insert(currentDeclStmt.second);
             if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
                 dirtyAlias = true;
-                varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first; //issue if dvar has already been declared
+                varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first;
             }else{
                 sp->dvars.insert(varIt->second.variableName);
             }
@@ -29,13 +61,13 @@ void srcSliceHandler::ProcessDeclStmt(){
     }
     currentDeclStmt.first.clear(); //because if it's a multi-init decl then inits will run into one another.
 }
-/**
-    * GetCallData
-    *
-    * Knows the proper constrains for obtaining the name of arguments of currently called function
-    * It stores data about those variables if it can find a slice profile entry for them.
-    * Essentially, update the slice profile of the argument to reflect new data.
-    */
+
+/*
+* GetCallData
+* Knows the proper constrains for obtaining the name of arguments of currently called function
+* It stores data about those variables if it can find a slice profile entry for them.
+* Essentially, update the slice profile of the argument to reflect new data.
+*/
 void srcSliceHandler::GetCallData(){
     //Get function arguments
     if(triggerField[argument_list] && triggerField[argument] && 
@@ -63,11 +95,12 @@ void srcSliceHandler::GetCallData(){
         }
     }
 }
+
 /**
-    * GetFunctionData
-    * Knows proper constraints for obtaining function's return type, name, and arguments. Stores all of this in
-    * functionTmplt.
-    */
+* GetFunctionData
+* Knows proper constraints for obtaining function's return type, name, and arguments. Stores all of this in
+* functionTmplt.
+*/
 void srcSliceHandler::GetFunctionData(){
     //Get function type
     if(triggerField[type] && !(triggerField[parameter_list] || triggerField[block] || triggerField[member_list])){
@@ -98,11 +131,12 @@ void srcSliceHandler::GetFunctionData(){
                 currentFunctionBody.functionLineNumber, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
     }        
 }
+
 /**
-    * GetDeclStmtData
-    * Knows proper constraints for obtaining DeclStmt type and name.
-    * creates a new slice profile and stores data about decle statement inside.
-    */
+* GetDeclStmtData
+* Knows proper constraints for obtaining DeclStmt type and name.
+* creates a new slice profile and stores data about decle statement inside.
+*/
 void srcSliceHandler::GetDeclStmtData(){
     if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
         //functionTmplt.declstmt.type = currentCallArgData.first; //store type
@@ -128,6 +162,13 @@ void srcSliceHandler::GetDeclStmtData(){
     }
     //Get Init of decl stmt
 }
+
+/**
+ * ProcessExprStmt
+ * Get entire expression statement and then process by first splitting to lhs and rhs. Process the lhs
+ * by saving its slines if it can be found in the map. After lhs is processed, keep track of it and then
+ * process the rhs for any aliases, dvars, or function calls.
+ */
 void srcSliceHandler::ProcessExprStmt(){
     auto lhsrhs = SplitLhsRhs(currentExprStmt.first);
     auto resultVecl = SplitOnTok(lhsrhs.front(), "+<.*->&");
@@ -147,7 +188,7 @@ void srcSliceHandler::ProcessExprStmt(){
         for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){ //loop over words and check them against map
             if(splIt->variableName != *rVecIt){//lhs != rhs
                 auto sprIt = Find(*rVecIt);//find the sp for the rhs
-                if(sprIt && !sprIt->isGlobal){ //lvalue depends on this rvalue
+                if(sprIt){ //lvalue depends on this rvalue
                     if(!splIt->potentialAlias){
                         sprIt->dvars.insert(splIt->variableName); //it's not an alias so it's a dvar
                     }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
@@ -170,18 +211,4 @@ void srcSliceHandler::ProcessExprStmt(){
             }
         }
     }
-}
-SliceProfile* srcSliceHandler::Find(const std::string& varName){    
-        auto sp = FunctionIt->second.find(varName);
-        if(sp != FunctionIt->second.end()){
-
-            return &(sp->second);
-        }else{ //check global map
-            auto sp2 = sysDict.globalMap.find(varName);
-            if(sp2 != sysDict.globalMap.end()){
-                //std::cerr<<"Found: "<<sp2->second.variableName<<" "<<sp2->second.isGlobal<<std::endl;
-                return &(sp2->second);
-            }
-        }
-        return nullptr;
 }
