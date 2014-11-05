@@ -85,13 +85,13 @@ void TestSlice(const FileFunctionVarMap& mp){
 
 void srcSliceToCsv(const SystemDictionary& sd){
 	for(FileFunctionVarMap::const_iterator ffvmIt = sd.dictionary.begin(); ffvmIt != sd.dictionary.end(); ++ffvmIt){
-		auto fileNameIt = sd.fileTable.find(ffvmIt->first);
-		if(fileNameIt != sd.fileTable.end())
+		//auto fileNameIt = sd.fileTable.find(ffvmIt->first);
+		//if(fileNameIt != sd.fileTable.end())
 		for(FunctionVarMap::const_iterator fvmIt = ffvmIt->second.begin(); fvmIt != ffvmIt->second.end(); ++fvmIt){
 			auto functionNameIt = sd.functionTable.find(fvmIt->first);
 			if(functionNameIt!=sd.functionTable.end())
 			for(VarMap::const_iterator vmIt = fvmIt->second.begin(); vmIt != fvmIt->second.end(); ++vmIt){
-				std::cerr<<fileNameIt->second<<","<<functionNameIt->second.functionName;
+				std::cerr<<ffvmIt->first<<","<<functionNameIt->second.functionName;
 				std::cerr<<",sl{";
 				for(unsigned int sl : vmIt->second.slines){
 					std::cerr<<sl<<",";
