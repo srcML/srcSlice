@@ -212,3 +212,59 @@ void srcSliceHandler::ProcessExprStmt(){
         }
     }
 }
+
+/*
+ *ComputeInterprocedural
+ * Takes slicing criterion as input
+ *outputs a slicing profile for each varible in the procedure
+ *
+ *
+ */
+void srcSliceHandler::ComputeInterprocedural(const std::string& f){
+    FunctionIt = (dictionary.find(f)).second;
+    std::string functionName;
+    unsigned int argumentIndex = 0;
+    SliceProfile Spi;
+
+    for(functionVarMap::iterator itr = FunctionIt.begin(); itr != FunctionIt.end(); ++itr){
+        for(VarMap::iterator it = itr->second.begin(); it != itr->second.end(); ++it){  
+            if(it->second.visited == false){       
+                for(int i = 0; i < cfunctions.length(); ++i ){
+                    functionName = cfunction[i].first;
+                    argumentIndex = cfunction[i].second;
+                    Spi = ArgumentProfile(functionName, argumentIndex);
+                    it->second.slines.insert(Spi.slines);
+                    it->second.cfunctions.insert(Spi.cfunctions);
+                    it->second.aliases.insert(Spi.aliases);
+                    it->second.dvar.insert(Spi.dvar);
+                }
+                it->second.visited = true;
+            } 
+        }
+    }      
+}
+
+
+SliceProfile srcSliceHandler::ArgumentProfile(std::string functionName, unsigned int parameterIndex){
+    unsigned int hash = FunctionNameHash(functionName);
+    VarMap::iterator v = FunctionVarMap.find(hash).second;
+    SliceProfile Spi;
+    std:string newFunctionName;
+    for(VarMap::iterator it = v.begin(); it != v.end(); ++it){
+        if (it->index == parameterIndex){
+            Spi = it->second; 
+            return Spi;
+        }
+        else{
+            for(int i = 0; i < cfunctions.length(); ++i ){
+                newFunctionName = cfunctions[i].first;
+                newParameterIndex = cfunctions[i].second; 
+                if(newFunctionName != functionName){
+                    Spi = ArgumentProfile(newFunctionName, newParameterIndex);
+                 }
+            } 
+            it->second.visited = true;
+        }
+    }
+return Spi;
+}

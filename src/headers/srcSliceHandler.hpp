@@ -95,6 +95,9 @@ private :
     void ProcessExprStmt();
     void ProcessConstructorDecl();
     SliceProfile* Find(const std::string&);
+    //this is not right, should return a dictionary of slice profiles, and maybe take in a function?
+    void ComputeInterprocedural(const std::string&);
+    SliceProfile srcSliceHandler::ArgumentProfile(std::string , unsigned int )
 
 public:
     SystemDictionary sysDict;
