@@ -53,7 +53,7 @@ void srcSliceHandler::ProcessDeclStmt(){
             sp->slines.insert(currentDeclStmt.second);
             if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
                 dirtyAlias = true;
-                varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first;
+                varIt->second.lastInsertedAlias = sp->aliases.insert(varIt->second.variableName).first;
             }else{
                 sp->dvars.insert(varIt->second.variableName);
             }
