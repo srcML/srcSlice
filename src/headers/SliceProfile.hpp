@@ -9,7 +9,7 @@
 class SliceProfile;
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
 typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
-typedef std::unordered_map<unsigned int, FunctionVarMap> FileFunctionVarMap;
+typedef std::unordered_map<std::string, FunctionVarMap> FileFunctionVarMap;
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<std::string, std::string> TypeNamePair;
 
@@ -45,6 +45,7 @@ class SliceProfile{
 
 		bool potentialAlias;
         bool isGlobal;
+        bool visited;
 
 		std::string variableName;
 		std::string variableType;

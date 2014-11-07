@@ -53,7 +53,7 @@ void srcSliceHandler::ProcessDeclStmt(){
             sp->slines.insert(currentDeclStmt.second);
             if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
                 dirtyAlias = true;
-                varIt->second.lastInsertedAlias = varIt->second.aliases.insert(str).first;
+                varIt->second.lastInsertedAlias = sp->aliases.insert(varIt->second.variableName).first;
             }else{
                 sp->dvars.insert(varIt->second.variableName);
             }
@@ -119,7 +119,7 @@ void srcSliceHandler::GetFunctionData(){
             currentFunctionBody.functionName+=ststrm.str(); //number the constructor. Find a better way than stringstreams someday.
         }
         functionTmplt.functionLineNumber = currentFunctionBody.functionLineNumber;
-        functionTmplt.functionNumber = functionAndFileNameHash(currentFunctionBody.functionName); //give me the hash num for this name.            
+        functionTmplt.functionNumber = functionNameHash(currentFunctionBody.functionName); //give me the hash num for this name.            
     }
     //Get param types
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){

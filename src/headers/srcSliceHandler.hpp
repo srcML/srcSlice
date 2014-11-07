@@ -47,7 +47,7 @@ private :
     int constructorNum;
     
     /*Hashing function/file names. This will accomplish that.*/
-    std::hash<std::string> functionAndFileNameHash;
+    std::hash<std::string> functionNameHash;
 
     /*Holds data for functions as we parse. Useful for going back to figuring out which function we're in*/
     FunctionData functionTmplt;
@@ -95,7 +95,6 @@ private :
     void ProcessExprStmt();
     void ProcessConstructorDecl();
     SliceProfile* Find(const std::string&);
-    //this is not right, should return a dictionary of slice profiles, and maybe take in a function?
     void ComputeInterprocedural(const std::string&);
     SliceProfile srcSliceHandler::ArgumentProfile(std::string , unsigned int )
 
@@ -160,10 +159,9 @@ public:
     virtual void startUnit(const char * localname, const char * prefix, const char * URI,
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
-        fileNumber = functionAndFileNameHash(attributes[1].value);
-        sysDict.fileTable.insert(std::make_pair(fileNumber, attributes[1].value));
-        FileIt = sysDict.dictionary.insert(std::make_pair(fileNumber, FunctionVarMap())).first; //insert and keep track of most recent.         
-        FunctionIt = FileIt->second.insert(std::make_pair(functionAndFileNameHash(std::string(attributes[1].value).append("0")), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
+        fileNumber = functionNameHash(attributes[1].value);
+        FileIt = sysDict.dictionary.insert(std::make_pair(attributes[1].value, FunctionVarMap())).first; //insert and keep track of most recent.         
+        FunctionIt = FileIt->second.insert(std::make_pair(functionNameHash(std::string(attributes[1].value).append("0")), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
      * startElementNs
