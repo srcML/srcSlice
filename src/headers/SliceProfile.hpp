@@ -45,6 +45,7 @@ class SliceProfile{
 
 		bool potentialAlias;
         bool isGlobal;
+        bool visited;
 
 		std::string variableName;
 		std::string variableType;
