@@ -51,6 +51,8 @@ class SliceProfile{
 		std::string variableType;
 		
 		std::unordered_set<unsigned int> slines;
+        std::unordered_set<unsigned int> def;
+        
 		std::vector<NameLineNumberPair> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
