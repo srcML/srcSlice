@@ -129,7 +129,7 @@ void srcSliceHandler::GetFunctionData(){
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile(currentParam.second - functionTmplt.functionLineNumber, fileNumber, 
                 currentFunctionBody.functionLineNumber, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
-    }        
+    }
 }
 
 /**
