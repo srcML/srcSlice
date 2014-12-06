@@ -96,7 +96,7 @@ private :
     void ProcessConstructorDecl();
     SliceProfile* Find(const std::string&);
     void ComputeInterprocedural(const std::string&);
-    SliceProfile srcSliceHandler::ArgumentProfile(std::string , unsigned int )
+    SliceProfile ArgumentProfile(FunctionVarMap::iterator , unsigned int );
 
 public:
     SystemDictionary sysDict;

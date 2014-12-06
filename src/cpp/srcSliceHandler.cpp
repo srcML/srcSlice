@@ -213,6 +213,11 @@ void srcSliceHandler::ProcessExprStmt(){
     }
 }
 
+
+
+
+
+
 /*
  *ComputeInterprocedural
  * Takes slicing criterion as input
@@ -221,23 +226,25 @@ void srcSliceHandler::ProcessExprStmt(){
  *
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
-    FunctionIt = (dictionary.find(f)).second;
+    FileIt =sysDict.dictionary.find(f);
+    FunctionIt = (FileIt)->second.begin();
+    FunctionVarMap::iterator FunctionItEnd = (FileIt)->second.end();
     std::string functionName;
     unsigned int argumentIndex = 0;
     SliceProfile Spi;
 
-    for(functionVarMap::iterator itr = FunctionIt.begin(); itr != FunctionIt.end(); ++itr){
-        for(VarMap::iterator it = itr->second.begin(); it != itr->second.end(); ++it){  
+    for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
+        for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){  
             if(it->second.visited == false){       
-                for(int i = 0; i < cfunctions.length(); ++i ){
-                    functionName = cfunction[i].first;
-                    argumentIndex = cfunction[i].second;
-                    Spi = ArgumentProfile(functionName, argumentIndex);
-                    it->second.slines.insert(Spi.slines);
-                    it->second.cfunctions.insert(Spi.cfunctions);
-                    it->second.aliases.insert(Spi.aliases);
-                    it->second.dvar.insert(Spi.dvar);
-                }
+                for(int i = 0; i < it->second.cfunctions.size(); ++i ){
+                    functionName = it->second.cfunctions[i].first;
+                    argumentIndex = it->second.cfunctions[i].second;
+                    Spi = ArgumentProfile(FunctionIt, argumentIndex);
+                    it->second.slines = SetUnion(it->second.slines, Spi.slines);
+                    //it->second.cfunctions = SetUnion(it->second.cfunctions, Spi.cfunctions);
+                    it->second.aliases = SetUnion(it->second.aliases, Spi.aliases);
+                    it->second.dvars = SetUnion(it->second.dvars, Spi.dvars);
+                    }
                 it->second.visited = true;
             } 
         }
@@ -245,22 +252,36 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 }
 
 
-SliceProfile srcSliceHandler::ArgumentProfile(std::string functionName, unsigned int parameterIndex){
-    unsigned int hash = FunctionNameHash(functionName);
-    VarMap::iterator v = FunctionVarMap.find(hash).second;
+SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, unsigned int parameterIndex){
+    VarMap::iterator v = functIt->second.begin();
     SliceProfile Spi;
-    std:string newFunctionName;
-    for(VarMap::iterator it = v.begin(); it != v.end(); ++it){
-        if (it->index == parameterIndex){
+    std::string newFunctionName;
+    unsigned int newParameterIndex;
+    std::string functionName;
+    std::unordered_map<unsigned int, FunctionData>::iterator funcNameItr = sysDict.functionTable.find(functIt->first);
+    if(funcNameItr != sysDict.functionTable.end()){
+        functionName = funcNameItr->second.functionName;
+    }
+    else{
+        std::cerr<< "FATAL ERROR: Cound not find function. ";
+        return Spi; 
+    }
+
+    for(VarMap::iterator it = v; it != functIt->second.end(); ++it){
+        if (it->second.index == parameterIndex){
             Spi = it->second; 
             return Spi;
         }
         else{
-            for(int i = 0; i < cfunctions.length(); ++i ){
-                newFunctionName = cfunctions[i].first;
-                newParameterIndex = cfunctions[i].second; 
+            for(int i = 0; i < it->second.cfunctions.size(); ++i ){
+                newFunctionName = it->second.cfunctions[i].first;
+                newParameterIndex = it->second.cfunctions[i].second; 
                 if(newFunctionName != functionName){
-                    Spi = ArgumentProfile(newFunctionName, newParameterIndex);
+                    
+                    unsigned int hash = functionNameHash(newFunctionName);
+                    FunctionVarMap::iterator newFunct = (FileIt->second.find(hash));
+                    if(newFunct != FileIt->second.end())
+                        Spi = ArgumentProfile(newFunct, newParameterIndex);
                  }
             } 
             it->second.visited = true;

@@ -1,5 +1,14 @@
 #ifndef UTILITY_HPP
 #define UTILITY_HPP
+
+template <typename T> 
+std::unordered_set<T> SetUnion(std::unordered_set<T> set1  , std::unordered_set<T> set2){
+    for(typename std::unordered_set<T>::iterator itr = set2.begin(); itr != set2.end(); ++itr){
+        set1.insert(*itr);
+    }
+    return set1;
+}
+
 std::vector<std::string> SplitLhsRhs(const std::string& str){
     std::vector<std::string> expr;
     expr.push_back(std::string());
