@@ -77,6 +77,16 @@ void TestSlice(const FileFunctionVarMap& mp){
 					std::cerr<<cfunc.first<<" "<<cfunc.second<<",";
 				}
 				std::cerr<<"}"<<std::endl;
+				std::cerr<<"def: {";
+				for(auto defv : vmIt->second.def){
+					std::cerr<<defv<<",";
+				}
+				std::cerr<<"}"<<std::endl;
+				std::cerr<<"use: {";
+				for(auto usev : vmIt->second.use){
+					std::cerr<<usev<<",";
+				}
+				std::cerr<<"}"<<std::endl;
 				std::cerr<<"-------------------------"<<std::endl;
 			}
 		}
@@ -137,7 +147,7 @@ int main(int argc, char * argv[]) {
   srcSliceHandler handler;
   control.parse(&handler);
   TestSlice(handler.sysDict.dictionary);
-  TestSlice2(handler.sysDict.globalMap);
+  //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;
 }

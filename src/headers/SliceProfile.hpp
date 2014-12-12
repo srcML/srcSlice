@@ -5,7 +5,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
-
+#include <set>
 class SliceProfile;
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
 typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
@@ -50,9 +50,11 @@ class SliceProfile{
 		std::string variableType;
 		
 		std::unordered_set<unsigned int> slines;
-        std::unordered_set<unsigned int> def;
         
-		std::vector<NameLineNumberPair> cfunctions;
+        std::set<unsigned int> def;
+        std::set<unsigned int> use;
+		
+        std::vector<NameLineNumberPair> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
 };

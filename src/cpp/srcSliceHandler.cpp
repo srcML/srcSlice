@@ -50,7 +50,9 @@ void srcSliceHandler::ProcessDeclStmt(){
         if(str == "new"){seenNew = true;}
         if(sp){
             varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
+            //varIt->second.def.insert(currentDeclStmt.second);
             sp->slines.insert(currentDeclStmt.second);
+            //sp->use.insert(currentDeclStmt.second);
             if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
                 dirtyAlias = true;
                 varIt->second.lastInsertedAlias = sp->aliases.insert(varIt->second.variableName).first;
@@ -78,6 +80,7 @@ void srcSliceHandler::GetCallData(){
             auto sp = Find(str); //check to find sp for the variable being called on fcn
             if(sp){
                 sp->slines.insert(currentCallArgData.second);
+                sp->use.insert(currentCallArgData.second);
                 sp->index = currentCallArgData.second - functionTmplt.functionLineNumber;
                 for(std::string spltStr : spltVec){ //iterate over strings split from the function being called (becaused it might be object -> function)
                     spltStr.erase(//remove anything weird like empty arguments.
@@ -129,6 +132,7 @@ void srcSliceHandler::GetFunctionData(){
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile(currentParam.second - functionTmplt.functionLineNumber, fileNumber, 
                 currentFunctionBody.functionLineNumber, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
+        varIt->second.def.insert(currentDeclStmt.second);
     }
 }
 
@@ -148,11 +152,12 @@ void srcSliceHandler::GetDeclStmtData(){
             currentDeclStmt.first.erase(0,1);
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
-        varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
-            SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
-                functionTmplt.functionNumber, currentDeclStmt.second, 
-                currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
-        }else{
+            varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
+                SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
+                    functionTmplt.functionNumber, currentDeclStmt.second, 
+                    currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
+            varIt->second.def.insert(currentDeclStmt.second);
+        }else{ //TODO: Handle def use for globals
             //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
@@ -179,6 +184,7 @@ void srcSliceHandler::ProcessExprStmt(){
         splIt = Find(*rVecIt);
         if(splIt){ //Found it so add statement line.
             splIt->slines.insert(currentExprStmt.second);
+            splIt->def.insert(currentExprStmt.second);
             break; //found it, don't care about the rest (ex. in: bottom -> next -- all I need is bottom.)
         }            
     }
@@ -195,13 +201,15 @@ void srcSliceHandler::ProcessExprStmt(){
                         dirtyAlias = true;
                         sprIt->lastInsertedAlias = sprIt->aliases.insert(splIt->variableName).first;
                     }
-                    sprIt->slines.insert(currentExprStmt.second);                            
+                    sprIt->slines.insert(currentExprStmt.second);
+                    sprIt->use.insert(currentExprStmt.second);                            
                     if(sprIt->potentialAlias){//Union things together. If this was an alias of anoter thing, update the other thing
                         if(!sprIt->aliases.empty()){
                             if(!dirtyAlias){
                                 auto spaIt = FunctionIt->second.find(*sprIt->lastInsertedAlias); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
                                 if(spaIt != FunctionIt->second.end()){
-                                    spaIt->second.dvars.insert(splIt->variableName); 
+                                    spaIt->second.dvars.insert(splIt->variableName);
+                                    spaIt->second.use.insert(currentExprStmt.second);  
                                     spaIt->second.slines.insert(currentExprStmt.second);
                                 }
                             }
