@@ -241,20 +241,19 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
         for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){  
             if(it->second.visited == false){       
-                for(std::unordered_set<NameLineNumberPair>::iterator itCF = it->second.cfunctions.begin(); itCF < it->second.cfunctions.end(); ++itCF ){
-                    functionName = itCF.first;
-                    argumentIndex = itCF.second;
+                for(std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
+                    functionName = itCF->first;
+                    argumentIndex = itCF->second;
                     Spi = ArgumentProfile(FunctionIt, argumentIndex);
                     it->second.slines = SetUnion(it->second.slines, Spi.slines);
-                    //it->second.cfunctions = SetUnion(it->second.cfunctions, Spi.cfunctions);
+                    it->second.cfunctions = SetUnion(it->second.cfunctions, Spi.cfunctions);
                     it->second.aliases = SetUnion(it->second.aliases, Spi.aliases);
                     it->second.dvars = SetUnion(it->second.dvars, Spi.dvars);
                     }
                 it->second.visited = true;
             } 
         }
-    }
-    
+    }  
 }
 
 
@@ -291,11 +290,11 @@ SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, 
             return Spi;
         }
         else{
-            for(int i = 0; i < it->second.cfunctions.size(); ++i ){
-                newFunctionName = it->second.cfunctions[i].first;
-                newParameterIndex = it->second.cfunctions[i].second; 
+            for(std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
+                newFunctionName = itCF->first;
+                newParameterIndex = itCF->second; 
+                
                 if(newFunctionName != functionName){
-                    
                     unsigned int hash = functionNameHash(newFunctionName);
                     FunctionVarMap::iterator newFunct = (FileIt->second.find(hash));
                     if(newFunct != FileIt->second.end())
