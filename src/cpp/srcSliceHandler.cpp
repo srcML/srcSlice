@@ -223,13 +223,10 @@ void srcSliceHandler::ProcessExprStmt(){
 
 
 
-
-
-
 /*
  *ComputeInterprocedural
- * Takes slicing criterion as input
- *outputs a slicing profile for each varible in the procedure
+ *@param f- name of the file
+ *No return value
  *
  *
  */
@@ -244,9 +241,9 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
         for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){  
             if(it->second.visited == false){       
-                for(int i = 0; i < it->second.cfunctions.size(); ++i ){
-                    functionName = it->second.cfunctions[i].first;
-                    argumentIndex = it->second.cfunctions[i].second;
+                for(std::unordered_set<NameLineNumberPair>::iterator itCF = it->second.cfunctions.begin(); itCF < it->second.cfunctions.end(); ++itCF ){
+                    functionName = itCF.first;
+                    argumentIndex = itCF.second;
                     Spi = ArgumentProfile(FunctionIt, argumentIndex);
                     it->second.slines = SetUnion(it->second.slines, Spi.slines);
                     //it->second.cfunctions = SetUnion(it->second.cfunctions, Spi.cfunctions);
@@ -258,6 +255,18 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
         }
     }      
 }
+
+
+
+/*
+ *ArgumentProfile
+ *@param functIt- iterator to the FunctionVarMap, parameterIndex- index of the parameter 
+ @Return SliceProfile of the variable
+ *
+ *
+ *
+ *
+ */
 
 
 SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, unsigned int parameterIndex){

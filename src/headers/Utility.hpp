@@ -9,6 +9,17 @@ std::unordered_set<T> SetUnion(std::unordered_set<T> set1  , std::unordered_set<
     return set1;
 }
 
+//template <typename T> 
+//std::vector<T> SetUnion(std::vector<T> v1, std::vector<T>  v2){
+//    bool isFound = false;
+//    for(typename std::vector<T>::iterator itr = v2.begin(); itr != v2.end(); ++itr){
+//        for(typename std::vector<T>::iterator itr = v2.begin(); itr != v2.end(); ++itr){
+//
+//        }
+//    }
+//    return set1;
+//}
+
 std::vector<std::string> SplitLhsRhs(const std::string& str){
     std::vector<std::string> expr;
     expr.push_back(std::string());
