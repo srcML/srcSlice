@@ -29,6 +29,16 @@ struct FunctionData{
     unsigned int functionNumber;
     unsigned int functionLineNumber;
 };
+
+struct NameLineNumberPairHash {
+public:
+  template <typename T, typename U>
+  std::size_t operator()(const std::pair<T, U> &x) const
+  {
+    return std::hash<U>()(x.second);
+  }
+};
+
 class SliceProfile{
 	public:
 		SliceProfile() = default;
@@ -50,12 +60,12 @@ class SliceProfile{
 		std::string variableName;
 		std::string variableType;
 		
-		std::unordered_set<unsigned int> slines;
+		std::unordered_set<unsigned int> slines; //Deprecated
         
         std::set<unsigned int> def;
         std::set<unsigned int> use;
 		
-        std::vector<NameLineNumberPair> cfunctions;
+        std::unordered_set<NameLineNumberPair, NameLineNumberPairHash> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
 };
