@@ -147,8 +147,11 @@ int main(int argc, char * argv[]) {
   srcSliceHandler handler;
   control.parse(&handler);
   TestSlice(handler.sysDict.dictionary);
-  std::string filename = handler.sysDict.dictionary.find();
-  ComputeInterProcedural(filename);
+  //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
+  for(auto str : handler.sysDict.dictionary){
+  	std::cerr<<str.first<<std::endl;
+  }
+  handler.ComputeInterprocedural("/home/otterwott/Desktop/srcTL/srctlbuild/stack.cpp");
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;
