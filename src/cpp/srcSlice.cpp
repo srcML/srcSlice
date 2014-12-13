@@ -147,8 +147,7 @@ int main(int argc, char * argv[]) {
   srcSliceHandler handler;
   control.parse(&handler);
   TestSlice(handler.sysDict.dictionary);
-  std::string filename = handler.sysDict.dictionary.find();
-  ComputeInterProcedural(filename);
+  handler.ComputeInterprocedural("/Users/tessandrasage/Downloads/stack.cpp.xml");
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;

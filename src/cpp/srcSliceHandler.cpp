@@ -232,7 +232,13 @@ void srcSliceHandler::ProcessExprStmt(){
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     FileIt =sysDict.dictionary.find(f);
+    if(FileIt != sysDict.dictionary.end()){
+        std::cerr<< "FATAL ERROR: Cound not find file. ";
+        return;
+    }
+
     FunctionIt = (FileIt)->second.begin();
+
     FunctionVarMap::iterator FunctionItEnd = (FileIt)->second.end();
     std::string functionName;
     unsigned int argumentIndex = 0;
@@ -293,7 +299,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, 
             for(std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                 newFunctionName = itCF->first;
                 newParameterIndex = itCF->second; 
-                
+
                 if(newFunctionName != functionName){
                     unsigned int hash = functionNameHash(newFunctionName);
                     FunctionVarMap::iterator newFunct = (FileIt->second.find(hash));
