@@ -231,6 +231,7 @@ void srcSliceHandler::ProcessExprStmt(){
  *
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
+<<<<<<< HEAD
     FileIt =sysDict.dictionary.find(f);
     if(FileIt != sysDict.dictionary.end()){
         std::cerr<< "FATAL ERROR: Cound not find file. ";
@@ -239,23 +240,32 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 
     FunctionIt = (FileIt)->second.begin();
 
+=======
+    
+    FileIt = sysDict.dictionary.find(f);
+    FunctionIt = (FileIt)->second.begin();
+    
+>>>>>>> srcML/master
     FunctionVarMap::iterator FunctionItEnd = (FileIt)->second.end();
+    
     std::string functionName;
     unsigned int argumentIndex = 0;
     SliceProfile Spi;
 
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
-        for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){  
+        for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){
+
             if(it->second.visited == false){       
                 for(std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
+                    
                     functionName = itCF->first;
                     argumentIndex = itCF->second;
-                    Spi = ArgumentProfile(FunctionIt, argumentIndex);
-                    it->second.slines = SetUnion(it->second.slines, Spi.slines);
-                    it->second.cfunctions = SetUnion(it->second.cfunctions, Spi.cfunctions);
-                    it->second.aliases = SetUnion(it->second.aliases, Spi.aliases);
-                    it->second.dvars = SetUnion(it->second.dvars, Spi.dvars);
-                    }
+                    //Spi = ArgumentProfile(FunctionIt, argumentIndex);
+                    SetUnion(it->second.slines, Spi.slines);
+                    SetUnion(it->second.cfunctions, Spi.cfunctions);
+                    SetUnion(it->second.aliases, Spi.aliases);
+                    SetUnion(it->second.dvars, Spi.dvars);
+                }
                 it->second.visited = true;
             } 
         }
@@ -268,7 +278,7 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
  *ArgumentProfile
  *@param functIt- iterator to the FunctionVarMap, parameterIndex- index of the parameter 
  @Return SliceProfile of the variable
- *
+  *
  *
  *
  *
