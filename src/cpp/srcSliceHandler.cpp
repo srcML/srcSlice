@@ -4,7 +4,7 @@
 /**
  * Find
  * @param varName - Name of the variable whose slice profile we want
- * @Return Pointer to Slice Profile or Null
+ * @return Pointer to Slice Profile or Null
  * Find function takes a variable name and searches first the local table to the function it was in
  * and if it's not found there, then it searches the global table to see if it's in there.
  * If neither has the variable, it returns null otherwise returns a pointer to the slice profile
@@ -87,7 +87,7 @@ void srcSliceHandler::GetCallData(){
                         std::remove_if(spltStr.begin(), spltStr.end(), [](const char ch){return !std::isalnum(ch);}), 
                         spltStr.end());
                     if(!spltStr.empty()){//If the string isn't empty, we got a good variable and can insert it.
-                        sp->cfunctions.push_back(std::make_pair(spltStr, numArgs));
+                        sp->cfunctions.insert(std::make_pair(spltStr, numArgs));
                         std::size_t pos = currentCallArgData.first.rfind(str);
                         if(pos != std::string::npos){
                             currentCallArgData.first.erase(pos, str.size()); //remove the argument from the string so it won't concat with the next
@@ -256,7 +256,8 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
                 it->second.visited = true;
             } 
         }
-    }      
+    }
+    
 }
 
 
