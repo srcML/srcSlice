@@ -51,11 +51,11 @@ void srcSliceHandler::ProcessDeclStmt(){
         if(sp){
             varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
             //varIt->second.def.insert(currentDeclStmt.second);
-            sp->slines.insert(currentDeclStmt.second);
-            //sp->use.insert(currentDeclStmt.second);
+            //sp->slines.insert(currentDeclStmt.second);
+            sp->use.insert(currentDeclStmt.second);
             if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
                 dirtyAlias = true;
-                varIt->second.lastInsertedAlias = sp->aliases.insert(varIt->second.variableName).first;
+                varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
             }else{
                 sp->dvars.insert(varIt->second.variableName);
             }
@@ -142,6 +142,7 @@ void srcSliceHandler::GetFunctionData(){
 * creates a new slice profile and stores data about decle statement inside.
 */
 void srcSliceHandler::GetDeclStmtData(){
+    
     if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
         //functionTmplt.declstmt.type = currentCallArgData.first; //store type
         //agglomerate string into type. Clear when we exit the decl_stmt
@@ -177,16 +178,17 @@ void srcSliceHandler::GetDeclStmtData(){
 void srcSliceHandler::ProcessExprStmt(){
     auto lhsrhs = SplitLhsRhs(currentExprStmt.first);
     auto resultVecl = SplitOnTok(lhsrhs.front(), "+<.*->&");
+    size_t dereferenced = lhsrhs.front().find("*");
     SliceProfile* splIt(nullptr);        
     //First, take the left hand side and mark sline information. Doing it first because later I'll be iterating purely
     //over the rhs.
-    for(auto rVecIt = resultVecl.begin(); rVecIt!= resultVecl.end(); ++rVecIt){            
+    for(auto rVecIt = resultVecl.begin(); rVecIt!= resultVecl.end(); ++rVecIt){
         splIt = Find(*rVecIt);
         if(splIt){ //Found it so add statement line.
             splIt->slines.insert(currentExprStmt.second);
             splIt->def.insert(currentExprStmt.second);
             break; //found it, don't care about the rest (ex. in: bottom -> next -- all I need is bottom.)
-        }            
+        }
     }
     //Doing rhs now. First check to see if there's anything to process
     if(splIt){
@@ -195,24 +197,24 @@ void srcSliceHandler::ProcessExprStmt(){
             if(splIt->variableName != *rVecIt){//lhs != rhs
                 auto sprIt = Find(*rVecIt);//find the sp for the rhs
                 if(sprIt){ //lvalue depends on this rvalue
-                    if(!splIt->potentialAlias){
+                    if(!splIt->potentialAlias || !(dereferenced == std::string::npos)){ //It is not potentially a reference and if it is, it must not have been dereferenced
                         sprIt->dvars.insert(splIt->variableName); //it's not an alias so it's a dvar
                     }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
-                        dirtyAlias = true;
-                        sprIt->lastInsertedAlias = sprIt->aliases.insert(splIt->variableName).first;
+                        //dirtyAlias = true;
+                        splIt->lastInsertedAlias = splIt->aliases.insert(sprIt->variableName).first;
                     }
                     sprIt->slines.insert(currentExprStmt.second);
-                    sprIt->use.insert(currentExprStmt.second);                            
+                    sprIt->use.insert(currentExprStmt.second);           
                     if(sprIt->potentialAlias){//Union things together. If this was an alias of anoter thing, update the other thing
                         if(!sprIt->aliases.empty()){
-                            if(!dirtyAlias){
-                                auto spaIt = FunctionIt->second.find(*sprIt->lastInsertedAlias); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
+                                std::cerr<<"Name1: "<<*(sprIt->lastInsertedAlias); //Get vars that sprit aliases
+                                auto spaIt = FunctionIt->second.find(*(sprIt->lastInsertedAlias)); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
                                 if(spaIt != FunctionIt->second.end()){
+                                    std::cerr<<"Name: "<<spaIt->second.variableName<<" "<<splIt->variableName<<std::endl;
                                     spaIt->second.dvars.insert(splIt->variableName);
                                     spaIt->second.use.insert(currentExprStmt.second);  
                                     spaIt->second.slines.insert(currentExprStmt.second);
                                 }
-                            }
                         }
                     }
                 }
@@ -233,6 +235,10 @@ void srcSliceHandler::ProcessExprStmt(){
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     
     FileIt = sysDict.dictionary.find(f);
+    if(FileIt == sysDict.dictionary.end()){
+        std::cerr<<"FATAL ERROR";
+        return;
+    }
     FunctionIt = (FileIt)->second.begin();
     
     FunctionVarMap::iterator FunctionItEnd = (FileIt)->second.end();

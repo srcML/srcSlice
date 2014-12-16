@@ -75,7 +75,7 @@ private :
 
     bool dirtyAlias;
     bool potentialAlias;
-
+    
     /*These along with triggerfield make up the meat of this slicer.Check the triggerfield for context (E.g., triggerField[init])
      *and then once you know the right tags are open, check the correct line/string pair to see what the name is
      *at that position and its line number to be stored in the slice profile*/ 
