@@ -39,7 +39,7 @@ private :
         argument_list, call, ctrlflow, endflow, name, function, 
         argument, index, block, type, init, op, 
         literal, modifier, member_list, classn, preproc,
-        whileloop, forloop, nonterminal, empty, 
+        whileloop, forloop, ifcond, nonterminal, empty, 
         MAXENUMVALUE = empty};
 
     unsigned int fileNumber;
@@ -237,6 +237,9 @@ public:
         }else if (lname == "for"){
             ++triggerField[forloop];
             controlFlowLineNum.push(lineNum);
+        }else if (lname == "if"){
+            ++triggerField[ifcond];
+            controlFlowLineNum.push(lineNum);
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
             triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
@@ -366,12 +369,17 @@ public:
                 ++numArgs; //we exited a call but we're still in another call. Increment to make up for decrementing when we entered the second call.
             }
         }else if (lname == "while"){
-            std::cerr<<controlFlowLineNum.top()<<" "<<lineNum;
-            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum));
+            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
             controlFlowLineNum.pop();
             --triggerField[whileloop];
         }else if (lname == "for"){
+            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+            controlFlowLineNum.pop();
             --triggerField[forloop];
+        }else if (lname == "if"){
+            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+            controlFlowLineNum.pop();
+            --triggerField[ifcond];
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
             || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){

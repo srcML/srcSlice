@@ -151,7 +151,7 @@ int main(int argc, char * argv[]) {
   for(auto str : handler.sysDict.dictionary){
   	std::cerr<<str.first<<std::endl;
   }
-  handler.ComputeInterprocedural("/home/otterwott/Desktop/srcTL/srctlbuild/stack.cpp");
+  handler.ComputeInterprocedural("SlicerTestSample.cpp");
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;

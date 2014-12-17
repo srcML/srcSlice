@@ -249,13 +249,12 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
         for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){
-
             if(it->second.visited == false){       
                 for(std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                     
                     functionName = itCF->first;
                     argumentIndex = itCF->second;
-                    //Spi = ArgumentProfile(FunctionIt, argumentIndex);
+                    Spi = ArgumentProfile(FunctionIt, argumentIndex);
                     SetUnion(it->second.slines, Spi.slines);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
                     SetUnion(it->second.aliases, Spi.aliases);
@@ -315,5 +314,6 @@ SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, 
             it->second.visited = true;
         }
     }
-return Spi;
+    std::cerr<<"here"<<std::endl;
+    return Spi;
 }
