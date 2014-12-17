@@ -39,7 +39,8 @@ private :
         argument_list, call, ctrlflow, endflow, name, function, 
         argument, index, block, type, init, op, 
         literal, modifier, member_list, classn, preproc,
-        nonterminal, empty, MAXENUMVALUE = empty};
+        whileloop, forloop, nonterminal, empty, 
+        MAXENUMVALUE = empty};
 
     unsigned int fileNumber;
     unsigned int numArgs;
@@ -54,7 +55,7 @@ private :
 
     /*keeps track of which functioni has been called. Useful for when argument slice profiles need to be updated*/
     std::stack<std::string> nameOfCurrentClldFcn;
-
+    std::stack<unsigned int> controlFlowLineNum;
     /*These two iterators keep track of where we are inside of the system dictionary. They're primarily so that
      *there's no need to do any nasty map.finds on the dictionary (since it's a nested map of maps). These must
      *be updated as the file is parsed*/
@@ -75,7 +76,7 @@ private :
 
     bool dirtyAlias;
     bool potentialAlias;
-    
+
     /*These along with triggerfield make up the meat of this slicer.Check the triggerfield for context (E.g., triggerField[init])
      *and then once you know the right tags are open, check the correct line/string pair to see what the name is
      *at that position and its line number to be stored in the slice profile*/ 
@@ -103,10 +104,12 @@ private :
 public:
     void ComputeInterprocedural(const std::string&);
     SystemDictionary sysDict;
+    unsigned int lineNum;
     srcSliceHandler(){
         fileNumber = 0;
         numArgs = 0;
         constructorNum = 0;
+        lineNum = 0;
 
         dirtyAlias = false;
         isACallName = false;
@@ -184,7 +187,7 @@ public:
                                 int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                                 const struct srcsax_attribute * attributes) {
           
-        unsigned int lineNum = 0;
+        
         if(num_attributes){
             lineNum = strtoul(attributes[0].value, NULL, 0);
         }
@@ -196,7 +199,6 @@ public:
         if(lnspace == "cpp"){
             ++triggerField[preproc];
         }
-
         if(lname == "decl_stmt"){
             currentCallArgData.first.clear();
             ++triggerField[decl_stmt];
@@ -229,6 +231,12 @@ public:
             }
             isACallName = true;
             ++triggerField[call];
+        }else if (lname == "while"){
+            ++triggerField[whileloop];
+            controlFlowLineNum.push(lineNum);
+        }else if (lname == "for"){
+            ++triggerField[forloop];
+            controlFlowLineNum.push(lineNum);
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
             triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
@@ -357,6 +365,13 @@ public:
             if(triggerField[call]){
                 ++numArgs; //we exited a call but we're still in another call. Increment to make up for decrementing when we entered the second call.
             }
+        }else if (lname == "while"){
+            std::cerr<<controlFlowLineNum.top()<<" "<<lineNum;
+            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum));
+            controlFlowLineNum.pop();
+            --triggerField[whileloop];
+        }else if (lname == "for"){
+            --triggerField[forloop];
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
             || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){

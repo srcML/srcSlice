@@ -84,5 +84,6 @@ class SystemDictionary{
 		VarMap globalMap;
 		std::unordered_map<unsigned int, std::string> fileTable;
 		std::unordered_map<unsigned int, FunctionData> functionTable;
+        std::vector<std::pair<unsigned int, unsigned int>> controledges;
 };
 #endif
