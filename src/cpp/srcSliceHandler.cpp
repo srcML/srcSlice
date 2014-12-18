@@ -231,21 +231,14 @@ void srcSliceHandler::ProcessExprStmt(){
  *
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
-<<<<<<< HEAD
     FileIt =sysDict.dictionary.find(f);
-    if(FileIt != sysDict.dictionary.end()){
-        std::cerr<< "FATAL ERROR: Cound not find file. ";
+    if(FileIt == sysDict.dictionary.end()){
+        std::cerr<< "FATAL ERROR: Cound not find file. \n";
         return;
     }
 
-    FunctionIt = (FileIt)->second.begin();
+    FunctionIt = (FileIt)->second.begin();    
 
-=======
-    
-    FileIt = sysDict.dictionary.find(f);
-    FunctionIt = (FileIt)->second.begin();
-    
->>>>>>> srcML/master
     FunctionVarMap::iterator FunctionItEnd = (FileIt)->second.end();
     
     std::string functionName;

@@ -95,21 +95,10 @@ private :
     void ProcessExprStmt();
     void ProcessConstructorDecl();
     SliceProfile* Find(const std::string&);
-<<<<<<< HEAD
-
-=======
-    
-    
-    
->>>>>>> srcML/master
     SliceProfile ArgumentProfile(FunctionVarMap::iterator , unsigned int );
 
 public:
     void ComputeInterprocedural(const std::string&);
-<<<<<<< HEAD
-
-=======
->>>>>>> srcML/master
     SystemDictionary sysDict;
     srcSliceHandler(){
         fileNumber = 0;
