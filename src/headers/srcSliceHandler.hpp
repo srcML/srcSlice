@@ -100,7 +100,7 @@ private :
     
     
     
-    SliceProfile ArgumentProfile(FunctionVarMap::iterator , unsigned int );
+    SliceProfile ArgumentProfile(std::string, unsigned int);
 
 public:
     void ComputeInterprocedural(const std::string&);
@@ -170,7 +170,7 @@ public:
                            const struct srcsax_attribute * attributes) {
         fileNumber = functionNameHash(attributes[1].value);
         FileIt = sysDict.dictionary.insert(std::make_pair(attributes[1].value, FunctionVarMap())).first; //insert and keep track of most recent.         
-        FunctionIt = FileIt->second.insert(std::make_pair(functionNameHash(std::string(attributes[1].value).append("0")), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
+        FunctionIt = FileIt->second.insert(std::make_pair(std::string(attributes[1].value), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
      * startElementNs
@@ -349,8 +349,8 @@ public:
             currentExprStmt.first.clear();
             
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
-            sysDict.functionTable.insert(std::make_pair(functionTmplt.functionNumber, functionTmplt));
-            FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionNumber, VarMap())).first;
+            std::cerr<<functionTmplt.functionName<<std::endl;
+            FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
             dirtyAlias = false;
             declIndex = 0;
             if(lname == "constructor"){

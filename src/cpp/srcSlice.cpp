@@ -51,9 +51,10 @@ void TestSlice2(const VarMap& mp){
 		std::cerr<<"-------------------------"<<std::endl;
 	}
 }
-void TestSlice(const FileFunctionVarMap& mp){
+void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 	for(FileFunctionVarMap::const_iterator ffvmIt = mp.begin(); ffvmIt != mp.end(); ++ffvmIt){
 		for(FunctionVarMap::const_iterator fvmIt = ffvmIt->second.begin(); fvmIt != ffvmIt->second.end(); ++fvmIt){
+			std::cerr<<fvmIt->first<<std::endl; 
 			for(VarMap::const_iterator vmIt = fvmIt->second.begin(); vmIt != fvmIt->second.end(); ++vmIt){
 				std::cerr<<"-------------------------"<<std::endl;
 				std::cerr<<"Variable: "<<vmIt->first<<std::endl;
@@ -92,7 +93,7 @@ void TestSlice(const FileFunctionVarMap& mp){
 		}
 	}
 }
-
+/*
 void srcSliceToCsv(const SystemDictionary& sd){
 	for(FileFunctionVarMap::const_iterator ffvmIt = sd.dictionary.begin(); ffvmIt != sd.dictionary.end(); ++ffvmIt){
 		//auto fileNameIt = sd.fileTable.find(ffvmIt->first);
@@ -126,7 +127,7 @@ void srcSliceToCsv(const SystemDictionary& sd){
 			}
 		}
 	}	
-}
+}*/
 /**
  * main
  * @param argc number of arguments
@@ -148,11 +149,9 @@ int main(int argc, char * argv[]) {
   control.parse(&handler);
   
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
-  for(auto str : handler.sysDict.dictionary){
-  	std::cerr<<str.first<<std::endl;
-  }
+
   handler.ComputeInterprocedural("SlicerTestSample.cpp");
-  TestSlice(handler.sysDict.dictionary);
+  TestSlice(handler.sysDict.dictionary, handler);
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;

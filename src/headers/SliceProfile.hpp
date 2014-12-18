@@ -8,7 +8,7 @@
 #include <set>
 class SliceProfile;
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
-typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
+typedef std::unordered_map<std::string, VarMap> FunctionVarMap;
 typedef std::unordered_map<std::string, FunctionVarMap> FileFunctionVarMap;
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<std::string, std::string> TypeNamePair;
@@ -42,7 +42,7 @@ public:
 class SliceProfile{
 	public:
 		SliceProfile() = default;
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
+		SliceProfile(unsigned int idx, unsigned int fle, std::string fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
         index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isGlobal(global) {
 			slines.insert(sline);
             dereferenced = false;
@@ -50,7 +50,7 @@ class SliceProfile{
 
 		unsigned int index;
 		unsigned int file;
-		unsigned int function;
+		std::string function;
 		
         std::unordered_set<std::string>::iterator lastInsertedAlias;
 
@@ -83,7 +83,6 @@ class SystemDictionary{
 		FileFunctionVarMap dictionary;
 		VarMap globalMap;
 		std::unordered_map<unsigned int, std::string> fileTable;
-		std::unordered_map<unsigned int, FunctionData> functionTable;
         std::vector<std::pair<unsigned int, unsigned int>> controledges;
 };
 #endif
