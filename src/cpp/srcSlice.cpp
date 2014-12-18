@@ -150,11 +150,17 @@ int main(int argc, char * argv[]) {
 
   handler.ComputeInterprocedural("/Users/tessandrasage/srcTools/srcSlice/src/cpp/srcSliceHandler.cpp");
 
+
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
   for(auto str : handler.sysDict.dictionary){
   	std::cerr<<str.first<<std::endl;
   }
+
   //handler.ComputeInterprocedural("/home/otterwott/Desktop/srcTL/srctlbuild/stack.cpp");
+
+
+  //handler.ComputeInterprocedural("SlicerTestSample.cpp");
+  //TestSlice(handler.sysDict.dictionary);
 
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);

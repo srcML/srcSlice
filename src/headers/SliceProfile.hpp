@@ -45,6 +45,7 @@ class SliceProfile{
 		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
         index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isGlobal(global) {
 			slines.insert(sline);
+            dereferenced = false;
 		}
 
 		unsigned int index;
@@ -54,6 +55,8 @@ class SliceProfile{
         std::unordered_set<std::string>::iterator lastInsertedAlias;
 
 		bool potentialAlias;
+        bool dereferenced;
+
         bool isGlobal;
         bool visited;
 
@@ -81,5 +84,6 @@ class SystemDictionary{
 		VarMap globalMap;
 		std::unordered_map<unsigned int, std::string> fileTable;
 		std::unordered_map<unsigned int, FunctionData> functionTable;
+        std::vector<std::pair<unsigned int, unsigned int>> controledges;
 };
 #endif

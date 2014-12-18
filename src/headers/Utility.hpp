@@ -5,8 +5,18 @@
 #include <string>
 #include <vector>
 
-template <typename T, typename U = unsigned int> 
-void SetUnion(std::unordered_set<T, U>& set1, std::unordered_set<T, U> set2){
+template <typename T> 
+void SetUnion(std::unordered_set<T>& set1, std::unordered_set<T> set2){
+    if(set1.empty() || set2.empty()){
+        return;
+    }
+    for(typename std::unordered_set<T>::iterator itr = set2.begin(); itr != set2.end(); ++itr){
+        set1.insert(*itr);
+    }
+}
+
+template <typename T, typename U>
+void SetUnion(std::unordered_set<T, U>& set1, std::unordered_set<T, U>& set2){
     if(set1.empty() || set2.empty()){
         return;
     }
@@ -14,7 +24,6 @@ void SetUnion(std::unordered_set<T, U>& set1, std::unordered_set<T, U> set2){
         set1.insert(*itr);
     }
 }
-
 
 std::vector<std::string> SplitLhsRhs(const std::string& str){
     std::vector<std::string> expr;

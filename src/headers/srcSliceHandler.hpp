@@ -39,11 +39,13 @@ private :
         argument_list, call, ctrlflow, endflow, name, function, 
         argument, index, block, type, init, op, 
         literal, modifier, member_list, classn, preproc,
-        nonterminal, empty, MAXENUMVALUE = empty};
+        whileloop, forloop, ifcond, nonterminal, empty, 
+        MAXENUMVALUE = empty};
 
     unsigned int fileNumber;
     unsigned int numArgs;
-    
+    unsigned int declIndex;
+
     int constructorNum;
     
     /*Hashing function/file names. This will accomplish that.*/
@@ -54,7 +56,7 @@ private :
 
     /*keeps track of which functioni has been called. Useful for when argument slice profiles need to be updated*/
     std::stack<std::string> nameOfCurrentClldFcn;
-
+    std::stack<unsigned int> controlFlowLineNum;
     /*These two iterators keep track of where we are inside of the system dictionary. They're primarily so that
      *there's no need to do any nasty map.finds on the dictionary (since it's a nested map of maps). These must
      *be updated as the file is parsed*/
@@ -100,10 +102,14 @@ private :
 public:
     void ComputeInterprocedural(const std::string&);
     SystemDictionary sysDict;
+    unsigned int lineNum;
     srcSliceHandler(){
         fileNumber = 0;
         numArgs = 0;
+        declIndex = 0;
+
         constructorNum = 0;
+        lineNum = 0;
 
         dirtyAlias = false;
         isACallName = false;
@@ -181,7 +187,7 @@ public:
                                 int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                                 const struct srcsax_attribute * attributes) {
           
-        unsigned int lineNum = 0;
+        
         if(num_attributes){
             lineNum = strtoul(attributes[0].value, NULL, 0);
         }
@@ -193,9 +199,9 @@ public:
         if(lnspace == "cpp"){
             ++triggerField[preproc];
         }
-
         if(lname == "decl_stmt"){
             currentCallArgData.first.clear();
+            ++declIndex; //to keep track of index of declarations
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
             if(lname == "constructor"){
@@ -226,6 +232,15 @@ public:
             }
             isACallName = true;
             ++triggerField[call];
+        }else if (lname == "while"){
+            ++triggerField[whileloop];
+            controlFlowLineNum.push(lineNum);
+        }else if (lname == "for"){
+            ++triggerField[forloop];
+            controlFlowLineNum.push(lineNum);
+        }else if (lname == "if"){
+            ++triggerField[ifcond];
+            controlFlowLineNum.push(lineNum);
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
             triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
@@ -334,6 +349,7 @@ public:
             sysDict.functionTable.insert(std::make_pair(functionTmplt.functionNumber, functionTmplt));
             FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionNumber, VarMap())).first;
             dirtyAlias = false;
+            declIndex = 0;
             if(lname == "constructor"){
                 isConstructor = false;
             }
@@ -354,6 +370,18 @@ public:
             if(triggerField[call]){
                 ++numArgs; //we exited a call but we're still in another call. Increment to make up for decrementing when we entered the second call.
             }
+        }else if (lname == "while"){
+            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+            controlFlowLineNum.pop();
+            --triggerField[whileloop];
+        }else if (lname == "for"){
+            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+            controlFlowLineNum.pop();
+            --triggerField[forloop];
+        }else if (lname == "if"){
+            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+            controlFlowLineNum.pop();
+            --triggerField[ifcond];
         }
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
             || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
