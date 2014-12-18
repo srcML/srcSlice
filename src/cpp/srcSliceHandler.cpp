@@ -239,22 +239,16 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
         std::cerr<<"FATAL ERROR";
         return;
     }
+    
     FunctionIt = (FileIt)->second.begin();
-    
     FunctionVarMap::iterator FunctionItEnd = (FileIt)->second.end();
-    
-    std::string functionName;
-    unsigned int argumentIndex = 0;
-    SliceProfile Spi;
 
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
         for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){
-            if(it->second.visited == false){       
-                for(std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
-                    
-                    functionName = itCF->first;
-                    argumentIndex = itCF->second;
-                    Spi = ArgumentProfile(FunctionIt, argumentIndex);
+            if(it->second.visited == false){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
+                for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
+                    unsigned int argumentIndex = itCF->second;
+                    SliceProfile Spi = ArgumentProfile(FunctionIt, argumentIndex);
                     SetUnion(it->second.slines, Spi.slines);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
                     SetUnion(it->second.aliases, Spi.aliases);
@@ -280,11 +274,11 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 
 
 SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, unsigned int parameterIndex){
+    
     VarMap::iterator v = functIt->second.begin();
     SliceProfile Spi;
-    std::string newFunctionName;
-    unsigned int newParameterIndex;
     std::string functionName;
+
     std::unordered_map<unsigned int, FunctionData>::iterator funcNameItr = sysDict.functionTable.find(functIt->first);
     if(funcNameItr != sysDict.functionTable.end()){
         functionName = funcNameItr->second.functionName;
@@ -296,22 +290,23 @@ SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, 
 
     for(VarMap::iterator it = v; it != functIt->second.end(); ++it){
         if (it->second.index == parameterIndex){
-            Spi = it->second; 
-            return Spi;
-        }
-        else{
-            for(std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
-                newFunctionName = itCF->first;
-                newParameterIndex = itCF->second; 
-                
-                if(newFunctionName != functionName){
-                    unsigned int hash = functionNameHash(newFunctionName);
-                    FunctionVarMap::iterator newFunct = (FileIt->second.find(hash));
-                    if(newFunct != FileIt->second.end())
-                        Spi = ArgumentProfile(newFunct, newParameterIndex);
-                 }
-            } 
-            it->second.visited = true;
+            if(it->second.visited == true){
+                Spi = it->second; 
+                return Spi;
+            }else{//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto
+                for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
+                    std::string newFunctionName = itCF->first;
+                    unsigned int newParameterIndex = itCF->second; 
+                    if(newFunctionName != functionName){
+                        unsigned int hash = functionNameHash(newFunctionName);
+                        FunctionVarMap::iterator newFunct = (FileIt->second.find(hash));
+                        if(newFunct != FileIt->second.end()){
+                            Spi = ArgumentProfile(newFunct, newParameterIndex);
+                        }
+                    }
+                }
+                it->second.visited = true;
+            }
         }
     }
     std::cerr<<"here"<<std::endl;

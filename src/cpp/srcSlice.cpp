@@ -146,12 +146,13 @@ int main(int argc, char * argv[]) {
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
-  TestSlice(handler.sysDict.dictionary);
+  
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
   for(auto str : handler.sysDict.dictionary){
   	std::cerr<<str.first<<std::endl;
   }
   handler.ComputeInterprocedural("SlicerTestSample.cpp");
+  TestSlice(handler.sysDict.dictionary);
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;
