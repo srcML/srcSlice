@@ -81,7 +81,7 @@ void srcSliceHandler::GetCallData(){
             if(sp){
                 sp->slines.insert(currentCallArgData.second);
                 sp->use.insert(currentCallArgData.second);
-                sp->index = currentCallArgData.second - functionTmplt.functionLineNumber;
+                sp->index = declIndex;
                 for(std::string spltStr : spltVec){ //iterate over strings split from the function being called (becaused it might be object -> function)
                     spltStr.erase(//remove anything weird like empty arguments.
                         std::remove_if(spltStr.begin(), spltStr.end(), [](const char ch){return !std::isalnum(ch);}), 
@@ -130,8 +130,8 @@ void srcSliceHandler::GetFunctionData(){
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
-            SliceProfile((declIndex+1), fileNumber, 
-                currentFunctionBody.functionName, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
+            SliceProfile((declIndex), fileNumber, 
+                functionTmplt.functionName, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
         varIt->second.def.insert(currentDeclStmt.second);
     }
 }
@@ -154,14 +154,14 @@ void srcSliceHandler::GetDeclStmtData(){
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
             varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
-                SliceProfile((declIndex+1), fileNumber, 
+                SliceProfile((declIndex), fileNumber, 
                     functionTmplt.functionName, currentDeclStmt.second, 
                     currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
         }else{ //TODO: Handle def use for globals
             //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
-            SliceProfile((declIndex+1), fileNumber, 
+            SliceProfile((declIndex), fileNumber, 
                 functionTmplt.functionName, currentDeclStmt.second, 
                 currentDeclStmt.first, potentialAlias, inGlobalScope)));
         }
@@ -248,7 +248,7 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
             if(it->second.visited == false){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
                 for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                     unsigned int argumentIndex = itCF->second;
-                    //std::cerr<<"caller: "<<itCF->first<<std::endl;
+                    std::cerr<<"caller: "<<itCF->first<<std::endl;
                     SliceProfile Spi = ArgumentProfile(itCF->first, argumentIndex);
                     SetUnion(it->second.slines, Spi.slines);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
@@ -287,8 +287,8 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
     }
     VarMap::iterator v = funcIt->second.begin();    
     for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
-        //std::cerr<<"Callee "<<it->second.variableName<<" "<<it->second.index<<" "<<parameterIndex<<std::endl<<std::endl;
-        if (it->second.index == parameterIndex){
+        std::cerr<<"Callee "<<it->second.variableName<<" "<<it->second.index<<" "<<parameterIndex-1<<std::endl<<std::endl;
+        if (it->second.index == (parameterIndex)){
             if(it->second.visited == true){
                 Spi = it->second; 
                 return Spi;

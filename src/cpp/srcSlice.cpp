@@ -149,9 +149,9 @@ int main(int argc, char * argv[]) {
   control.parse(&handler);
   
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
-
   handler.ComputeInterprocedural("SlicerTestSample.cpp");
   TestSlice(handler.sysDict.dictionary, handler);
+  
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);
   return 0;

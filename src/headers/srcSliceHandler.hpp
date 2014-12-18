@@ -170,7 +170,8 @@ public:
                            const struct srcsax_attribute * attributes) {
         fileNumber = functionNameHash(attributes[1].value);
         FileIt = sysDict.dictionary.insert(std::make_pair(attributes[1].value, FunctionVarMap())).first; //insert and keep track of most recent.         
-        FunctionIt = FileIt->second.insert(std::make_pair(std::string(attributes[1].value), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
+        //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
+        FunctionIt = FileIt->second.insert(std::make_pair(std::string("GLOBALS"), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
      * startElementNs
@@ -249,6 +250,7 @@ public:
             triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
             if (lname == "param"){
                     ++triggerField[param];
+                    ++declIndex;
             }else if(lname == "member_list"){
                     ++triggerField[member_list];
             }else if(lname == "class"){
@@ -349,8 +351,8 @@ public:
             currentExprStmt.first.clear();
             
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
-            std::cerr<<functionTmplt.functionName<<std::endl;
-            FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
+            //std::cerr<<functionTmplt.functionName<<std::endl;
+            
             dirtyAlias = false;
             declIndex = 0;
             if(lname == "constructor"){
@@ -440,6 +442,9 @@ public:
                 --triggerField[op];
             }
             else if (lname == "name"){
+                if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
+                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
+                }
                 //Get Function names and arguments
                 if(triggerField[function]){
                     GetFunctionData();
