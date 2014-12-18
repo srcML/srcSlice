@@ -44,7 +44,8 @@ private :
 
     unsigned int fileNumber;
     unsigned int numArgs;
-    
+    unsigned int declIndex;
+
     int constructorNum;
     
     /*Hashing function/file names. This will accomplish that.*/
@@ -108,6 +109,8 @@ public:
     srcSliceHandler(){
         fileNumber = 0;
         numArgs = 0;
+        declIndex = 0;
+
         constructorNum = 0;
         lineNum = 0;
 
@@ -201,6 +204,7 @@ public:
         }
         if(lname == "decl_stmt"){
             currentCallArgData.first.clear();
+            ++declIndex; //to keep track of index of declarations
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
             if(lname == "constructor"){
@@ -348,6 +352,7 @@ public:
             sysDict.functionTable.insert(std::make_pair(functionTmplt.functionNumber, functionTmplt));
             FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionNumber, VarMap())).first;
             dirtyAlias = false;
+            declIndex = 0;
             if(lname == "constructor"){
                 isConstructor = false;
             }

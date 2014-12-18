@@ -130,7 +130,7 @@ void srcSliceHandler::GetFunctionData(){
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
-            SliceProfile(currentParam.second - functionTmplt.functionLineNumber, fileNumber, 
+            SliceProfile(declIndex, fileNumber, 
                 currentFunctionBody.functionLineNumber, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
         varIt->second.def.insert(currentDeclStmt.second);
     }
@@ -154,14 +154,14 @@ void srcSliceHandler::GetDeclStmtData(){
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
             varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
-                SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
+                SliceProfile(declIndex, fileNumber, 
                     functionTmplt.functionNumber, currentDeclStmt.second, 
                     currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
         }else{ //TODO: Handle def use for globals
             //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
-            SliceProfile(currentDeclStmt.second - functionTmplt.functionLineNumber, fileNumber, 
+            SliceProfile(declIndex, fileNumber, 
                 functionTmplt.functionNumber, currentDeclStmt.second, 
                 currentDeclStmt.first, potentialAlias, inGlobalScope)));
         }
@@ -289,6 +289,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(FunctionVarMap::iterator functIt, 
     }
 
     for(VarMap::iterator it = v; it != functIt->second.end(); ++it){
+        std::cerr<<"Ind: "<<it->second.variableName<<" "<<it->second.index<<" "<<parameterIndex<<std::endl;
         if (it->second.index == parameterIndex){
             if(it->second.visited == true){
                 Spi = it->second; 
