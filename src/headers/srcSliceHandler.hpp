@@ -83,7 +83,7 @@ private :
      *at that position and its line number to be stored in the slice profile*/ 
     std::vector<unsigned short int> triggerField;
     std::string calledFunctionName;
-    NameLineNumberPair currentCallArgData;
+    std::stack<NameLineNumberPair> currentCallArgData;
     NameLineNumberPair currentParam;
     FunctionData currentFunctionBody;
     NameLineNumberPair currentDeclStmt;
