@@ -158,7 +158,7 @@ int main(int argc, char * argv[]) {
   //std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
   //handler.ComputeInterprocedural("SlicerTestSample.cpp");
-  //TestSlice(handler.sysDict.dictionary, handler);
+  TestSlice(handler.sysDict.dictionary, handler);
   
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);

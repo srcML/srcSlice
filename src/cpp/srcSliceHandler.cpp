@@ -74,13 +74,8 @@ void srcSliceHandler::GetCallData(){
     //Get function arguments
     if(triggerField[argument_list] && triggerField[argument] && 
         triggerField[expr] && triggerField[name] && !nameOfCurrentClldFcn.empty()){
-        std::cerr<<"Whatever: "<<currentCallArgData.first<<" "<<nameOfCurrentClldFcn.top()<<std::endl;
-        
-        
         auto strVec = SplitOnTok(currentCallArgData.first, ":+<.*->&=(),"); //Split the current string of call/arguments so we can get the variables being called
         auto spltVec = SplitOnTok(nameOfCurrentClldFcn.top(), ":+<.*->&=(),"); //Split the current string which contains the function name (might be object->function)
-        
-
         for(std::string str : strVec){
             auto sp = Find(str); //check to find sp for the variable being called on fcn
             if(sp){
