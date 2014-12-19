@@ -345,7 +345,7 @@ public:
             potentialAlias = false;
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
-            ProcessExprStmt();
+            //ProcessExprStmt();
             --triggerField[expr_stmt];
             currentCallArgData.first.clear();
             currentExprStmt.first.clear();
@@ -455,7 +455,7 @@ public:
                 }                
                 //Get function arguments
                 if(triggerField[call]){
-                    GetCallData();
+                    //GetCallData();
                 }
                 --triggerField[name];
 
