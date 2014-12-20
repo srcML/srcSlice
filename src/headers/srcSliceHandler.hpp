@@ -350,7 +350,7 @@ public:
             potentialAlias = false;
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
-            ProcessExprStmt();
+            //ProcessExprStmt();
             --triggerField[expr_stmt];
             currentCallArgData.first.clear();
             currentExprStmt.first.clear();

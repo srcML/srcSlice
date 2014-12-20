@@ -74,9 +74,6 @@ void srcSliceHandler::GetCallData(){
     //Get function arguments
     if(triggerField[argument_list] && triggerField[argument] && 
         triggerField[expr] && triggerField[name] && !nameOfCurrentClldFcn.empty()){
-        //std::cerr<<"Hi: "<<currentCallArgData.first<<" "<<nameOfCurrentClldFcn.top()<<std::endl;
-        std::cerr<<"========"<<std::endl;
-
         if(!callArgData.empty()){
             auto sp = Find(callArgData.top().first); //check to find sp for the variable being called on fcn
             if(sp){
@@ -85,6 +82,7 @@ void srcSliceHandler::GetCallData(){
                 sp->index = declIndex;
                 sp->cfunctions.insert(std::make_pair(nameOfCurrentClldFcn.top(), numArgs));
             }
+            callArgData.pop();
         }
     }
 }
