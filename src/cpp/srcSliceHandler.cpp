@@ -164,18 +164,21 @@ void srcSliceHandler::GetDeclStmtData(){
 void srcSliceHandler::ProcessExprStmt(){
 
   if(!opassign){
-    
+    //std::cerr<<"Here1"<<std::endl;
     lhs = Find(currentExprStmt.first);
     if(lhs){ //Found it so add statement line.
-        lhs->slines.insert(currentExprStmt.second);
-        lhs->def.insert(currentExprStmt.second);
+        lhsName = currentExprStmt.first;
+        lhsLine = currentExprStmt.second;
     }
   }else{
         if(!lhs){return;}
+        lhs->slines.insert(currentExprStmt.second);
+        lhs->def.insert(currentExprStmt.second);
+        
         auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
-        if(lhs->variableName != sprIt->variableName){
-
-            if(sprIt){ //lvalue depends on this rvalue
+        if(sprIt){ //lvalue depends on this rvalue
+            //std::cerr<<"Here2"<<std::endl;
+            if(lhs->variableName != sprIt->variableName){    
                 if(!lhs->potentialAlias || dereferenced){ //It is not potentially a reference and if it is, it must not have been dereferenced
                     sprIt->dvars.insert(lhs->variableName); //it's not an alias so it's a dvar
                 }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list

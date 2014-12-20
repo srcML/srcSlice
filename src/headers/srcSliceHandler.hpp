@@ -47,7 +47,11 @@ private:
     unsigned int declIndex;
 
     int constructorNum;
-    SliceProfile* lhs;    
+
+    SliceProfile* lhs;
+    std::string lhsName;
+    unsigned int lhsLine;
+
     /*Hashing function/file names. This will accomplish that.*/
     std::hash<std::string> functionNameHash;
 
@@ -364,6 +368,8 @@ public:
             lhs = nullptr;
             opassign = false;
             dereferenced = false;
+            lhsLine = 0;
+            lhsName.clear();
             currentCallArgData.first.clear();
             currentExprStmt.first.clear();
             
@@ -493,6 +499,10 @@ public:
                 }
                 if(triggerField[expr_stmt] && triggerField[expr]){
                     ProcessExprStmt();
+                    if(!opassign && lhs){
+                        lhs->slines.insert(currentExprStmt.second);
+                        lhs->use.insert(currentExprStmt.second);
+                    }
                     //std::cerr<<"Thing: "<<currentExprStmt.first<<std::endl;
                 }
                 --triggerField[name];
