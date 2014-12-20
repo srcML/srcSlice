@@ -31,7 +31,7 @@
 #include <stack>
 
 class srcSliceHandler : public srcSAXHandler {
-private :
+private:
     /*ParserState is a set of enums corresponding to srcML tags. Primarily, they're for addressing into the 
      *triggerField vector and figuring out which tags have been seen. It keeps a count of how many of each
      *tag is currently open. Increments at a start tag and decrements at an end tag*/
@@ -83,7 +83,8 @@ private :
      *at that position and its line number to be stored in the slice profile*/ 
     std::vector<unsigned short int> triggerField;
     std::string calledFunctionName;
-    std::stack<NameLineNumberPair> currentCallArgData;
+    std::stack<NameLineNumberPair> callArgData;
+    NameLineNumberPair currentCallArgData;
     NameLineNumberPair currentParam;
     FunctionData currentFunctionBody;
     NameLineNumberPair currentDeclStmt;
@@ -204,7 +205,6 @@ public:
             ++triggerField[preproc];
         }
         if(lname == "decl_stmt"){
-            currentCallArgData.first.clear();
             ++declIndex; //to keep track of index of declarations
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
@@ -217,7 +217,6 @@ public:
             ++triggerField[function];
         }else if (lname == "expr_stmt"){
             currentExprStmt.first.clear();
-            currentCallArgData.first.clear();
             ++triggerField[expr_stmt];
         }else if (lname == "parameter_list"){
             ++triggerField[parameter_list];
@@ -259,6 +258,9 @@ public:
                     ++triggerField[index];
             }else if(lname == "operator"){
                     ++triggerField[op];
+                    if(triggerField[call]){
+                        currentCallArgData.first.clear();
+                    }
             }else if (lname == "block"){ //So we can discriminate against things in or outside of blocks
                     //currentFunctionBody.functionName.clear();
                     ++triggerField[block];
@@ -267,9 +269,10 @@ public:
                     ++triggerField[init];
             }else if (lname == "argument"){
                     ++numArgs;
+                    currentCallArgData.first.clear();
                     calledFunctionName.clear();
-                    currentCallArgData.first.append(":"); //denote arguments so that I can parse them out later.
-                    currentDeclStmt.first.append(":"); //same as above.
+                    //currentCallArgData.first.append(":"); //denote arguments so that I can parse them out later.
+                    //currentDeclStmt.first.append(":"); //same as above.
                     ++triggerField[argument];
             }else if (lname == "literal"){
                     ++triggerField[literal];
@@ -301,7 +304,9 @@ public:
      */
     virtual void charactersUnit(const char * ch, int len) {
 
-        if((triggerField[decl_stmt] || triggerField[expr_stmt]) && (triggerField[name] || triggerField[op]) && !(triggerField[index] || triggerField[preproc])){
+        if((triggerField[decl_stmt] || triggerField[expr_stmt]) && triggerField[call] && 
+            (triggerField[name]) && triggerField[argument_list] &&
+            !(triggerField[index] || triggerField[op] || triggerField[preproc])){
             currentCallArgData.first.append(ch, len);
         }
         if((triggerField[function] && triggerField[name]) && !(triggerField[block] || triggerField[argument_list] 
@@ -410,6 +415,7 @@ public:
                 }
                 --triggerField[modifier];
             }else if (lname == "argument"){
+                currentCallArgData.first.clear();
                 calledFunctionName.clear();
                 --triggerField[argument];
             }else if (lname == "block"){
@@ -444,6 +450,10 @@ public:
             else if (lname == "name"){
                 if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
                     FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
+                }
+                if(triggerField[call] && triggerField[argument]){
+                    //std::cerr<<"Name: "<<currentCallArgData.first<<std::endl;
+                    callArgData.push(currentCallArgData);
                 }
                 //Get Function names and arguments
                 if(triggerField[function]){

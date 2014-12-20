@@ -74,31 +74,20 @@ void srcSliceHandler::GetCallData(){
     //Get function arguments
     if(triggerField[argument_list] && triggerField[argument] && 
         triggerField[expr] && triggerField[name] && !nameOfCurrentClldFcn.empty()){
-        auto strVec = SplitOnTok(currentCallArgData.first, ":+<.*->&=(),"); //Split the current string of call/arguments so we can get the variables being called
-        auto spltVec = SplitOnTok(nameOfCurrentClldFcn.top(), ":+<.*->&=(),"); //Split the current string which contains the function name (might be object->function)
-        for(std::string str : strVec){
-            auto sp = Find(str); //check to find sp for the variable being called on fcn
+        //std::cerr<<"Hi: "<<currentCallArgData.first<<" "<<nameOfCurrentClldFcn.top()<<std::endl;
+        std::cerr<<"========"<<std::endl;
+
+        if(!callArgData.empty()){
+            auto sp = Find(callArgData.top().first); //check to find sp for the variable being called on fcn
             if(sp){
-                sp->slines.insert(currentCallArgData.second);
-                sp->use.insert(currentCallArgData.second);
+                sp->slines.insert(callArgData.top().second);
+                sp->use.insert(callArgData.top().second);
                 sp->index = declIndex;
-                for(std::string spltStr : spltVec){ //iterate over strings split from the function being called (becaused it might be object -> function)
-                    spltStr.erase(//remove anything weird like empty arguments.
-                        std::remove_if(spltStr.begin(), spltStr.end(), [](const char ch){return !std::isalnum(ch);}), 
-                        spltStr.end());
-                    if(!spltStr.empty()){//If the string isn't empty, we got a good variable and can insert it.
-                        sp->cfunctions.insert(std::make_pair(spltStr, numArgs));
-                        std::size_t pos = currentCallArgData.first.rfind(str);
-                        if(pos != std::string::npos){
-                            currentCallArgData.first.erase(pos, str.size()); //remove the argument from the string so it won't concat with the next
-                        }
-                    }
-                }
+                sp->cfunctions.insert(std::make_pair(nameOfCurrentClldFcn.top(), numArgs));
             }
         }
     }
 }
-
 /**
 * GetFunctionData
 * Knows proper constraints for obtaining function's return type, name, and arguments. Stores all of this in
