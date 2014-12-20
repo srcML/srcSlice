@@ -47,7 +47,7 @@ private:
     unsigned int declIndex;
 
     int constructorNum;
-    
+    SliceProfile* lhs;    
     /*Hashing function/file names. This will accomplish that.*/
     std::hash<std::string> functionNameHash;
 
@@ -74,10 +74,12 @@ private:
     /*bool to tell us when we're not in a function*/
     bool inGlobalScope;
     bool isACallName;
+    bool opassign;
 
     bool dirtyAlias;
     bool potentialAlias;
 
+    bool dereferenced;
     /*These along with triggerfield make up the meat of this slicer.Check the triggerfield for context (E.g., triggerField[init])
      *and then once you know the right tags are open, check the correct line/string pair to see what the name is
      *at that position and its line number to be stored in the slice profile*/ 
@@ -114,7 +116,11 @@ public:
 
         constructorNum = 0;
         lineNum = 0;
-
+        
+        lhs = nullptr;
+        
+        dereferenced = false;
+        opassign = false;
         dirtyAlias = false;
         isACallName = false;
         isConstructor = false;
@@ -259,7 +265,11 @@ public:
             }else if(lname == "operator"){
                     ++triggerField[op];
                     if(triggerField[call]){
-                        currentCallArgData.first.clear();
+                        currentCallArgData.first.clear(); //Don't want the operators. But do make a caveat for ->
+                    }
+                    if(triggerField[expr_stmt]){
+
+                        currentExprStmt.first.clear(); //Don't want the operators. But do make a caveat for ->
                     }
             }else if (lname == "block"){ //So we can discriminate against things in or outside of blocks
                     //currentFunctionBody.functionName.clear();
@@ -319,7 +329,7 @@ public:
         if(triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && triggerField[decl] && !(triggerField[index] || triggerField[preproc])) {
             currentDeclStmt.first.append(ch, len);
             
-        }else if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc])){
+        }else if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc] || triggerField[call])){
             currentExprStmt.first.append(ch, len);
         }
         if(triggerField[call]){
@@ -350,8 +360,10 @@ public:
             potentialAlias = false;
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
-            //ProcessExprStmt();
             --triggerField[expr_stmt];
+            lhs = nullptr;
+            opassign = false;
+            dereferenced = false;
             currentCallArgData.first.clear();
             currentExprStmt.first.clear();
             
@@ -442,6 +454,16 @@ public:
                 }
                 --triggerField[type]; 
             }else if (lname == "operator"){
+                if(triggerField[expr_stmt] && triggerField[expr]){
+                    if(currentExprStmt.first == "="){
+                        opassign = true;
+                    }
+                    if(currentExprStmt.first == "*"){
+                        dereferenced = true;
+                    }
+                    currentExprStmt.first.clear();
+                }
+
                 if(currentDeclStmt.first == "new"){
                     currentDeclStmt.first.append("-"); //separate new operator because we kinda need to know when we see it.
                 }
@@ -464,8 +486,14 @@ public:
                     GetDeclStmtData();
                 }                
                 //Get function arguments
-                if(triggerField[call]){
+                if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
                     GetCallData();
+                    while(!callArgData.empty())
+                        callArgData.pop();
+                }
+                if(triggerField[expr_stmt] && triggerField[expr]){
+                    ProcessExprStmt();
+                    //std::cerr<<"Thing: "<<currentExprStmt.first<<std::endl;
                 }
                 --triggerField[name];
 
