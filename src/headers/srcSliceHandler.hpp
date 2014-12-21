@@ -365,6 +365,10 @@ public:
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
             --triggerField[expr_stmt];
+            if(!opassign && lhs){
+                lhs->slines.insert(currentExprStmt.second);
+                lhs->use.insert(currentExprStmt.second);
+            }
             lhs = nullptr;
             opassign = false;
             dereferenced = false;
@@ -499,10 +503,6 @@ public:
                 }
                 if(triggerField[expr_stmt] && triggerField[expr]){
                     ProcessExprStmt();
-                    if(!opassign && lhs){
-                        lhs->slines.insert(currentExprStmt.second);
-                        lhs->use.insert(currentExprStmt.second);
-                    }
                     //std::cerr<<"Thing: "<<currentExprStmt.first<<std::endl;
                 }
                 --triggerField[name];

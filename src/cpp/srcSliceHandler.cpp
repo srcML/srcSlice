@@ -28,11 +28,13 @@ SliceProfile* srcSliceHandler::Find(const std::string& varName){
  *Processes decls of the form object(arg,arg)
  */
 void srcSliceHandler::ProcessConstructorDecl(){
+    std::cerr<<"This: "<<currentDeclStmt.first<<std::endl;
     auto strVec = SplitOnTok(currentDeclStmt.first, "+<.*->&=():,");
     for(std::string str : strVec){
         auto sp = Find(str);
         if(sp){
             sp->dvars.insert(varIt->second.variableName);
+
         }
     }
 }
@@ -58,6 +60,7 @@ void srcSliceHandler::ProcessDeclStmt(){
                 varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
             }else{
                 sp->dvars.insert(varIt->second.variableName);
+                sp->use.insert(currentDeclStmt.second);
             }
         }
     }
