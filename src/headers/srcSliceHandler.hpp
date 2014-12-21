@@ -96,7 +96,7 @@ private:
     FunctionData currentFunctionBody;
     NameLineNumberPair currentDeclStmt;
     NameLineNumberPair currentExprStmt;
-
+    NameLineNumberPair currentDeclArg;
     /*function headers*/
     void GetCallData();
     void ProcessDeclStmt();
@@ -341,6 +341,10 @@ public:
         if(triggerField[call]){
             calledFunctionName.append(ch, len);
         }
+        if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
+            !triggerField[type]){
+            currentDeclArg.first.append(ch,len);
+        }
     }
 
     // end elements may need to be used if you want to collect only on per file basis or some other granularity.
@@ -362,6 +366,7 @@ public:
 
         if(lname == "decl_stmt"){
             currentCallArgData.first.clear();
+            currentDeclArg.first.clear();
             currentDeclStmt.first.clear();
             potentialAlias = false;
             --triggerField[decl_stmt];
@@ -439,6 +444,7 @@ public:
                 }
                 --triggerField[modifier];
             }else if (lname == "argument"){
+                currentDeclArg.first.clear(); //get rid of the name of the var that came before it for ctor calls like: object(InitVarable)
                 currentCallArgData.first.clear();
                 calledFunctionName.clear();
                 --triggerField[argument];
@@ -452,9 +458,6 @@ public:
                 if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
                 !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
                     ProcessDeclStmt();
-                }else if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
-                        !triggerField[type]){ //For the case where we need to get a constructor decl
-                    ProcessConstructorDecl();
                 }
                 --triggerField[expr]; 
             }else if (lname == "type"){
@@ -495,6 +498,11 @@ public:
                 if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
                     FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
                 }
+                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
+                        !triggerField[type]){ //For the case where we need to get a constructor decl
+                    ProcessConstructorDecl();
+                    currentDeclArg.first.clear();
+                }
                 if(triggerField[call] && triggerField[argument]){
                     //std::cerr<<"Name: "<<currentCallArgData.first<<std::endl;
                     callArgData.push(currentCallArgData);
@@ -506,6 +514,7 @@ public:
                 //Get variable decls
                 if(triggerField[decl_stmt]){
                     GetDeclStmtData();
+                    //currentDeclStmt.first.clear();
                 }                
                 //Get function arguments
                 if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
