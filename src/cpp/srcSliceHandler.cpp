@@ -28,14 +28,9 @@ SliceProfile* srcSliceHandler::Find(const std::string& varName){
  *Processes decls of the form object(arg,arg)
  */
 void srcSliceHandler::ProcessConstructorDecl(){
-    std::cerr<<"This: "<<currentDeclStmt.first<<std::endl;
-    auto strVec = SplitOnTok(currentDeclStmt.first, "+<.*->&=():,");
-    for(std::string str : strVec){
-        auto sp = Find(str);
-        if(sp){
-            sp->dvars.insert(varIt->second.variableName);
-
-        }
+    auto sp = Find(currentDeclArg.first);
+    if(sp){
+        sp->dvars.insert(varIt->second.variableName);
     }
 }
 
@@ -130,8 +125,7 @@ void srcSliceHandler::GetFunctionData(){
 * Knows proper constraints for obtaining DeclStmt type and name.
 * creates a new slice profile and stores data about decle statement inside.
 */
-void srcSliceHandler::GetDeclStmtData(){
-    
+void srcSliceHandler::GetDeclStmtData(){  
     if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
         //functionTmplt.declstmt.type = currentCallArgData.first; //store type
         //agglomerate string into type. Clear when we exit the decl_stmt
@@ -166,7 +160,6 @@ void srcSliceHandler::GetDeclStmtData(){
  */
 void srcSliceHandler::ProcessExprStmt(){
   if(skipMember){
-std::cerr<<"Here1"<<currentExprStmt.first<<std::endl;
     currentExprStmt.first = lhsName;
     currentExprStmt.second = lhsLine;
     skipMember = false;
