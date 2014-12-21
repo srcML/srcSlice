@@ -79,6 +79,7 @@ private:
     bool inGlobalScope;
     bool isACallName;
     bool opassign;
+    bool skipMember;
 
     bool dirtyAlias;
     bool potentialAlias;
@@ -122,7 +123,8 @@ public:
         lineNum = 0;
         
         lhs = nullptr;
-        
+        skipMember = false;
+
         dereferenced = false;
         opassign = false;
         dirtyAlias = false;
@@ -333,7 +335,7 @@ public:
         if(triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && triggerField[decl] && !(triggerField[index] || triggerField[preproc])) {
             currentDeclStmt.first.append(ch, len);
             
-        }else if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc] || triggerField[call])){
+        }else if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc])){
             currentExprStmt.first.append(ch, len);
         }
         if(triggerField[call]){
@@ -365,9 +367,9 @@ public:
             --triggerField[decl_stmt];
         }else if (lname == "expr_stmt"){
             --triggerField[expr_stmt];
-            if(!opassign && lhs){
-                lhs->slines.insert(currentExprStmt.second);
-                lhs->use.insert(currentExprStmt.second);
+            if(!opassign && lhs){//Don't know if an lhs is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
+                lhs->slines.insert(lhsLine);
+                lhs->use.insert(lhsLine);
             }
             lhs = nullptr;
             opassign = false;
@@ -467,9 +469,19 @@ public:
                 if(triggerField[expr_stmt] && triggerField[expr]){
                     if(currentExprStmt.first == "="){
                         opassign = true;
+                        if(lhs){//Don't know if an lhs is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
+                            lhs->slines.insert(lhsLine);
+                            lhs->def.insert(lhsLine);
+                        }
                     }
                     if(currentExprStmt.first == "*"){
                         dereferenced = true;
+                    }
+                    if(currentExprStmt.first == "->"){
+                        skipMember = true;
+                    }
+                    if(currentExprStmt.first == "."){
+                        skipMember = true;
                     }
                     currentExprStmt.first.clear();
                 }
@@ -497,12 +509,12 @@ public:
                 }                
                 //Get function arguments
                 if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
-                    GetCallData();
+                    GetCallData();//issue with statements like object(var)
                     while(!callArgData.empty())
                         callArgData.pop();
                 }
                 if(triggerField[expr_stmt] && triggerField[expr]){
-                    ProcessExprStmt();
+                    ProcessExprStmt();//problems with exprs like blotttom->next = expr
                     //std::cerr<<"Thing: "<<currentExprStmt.first<<std::endl;
                 }
                 --triggerField[name];
