@@ -122,9 +122,9 @@ void srcSliceToCsv(const srcSliceHandler& handler){
 				std::cout<<"},";
 				std::cout<<"cfunc{";
 				for(auto cfunc : vmIt->second.cfunctions){
-					auto bla = handler.sysDict.functionTable.find(cfunc.first);
-					if(bla != handler.sysDict.functionTable.end())
-						std::cout<<bla->second<<" "<<cfunc.second<<",";
+					auto funcName = handler.sysDict.functionTable.find(cfunc.first);
+					if(funcName != handler.sysDict.functionTable.end())
+						std::cout<<funcName->second<<" "<<cfunc.second<<",";
 				}
 				std::cout<<"}";
 				std::cout<<std::endl;
