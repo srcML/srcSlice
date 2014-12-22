@@ -202,73 +202,116 @@ public:
     virtual void startElement(const char * localname, const char * prefix, const char * URI,
                                 int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                                 const struct srcsax_attribute * attributes) {
-          
-        
-        if(num_attributes){
-            lineNum = strtoul(attributes[0].value, NULL, 0);
-        }
         std::string lname(localname);
         std::string lnspace;
         if(prefix){
             lnspace.append(prefix);
         }
         if(lnspace == "cpp"){
-            ++triggerField[preproc];
-        }
-        if(lname == "decl_stmt"){
-            currentDeclStmt.first.clear();
-            ++declIndex; //to keep track of index of declarations
-            ++triggerField[decl_stmt];
-        }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
-            if(lname == "constructor"){
+            --triggerField[preproc];
+        }          
+        static std::unordered_map<std::string, std::function<void()>> process_map = {
+            {"decl_stmt", [this](){
+                currentDeclStmt.first.clear();
+                ++declIndex; //to keep track of index of declarations
+                ++triggerField[decl_stmt];
+            } }, 
+
+            { "expr_stmt", [this](){
+                currentExprStmt.first.clear();
+                ++triggerField[expr_stmt];
+            } },
+
+            { "parameter_list", [this](){
+                ++triggerField[parameter_list];
+            } },
+
+            { "if", [this](){
+                ++triggerField[ifcond];
+                controlFlowLineNum.push(lineNum);
+            } },
+
+            { "for", [this](){
+                ++triggerField[forloop];
+                controlFlowLineNum.push(lineNum);
+            } },
+
+            { "while", [this](){
+                ++triggerField[whileloop];
+                controlFlowLineNum.push(lineNum);
+            } },
+
+            { "argument_list", [this](){
+                ++triggerField[argument_list];
+                if(triggerField[call]){
+                    if(isACallName){
+                        isACallName = false;
+                        nameOfCurrentClldFcn.push(calledFunctionName);
+                        calledFunctionName.clear();
+                    }
+                }
+            } },
+
+            { "call", [this](){
+                if(triggerField[call]){//for nested calls
+                    --numArgs; //already in some sort of a call. Decrement counter to make up for the argument slot the function call took up.
+                }
+                isACallName = true;
+                ++triggerField[call];
+            } },
+
+            { "function", [this](){
+                inGlobalScope = false;
+                currentFunctionBody.functionName.clear();
+                ++triggerField[function];
+            } },
+
+            { "constructor", [this](){
                 ++constructorNum;//constructors have numbers appended to them since they all have the same name.
                 isConstructor = true;
-            }
-            inGlobalScope = false;
-            currentFunctionBody.functionName.clear();
-            ++triggerField[function];
-        }else if (lname == "expr_stmt"){
-            currentExprStmt.first.clear();
-            ++triggerField[expr_stmt];
-        }else if (lname == "parameter_list"){
-            ++triggerField[parameter_list];
-        }else if (lname == "argument_list"){
-            ++triggerField[argument_list];
-            if(triggerField[call]){
-                if(isACallName){
-                    isACallName = false;
-                    nameOfCurrentClldFcn.push(calledFunctionName);
-                    calledFunctionName.clear();
-                }
-            }
-        }else if (lname == "call"){
-            if(triggerField[call]){//for nested calls
-                --numArgs; //already in some sort of a call. Decrement counter to make up for the argument slot the function call took up.
-            }
-            isACallName = true;
-            ++triggerField[call];
-        }else if (lname == "while"){
-            ++triggerField[whileloop];
-            controlFlowLineNum.push(lineNum);
-        }else if (lname == "for"){
-            ++triggerField[forloop];
-            controlFlowLineNum.push(lineNum);
-        }else if (lname == "if"){
-            ++triggerField[ifcond];
-            controlFlowLineNum.push(lineNum);
+
+                process_map["function"];
+            } },
+
+            { "destructor", [this](){
+                inGlobalScope = false;
+                currentFunctionBody.functionName.clear();
+                ++triggerField[function];
+                
+                process_map["function"];
+            } },
+        };
+        
+        std::unordered_map<std::string, std::function<void()>>::const_iterator process = process_map.find(lname);
+        if (process != process_map.end()) {
+//            fprintf(stderr, "DEBUG:  %s %s %d\n", __FILE__,  __FUNCTION__, __LINE__);
+
+            process->second();
         }
+        
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
             triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
-            if (lname == "param"){
+            
+            static const std::unordered_map< std::string,  std::function<void()>> process_map2 = {
+    
+                { "param", [this](){
                     ++triggerField[param];
                     ++declIndex;
-            }else if(lname == "member_list"){
+                } },
+    
+                { "member_list", [this](){
                     ++triggerField[member_list];
-            }else if(lname == "class"){
+                } },
+    
+                { "class", [this](){
                     ++triggerField[classn];
-            }else if(lname == "index"){
+                } },
+    
+                { "index", [this](){
                     ++triggerField[index];
-            }else if(lname == "operator"){
+                } },
+    
+                { "operator", [this](){
                     ++triggerField[op];
                     //Don't want the operators. But do make a caveat for ->
                     if(triggerField[call]){
@@ -280,37 +323,65 @@ public:
                     if(triggerField[decl_stmt]){
                         currentDeclStmt.first.clear();
                     }
-            }else if (lname == "block"){ //So we can discriminate against things in or outside of blocks
+                } },
+    
+                { "block", [this]()
+                { //So we can discriminate against things in or outside of blocks
+                        //currentFunctionBody.functionName.clear();
                     ++triggerField[block];
-            }else if (lname == "init"){//so that we can get more stuff after the decl's name 
+                } },
+    
+                { "init", [this](){//so that we can get more stuff after the decl's name 
                     currentDeclStmt.first.clear();
                     ++triggerField[init];
-            }else if (lname == "argument"){
+                } },
+    
+                { "argument", [this](){
                     ++numArgs;
                     currentCallArgData.first.clear();
                     calledFunctionName.clear();
                     ++triggerField[argument];
-            }else if (lname == "literal"){
+                } },
+    
+                { "literal", [this](){
                     ++triggerField[literal];
-            }else if (lname == "modifier"){
+                } },
+    
+                { "modifier", [this](){
                     if(triggerField[decl_stmt]){
                         currentDeclStmt.first.clear();
                     }
                     ++triggerField[modifier];
-            }else if(lname == "decl"){
+                } },
+    
+                { "decl", [this](){
                     ++triggerField[decl]; 
-            }else if(lname == "type"){
+                } },
+    
+                { "type", [this](){
                     ++triggerField[type]; 
-            }else if (lname == "expr"){
+                } },
+    
+                { "expr", [this](){
                     ++triggerField[expr];
-            }else if (lname == "name"){
-                ++triggerField[name];
-                currentCallArgData.second = currentParam.second = 
-                currentFunctionBody.functionLineNumber = currentDeclStmt.second =  
-                currentExprStmt.second = lineNum;
-            }else{
-                ++triggerField[nonterminal]; 
-            }   
+                } },
+    
+                { "name", [this](){
+                    ++triggerField[name];
+                    currentCallArgData.second = currentParam.second = 
+                    currentFunctionBody.functionLineNumber = currentDeclStmt.second =  
+                    currentExprStmt.second = lineNum;
+                } },
+    
+                };   
+                std::unordered_map<std::string, std::function<void()>>::const_iterator process2= process_map2.find(lname);
+                if (process2 != process_map2.end()) {
+        //            fprintf(stderr, "DEBUG:  %s %s %d\n", __FILE__,  __FUNCTION__, __LINE__);
+        
+                    process2->second();
+                }else{
+                    ++triggerField[nonterminal]; 
+                }
         }
     }
     /**
@@ -366,171 +437,242 @@ public:
         if(lnspace == "cpp"){
             --triggerField[preproc];
         }
+        static std::unordered_map<std::string, std::function<void()>> process_map3 = {
 
-        if(lname == "decl_stmt"){
-            currentCallArgData.first.clear();
-            currentDeclArg.first.clear();
-            currentDeclStmt.first.clear();
-            potentialAlias = false;
-            --triggerField[decl_stmt];
-        }else if (lname == "expr_stmt"){
-            --triggerField[expr_stmt];
-            if(!opassign && lhs){//Don't know if an lhs is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
-                lhs->slines.insert(lhsLine);
-                lhs->use.insert(lhsLine);
-            }
-            lhs = nullptr;
-            opassign = false;
-            dereferenced = false;
-            lhsLine = 0;
-            lhsName.clear();
-            currentCallArgData.first.clear();
-            currentExprStmt.first.clear();
-            
-        }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
-            //std::cerr<<functionTmplt.functionName<<std::endl;
-            declIndex = 0;
-            if(lname == "constructor"){
+            {"decl_stmt", [this](){
+                currentCallArgData.first.clear();
+                currentDeclArg.first.clear();
+                currentDeclStmt.first.clear();
+                potentialAlias = false;
+                --triggerField[decl_stmt];
+            } }, 
+
+            { "expr_stmt", [this](){
+                --triggerField[expr_stmt];
+                if(!opassign && lhs){//Don't know if an lhs is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
+                    lhs->slines.insert(lhsLine);
+                    lhs->use.insert(lhsLine);
+                }
+                lhs = nullptr;
+                opassign = false;
+                dereferenced = false;
+                lhsLine = 0;
+                lhsName.clear();
+                currentCallArgData.first.clear();
+                currentExprStmt.first.clear();
+            } },
+
+            { "parameter_list", [this](){
+                --triggerField[parameter_list];
+            } },
+
+            { "if", [this](){
+                sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                controlFlowLineNum.pop();
+                --triggerField[ifcond];
+            } },
+
+            { "for", [this](){
+                sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                controlFlowLineNum.pop();
+                --triggerField[forloop];
+            } },
+
+            { "while", [this](){
+                sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                controlFlowLineNum.pop();
+                --triggerField[whileloop];
+            } },
+
+            { "argument_list", [this](){
+                numArgs = 0;
+                calledFunctionName.clear();
+                --triggerField[argument_list];
+            } },
+
+            { "call", [this](){
+                if(!nameOfCurrentClldFcn.empty()){
+                    nameOfCurrentClldFcn.pop();
+                }
+                --triggerField[call];
+                if(triggerField[call]){
+                    ++numArgs; //we exited a call but we're still in another call. Increment to make up for decrementing when we entered the second call.
+                }
+            } },
+
+            { "function", [this](){
+                //std::cerr<<functionTmplt.functionName<<std::endl;
+                declIndex = 0;
+
+                inGlobalScope = true;
+                functionTmplt.clear();
+                --triggerField[function];
+            } },
+
+            { "constructor", [this](){
                 isConstructor = false;
-            }
-            inGlobalScope = true;
-            functionTmplt.clear();
-            --triggerField[function];
-        }else if (lname == "parameter_list"){
-            --triggerField[parameter_list];
-        }else if (lname == "argument_list"){
-            numArgs = 0;
-            calledFunctionName.clear();
-            --triggerField[argument_list];
-        }else if (lname == "call"){
-            if(!nameOfCurrentClldFcn.empty()){
-                nameOfCurrentClldFcn.pop();
-            }
-            --triggerField[call];
-            if(triggerField[call]){
-                ++numArgs; //we exited a call but we're still in another call. Increment to make up for decrementing when we entered the second call.
-            }
-        }else if (lname == "while"){
-            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-            controlFlowLineNum.pop();
-            --triggerField[whileloop];
-        }else if (lname == "for"){
-            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-            controlFlowLineNum.pop();
-            --triggerField[forloop];
-        }else if (lname == "if"){
-            sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-            controlFlowLineNum.pop();
-            --triggerField[ifcond];
+                
+                process_map3["function"];
+            } },
+
+            { "destructor", [this](){
+                process_map3["function"];
+            } },
+        };
+        
+        std::unordered_map<std::string, std::function<void()>>::const_iterator process3 = process_map3.find(lname);
+        if (process3 != process_map3.end()) {
+//            fprintf(stderr, "DEBUG:  %s %s %d\n", __FILE__,  __FUNCTION__, __LINE__);
+
+            process3->second();
         }
+   
+
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
             || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
-            if (lname == "param"){
-                currentParam.first.clear();
-                potentialAlias = false;
-                --triggerField[param];
-            }else if (lname == "literal"){
-                --triggerField[literal];
-            }else if(lname == "class"){
-                    --triggerField[classn];
-            }else if(lname == "member_list"){
-                    --triggerField[member_list];
-            }else if(lname == "index"){
-                    --triggerField[index];
-            }else if (lname == "modifier"){
-                if(triggerField[decl_stmt] && triggerField[decl]){ //only care about modifiers in decls
-                    potentialAlias = true;
-                }else if(triggerField[function] && triggerField[parameter_list] && triggerField[param] && triggerField[decl]){
-                    potentialAlias = true;
-                }
-                --triggerField[modifier];
-            }else if (lname == "argument"){
-                currentDeclArg.first.clear(); //get rid of the name of the var that came before it for ctor calls like: object(InitVarable)
-                currentCallArgData.first.clear();
-                calledFunctionName.clear();
-                --triggerField[argument];
-            }else if (lname == "block"){
-                --triggerField[block];
-            }else if(lname == "decl"){
-                --triggerField[decl];                 
-            }else if(lname == "init"){
-                --triggerField[init];                 
-            }else if (lname == "expr"){
-                --triggerField[expr]; 
-            }else if (lname == "type"){
-                if(triggerField[parameter_list] && triggerField[param]){
+            static const std::unordered_map< std::string,  std::function<void()>> process_map4 = {
+    
+                { "param", [this](){
                     currentParam.first.clear();
-                }
-                if(triggerField[decl_stmt] || (triggerField[function] && ! triggerField[block])) {
-                    currentDeclStmt.first.clear();
-                }
-                --triggerField[type]; 
-            }else if (lname == "operator"){
-                if(triggerField[expr_stmt] && triggerField[expr]){
-                    if(currentExprStmt.first == "="){
-                        opassign = true;
-                        if(lhs){//Don't know if an lhs is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
-                            lhs->slines.insert(lhsLine);
-                            lhs->def.insert(lhsLine);
+                    potentialAlias = false;
+                    --triggerField[param];
+                } },
+    
+                { "member_list", [this](){
+                    --triggerField[member_list];
+                } },
+    
+                { "class", [this](){
+                    --triggerField[classn];
+                } },
+    
+                { "index", [this](){
+                    --triggerField[index];
+                } },
+    
+                { "operator", [this](){
+                    if(triggerField[expr_stmt] && triggerField[expr]){
+                        if(currentExprStmt.first == "="){
+                            opassign = true;
+                            if(lhs){//Don't know if an lhs is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
+                                lhs->slines.insert(lhsLine);
+                                lhs->def.insert(lhsLine);
+                            }
                         }
+                        if(currentExprStmt.first == "*"){
+                            dereferenced = true;
+                        }
+                        if(currentExprStmt.first == "->"){
+                            skipMember = true;
+                        }
+                        if(currentExprStmt.first == "."){
+                            skipMember = true;
+                        }
+                        currentExprStmt.first.clear();
                     }
-                    if(currentExprStmt.first == "*"){
-                        dereferenced = true;
+                    if(triggerField[decl_stmt] && triggerField[decl]){
+                        currentDeclStmt.first.clear();
                     }
-                    if(currentExprStmt.first == "->"){
-                        skipMember = true;
+                    if(currentDeclStmt.first == "new"){
+                        currentDeclStmt.first.append("-"); //separate new operator because we kinda need to know when we see it.
                     }
-                    if(currentExprStmt.first == "."){
-                        skipMember = true;
+                    --triggerField[op];
+                } },
+    
+                { "block", [this]()
+                { //So we can discriminate against things in or outside of blocks
+                        //currentFunctionBody.functionName.clear();
+                    --triggerField[block];
+                } },
+    
+                { "init", [this](){//so that we can get more stuff after the decl's name 
+                    --triggerField[init];
+                } },
+    
+                { "argument", [this](){
+                    currentDeclArg.first.clear(); //get rid of the name of the var that came before it for ctor calls like: object(InitVarable)
+                    currentCallArgData.first.clear();
+                    calledFunctionName.clear();
+                    --triggerField[argument];
+                } },
+    
+                { "literal", [this](){
+                    --triggerField[literal];
+                } },
+    
+                { "modifier", [this](){
+                    if(triggerField[decl_stmt] && triggerField[decl]){ //only care about modifiers in decls
+                        potentialAlias = true;
+                    }else if(triggerField[function] && triggerField[parameter_list] && triggerField[param] && triggerField[decl]){
+                        potentialAlias = true;
                     }
-                    currentExprStmt.first.clear();
+                    --triggerField[modifier];
+                } },
+    
+                { "decl", [this](){
+                    --triggerField[decl]; 
+                } },
+    
+                { "type", [this](){
+                    if(triggerField[parameter_list] && triggerField[param]){
+                        currentParam.first.clear();
+                    }
+                    if(triggerField[decl_stmt] || (triggerField[function] && ! triggerField[block])) {
+                        currentDeclStmt.first.clear();
+                    }
+                    --triggerField[type];
+                } },
+    
+                { "expr", [this](){
+                    --triggerField[expr];
+                } },
+    
+                { "name", [this](){
+                    if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
+                        FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
+                    }
+                    if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
+                            !triggerField[type]){ //For the case where we need to get a constructor decl
+                        ProcessConstructorDecl();
+                        currentDeclArg.first.clear();
+                    }
+                    if(triggerField[call] && triggerField[argument]){
+                        callArgData.push(currentCallArgData);
+                    }
+                    //Get Function names and arguments
+                    if(triggerField[function]){
+                        GetFunctionData();
+                    }
+                    //Get variable decls
+                    if(triggerField[decl_stmt]){
+                        GetDeclStmtData();
+                    }                
+                    //Get function arguments
+                    if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
+                        GetCallData();//issue with statements like object(var)
+                        while(!callArgData.empty())
+                            callArgData.pop();
+                    }
+                    if(triggerField[expr_stmt] && triggerField[expr]){
+                        ProcessExprStmt();//problems with exprs like blotttom->next = expr
+                    }
+                    if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
+                    !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
+                        ProcessDeclStmt();
+                    }
+                    --triggerField[name];
+                } },
+    
+                };
+                std::unordered_map<std::string, std::function<void()>>::const_iterator process4= process_map4.find(lname);
+                if (process4 != process_map4.end()){
+        //            fprintf(stderr, "DEBUG:  %s %s %d\n", __FILE__,  __FUNCTION__, __LINE__);        
+                    process4->second();
+                }else{
+                    --triggerField[nonterminal]; 
                 }
-                if(triggerField[decl_stmt] && triggerField[decl]){
-                    currentDeclStmt.first.clear();
-                }
-                if(currentDeclStmt.first == "new"){
-                    currentDeclStmt.first.append("-"); //separate new operator because we kinda need to know when we see it.
-                }
-                --triggerField[op];
-            }
-            else if (lname == "name"){
-                if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
-                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
-                }
-                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
-                        !triggerField[type]){ //For the case where we need to get a constructor decl
-                    ProcessConstructorDecl();
-                    currentDeclArg.first.clear();
-                }
-                if(triggerField[call] && triggerField[argument]){
-                    callArgData.push(currentCallArgData);
-                }
-                //Get Function names and arguments
-                if(triggerField[function]){
-                    GetFunctionData();
-                }
-                //Get variable decls
-                if(triggerField[decl_stmt]){
-                    GetDeclStmtData();
-                }                
-                //Get function arguments
-                if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
-                    GetCallData();//issue with statements like object(var)
-                    while(!callArgData.empty())
-                        callArgData.pop();
-                }
-                if(triggerField[expr_stmt] && triggerField[expr]){
-                    ProcessExprStmt();//problems with exprs like blotttom->next = expr
-                }
-                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
-                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
-                    ProcessDeclStmt();
-                }
-                --triggerField[name];
-
             }
         }
-    }
 #pragma GCC diagnostic pop
 
 };
