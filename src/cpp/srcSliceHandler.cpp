@@ -138,7 +138,7 @@ void srcSliceHandler::GetDeclStmtData(){
                     currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
         }else{ //TODO: Handle def use for globals
-            std::cerr<<currentDeclStmt.first<<std::endl;
+            //std::cerr<<currentDeclStmt.first<<std::endl;
             //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile((declIndex), fileNumber, 
