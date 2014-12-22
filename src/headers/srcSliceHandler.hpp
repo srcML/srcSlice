@@ -81,7 +81,6 @@ private:
     bool opassign;
     bool skipMember;
 
-    bool dirtyAlias;
     bool potentialAlias;
 
     bool dereferenced;
@@ -127,7 +126,7 @@ public:
 
         dereferenced = false;
         opassign = false;
-        dirtyAlias = false;
+
         isACallName = false;
         isConstructor = false;
         inGlobalScope = true;
@@ -271,17 +270,17 @@ public:
                     ++triggerField[index];
             }else if(lname == "operator"){
                     ++triggerField[op];
+                    //Don't want the operators. But do make a caveat for ->
                     if(triggerField[call]){
-                        currentCallArgData.first.clear(); //Don't want the operators. But do make a caveat for ->
+                        currentCallArgData.first.clear();
                     }
                     if(triggerField[expr_stmt]){
-                        currentExprStmt.first.clear(); //Don't want the operators. But do make a caveat for ->
+                        currentExprStmt.first.clear(); 
                     }
                     if(triggerField[decl_stmt]){
                         currentDeclStmt.first.clear();
                     }
             }else if (lname == "block"){ //So we can discriminate against things in or outside of blocks
-                    //currentFunctionBody.functionName.clear();
                     ++triggerField[block];
             }else if (lname == "init"){//so that we can get more stuff after the decl's name 
                     currentDeclStmt.first.clear();
@@ -290,8 +289,6 @@ public:
                     ++numArgs;
                     currentCallArgData.first.clear();
                     calledFunctionName.clear();
-                    //currentCallArgData.first.append(":"); //denote arguments so that I can parse them out later.
-                    //currentDeclStmt.first.append(":"); //same as above.
                     ++triggerField[argument];
             }else if (lname == "literal"){
                     ++triggerField[literal];
@@ -392,8 +389,6 @@ public:
             
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
             //std::cerr<<functionTmplt.functionName<<std::endl;
-            
-            dirtyAlias = false;
             declIndex = 0;
             if(lname == "constructor"){
                 isConstructor = false;
@@ -508,7 +503,6 @@ public:
                     currentDeclArg.first.clear();
                 }
                 if(triggerField[call] && triggerField[argument]){
-                    //std::cerr<<"Name: "<<currentCallArgData.first<<std::endl;
                     callArgData.push(currentCallArgData);
                 }
                 //Get Function names and arguments
@@ -518,7 +512,6 @@ public:
                 //Get variable decls
                 if(triggerField[decl_stmt]){
                     GetDeclStmtData();
-                    //currentDeclStmt.first.clear();
                 }                
                 //Get function arguments
                 if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
@@ -528,7 +521,6 @@ public:
                 }
                 if(triggerField[expr_stmt] && triggerField[expr]){
                     ProcessExprStmt();//problems with exprs like blotttom->next = expr
-                    //std::cerr<<"Thing: "<<currentExprStmt.first<<std::endl;
                 }
                 if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
                 !(triggerField[type] || triggerField[argument_list] || triggerField[call])){

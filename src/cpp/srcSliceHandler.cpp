@@ -45,11 +45,8 @@ void srcSliceHandler::ProcessDeclStmt(){
     if(currentDeclStmt.first == "new"){seenNew = true;}
     if(sp){
         varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
-        //varIt->second.def.insert(currentDeclStmt.second);
-        //sp->slines.insert(currentDeclStmt.second);
         sp->use.insert(currentDeclStmt.second);
         if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
-            dirtyAlias = true;
             varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
         }else{
             sp->dvars.insert(varIt->second.variableName);
@@ -199,52 +196,6 @@ void srcSliceHandler::ProcessExprStmt(){
     }
     }
 }
-/*
-auto lhsrhs = SplitLhsRhs(currentExprStmt.first);
-    auto resultVecl = SplitOnTok(lhsrhs.front(), "+<.*->&");
-    size_t dereferenced = lhsrhs.front().find("*");
-    SliceProfile* splIt(nullptr);        
-    //First, take the left hand side and mark sline information. Doing it first because later I'll be iterating purely
-    //over the rhs.
-    for(auto rVecIt = resultVecl.begin(); rVecIt!= resultVecl.end(); ++rVecIt){
-        splIt = Find(*rVecIt);
-        if(splIt){ //Found it so add statement line.
-            splIt->slines.insert(currentExprStmt.second);
-            splIt->def.insert(currentExprStmt.second);
-            break; //found it, don't care about the rest (ex. in: bottom -> next -- all I need is bottom.)
-        }
-    }
-    //Doing rhs now. First check to see if there's anything to process
-    if(splIt){
-        auto resultVecr = SplitOnTok(lhsrhs.back(), "+<.*->&"); //Split on tokens. Make these const... or standardize them. Or both.
-        for(auto rVecIt = resultVecr.begin(); rVecIt != resultVecr.end(); ++rVecIt){ //loop over words and check them against map
-            if(splIt->variableName != *rVecIt){//lhs != rhs
-                auto sprIt = Find(*rVecIt);//find the sp for the rhs
-                if(sprIt){ //lvalue depends on this rvalue
-                    if(!splIt->potentialAlias || !(dereferenced == std::string::npos)){ //It is not potentially a reference and if it is, it must not have been dereferenced
-                        sprIt->dvars.insert(splIt->variableName); //it's not an alias so it's a dvar
-                    }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
-                        //dirtyAlias = true;
-                        splIt->lastInsertedAlias = splIt->aliases.insert(sprIt->variableName).first;
-                    }
-                    sprIt->slines.insert(currentExprStmt.second);
-                    sprIt->use.insert(currentExprStmt.second);           
-                    if(sprIt->potentialAlias){//Union things together. If this was an alias of anoter thing, update the other thing
-                        if(!sprIt->aliases.empty()){
-                                //std::cerr<<"Name1: "<<*(sprIt->lastInsertedAlias); //Get vars that sprit aliases
-                                auto spaIt = FunctionIt->second.find(*(sprIt->lastInsertedAlias)); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
-                                if(spaIt != FunctionIt->second.end()){
-                                    //std::cerr<<"Name: "<<spaIt->second.variableName<<" "<<splIt->variableName<<std::endl;
-                                    spaIt->second.dvars.insert(splIt->variableName);
-                                    spaIt->second.use.insert(currentExprStmt.second);  
-                                    spaIt->second.slines.insert(currentExprStmt.second);
-                                }
-                        }
-                    }
-                }
-            }
-        }
-    }*/
 
 
 /*
@@ -297,36 +248,31 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 
 
 SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int parameterIndex){
-    
-
     SliceProfile Spi;
     
     auto funcIt = FileIt->second.find(fname);
     if(funcIt != FileIt->second.end()){
-        ;//std::cerr<<"CAlling: "<<fname<<std::endl;
-    }else{
-        //std::cerr<<"FATAL ERROR";
-    }
-    VarMap::iterator v = funcIt->second.begin();    
-    for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
-        std::cerr<<"Callee "<<it->second.variableName<<" "<<it->second.index<<" "<<parameterIndex-1<<std::endl<<std::endl;
-        if (it->second.index == (parameterIndex)){
-            if(it->second.visited == true){
-                Spi = it->second; 
-                return Spi;
-            }else{//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto
-                for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
-                    std::string newFunctionName = itCF->first;
-                    unsigned int newParameterIndex = itCF->second; 
-                    if(newFunctionName != fname){
-                        //std::cerr<<"Now: "<<newFunctionName<<std::endl;
-                        Spi = ArgumentProfile(newFunctionName, newParameterIndex);
+        VarMap::iterator v = funcIt->second.begin();    
+        for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
+            if (it->second.index == (parameterIndex)){
+                if(it->second.visited == true){
+                    Spi = it->second; 
+                    return Spi;
+                }else{//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto
+                    for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
+                        std::string newFunctionName = itCF->first;
+                        unsigned int newParameterIndex = itCF->second; 
+                        if(newFunctionName != fname){
+                            //std::cerr<<"Now: "<<newFunctionName<<std::endl;
+                            Spi = ArgumentProfile(newFunctionName, newParameterIndex);
+                        }
                     }
+                    it->second.visited = true;
                 }
-                it->second.visited = true;
             }
         }
+    }else{
+        std::cerr<<"FATAL ERROR";
     }
-    //std::cerr<<"here"<<std::endl;
     return Spi;
 }
