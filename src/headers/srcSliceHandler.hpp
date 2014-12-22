@@ -107,7 +107,7 @@ private:
     
     
     
-    SliceProfile ArgumentProfile(std::string, unsigned int);
+    SliceProfile ArgumentProfile(unsigned int, unsigned int);
 
 public:
     void ComputeInterprocedural(const std::string&);
@@ -180,10 +180,12 @@ public:
     virtual void startUnit(const char * localname, const char * prefix, const char * URI,
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
-        fileNumber = functionNameHash(attributes[1].value);
-        FileIt = sysDict.dictionary.insert(std::make_pair(attributes[1].value, FunctionVarMap())).first; //insert and keep track of most recent.         
+        //fileNumber = functionNameHash(attributes[1].value);
+        FileIt = sysDict.dictionary.insert(std::make_pair(std::string(attributes[1].value), FunctionVarMap())).first; //insert and keep track of most recent.         
         //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
-        FunctionIt = FileIt->second.insert(std::make_pair(std::string("GLOBALS"), VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
+        unsigned int ghash = functionNameHash("GLOBAL");
+        sysDict.functionTable.insert(std::make_pair(functionNameHash("GLOBAL"), "GLOBAL"));
+        FunctionIt = FileIt->second.insert(std::make_pair(ghash, VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
      * startElementNs
@@ -639,7 +641,8 @@ public:
     
                 { "name", [this](){
                     if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
-                        FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
+                        sysDict.functionTable.insert(std::make_pair(functionNameHash(functionTmplt.functionName), functionTmplt.functionName));
+                        FunctionIt = FileIt->second.insert(std::make_pair(functionNameHash(functionTmplt.functionName), VarMap())).first;
                     }
                     if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
                             !triggerField[type]){ //For the case where we need to get a constructor decl

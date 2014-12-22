@@ -72,7 +72,7 @@ void srcSliceHandler::GetCallData(){
                 sp->slines.insert(callArgData.top().second);
                 sp->use.insert(callArgData.top().second);
                 sp->index = declIndex;
-                sp->cfunctions.insert(std::make_pair(nameOfCurrentClldFcn.top(), numArgs));
+                sp->cfunctions.insert(std::make_pair(functionNameHash(nameOfCurrentClldFcn.top()), numArgs));
             }
         }
     }
@@ -250,9 +250,8 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
  */
 
 
-SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int parameterIndex){
+SliceProfile srcSliceHandler::ArgumentProfile(unsigned int fname, unsigned int parameterIndex){
     SliceProfile Spi;
-    
     auto funcIt = FileIt->second.find(fname);
     if(funcIt != FileIt->second.end()){
         VarMap::iterator v = funcIt->second.begin();    
@@ -263,7 +262,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
                     return Spi;
                 }else{//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto
                     for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
-                        std::string newFunctionName = itCF->first;
+                        unsigned int newFunctionName = itCF->first;
                         unsigned int newParameterIndex = itCF->second; 
                         if(newFunctionName != fname){
                             //std::cerr<<"Now: "<<newFunctionName<<std::endl;

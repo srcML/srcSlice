@@ -54,7 +54,8 @@ void TestSlice2(const VarMap& mp){
 void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 	for(FileFunctionVarMap::const_iterator ffvmIt = mp.begin(); ffvmIt != mp.end(); ++ffvmIt){
 		for(FunctionVarMap::const_iterator fvmIt = ffvmIt->second.begin(); fvmIt != ffvmIt->second.end(); ++fvmIt){
-			std::cerr<<fvmIt->first<<std::endl; 
+			//std::cerr<<fvmIt->first<<std::endl;
+			std::cerr<<handler.sysDict.functionTable.find(fvmIt->first)->second<<std::endl; 
 			for(VarMap::const_iterator vmIt = fvmIt->second.begin(); vmIt != fvmIt->second.end(); ++vmIt){
 				std::cerr<<"-------------------------"<<std::endl;
 				std::cerr<<"Variable: "<<vmIt->first<<std::endl;
@@ -75,7 +76,9 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 				std::cerr<<"}"<<std::endl;
 				std::cerr<<"cfuntions: {";
 				for(auto cfunc : vmIt->second.cfunctions){
-					std::cerr<<cfunc.first<<" "<<cfunc.second<<",";
+					auto bla = handler.sysDict.functionTable.find(cfunc.first);
+					if(bla != handler.sysDict.functionTable.end())
+						std::cerr<<bla->second<<" "<<cfunc.second<<",";
 				}
 				std::cerr<<"}"<<std::endl;
 				std::cerr<<"def: {";
@@ -158,7 +161,7 @@ int main(int argc, char * argv[]) {
   //std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
   //handler.ComputeInterprocedural("SlicerTestSample.cpp");
-  TestSlice(handler.sysDict.dictionary, handler);
+  //TestSlice(handler.sysDict.dictionary, handler);
   
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler.sysDict);

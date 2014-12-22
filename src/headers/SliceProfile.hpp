@@ -8,9 +8,10 @@
 #include <set>
 class SliceProfile;
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
-typedef std::unordered_map<std::string, VarMap> FunctionVarMap;
+typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
 typedef std::unordered_map<std::string, FunctionVarMap> FileFunctionVarMap;
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
+typedef std::pair<unsigned int, unsigned int> HashedNameLineNumberPair;
 typedef std::pair<std::string, std::string> TypeNamePair;
 
 struct FunctionData{
@@ -68,7 +69,7 @@ class SliceProfile{
         std::set<unsigned int> def;
         std::set<unsigned int> use;
 		
-        std::unordered_set<NameLineNumberPair, NameLineNumberPairHash> cfunctions;
+        std::unordered_set<HashedNameLineNumberPair, NameLineNumberPairHash> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
 };
@@ -82,7 +83,7 @@ class SystemDictionary{
 		/*This is a map of file, function/method, and variables. {file, {function, {SliceProfiles}}}*/
 		FileFunctionVarMap dictionary;
 		VarMap globalMap;
-		std::unordered_map<unsigned int, std::string> fileTable;
+		std::unordered_map<unsigned int, std::string> functionTable;
         std::vector<std::pair<unsigned int, unsigned int>> controledges;
 };
 #endif
