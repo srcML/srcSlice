@@ -124,18 +124,21 @@ void srcSliceHandler::GetDeclStmtData(){
         //functionTmplt.declstmt.type = currentCallArgData.first; //store type
         //agglomerate string into type. Clear when we exit the decl_stmt
     }
+
     //Get name of decl stmt
     if(triggerField[decl] && !(triggerField[type] || triggerField[init] || triggerField[expr] || triggerField[index] || triggerField[classn])){
         if(currentDeclStmt.first[0] == ','){//corner case with decls like: int i, k, j. This is a patch, fix properly later.
             currentDeclStmt.first.erase(0,1);
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
+
             varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
                 SliceProfile((declIndex), fileNumber, 
                     functionTmplt.functionName, currentDeclStmt.second, 
                     currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
         }else{ //TODO: Handle def use for globals
+            std::cerr<<currentDeclStmt.first<<std::endl;
             //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile((declIndex), fileNumber, 

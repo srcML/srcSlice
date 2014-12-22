@@ -202,13 +202,16 @@ public:
     virtual void startElement(const char * localname, const char * prefix, const char * URI,
                                 int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                                 const struct srcsax_attribute * attributes) {
+        if(num_attributes){
+            lineNum = strtoul(attributes[0].value, NULL, 0);
+        }
         std::string lname(localname);
         std::string lnspace;
         if(prefix){
             lnspace.append(prefix);
         }
         if(lnspace == "cpp"){
-            --triggerField[preproc];
+            ++triggerField[preproc];
         }          
         static std::unordered_map<std::string, std::function<void()>> process_map = {
             {"decl_stmt", [this](){
@@ -268,17 +271,17 @@ public:
 
             { "constructor", [this](){
                 ++constructorNum;//constructors have numbers appended to them since they all have the same name.
+                
                 isConstructor = true;
+                inGlobalScope = false;
 
-                process_map["function"];
+                ++triggerField[function];
             } },
 
             { "destructor", [this](){
                 inGlobalScope = false;
                 currentFunctionBody.functionName.clear();
                 ++triggerField[function];
-                
-                process_map["function"];
             } },
         };
         
@@ -511,12 +514,19 @@ public:
 
             { "constructor", [this](){
                 isConstructor = false;
-                
-                process_map3["function"];
+                declIndex = 0;
+
+                inGlobalScope = true;
+                functionTmplt.clear();
+                --triggerField[function];
             } },
 
             { "destructor", [this](){
-                process_map3["function"];
+                declIndex = 0;
+
+                inGlobalScope = true;
+                functionTmplt.clear();
+                --triggerField[function];
             } },
         };
         
@@ -530,8 +540,8 @@ public:
 
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
             || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
+            
             static const std::unordered_map< std::string,  std::function<void()>> process_map4 = {
-    
                 { "param", [this](){
                     currentParam.first.clear();
                     potentialAlias = false;
@@ -669,7 +679,7 @@ public:
         //            fprintf(stderr, "DEBUG:  %s %s %d\n", __FILE__,  __FUNCTION__, __LINE__);        
                     process4->second();
                 }else{
-                    --triggerField[nonterminal]; 
+                    //--triggerField[nonterminal]; 
                 }
             }
         }
