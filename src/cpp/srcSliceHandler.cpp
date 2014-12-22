@@ -40,23 +40,20 @@ void srcSliceHandler::ProcessConstructorDecl(){
 * corner case at new operator because new makes an object even if its argument is an alias.
 */
 void srcSliceHandler::ProcessDeclStmt(){
-    auto strVec = SplitOnTok(currentDeclStmt.first, "+<:.*->&=(),");
     bool seenNew = false;
-    for(std::string str : strVec){
-        auto sp = Find(str);
-        if(str == "new"){seenNew = true;}
-        if(sp){
-            varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
-            //varIt->second.def.insert(currentDeclStmt.second);
-            //sp->slines.insert(currentDeclStmt.second);
+    auto sp = Find(currentDeclStmt.first);
+    if(currentDeclStmt.first == "new"){seenNew = true;}
+    if(sp){
+        varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
+        //varIt->second.def.insert(currentDeclStmt.second);
+        //sp->slines.insert(currentDeclStmt.second);
+        sp->use.insert(currentDeclStmt.second);
+        if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
+            dirtyAlias = true;
+            varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
+        }else{
+            sp->dvars.insert(varIt->second.variableName);
             sp->use.insert(currentDeclStmt.second);
-            if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
-                dirtyAlias = true;
-                varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
-            }else{
-                sp->dvars.insert(varIt->second.variableName);
-                sp->use.insert(currentDeclStmt.second);
-            }
         }
     }
     currentDeclStmt.first.clear(); //because if it's a multi-init decl then inits will run into one another.
@@ -273,7 +270,7 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
             if(it->second.visited == false){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
                 for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                     unsigned int argumentIndex = itCF->second;
-                    std::cerr<<"caller: "<<itCF->first<<std::endl;
+                    //std::cerr<<"caller: "<<itCF->first<<std::endl;
                     SliceProfile Spi = ArgumentProfile(itCF->first, argumentIndex);
                     SetUnion(it->second.slines, Spi.slines);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
@@ -308,7 +305,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
     if(funcIt != FileIt->second.end()){
         ;//std::cerr<<"CAlling: "<<fname<<std::endl;
     }else{
-        std::cerr<<"FATAL ERROR";
+        //std::cerr<<"FATAL ERROR";
     }
     VarMap::iterator v = funcIt->second.begin();    
     for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){

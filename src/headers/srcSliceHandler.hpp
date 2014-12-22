@@ -217,6 +217,7 @@ public:
             ++triggerField[preproc];
         }
         if(lname == "decl_stmt"){
+            currentDeclStmt.first.clear();
             ++declIndex; //to keep track of index of declarations
             ++triggerField[decl_stmt];
         }else if(lname == "function" || lname == "constructor" || lname == "destructor"){
@@ -274,8 +275,10 @@ public:
                         currentCallArgData.first.clear(); //Don't want the operators. But do make a caveat for ->
                     }
                     if(triggerField[expr_stmt]){
-
                         currentExprStmt.first.clear(); //Don't want the operators. But do make a caveat for ->
+                    }
+                    if(triggerField[decl_stmt]){
+                        currentDeclStmt.first.clear();
                     }
             }else if (lname == "block"){ //So we can discriminate against things in or outside of blocks
                     //currentFunctionBody.functionName.clear();
@@ -293,6 +296,9 @@ public:
             }else if (lname == "literal"){
                     ++triggerField[literal];
             }else if (lname == "modifier"){
+                    if(triggerField[decl_stmt]){
+                        currentDeclStmt.first.clear();
+                    }
                     ++triggerField[modifier];
             }else if(lname == "decl"){
                     ++triggerField[decl]; 
@@ -455,10 +461,6 @@ public:
             }else if(lname == "init"){
                 --triggerField[init];                 
             }else if (lname == "expr"){
-                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
-                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
-                    ProcessDeclStmt();
-                }
                 --triggerField[expr]; 
             }else if (lname == "type"){
                 if(triggerField[parameter_list] && triggerField[param]){
@@ -488,7 +490,9 @@ public:
                     }
                     currentExprStmt.first.clear();
                 }
-
+                if(triggerField[decl_stmt] && triggerField[decl]){
+                    currentDeclStmt.first.clear();
+                }
                 if(currentDeclStmt.first == "new"){
                     currentDeclStmt.first.append("-"); //separate new operator because we kinda need to know when we see it.
                 }
@@ -525,6 +529,10 @@ public:
                 if(triggerField[expr_stmt] && triggerField[expr]){
                     ProcessExprStmt();//problems with exprs like blotttom->next = expr
                     //std::cerr<<"Thing: "<<currentExprStmt.first<<std::endl;
+                }
+                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
+                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
+                    ProcessDeclStmt();
                 }
                 --triggerField[name];
 
