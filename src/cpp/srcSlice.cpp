@@ -97,35 +97,37 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 	}
 }
 
-void srcSliceToCsv(const SystemDictionary& sd){
-	for(FileFunctionVarMap::const_iterator ffvmIt = sd.dictionary.begin(); ffvmIt != sd.dictionary.end(); ++ffvmIt){
-		//auto fileNameIt = sd.fileTable.find(ffvmIt->first);
-		//if(fileNameIt != sd.fileTable.end())
+void srcSliceToCsv(const srcSliceHandler& handler){
+	for(FileFunctionVarMap::const_iterator ffvmIt = handler.sysDict.dictionary.begin(); ffvmIt != handler.sysDict.dictionary.end(); ++ffvmIt){
+		//auto fileNameIt = handler.sysDict.fileTable.find(ffvmIt->first);
+		//if(fileNameIt != handler.sysDict.fileTable.end())
 		for(FunctionVarMap::const_iterator fvmIt = ffvmIt->second.begin(); fvmIt != ffvmIt->second.end(); ++fvmIt){
-			//auto functionNameIt = sd.functionTable.find();
+			//auto functionNameIt = handler.sysDict.functionTable.find();
 			for(VarMap::const_iterator vmIt = fvmIt->second.begin(); vmIt != fvmIt->second.end(); ++vmIt){
-				std::cerr<<ffvmIt->first<<","<<fvmIt->first;
-				std::cerr<<",sl{";
+				std::cout<<ffvmIt->first<<","<<handler.sysDict.functionTable.find(fvmIt->first)->second<<","<<vmIt->first;
+				std::cout<<",sl{";
 				for(unsigned int sl : vmIt->second.slines){
-					std::cerr<<sl<<",";
+					std::cout<<sl<<",";
 				}
-				std::cerr<<"},";
-				std::cerr<<"dv{";
+				std::cout<<"},";
+				std::cout<<"dv{";
 				for(std::string dv : vmIt->second.dvars){
-					std::cerr<<dv<<",";
+					std::cout<<dv<<",";
 				}
-				std::cerr<<"},";
-				std::cerr<<"al{";
+				std::cout<<"},";
+				std::cout<<"al{";
 				for(std::string al : vmIt->second.aliases){
-					std::cerr<<al<<",";
+					std::cout<<al<<",";
 				}
-				std::cerr<<"},";
-				std::cerr<<"cfunc{";
+				std::cout<<"},";
+				std::cout<<"cfunc{";
 				for(auto cfunc : vmIt->second.cfunctions){
-					std::cerr<<cfunc.first<<" "<<cfunc.second<<",";
+					auto bla = handler.sysDict.functionTable.find(cfunc.first);
+					if(bla != handler.sysDict.functionTable.end())
+						std::cout<<bla->second<<" "<<cfunc.second<<",";
 				}
-				std::cerr<<"}";
-				std::cerr<<std::endl;
+				std::cout<<"}";
+				std::cout<<std::endl;
 			}
 		}
 	}	
@@ -164,6 +166,6 @@ int main(int argc, char * argv[]) {
   //TestSlice(handler.sysDict.dictionary, handler);
   
   //TestSlice2(handler.sysDict.globalMap);
-  //srcSliceToCsv(handler.sysDict);
+  srcSliceToCsv(handler);
   return 0;
 }

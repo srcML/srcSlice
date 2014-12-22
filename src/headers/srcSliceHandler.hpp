@@ -543,7 +543,7 @@ public:
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
             || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
             
-            static const std::unordered_map< std::string,  std::function<void()>> process_map4 = {
+            static const std::unordered_map< std::string, std::function<void()>> process_map4 = {
                 { "param", [this](){
                     currentParam.first.clear();
                     potentialAlias = false;
