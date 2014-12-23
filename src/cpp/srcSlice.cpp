@@ -98,39 +98,54 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 }
 
 void srcSliceToCsv(const srcSliceHandler& handler){
+	std::string str;
 	for(FileFunctionVarMap::const_iterator ffvmIt = handler.sysDict.dictionary.begin(); ffvmIt != handler.sysDict.dictionary.end(); ++ffvmIt){
 		//auto fileNameIt = handler.sysDict.fileTable.find(ffvmIt->first);
 		//if(fileNameIt != handler.sysDict.fileTable.end())
 		for(FunctionVarMap::const_iterator fvmIt = ffvmIt->second.begin(); fvmIt != ffvmIt->second.end(); ++fvmIt){
 			//auto functionNameIt = handler.sysDict.functionTable.find();
 			for(VarMap::const_iterator vmIt = fvmIt->second.begin(); vmIt != fvmIt->second.end(); ++vmIt){
-				std::cout<<ffvmIt->first<<","<<handler.sysDict.functionTable.find(fvmIt->first)->second<<","<<vmIt->first;
-				std::cout<<",sl{";
+				str.append(ffvmIt->first).append(",").append(handler.sysDict.functionTable.find(fvmIt->first)->second).append(",").append(vmIt->first);
+				str.append(",sl{");
 				for(unsigned int sl : vmIt->second.slines){
-					std::cout<<sl<<",";
+            		std::stringstream ststrm;
+            		ststrm<<sl;
+					str.append(ststrm.str()).append(",");
 				}
-				std::cout<<"},";
-				std::cout<<"dv{";
+				if(str.at(str.length()-1) == ',')
+					str.erase(str.length()-1);
+				str.append("},");
+				str.append("dv{");
 				for(std::string dv : vmIt->second.dvars){
-					std::cout<<dv<<",";
+					str.append(dv.append(","));
 				}
-				std::cout<<"},";
-				std::cout<<"al{";
+				if(str.at(str.length()-1) == ',')
+					str.erase(str.length()-1);
+				str.append("},");
+				str.append("al{");
 				for(std::string al : vmIt->second.aliases){
-					std::cout<<al<<",";
+					str.append(al.append(","));
 				}
-				std::cout<<"},";
-				std::cout<<"cfunc{";
+				if(str.at(str.length()-1) == ',')
+					str.erase(str.length()-1);
+				str.append("},");
+				str.append("cfunc{");
 				for(auto cfunc : vmIt->second.cfunctions){
 					auto funcName = handler.sysDict.functionTable.find(cfunc.first);
-					if(funcName != handler.sysDict.functionTable.end())
-						std::cout<<funcName->second<<" "<<cfunc.second<<",";
+					if(funcName != handler.sysDict.functionTable.end()){
+            			std::stringstream ststrm;
+            			ststrm<<cfunc.second;
+						str.append(funcName->second).append(" ").append(ststrm.str()).append(",");
+					}
 				}
-				std::cout<<"}";
-				std::cout<<std::endl;
+				if(str.at(str.length()-1) == ',')
+					str.erase(str.length()-1);
+				str.append("}");
+				std::cout<<str<<std::endl;
+				str.clear();
 			}
 		}
-	}	
+	}
 }
 /**
  * main
