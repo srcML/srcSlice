@@ -40,6 +40,12 @@ public:
   }
 };
 
+struct ClassProfile{
+    std::string className;
+    std::unordered_set<std::string> memberVariables;
+    std::unordered_set<std::string> memberFunctions; //need to handle overloads. Can't be string.
+};
+
 class SliceProfile{
 	public:
 		SliceProfile() = default;
@@ -63,7 +69,7 @@ class SliceProfile{
 
 		std::string variableName;
 		std::string variableType;
-		
+		std::unordered_set memberVariables;
 		std::unordered_set<unsigned int> slines; //Deprecated
         
         std::set<unsigned int> def;
