@@ -104,9 +104,11 @@ void srcSliceHandler::GetFunctionData(){
     }
     //Get param types
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){
+        std::cerr<<"type: "<<currentParamType.first<<std::endl;
     }
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
+        std::cerr<<"name: "<<currentParam.first<<std::endl;
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile((declIndex), fileNumber, 
                 functionTmplt.functionName, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;

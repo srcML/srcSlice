@@ -14,6 +14,22 @@ typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<unsigned int, unsigned int> HashedNameLineNumberPair;
 typedef std::pair<std::string, std::string> TypeNamePair;
 
+struct NameLineNumberPairHash {
+public:
+  template <typename T, typename U>
+  std::size_t operator()(const std::pair<T, U> &x) const
+  {
+    return std::hash<U>()(x.second);
+  }
+};
+struct FunctionArgtypeArgnumHash {
+public:
+  template <typename T>
+  std::size_t operator()(const T x) const
+  {
+    return std::hash<unsigned int>()(x.functionNumber);
+  }
+};
 struct FunctionData{
     FunctionData(){
         functionNumber = 0;
@@ -24,26 +40,20 @@ struct FunctionData{
         functionName.clear();
     }
     std::string returnType;
-    std::string functionName;        
-    
+    std::string functionName;
+
+    std::vector<std::string> arguments; //size of vector is # of arguments. String is type of argument.
     
     unsigned int functionNumber;
     unsigned int functionLineNumber;
 };
 
-struct NameLineNumberPairHash {
-public:
-  template <typename T, typename U>
-  std::size_t operator()(const std::pair<T, U> &x) const
-  {
-    return std::hash<U>()(x.second);
-  }
-};
+
 
 struct ClassProfile{
     std::string className;
     std::unordered_set<std::string> memberVariables;
-    std::unordered_set<std::string> memberFunctions; //need to handle overloads. Can't be string.
+    std::unordered_set<FunctionData, FunctionArgtypeArgnumHash> memberFunctions; //need to handle overloads. Can't be string.
 };
 
 class SliceProfile{
@@ -69,7 +79,7 @@ class SliceProfile{
 
 		std::string variableName;
 		std::string variableType;
-		std::unordered_set memberVariables;
+		std::unordered_set<std::string> memberVariables;
 		std::unordered_set<unsigned int> slines; //Deprecated
         
         std::set<unsigned int> def;
