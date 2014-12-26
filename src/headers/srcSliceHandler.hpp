@@ -92,10 +92,11 @@ private:
     std::stack<NameLineNumberPair> callArgData;
     NameLineNumberPair currentCallArgData;
     NameLineNumberPair currentParam;
-    FunctionData currentFunctionBody;
+    NameLineNumberPair currentParamType;
     NameLineNumberPair currentDeclStmt;
     NameLineNumberPair currentExprStmt;
     NameLineNumberPair currentDeclArg;
+    FunctionData currentFunctionBody;
     /*function headers*/
     void GetCallData();
     void ProcessDeclStmt();
@@ -373,7 +374,7 @@ public:
     
                 { "name", [this](){
                     ++triggerField[name];
-                    currentCallArgData.second = currentParam.second = 
+                    currentCallArgData.second = currentParam.second = currentParamType.second = 
                     currentFunctionBody.functionLineNumber = currentDeclStmt.second =  
                     currentExprStmt.second = lineNum;
                 } },
@@ -408,8 +409,11 @@ public:
             || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
             currentFunctionBody.functionName.append(ch, len);
         }
-        if((triggerField[function] && triggerField[name]  && triggerField[parameter_list] && triggerField[param])){
-            currentParam.first.append(ch, len);            
+        if((triggerField[function] && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && !triggerField[type]){
+            currentParam.first.append(ch, len);
+        }
+        if((triggerField[function] && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && triggerField[type] && !triggerField[argument_list]){
+            currentParamType.first.append(ch, len);
         }
         if(triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && triggerField[decl] && !(triggerField[index] || triggerField[preproc])) {
             currentDeclStmt.first.append(ch, len);
@@ -546,6 +550,7 @@ public:
             static const std::unordered_map< std::string, std::function<void()>> process_map4 = {
                 { "param", [this](){
                     currentParam.first.clear();
+                    currentParamType.first.clear();
                     potentialAlias = false;
                     --triggerField[param];
                 } },
@@ -588,6 +593,9 @@ public:
                     if(currentDeclStmt.first == "new"){
                         currentDeclStmt.first.append("-"); //separate new operator because we kinda need to know when we see it.
                     }
+                    if(triggerField[parameter_list] && triggerField[param] && triggerField[type]){
+                        currentParamType.first.clear();
+                    }
                     --triggerField[op];
                 } },
     
@@ -627,7 +635,7 @@ public:
     
                 { "type", [this](){
                     if(triggerField[parameter_list] && triggerField[param]){
-                        currentParam.first.clear();
+                        currentParamType.first.clear();
                     }
                     if(triggerField[decl_stmt] || (triggerField[function] && ! triggerField[block])) {
                         currentDeclStmt.first.clear();
