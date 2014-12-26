@@ -105,6 +105,9 @@ void srcSliceHandler::GetFunctionData(){
     //Get param types
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){
         std::cerr<<"type: "<<currentParamType.first<<std::endl;
+        unsigned int paramHash = paramTypeHash(currentParamType.first);
+        functionTmplt.params.push_back(paramHash);
+        sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
     }
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){

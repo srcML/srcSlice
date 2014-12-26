@@ -39,10 +39,13 @@ struct FunctionData{
         returnType.clear();
         functionName.clear();
     }
+    bool operator==(const FunctionData& d) const{
+        return d.functionName == functionName; //need to define proper op==
+    }
     std::string returnType;
     std::string functionName;
 
-    std::vector<std::string> arguments; //size of vector is # of arguments. String is type of argument.
+    std::vector<unsigned int> params; //size of vector is # of arguments. String is type of argument.
     
     unsigned int functionNumber;
     unsigned int functionLineNumber;
@@ -99,7 +102,9 @@ class SystemDictionary{
 		/*This is a map of file, function/method, and variables. {file, {function, {SliceProfiles}}}*/
 		FileFunctionVarMap dictionary;
 		VarMap globalMap;
+        std::unordered_map<std::string, ClassProfile> classTable;
 		std::unordered_map<unsigned int, std::string> functionTable;
+        std::unordered_map<unsigned int, std::string> typeTable;
         std::vector<std::pair<unsigned int, unsigned int>> controledges;
 };
 #endif

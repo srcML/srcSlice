@@ -36,7 +36,7 @@ private:
      *triggerField vector and figuring out which tags have been seen. It keeps a count of how many of each
      *tag is currently open. Increments at a start tag and decrements at an end tag*/
     enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, 
-        argument_list, call, ctrlflow, endflow, name, function, 
+        argument_list, call, ctrlflow, endflow, name, function, functiondecl,
         argument, index, block, type, init, op, 
         literal, modifier, member_list, classn, preproc,
         whileloop, forloop, ifcond, nonterminal, empty, 
@@ -55,6 +55,9 @@ private:
     /*Hashing function/file names. This will accomplish that.*/
     std::hash<std::string> functionNameHash;
 
+    /*Hashing param types*/
+    std::hash<std::string> paramTypeHash;
+
     /*Holds data for functions as we parse. Useful for going back to figuring out which function we're in*/
     FunctionData functionTmplt;
 
@@ -64,6 +67,7 @@ private:
     /*These two iterators keep track of where we are inside of the system dictionary. They're primarily so that
      *there's no need to do any nasty map.finds on the dictionary (since it's a nested map of maps). These must
      *be updated as the file is parsed*/
+    std::unordered_map<std::string, ClassProfile>::iterator classIt;
     FileFunctionVarMap::iterator FileIt;
     FunctionVarMap::iterator FunctionIt;
     VarMap::iterator varIt;
@@ -186,6 +190,7 @@ public:
         //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
         unsigned int ghash = functionNameHash("GLOBAL");
         sysDict.functionTable.insert(std::make_pair(functionNameHash("GLOBAL"), "GLOBAL"));
+        classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
         FunctionIt = FileIt->second.insert(std::make_pair(ghash, VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
@@ -270,6 +275,9 @@ public:
                 inGlobalScope = false;
                 currentFunctionBody.functionName.clear();
                 ++triggerField[function];
+            } },
+            { "function_decl", [this](){
+                ++triggerField[functiondecl];
             } },
 
             { "constructor", [this](){
@@ -409,10 +417,10 @@ public:
             || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
             currentFunctionBody.functionName.append(ch, len);
         }
-        if((triggerField[function] && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && !triggerField[type]){
+        if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && !triggerField[type]){
             currentParam.first.append(ch, len);
         }
-        if((triggerField[function] && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && triggerField[type] && !triggerField[argument_list]){
+        if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && triggerField[type] && !triggerField[argument_list]){
             currentParamType.first.append(ch, len);
         }
         if(triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && triggerField[decl] && !(triggerField[index] || triggerField[preproc])) {
@@ -516,6 +524,19 @@ public:
                 inGlobalScope = true;
                 functionTmplt.clear();
                 --triggerField[function];
+            } },
+            
+            { "function_decl", [this](){
+                if(triggerField[classn]){
+                    //add functmplt to classprofile
+
+                    //reset to global
+                    classIt = sysDict.classTable.find("GLOBAL");
+                }else{
+                    //add functmplt to classprofile for global
+                    classIt->second.memberFunctions.insert(functionTmplt);
+                }
+                --triggerField[functiondecl];
             } },
 
             { "constructor", [this](){
@@ -661,7 +682,7 @@ public:
                         callArgData.push(currentCallArgData);
                     }
                     //Get Function names and arguments
-                    if(triggerField[function]){
+                    if(triggerField[function] || triggerField[functiondecl]){
                         GetFunctionData();
                     }
                     //Get variable decls
@@ -680,6 +701,10 @@ public:
                     if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
                     !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
                         ProcessDeclStmt();
+                    }
+                    if(triggerField[classn]){
+                        //TODO class name;
+                        classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
                     }
                     --triggerField[name];
                 } },
