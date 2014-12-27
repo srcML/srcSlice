@@ -100,6 +100,7 @@ private:
     NameLineNumberPair currentDeclStmt;
     NameLineNumberPair currentExprStmt;
     NameLineNumberPair currentDeclArg;
+    NameLineNumberPair currentClassName;
     FunctionData currentFunctionBody;
     /*function headers*/
     void GetCallData();
@@ -289,6 +290,10 @@ public:
                 ++triggerField[function];
             } },
 
+            { "class", [this](){
+                ++triggerField[classn];
+            } },
+
             { "destructor", [this](){
                 inGlobalScope = false;
                 currentFunctionBody.functionName.clear();
@@ -304,7 +309,7 @@ public:
         }
         
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] || 
-            triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
+            triggerField[parameter_list] || triggerField[argument_list] || triggerField[call] || triggerField[classn]){
             
             static const std::unordered_map< std::string,  std::function<void()>> process_map2 = {
     
@@ -316,11 +321,6 @@ public:
                 { "member_list", [this](){
                     ++triggerField[member_list];
                 } },
-    
-                { "class", [this](){
-                    ++triggerField[classn];
-                } },
-    
                 { "index", [this](){
                     ++triggerField[index];
                 } },
@@ -436,6 +436,9 @@ public:
             !triggerField[type]){
             currentDeclArg.first.append(ch,len);
         }
+        if(!triggerField[block] && triggerField[classn]){
+            currentClassName.first.append(ch,len);
+        }
     }
 
     // end elements may need to be used if you want to collect only on per file basis or some other granularity.
@@ -538,7 +541,12 @@ public:
                 }
                 --triggerField[functiondecl];
             } },
-
+            
+            { "class", [this](){
+                currentClassName.first.clear();
+                --triggerField[classn];
+            } },
+            
             { "constructor", [this](){
                 isConstructor = false;
                 declIndex = 0;
@@ -566,7 +574,7 @@ public:
    
 
         if(triggerField[decl_stmt] || triggerField[function] || triggerField[expr_stmt] 
-            || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call]){
+            || triggerField[parameter_list] || triggerField[argument_list] || triggerField[call] || triggerField[classn]){
             
             static const std::unordered_map< std::string, std::function<void()>> process_map4 = {
                 { "param", [this](){
@@ -578,10 +586,6 @@ public:
     
                 { "member_list", [this](){
                     --triggerField[member_list];
-                } },
-    
-                { "class", [this](){
-                    --triggerField[classn];
                 } },
     
                 { "index", [this](){
@@ -703,8 +707,8 @@ public:
                         ProcessDeclStmt();
                     }
                     if(triggerField[classn]){
-                        //TODO class name;
-                        classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
+                        std::cerr<<"Class: "<<currentClassName.first<<std::endl;
+                        classIt = sysDict.classTable.insert(std::make_pair(currentClassName.first, ClassProfile())).first;
                     }
                     --triggerField[name];
                 } },
