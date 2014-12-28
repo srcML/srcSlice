@@ -37,7 +37,7 @@ private:
      *tag is currently open. Increments at a start tag and decrements at an end tag*/
     enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, 
         argument_list, call, ctrlflow, endflow, name, function, functiondecl,
-        argument, index, block, type, init, op, 
+        constructordecl, destructordecl, argument, index, block, type, init, op, 
         literal, modifier, member_list, classn, preproc,
         whileloop, forloop, ifcond, nonterminal, empty, 
         MAXENUMVALUE = empty};
@@ -280,11 +280,6 @@ public:
                 currentFunctionBody.functionName.clear();
                 ++triggerField[function];
             } },
-            { "function_decl", [this](){
-                currentFunctionDecl.functionName.clear();
-                ++triggerField[functiondecl];
-            } },
-
             { "constructor", [this](){
                 ++constructorNum;//constructors have numbers appended to them since they all have the same name.
                 
@@ -293,7 +288,18 @@ public:
 
                 ++triggerField[function];
             } },
-
+            { "function_decl", [this](){
+                currentFunctionDecl.functionName.clear();
+                ++triggerField[functiondecl];
+            } },
+            { "destructor_decl", [this](){
+                currentFunctionDecl.functionName.clear();
+                ++triggerField[destructordecl];
+            } },
+            { "constructor_decl", [this](){
+                currentFunctionDecl.functionName.clear();
+                ++triggerField[constructordecl];
+            } },
             { "class", [this](){
                 ++triggerField[classn];
             } },
@@ -421,7 +427,7 @@ public:
             || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
             currentFunctionBody.functionName.append(ch, len);
         }
-        if(triggerField[functiondecl] && !(triggerField[type] || triggerField[parameter_list])){
+        if((triggerField[functiondecl]) && !(triggerField[type] || triggerField[parameter_list])){
             currentFunctionDecl.functionName.append(ch,len);
         }
         if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && !triggerField[type]){
@@ -537,26 +543,6 @@ public:
                 functionTmplt.clear();
                 --triggerField[function];
             } },
-            
-            { "function_decl", [this](){
-                if(triggerField[classn]){
-                    std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
-                    classIt->second.memberFunctions.insert(functionTmplt);
-                }
-                --triggerField[functiondecl];
-            } },
-            
-            { "class", [this](){
-                currentClassName.first.clear();
-                classIt = sysDict.classTable.find("GLOBAL");
-                //std::cerr<<"Class mfs: "<<sysDict.classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
-                //std::cerr<<"Class mvs: "<<sysDict.classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
-
-                //std::cerr<<"Class mfs: "<<sysDict.classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
-                //std::cerr<<"Class mvs: "<<sysDict.classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
-                --triggerField[classn];
-            } },
-            
             { "constructor", [this](){
                 isConstructor = false;
                 declIndex = 0;
@@ -577,6 +563,38 @@ public:
                 functionTmplt.clear();
                 --triggerField[function];
             } },
+            { "function_decl", [this](){
+                if(triggerField[classn]){
+                    std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
+                    classIt->second.memberFunctions.insert(functionTmplt);
+                }
+                --triggerField[functiondecl];
+            } },
+            { "constructor_decl", [this](){
+                if(triggerField[classn]){
+                    std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
+                    classIt->second.memberFunctions.insert(functionTmplt);
+                }
+                --triggerField[functiondecl];
+            } },
+            { "destructor_decl", [this](){
+                if(triggerField[classn]){
+                    std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
+                    classIt->second.memberFunctions.insert(functionTmplt);
+                }
+                --triggerField[functiondecl];
+            } },            
+            { "class", [this](){
+                currentClassName.first.clear();
+                classIt = sysDict.classTable.find("GLOBAL");
+                std::cerr<<"Class mfs: "<<sysDict.classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
+                std::cerr<<"Class mvs: "<<sysDict.classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
+
+                std::cerr<<"Class mfs: "<<sysDict.classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
+                std::cerr<<"Class mvs: "<<sysDict.classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
+                --triggerField[classn];
+            } },
+            
         };
         
         std::unordered_map<std::string, std::function<void()>>::const_iterator process3 = process_map3.find(lname);
@@ -688,8 +706,9 @@ public:
     
                 { "name", [this](){
                     if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
-                        sysDict.functionTable.insert(std::make_pair(functionNameHash(functionTmplt.functionName), functionTmplt.functionName));
-                        FunctionIt = FileIt->second.insert(std::make_pair(functionNameHash(functionTmplt.functionName), VarMap())).first;
+                        functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
+                        sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
+                        FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
                     }
                     if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
                             !triggerField[type]){ //For the case where we need to get a constructor decl
@@ -724,7 +743,7 @@ public:
                         ProcessDeclStmt();
                     }
                     if(triggerField[classn]){
-                        std::cerr<<"Class: "<<currentClassName.first<<std::endl;
+                        //std::cerr<<"Class: "<<currentClassName.first<<std::endl;
                         classIt = sysDict.classTable.insert(std::make_pair(currentClassName.first, ClassProfile())).first;
                     }
                     --triggerField[name];

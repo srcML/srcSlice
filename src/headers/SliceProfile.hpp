@@ -27,8 +27,7 @@ public:
   template <typename T>
   std::size_t operator()(const T x) const
   {
-
-    return std::hash<unsigned int>()((x.functionNumber + x.params.size()));
+    return std::hash<unsigned int>()(x.functionNumber + x.params.size()+x.functionHash);
   }
 };
 struct FunctionData{
@@ -49,6 +48,7 @@ struct FunctionData{
     std::vector<unsigned int> params; //size of vector is # of arguments. String is type of argument.
     
     unsigned int functionNumber;
+    unsigned int functionHash;
     unsigned int functionLineNumber;
 };
 

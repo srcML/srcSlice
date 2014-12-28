@@ -104,14 +104,15 @@ void srcSliceHandler::GetFunctionData(){
     }
     //Get param types
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){
-        std::cerr<<"type: "<<currentParamType.first<<std::endl;
+        //std::cerr<<"type: "<<currentParamType.first<<std::endl;
         unsigned int paramHash = paramTypeHash(currentParamType.first);
         functionTmplt.params.push_back(paramHash);
+        functionTmplt.functionNumber += paramHash;
         sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
     }
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
-        std::cerr<<"name: "<<currentParam.first<<std::endl;
+        //std::cerr<<"name: "<<currentParam.first<<std::endl;
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile((declIndex), fileNumber, 
                 functionTmplt.functionName, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
@@ -126,11 +127,12 @@ void srcSliceHandler::GetFunctionDeclData(){
     if(triggerField[name]){
         functionTmplt.functionLineNumber = currentFunctionDecl.functionLineNumber;
         functionTmplt.functionName = currentFunctionDecl.functionName;
-        std::cerr<<"name: "<<functionTmplt.functionName<<std::endl;
+        //std::cerr<<"name: "<<functionTmplt.functionName<<std::endl;
     }
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
         //std::cerr<<"type: "<<currentParamType.first<<std::endl;
         unsigned int paramHash = paramTypeHash(currentParamType.first);
+        functionTmplt.functionNumber += paramHash;
         functionTmplt.params.push_back(paramHash);
         sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
     }
@@ -145,7 +147,7 @@ void srcSliceHandler::GetFunctionDeclData(){
 */
 void srcSliceHandler::GetDeclStmtData(){
     if(!triggerField[type] && triggerField[classn]){
-        std::cerr<<"Bleep: "<<currentDeclStmt.first<<std::endl;
+        //std::cerr<<"Bleep: "<<currentDeclStmt.first<<std::endl;
         classIt->second.memberVariables.insert(currentDeclStmt.first);
         return;
     }
