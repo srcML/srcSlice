@@ -27,7 +27,8 @@ public:
   template <typename T>
   std::size_t operator()(const T x) const
   {
-    return std::hash<unsigned int>()(x.functionNumber);
+
+    return std::hash<unsigned int>()((x.functionNumber + x.params.size()));
   }
 };
 struct FunctionData{

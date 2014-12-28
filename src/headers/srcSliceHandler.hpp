@@ -102,6 +102,7 @@ private:
     NameLineNumberPair currentDeclArg;
     NameLineNumberPair currentClassName;
     FunctionData currentFunctionBody;
+    FunctionData currentFunctionDecl;
     /*function headers*/
     void GetCallData();
     void ProcessDeclStmt();
@@ -109,6 +110,8 @@ private:
     void GetDeclStmtData();
     void ProcessExprStmt();
     void ProcessConstructorDecl();
+    void GetFunctionDeclData();
+
     SliceProfile* Find(const std::string&);
     
     
@@ -278,6 +281,7 @@ public:
                 ++triggerField[function];
             } },
             { "function_decl", [this](){
+                currentFunctionDecl.functionName.clear();
                 ++triggerField[functiondecl];
             } },
 
@@ -384,7 +388,7 @@ public:
                     ++triggerField[name];
                     currentCallArgData.second = currentParam.second = currentParamType.second = 
                     currentFunctionBody.functionLineNumber = currentDeclStmt.second =  
-                    currentExprStmt.second = lineNum;
+                    currentExprStmt.second = currentFunctionDecl.functionLineNumber = lineNum;
                 } },
     
                 };   
@@ -417,6 +421,9 @@ public:
             || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
             currentFunctionBody.functionName.append(ch, len);
         }
+        if(triggerField[functiondecl] && !(triggerField[type] || triggerField[parameter_list])){
+            currentFunctionDecl.functionName.append(ch,len);
+        }
         if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && !triggerField[type]){
             currentParam.first.append(ch, len);
         }
@@ -436,7 +443,7 @@ public:
             !triggerField[type]){
             currentDeclArg.first.append(ch,len);
         }
-        if(!triggerField[block] && triggerField[classn]){
+        if(!triggerField[block] && (triggerField[name] && triggerField[classn])){
             currentClassName.first.append(ch,len);
         }
     }
@@ -523,20 +530,17 @@ public:
             { "function", [this](){
                 //std::cerr<<functionTmplt.functionName<<std::endl;
                 declIndex = 0;
-
                 inGlobalScope = true;
+                std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;
+                classIt->second.memberFunctions.insert(functionTmplt);
+                
                 functionTmplt.clear();
                 --triggerField[function];
             } },
             
             { "function_decl", [this](){
                 if(triggerField[classn]){
-                    //add functmplt to classprofile
-
-                    //reset to global
-                    classIt = sysDict.classTable.find("GLOBAL");
-                }else{
-                    //add functmplt to classprofile for global
+                    std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
                     classIt->second.memberFunctions.insert(functionTmplt);
                 }
                 --triggerField[functiondecl];
@@ -544,6 +548,12 @@ public:
             
             { "class", [this](){
                 currentClassName.first.clear();
+                classIt = sysDict.classTable.find("GLOBAL");
+                //std::cerr<<"Class mfs: "<<sysDict.classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
+                //std::cerr<<"Class mvs: "<<sysDict.classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
+
+                //std::cerr<<"Class mfs: "<<sysDict.classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
+                //std::cerr<<"Class mvs: "<<sysDict.classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
                 --triggerField[classn];
             } },
             
@@ -551,6 +561,8 @@ public:
                 isConstructor = false;
                 declIndex = 0;
 
+                classIt->second.memberFunctions.insert(functionTmplt);
+                
                 inGlobalScope = true;
                 functionTmplt.clear();
                 --triggerField[function];
@@ -558,6 +570,8 @@ public:
 
             { "destructor", [this](){
                 declIndex = 0;
+
+                classIt->second.memberFunctions.insert(functionTmplt);
 
                 inGlobalScope = true;
                 functionTmplt.clear();
@@ -623,7 +637,7 @@ public:
                     }
                     --triggerField[op];
                 } },
-    
+
                 { "block", [this]()
                 { //So we can discriminate against things in or outside of blocks
                         //currentFunctionBody.functionName.clear();
@@ -686,8 +700,11 @@ public:
                         callArgData.push(currentCallArgData);
                     }
                     //Get Function names and arguments
-                    if(triggerField[function] || triggerField[functiondecl]){
+                    if(triggerField[function]){
                         GetFunctionData();
+                    }
+                    if(triggerField[functiondecl]){
+                        GetFunctionDeclData();
                     }
                     //Get variable decls
                     if(triggerField[decl_stmt]){

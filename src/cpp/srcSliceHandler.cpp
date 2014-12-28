@@ -89,7 +89,7 @@ void srcSliceHandler::GetFunctionData(){
     }
     //Get function name
     if(triggerField[name] == 1 && !(triggerField[argument_list] || 
-        triggerField[block] || triggerField[type] || triggerField[parameter_list] || triggerField[member_list])){            
+        triggerField[block] || triggerField[type] || triggerField[parameter_list] || triggerField[member_list])){ 
         std::size_t pos = currentFunctionBody.functionName.find("::");
         if(pos != std::string::npos){
             currentFunctionBody.functionName.erase(0, pos+2);
@@ -119,12 +119,36 @@ void srcSliceHandler::GetFunctionData(){
     }
 }
 
+void srcSliceHandler::GetFunctionDeclData(){
+    if(triggerField[type] && !(triggerField[parameter_list] || triggerField[block] || triggerField[member_list])){
+        functionTmplt.returnType = currentFunctionDecl.functionName;
+    }
+    if(triggerField[name]){
+        functionTmplt.functionLineNumber = currentFunctionDecl.functionLineNumber;
+        functionTmplt.functionName = currentFunctionDecl.functionName;
+        std::cerr<<"name: "<<functionTmplt.functionName<<std::endl;
+    }
+    if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
+        //std::cerr<<"type: "<<currentParamType.first<<std::endl;
+        unsigned int paramHash = paramTypeHash(currentParamType.first);
+        functionTmplt.params.push_back(paramHash);
+        sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
+    }
+    if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type])) {
+
+    }
+}
 /**
 * GetDeclStmtData
 * Knows proper constraints for obtaining DeclStmt type and name.
 * creates a new slice profile and stores data about decle statement inside.
 */
-void srcSliceHandler::GetDeclStmtData(){  
+void srcSliceHandler::GetDeclStmtData(){
+    if(!triggerField[type] && triggerField[classn]){
+        std::cerr<<"Bleep: "<<currentDeclStmt.first<<std::endl;
+        classIt->second.memberVariables.insert(currentDeclStmt.first);
+        return;
+    }
     if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
         //functionTmplt.declstmt.type = currentCallArgData.first; //store type
         //agglomerate string into type. Clear when we exit the decl_stmt
