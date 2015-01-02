@@ -27,7 +27,7 @@ public:
   template <typename T>
   std::size_t operator()(const T x) const
   {
-    return std::hash<unsigned int>()(x.functionNumber + x.params.size()+x.functionHash);
+    return std::hash<unsigned int>()(x.GetFunctionUID());
   }
 };
 struct FunctionData{
@@ -40,15 +40,18 @@ struct FunctionData{
         functionName.clear();
     }
     bool operator==(const FunctionData& d) const{
-        return d.functionName == functionName; //need to define proper op==
+        return d.functionName == functionName; //need to define proper op== for the hash
+    }
+    unsigned int GetFunctionUID() const{
+        return functionNumber + params.size()+ functionHash;
     }
     std::string returnType;
     std::string functionName;
 
     std::vector<unsigned int> params; //size of vector is # of arguments. String is type of argument.
     
-    unsigned int functionNumber;
-    unsigned int functionHash;
+    unsigned int functionNumber; //obtained from adding hashes of types of arguments TODO: CHANGE NAME
+    unsigned int functionHash; //obtained from hashing name of function TODO: CHANGE NAME
     unsigned int functionLineNumber;
 };
 
@@ -63,7 +66,7 @@ struct ClassProfile{
 class SliceProfile{
 	public:
 		SliceProfile() = default;
-		SliceProfile(unsigned int idx, unsigned int fle, std::string fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
         index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isGlobal(global) {
 			slines.insert(sline);
             dereferenced = false;
@@ -71,7 +74,7 @@ class SliceProfile{
 
 		unsigned int index;
 		unsigned int file;
-		std::string function;
+		unsigned int function;
 		
         std::unordered_set<std::string>::iterator lastInsertedAlias;
 

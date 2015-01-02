@@ -114,8 +114,8 @@ void srcSliceHandler::GetFunctionData(){
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
         //std::cerr<<"name: "<<currentParam.first<<std::endl;
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
-            SliceProfile((declIndex), fileNumber, 
-                functionTmplt.functionName, currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
+            SliceProfile(declIndex, fileNumber, 
+                functionTmplt.GetFunctionUID(), currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
         varIt->second.def.insert(currentDeclStmt.second);
     }
 }
@@ -164,16 +164,16 @@ void srcSliceHandler::GetDeclStmtData(){
         if(!inGlobalScope){
 
             varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
-                SliceProfile((declIndex), fileNumber, 
-                    functionTmplt.functionName, currentDeclStmt.second, 
+                SliceProfile(declIndex, fileNumber, 
+                    functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
                     currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
         }else{ //TODO: Handle def use for globals
             //std::cerr<<currentDeclStmt.first<<std::endl;
             //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
-            SliceProfile((declIndex), fileNumber, 
-                functionTmplt.functionName, currentDeclStmt.second, 
+            SliceProfile(declIndex, fileNumber, 
+                functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
                 currentDeclStmt.first, potentialAlias, inGlobalScope)));
         }
     }
