@@ -100,7 +100,8 @@ void srcSliceHandler::GetFunctionData(){
             currentFunctionBody.functionName+=ststrm.str(); //number the constructor. Find a better way than stringstreams someday.
         }
         functionTmplt.functionLineNumber = currentFunctionBody.functionLineNumber;
-        functionTmplt.functionName = currentFunctionBody.functionName; //give me the hash num for this name.            
+        functionTmplt.functionName = currentFunctionBody.functionName; //give me the hash num for this name.
+        //std::cerr<<"herher: "<<functionTmplt.functionName<<std::endl;
     }
     //Get param types
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){
@@ -112,10 +113,10 @@ void srcSliceHandler::GetFunctionData(){
     }
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
-        //std::cerr<<"name: "<<currentParam.first<<std::endl;
+        //std::cerr<<"name: "<<currentParamType.first<<std::endl;
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile(declIndex, fileNumber, 
-                functionTmplt.GetFunctionUID(), currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
+                functionTmplt.GetFunctionUID(), currentParam.second, currentParam.first, currentParamType.first, potentialAlias, inGlobalScope))).first;
         varIt->second.def.insert(currentDeclStmt.second);
     }
 }
@@ -146,27 +147,34 @@ void srcSliceHandler::GetFunctionDeclData(){
 * creates a new slice profile and stores data about decle statement inside.
 */
 void srcSliceHandler::GetDeclStmtData(){
-    if(!triggerField[type] && triggerField[classn]){
+    //if(!triggerField[type] && triggerField[classn]){
         //std::cerr<<"Bleep: "<<currentDeclStmt.first<<std::endl;
-        classIt->second.memberVariables.insert(currentDeclStmt.first);
-        return;
-    }
+        //classIt->second.memberVariables.insert(currentDeclStmt.first);
+        //return;
+   // }
     if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
         //functionTmplt.declstmt.type = currentCallArgData.first; //store type
         //agglomerate string into type. Clear when we exit the decl_stmt
+
     }
 
     //Get name of decl stmt
-    if(triggerField[decl] && !(triggerField[type] || triggerField[init] || triggerField[expr] || triggerField[index] || triggerField[classn])){
+    if(triggerField[decl] && !(triggerField[type] || triggerField[init] || triggerField[expr] || triggerField[index])){
+        
+        if(triggerField[classn]){ //In a class so just get type and name then leave. No special processing needed. TODO might need to deal with commas
+            std::cerr<<"Type: "<<currentDeclType.first<<" Name: "<<currentDeclStmt.first<<std::endl;
+            classIt->second.memberVariables.insert(std::make_pair(currentDeclStmt.first, paramTypeHash(currentDeclType.first)));
+            return;
+        }
+
         if(currentDeclStmt.first[0] == ','){//corner case with decls like: int i, k, j. This is a patch, fix properly later.
             currentDeclStmt.first.erase(0,1);
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
-
-            varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first, 
-                SliceProfile(declIndex, fileNumber, 
+            varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first,
+                SliceProfile(declIndex, fileNumber,
                     functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
-                    currentDeclStmt.first, potentialAlias, inGlobalScope))).first;
+                    currentDeclStmt.first, currentDeclType.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
         }else{ //TODO: Handle def use for globals
             //std::cerr<<currentDeclStmt.first<<std::endl;
@@ -174,12 +182,30 @@ void srcSliceHandler::GetDeclStmtData(){
             sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
             SliceProfile(declIndex, fileNumber, 
                 functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
-                currentDeclStmt.first, potentialAlias, inGlobalScope)));
+                currentDeclStmt.first, currentDeclType.first, potentialAlias, inGlobalScope)));
         }
     }
     //Get Init of decl stmt
 }
+void srcSliceHandler::ProcessMemberDeref(){
+    //std::cerr<<"Mem: "<<currentExprStmt.first<<std::endl;
+    //std::cerr<<lhsName<<std::endl;
+    skipMember = false;
+    auto sp = Find(lhsName);
+    if(sp){
+        std::cerr<<"Ooof: "<<sp->variableType<<std::endl;
+        auto it = sysDict.classTable.find(sp->variableType);
+        if(it != sysDict.classTable.end()){ //std::unordered_map<unsigned int, std::queue<std::pair<unsigned int, std::string>>> lineNumberMemberVariableMap;
+            auto it2 = it->second.memberVariables.find(currentExprStmt.first);
+            if(it2 != it->second.memberVariables.end()){
+                std::queue<std::pair<unsigned int, std::string>> testQ;
+                testQ.push(std::make_pair(it2->second, it2->first));
+                sp->lineNumberMemberVariableMap.insert(std::make_pair(currentExprStmt.second, testQ));
+            }
 
+        }
+    }
+}
 /**
  * ProcessExprStmt
  * Get entire expression statement and then process by first splitting to lhs and rhs. Process the lhs
@@ -188,9 +214,11 @@ void srcSliceHandler::GetDeclStmtData(){
  */
 void srcSliceHandler::ProcessExprStmt(){
   if(skipMember){
-    currentExprStmt.first = lhsName;
-    currentExprStmt.second = lhsLine;
-    skipMember = false;
+    //std::cerr<<"Name: "<<currentExprStmt.first<<std::endl;
+    //Identify names of member variables here. Check the class profile using the type of the variable this is and then look to find member. If it's a member, add to some DS in sliceprofile.
+    //currentExprStmt.first = lhsName;//Make this into a stack. Pile on ev
+    //currentExprStmt.second = lhsLine;
+    //skipMember = false;
     return;
   }
   if(!opassign){

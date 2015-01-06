@@ -5,6 +5,8 @@
 #include <string>
 #include <vector>
 
+enum PrimTypes{INT, UINT, SIINT, SHINT, SISINT, USISINT, LINT, SLINT, USILINT, SILINT, LDOUBLE, WCHAR, CHAR, UCHAR, SCHAR, VOID, FLOAT, BOOL, DOUBLE, SIZE_T};
+
 template <typename T> 
 void SetUnion(std::unordered_set<T>& set1, std::unordered_set<T> set2){
     if(set1.empty() || set2.empty()){
@@ -25,31 +27,36 @@ void SetUnion(std::unordered_set<T, U>& set1, std::unordered_set<T, U>& set2){
     }
 }
 
-std::vector<std::string> SplitLhsRhs(const std::string& str){
-    std::vector<std::string> expr;
-    expr.push_back(std::string());
-    for(int i = 0; i<str.size(); ++i){
-        if(str[i] == '='){
-            expr.push_back(str.substr(i+1, str.size()-1));
-            break;
-        }else{
-            expr[0]+=str[i];
-        }
-    }
-    return expr;
-}
 
-/* Split function for splitting strings by tokens. Works on sets of tokens or just one token*/
-std::vector<std::string> SplitOnTok(const std::string& str, const char* tok){
-    std::size_t tokPos = str.find_first_of(tok);
-    std::vector<std::string> result;
-    std::size_t nextPos = 0, curPos = 0;
-    while(curPos != std::string::npos){
-        result.push_back(str.substr(nextPos, tokPos - nextPos));
-        nextPos = tokPos+1;
-        curPos = tokPos;
-        tokPos = str.find_first_of(tok, nextPos);
-    }
-    return result;
-}
 #endif
+
+
+
+/*
+static const std::unordered_map<std::string, PrimTypes> cppPrimTypes{
+{"int", INT},
+{"unsigned int", UINT},
+{"signed int", SIINT},
+{"short int", SHINT},
+{"signed short int", SISINT},
+{"unsigned short int", USISINT},
+{"long int", LINT},
+{"signed long int", SILINT},
+{"unsigned long int", USILINT},
+{"float", FLOAT},
+{"double", DOUBLE},
+{"long double", LDOUBLE},
+{"wchar_t", WCHAR},
+{"char", CHAR},
+{"unsigned char", UCHAR},
+{"signed char", SCHAR},
+{"void", VOID},
+{"float", FLOAT},
+{"bool", BOOL},
+{"double", DOUBLE},
+{"size_t", SIZE_T}};
+static const std::unordered_set<std::string> strToPrimTypes = {"int", "unsigned int", "signed int", "short int", 
+                                                          "signed short int", "usigned short int", "long int", 
+                                                          "signed long int", "unsigned long int", "float", 
+                                                          "double", "long double", "wchar_t", "char", "unsigned char",
+                                                          "signed char", "void", "float", "bool", "double", "size_t"};*/

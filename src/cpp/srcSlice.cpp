@@ -58,7 +58,7 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 			std::cerr<<handler.sysDict.functionTable.find(fvmIt->first)->second<<std::endl; 
 			for(VarMap::const_iterator vmIt = fvmIt->second.begin(); vmIt != fvmIt->second.end(); ++vmIt){
 				std::cerr<<"-------------------------"<<std::endl;
-				std::cerr<<"Variable: "<<vmIt->first<<std::endl;
+				//std::cerr<<"Variable: "<<vmIt->first<<std::endl;
 				std::cerr<<"Slines: {";
 				for(unsigned int sl : vmIt->second.slines){
 					std::cerr<<sl<<",";

@@ -6,10 +6,12 @@
 #include <unordered_set>
 #include <unordered_map>
 #include <set>
+#include <queue>
 class SliceProfile;
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
 typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
 typedef std::unordered_map<std::string, FunctionVarMap> FileFunctionVarMap;
+
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<unsigned int, unsigned int> HashedNameLineNumberPair;
 typedef std::pair<std::string, std::string> TypeNamePair;
@@ -59,15 +61,15 @@ struct FunctionData{
 
 struct ClassProfile{
     std::string className;
-    std::unordered_set<std::string> memberVariables;
+    std::unordered_map<std::string,unsigned int> memberVariables;
     std::unordered_set<FunctionData, FunctionArgtypeArgnumHash> memberFunctions; //need to handle overloads. Can't be string.
 };
 
 class SliceProfile{
 	public:
 		SliceProfile() = default;
-		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
-        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isGlobal(global) {
+		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, std::string type, bool alias = 0, bool global = 0):
+        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name), variableType(type), isGlobal(global) {
 			slines.insert(sline);
             dereferenced = false;
 		}
@@ -86,12 +88,15 @@ class SliceProfile{
 
 		std::string variableName;
 		std::string variableType;
-		std::unordered_set<std::string> memberVariables;
+
 		std::unordered_set<unsigned int> slines; //Deprecated
         
         std::set<unsigned int> def;
         std::set<unsigned int> use;
-		
+
+		//When an object has member variables, they can also have their own member variables. To deal with this, we create a list from the line number for this sp. Can then look up which variables were dereference.
+        std::unordered_map<unsigned int, std::queue<std::pair<unsigned int, std::string>>> lineNumberMemberVariableMap; //{LineNumber, [{typeNumber, memberName},...]} 
+        
         std::unordered_set<HashedNameLineNumberPair, NameLineNumberPairHash> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
