@@ -595,13 +595,6 @@ public:
             { "class", [this](){
                 currentClassName.first.clear();
                 classIt = sysDict.classTable.find("GLOBAL");
-                
-                std::cerr<<"Class mfs: "<<sysDict.classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
-                std::cerr<<"Class mvs: "<<sysDict.classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
-
-                std::cerr<<"Class mfs: "<<sysDict.classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
-                std::cerr<<"Class mvs: "<<sysDict.classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
-                
                 --triggerField[classn];
             } },
             

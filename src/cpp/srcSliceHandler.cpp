@@ -162,7 +162,7 @@ void srcSliceHandler::GetDeclStmtData(){
     if(triggerField[decl] && !(triggerField[type] || triggerField[init] || triggerField[expr] || triggerField[index])){
         
         if(triggerField[classn]){ //In a class so just get type and name then leave. No special processing needed. TODO might need to deal with commas
-            std::cerr<<"Type: "<<currentDeclType.first<<" Name: "<<currentDeclStmt.first<<std::endl;
+            //std::cerr<<"Type: "<<currentDeclType.first<<" Name: "<<currentDeclStmt.first<<std::endl;
             classIt->second.memberVariables.insert(std::make_pair(TypeNamePair(paramTypeHash(currentDeclType.first),currentDeclStmt.first), std::unordered_set<unsigned int>()));
             return;
         }
@@ -180,12 +180,12 @@ void srcSliceHandler::GetDeclStmtData(){
                 auto classIt2 = sysDict.classTable.find(currentDeclType.first);
                 if(classIt2 != sysDict.classTable.end()){
                     varIt->second.memberVariableLineNumberMap = classIt2->second.memberVariables;
-                    std::cerr<<"MemberVarMap: "<<varIt->second.memberVariableLineNumberMap.size()<<std::endl;
+                    //std::cerr<<"MemberVarMap: "<<varIt->second.memberVariableLineNumberMap.size()<<std::endl;
                 }
             }
         }else{ //TODO: Handle def use for globals
             //std::cerr<<currentDeclStmt.first<<std::endl;
-            std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
+            //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             auto iter = sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
                         SliceProfile(declIndex, fileNumber, 
                             functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
@@ -224,7 +224,6 @@ void srcSliceHandler::ProcessExprStmt(){
     }
   }else{
     if(lhs == nullptr){return;}
-    std::cerr<<"Checking for: "<<lhs<<std::endl;
     auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
     if(sprIt){ //lvalue depends on this rvalue
         //std::cerr<<"Here2"<<std::endl;
