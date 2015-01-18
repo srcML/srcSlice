@@ -49,7 +49,6 @@ private:
     int constructorNum;
 
     SliceProfile* lhs;
-    std::string lhsName;
     unsigned int lhsLine;
 
     /*Hashing function/file names. This will accomplish that.*/
@@ -94,7 +93,8 @@ private:
     std::vector<unsigned short int> triggerField;
     std::string calledFunctionName;
     std::stack<NameLineNumberPair> callArgData;
-    std::stack<std::string> memberAccessStack; //deals with objects of form obj->obj2.obj3
+    std::vector<std::string> memberAccessStack; //deals with objects of form obj->obj2.obj3
+    
 
     NameLineNumberPair currentCallArgData;
     NameLineNumberPair currentParam;
@@ -106,6 +106,7 @@ private:
     NameLineNumberPair currentClassName;
     FunctionData currentFunctionBody;
     FunctionData currentFunctionDecl;
+    
     /*function headers*/
     void GetCallData();
     void ProcessDeclStmt();
@@ -498,7 +499,6 @@ public:
                 opassign = false;
                 dereferenced = false;
                 lhsLine = 0;
-                lhsName.clear();
                 currentCallArgData.first.clear();
                 currentExprStmt.first.clear();
             } },
@@ -595,13 +595,13 @@ public:
             { "class", [this](){
                 currentClassName.first.clear();
                 classIt = sysDict.classTable.find("GLOBAL");
-                /*
+                
                 std::cerr<<"Class mfs: "<<sysDict.classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
                 std::cerr<<"Class mvs: "<<sysDict.classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
 
                 std::cerr<<"Class mfs: "<<sysDict.classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
                 std::cerr<<"Class mvs: "<<sysDict.classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
-                */
+                
                 --triggerField[classn];
             } },
             
@@ -711,6 +711,7 @@ public:
                 } },
     
                 { "expr", [this](){
+                    //typeMemberPtr = nullptr; //may be more cases for this
                     --triggerField[expr];
                 } },
     
@@ -757,6 +758,7 @@ public:
                         //std::cerr<<"Class: "<<currentClassName.first<<std::endl;
                         classIt = sysDict.classTable.insert(std::make_pair(currentClassName.first, ClassProfile())).first;
                     }
+
                     if(skipMember){
                         ProcessMemberDeref();
                     }

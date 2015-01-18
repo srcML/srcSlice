@@ -163,7 +163,7 @@ void srcSliceHandler::GetDeclStmtData(){
         
         if(triggerField[classn]){ //In a class so just get type and name then leave. No special processing needed. TODO might need to deal with commas
             std::cerr<<"Type: "<<currentDeclType.first<<" Name: "<<currentDeclStmt.first<<std::endl;
-            classIt->second.memberVariables.insert(std::make_pair(currentDeclStmt.first, paramTypeHash(currentDeclType.first)));
+            classIt->second.memberVariables.insert(std::make_pair(TypeNamePair(paramTypeHash(currentDeclType.first),currentDeclStmt.first), std::unordered_set<unsigned int>()));
             return;
         }
 
@@ -176,33 +176,33 @@ void srcSliceHandler::GetDeclStmtData(){
                     functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
                     currentDeclStmt.first, currentDeclType.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
+            if(!triggerField[classn]){ //If this decl is an object then record whatever member variables it might have
+                auto classIt2 = sysDict.classTable.find(currentDeclType.first);
+                if(classIt2 != sysDict.classTable.end()){
+                    varIt->second.memberVariableLineNumberMap = classIt2->second.memberVariables;
+                    std::cerr<<"MemberVarMap: "<<varIt->second.memberVariableLineNumberMap.size()<<std::endl;
+                }
+            }
         }else{ //TODO: Handle def use for globals
             //std::cerr<<currentDeclStmt.first<<std::endl;
-            //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
-            sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
-            SliceProfile(declIndex, fileNumber, 
-                functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
-                currentDeclStmt.first, currentDeclType.first, potentialAlias, inGlobalScope)));
+            std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
+            auto iter = sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
+                        SliceProfile(declIndex, fileNumber, 
+                            functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
+                            currentDeclStmt.first, currentDeclType.first, potentialAlias, inGlobalScope))).first;
+
         }
     }
     //Get Init of decl stmt
 }
 void srcSliceHandler::ProcessMemberDeref(){
-    //std::cerr<<"Mem: "<<currentExprStmt.first<<std::endl;
-    //std::cerr<<lhsName<<std::endl;
-    skipMember = false;
-    auto sp = Find(lhsName);
+    skipMember= false;
+    //std::cerr<<"Name: "<<lhs->variableName<<std::endl;
+    auto sp = Find(lhs->variableName);
     if(sp){
-        std::cerr<<"Ooof: "<<sp->variableType<<std::endl;
-        auto it = sysDict.classTable.find(sp->variableType);
-        if(it != sysDict.classTable.end()){ //std::unordered_map<unsigned int, std::queue<std::pair<unsigned int, std::string>>> lineNumberMemberVariableMap;
-            auto it2 = it->second.memberVariables.find(currentExprStmt.first);
-            if(it2 != it->second.memberVariables.end()){
-                std::queue<std::pair<unsigned int, std::string>> testQ;
-                testQ.push(std::make_pair(it2->second, it2->first));
-                sp->lineNumberMemberVariableMap.insert(std::make_pair(currentExprStmt.second, testQ));
-            }
-
+        auto memIt = sp->memberVariableLineNumberMap.find(currentExprStmt.first);
+        if(memIt != sp->memberVariableLineNumberMap.end()){
+            memIt->second.insert(currentExprStmt.second);
         }
     }
 }
@@ -213,23 +213,18 @@ void srcSliceHandler::ProcessMemberDeref(){
  * process the rhs for any aliases, dvars, or function calls.
  */
 void srcSliceHandler::ProcessExprStmt(){
-  if(skipMember){
-    //std::cerr<<"Name: "<<currentExprStmt.first<<std::endl;
-    //Identify names of member variables here. Check the class profile using the type of the variable this is and then look to find member. If it's a member, add to some DS in sliceprofile.
-    //currentExprStmt.first = lhsName;//Make this into a stack. Pile on ev
-    //currentExprStmt.second = lhsLine;
-    //skipMember = false;
-    return;
-  }
-  if(!opassign){
-    
-    lhs = Find(currentExprStmt.first);
-    if(lhs){ //Found it so store what its current name and line number are.
-        lhsName = currentExprStmt.first;
+  if(!opassign){ 
+    //std::cerr<<"Checking for: "<<currentExprStmt.first<<std::endl;
+    auto* tmp = Find(currentExprStmt.first);
+    if(tmp){ //Found it so store what its current name and line number are.
+        lhs = tmp;
         lhsLine = currentExprStmt.second;
+    }else{
+        memberAccessStack.push_back(currentExprStmt.first);
     }
   }else{
-    if(!lhs){return;}
+    if(lhs == nullptr){return;}
+    std::cerr<<"Checking for: "<<lhs<<std::endl;
     auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
     if(sprIt){ //lvalue depends on this rvalue
         //std::cerr<<"Here2"<<std::endl;

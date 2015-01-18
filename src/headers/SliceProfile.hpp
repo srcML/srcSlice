@@ -14,14 +14,30 @@ typedef std::unordered_map<std::string, FunctionVarMap> FileFunctionVarMap;
 
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<unsigned int, unsigned int> HashedNameLineNumberPair;
-typedef std::pair<std::string, std::string> TypeNamePair;
 
 struct NameLineNumberPairHash {
 public:
   template <typename T, typename U>
   std::size_t operator()(const std::pair<T, U> &x) const
   {
-    return std::hash<U>()(x.second);
+    return std::hash<U>()(x.second); //TODO: This doesn't seem like it should work well
+  }
+};
+struct TypeNamePair{
+    TypeNamePair(unsigned t, std::string n): type(t), name(n){}
+    TypeNamePair(std::string n): type(0), name(n){}
+    bool operator==(const TypeNamePair& tnp) const{
+        return name == name;
+    }
+    unsigned int type;
+    std::string name;
+};
+struct TypeNamePairHash {
+public:
+  template <typename T>
+  std::size_t operator()(const T x) const
+  {
+    return std::hash<std::string>()(x.name); //Hash on the name in the pair.
   }
 };
 struct FunctionArgtypeArgnumHash {
@@ -57,11 +73,9 @@ struct FunctionData{
     unsigned int functionLineNumber;
 };
 
-
-
 struct ClassProfile{
     std::string className;
-    std::unordered_map<std::string,unsigned int> memberVariables;
+    std::unordered_map<TypeNamePair, std::unordered_set<unsigned int>, TypeNamePairHash> memberVariables;
     std::unordered_set<FunctionData, FunctionArgtypeArgnumHash> memberFunctions; //need to handle overloads. Can't be string.
 };
 
@@ -93,10 +107,9 @@ class SliceProfile{
         
         std::set<unsigned int> def;
         std::set<unsigned int> use;
+        std::unordered_map<TypeNamePair, std::unordered_set<unsigned int>, TypeNamePairHash> memberVariableLineNumberMap; //{member name, {linenumber, linenumber}} and size of set is the number of times member was used
+		//When an object has member variables, they can also have their own member variables. To deal with this, we create a list from the line number for this sp. Can then look up which variables were dereference. 
 
-		//When an object has member variables, they can also have their own member variables. To deal with this, we create a list from the line number for this sp. Can then look up which variables were dereference.
-        std::unordered_map<unsigned int, std::queue<std::pair<unsigned int, std::string>>> lineNumberMemberVariableMap; //{LineNumber, [{typeNumber, memberName},...]} 
-        
         std::unordered_set<HashedNameLineNumberPair, NameLineNumberPairHash> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
