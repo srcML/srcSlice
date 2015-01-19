@@ -84,6 +84,7 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 					std::cerr<<al<<",";
 				}
 				std::cerr<<"}"<<std::endl;
+				std::cerr<<"cfuncitons size: "<<vmIt->second.cfunctions.size()<<std::endl;
 				std::cerr<<"cfuntions: {";
 				for(auto cfunc : vmIt->second.cfunctions){
 					auto bla = handler.sysDict.functionTable.find(cfunc.first);

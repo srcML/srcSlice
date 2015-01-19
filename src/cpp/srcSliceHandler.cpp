@@ -197,12 +197,20 @@ void srcSliceHandler::GetDeclStmtData(){
 }
 void srcSliceHandler::ProcessMemberDeref(){
     skipMember= false;
-    //std::cerr<<"Name: "<<lhs->variableName<<std::endl;
-    auto sp = Find(lhs->variableName);
+
+    auto sp = Find(lhs->variableName); //find slice profile for lhs
     if(sp){
-        auto memIt = sp->memberVariableLineNumberMap.find(currentExprStmt.first);
+        auto memIt = sp->memberVariableLineNumberMap.find(currentExprStmt.first); //find member variable
         if(memIt != sp->memberVariableLineNumberMap.end()){
             memIt->second.insert(currentExprStmt.second);
+        }else{
+            //TODO This is a hack. Make it so that we properly hash the function on more than just the name. Probably need to get a functiontmplt going here
+            //biggest issue will be collecting all data about the function for the tmplt. Consider for future versions.
+            std::cerr<<"Name: "<<lhs->variableName<<std::endl;
+            std::cerr<<"called"<<std::endl;
+            auto fnh = functionNameHash(currentExprStmt.first);
+            sysDict.functionTable.insert(std::make_pair(fnh, currentExprStmt.first));
+            sp->cfunctions.insert(std::make_pair(fnh, 0));
         }
     }
 }
