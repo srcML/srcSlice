@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <vector>
+#include <deque>
 #include <algorithm>
 #include <sstream>
 #include <stack>
@@ -47,9 +48,6 @@ private:
     unsigned int declIndex;
 
     int constructorNum;
-
-    SliceProfile* lhs;
-    unsigned int lhsLine;
 
     /*Hashing function/file names. This will accomplish that.*/
     std::hash<std::string> functionNameHash;
@@ -93,7 +91,7 @@ private:
     std::vector<unsigned short int> triggerField;
     std::string calledFunctionName;
     std::stack<NameLineNumberPair> callArgData;
-    std::vector<std::string> memberAccessStack; //deals with objects of form obj->obj2.obj3
+    std::deque<std::pair<unsigned int, SliceProfile*>> memberAccessStack; //deals with objects of form obj->obj2.obj3
     
 
     NameLineNumberPair currentCallArgData;
@@ -133,8 +131,7 @@ public:
 
         constructorNum = 0;
         lineNum = 0;
-        
-        lhs = nullptr;
+
         skipMember = false;
 
         dereferenced = false;
@@ -491,14 +488,14 @@ public:
 
             { "expr_stmt", [this](){
                 --triggerField[expr_stmt];
-                if(!opassign && lhs){//Don't know if an lhs is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
-                    lhs->slines.insert(lhsLine);
-                    lhs->use.insert(lhsLine);
+                if(!opassign && memberAccessStack.front().second){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
+                    memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
+                    memberAccessStack.front().second->use.insert(memberAccessStack.back().first);
                 }
-                lhs = nullptr;
+                memberAccessStack.front().second = nullptr;
                 opassign = false;
                 dereferenced = false;
-                lhsLine = 0;
+                memberAccessStack.clear();
                 currentCallArgData.first.clear();
                 currentExprStmt.first.clear();
             } },
@@ -631,9 +628,9 @@ public:
                     if(triggerField[expr_stmt] && triggerField[expr]){
                         if(currentExprStmt.first == "="){
                             opassign = true;
-                            if(lhs){//Don't know if an lhs is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
-                                lhs->slines.insert(lhsLine);
-                                lhs->def.insert(lhsLine);
+                            if(memberAccessStack.front().second){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
+                                memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
+                                memberAccessStack.front().second->def.insert(memberAccessStack.back().first);
                             }
                         }
                         if(currentExprStmt.first == "*"){

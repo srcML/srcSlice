@@ -5,6 +5,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <map>
 #include <set>
 #include <queue>
 class SliceProfile;
@@ -107,9 +108,11 @@ class SliceProfile{
         
         std::set<unsigned int> def;
         std::set<unsigned int> use;
-        std::unordered_map<TypeNamePair, std::unordered_set<unsigned int>, TypeNamePairHash> memberVariableLineNumberMap; //{member name, {linenumber, linenumber}} and size of set is the number of times member was used
-		//When an object has member variables, they can also have their own member variables. To deal with this, we create a list from the line number for this sp. Can then look up which variables were dereference. 
+        std::unordered_map<TypeNamePair, std::unordered_set<unsigned int>, TypeNamePairHash> memberVariableLineNumberMap; //{<member name, linenumber>, {linenumber}} and size of set is the number of times member was used. This map only ontains first level member useage data mem->dat
+		//When an object has member variables, they can also have their own member variables. To deal with this, we create a list from the line number for this sp. Can then look up which variables were dereference.
 
+        std::unordered_map<unsigned int, std::map<unsigned int, std::string>> lineNumberMemberVariableExtMap; //{linenumber, {type, name}} Primary purpose of this is to act as more fine-grain information for memberVariableLineNumberMap. It contains all data about member function calls of arbitrarily long chains mem->data->mem2->data
+        
         std::unordered_set<HashedNameLineNumberPair, NameLineNumberPairHash> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash

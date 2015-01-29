@@ -147,17 +147,6 @@ void srcSliceHandler::GetFunctionDeclData(){
 * creates a new slice profile and stores data about decle statement inside.
 */
 void srcSliceHandler::GetDeclStmtData(){
-    //if(!triggerField[type] && triggerField[classn]){
-        //std::cerr<<"Bleep: "<<currentDeclStmt.first<<std::endl;
-        //classIt->second.memberVariables.insert(currentDeclStmt.first);
-        //return;
-   // }
-    if(triggerField[decl] && triggerField[type] && !(triggerField[init])){
-        //functionTmplt.declstmt.type = currentCallArgData.first; //store type
-        //agglomerate string into type. Clear when we exit the decl_stmt
-
-    }
-
     //Get name of decl stmt
     if(triggerField[decl] && !(triggerField[type] || triggerField[init] || triggerField[expr] || triggerField[index])){
         
@@ -171,15 +160,16 @@ void srcSliceHandler::GetDeclStmtData(){
             currentDeclStmt.first.erase(0,1);
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
+            std::cerr<<"Inserting: "<<currentDeclStmt.first<<std::endl;
             varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first,
                 SliceProfile(declIndex, fileNumber,
                     functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
                     currentDeclStmt.first, currentDeclType.first, potentialAlias, inGlobalScope))).first;
             varIt->second.def.insert(currentDeclStmt.second);
             if(!triggerField[classn]){ //If this decl is an object then record whatever member variables it might have
-                auto classIt2 = sysDict.classTable.find(currentDeclType.first);
+                auto classIt2 = sysDict.classTable.find(currentDeclType.first); //look up class information for type
                 if(classIt2 != sysDict.classTable.end()){
-                    varIt->second.memberVariableLineNumberMap = classIt2->second.memberVariables;
+                    varIt->second.memberVariableLineNumberMap = classIt2->second.memberVariables; //store class information in variable's slice profile
                     //std::cerr<<"MemberVarMap: "<<varIt->second.memberVariableLineNumberMap.size()<<std::endl;
                 }
             }
@@ -197,7 +187,7 @@ void srcSliceHandler::GetDeclStmtData(){
 }
 void srcSliceHandler::ProcessMemberDeref(){
     skipMember= false;
-    auto* sp = lhs ? Find(lhs->variableName) : nullptr; //find slice profile for lhs
+    auto* sp = memberAccessStack.front().second == nullptr ? nullptr : Find(memberAccessStack.front().second->variableName); //find slice profile for lhs
     if(sp){
         auto memIt = sp->memberVariableLineNumberMap.find(currentExprStmt.first); //find member variable
         if(memIt != sp->memberVariableLineNumberMap.end()){
@@ -222,22 +212,21 @@ void srcSliceHandler::ProcessExprStmt(){
     //std::cerr<<"Checking for: "<<currentExprStmt.first<<std::endl;
     auto* tmp = Find(currentExprStmt.first);
     if(tmp){ //Found it so store what its current name and line number are.
-        lhs = tmp;
-        lhsLine = currentExprStmt.second;
+        memberAccessStack.push_back(std::make_pair(currentExprStmt.second, tmp));
     }else{
-        memberAccessStack.push_back(currentExprStmt.first);
+        memberAccessStack.push_back(std::make_pair(currentExprStmt.second, nullptr));
     }
   }else{
-    if(lhs == nullptr){return;}
+    if(memberAccessStack.back().second == nullptr){return;}
     auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
     if(sprIt){ //lvalue depends on this rvalue
         //std::cerr<<"Here2"<<std::endl;
-        if(lhs->variableName != sprIt->variableName){    
-            if(!lhs->potentialAlias || dereferenced){ //It is not potentially a reference and if it is, it must not have been dereferenced
-                sprIt->dvars.insert(lhs->variableName); //it's not an alias so it's a dvar
+        if(memberAccessStack.back().second->variableName != sprIt->variableName){    
+            if(!memberAccessStack.back().second->potentialAlias || dereferenced){ //It is not potentially a reference and if it is, it must not have been dereferenced
+                sprIt->dvars.insert(memberAccessStack.back().second->variableName); //it's not an alias so it's a dvar
             }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
                 //dirtyAlias = true;
-                lhs->lastInsertedAlias = lhs->aliases.insert(sprIt->variableName).first;
+                memberAccessStack.back().second->lastInsertedAlias = memberAccessStack.back().second->aliases.insert(sprIt->variableName).first;
             }
             sprIt->slines.insert(currentExprStmt.second);
             sprIt->use.insert(currentExprStmt.second);           
@@ -246,8 +235,8 @@ void srcSliceHandler::ProcessExprStmt(){
                     //std::cerr<<"Name1: "<<*(sprIt->lastInsertedAlias); //Get vars that sprit aliases
                     auto spaIt = FunctionIt->second.find(*(sprIt->lastInsertedAlias)); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
                     if(spaIt != FunctionIt->second.end()){
-                        //std::cerr<<"Name: "<<spaIt->second.variableName<<" "<<lhs->variableName<<std::endl;
-                        spaIt->second.dvars.insert(lhs->variableName);
+                        //std::cerr<<"Name: "<<spaIt->second.variableName<<" "<<memberAccessStack.back().second->variableName<<std::endl;
+                        spaIt->second.dvars.insert(memberAccessStack.back().second->variableName);
                         spaIt->second.use.insert(currentExprStmt.second);  
                         spaIt->second.slines.insert(currentExprStmt.second);
                     }
