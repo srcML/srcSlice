@@ -492,6 +492,7 @@ public:
                     memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
                     memberAccessStack.front().second->use.insert(memberAccessStack.back().first);
                 }
+                memberAccessStack.front().second->lineNumberMemberVariableExtMap.insert(std::make_pair(currentExprStmt.second, memberAccessStack));
                 memberAccessStack.front().second = nullptr;
                 opassign = false;
                 dereferenced = false;

@@ -213,8 +213,9 @@ void srcSliceHandler::ProcessExprStmt(){
     auto* tmp = Find(currentExprStmt.first);
     if(tmp){ //Found it so store what its current name and line number are.
         memberAccessStack.push_back(std::make_pair(currentExprStmt.second, tmp));
-    }else{
-        memberAccessStack.push_back(std::make_pair(currentExprStmt.second, nullptr));
+    }else if (skipMember){ //Todo: make sure this works
+        SliceProfile* p = new SliceProfile(0,0,0,currentExprStmt.second, currentExprStmt.first,""); //(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, std::string type, bool alias = 0, bool global = 0)
+        memberAccessStack.push_back(std::make_pair(currentExprStmt.second, p));
     }
   }else{
     if(memberAccessStack.back().second == nullptr){return;}

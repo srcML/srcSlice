@@ -74,6 +74,16 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 					std::cerr<<"}";
 				}
 				std::cerr<<"}"<<std::endl;
+				std::cerr<<"Ext member use: {";
+				for(auto mv : vmIt->second.lineNumberMemberVariableExtMap){
+					std::cerr<<mv.first<<",";
+					std::cerr<<"{";
+					for(auto mv2 : mv.second){
+						std::cerr<<mv2.second->variableName<<",";
+					}
+					std::cerr<<"}";
+				}
+				std::cerr<<"}"<<std::endl;
 				std::cerr<<"dvars: {";
 				for(std::string dv : vmIt->second.dvars){
 					std::cerr<<dv<<",";
