@@ -90,6 +90,7 @@ private:
      *at that position and its line number to be stored in the slice profile*/ 
     std::vector<unsigned short int> triggerField;
     std::string calledFunctionName;
+    std::string curoper;
     std::stack<NameLineNumberPair> callArgData;
     std::deque<std::pair<unsigned int, SliceProfile*>> memberAccessStack; //deals with objects of form obj->obj2.obj3
     
@@ -113,7 +114,8 @@ private:
     void ProcessExprStmt();
     void ProcessConstructorDecl();
     void GetFunctionDeclData();
-    void ProcessMemberDeref();
+    void ProcessMemberDeref(const NameLineNumberPair&);
+    void UpdateMemberStack(const NameLineNumberPair& nlnp);
     SliceProfile* Find(const std::string&);
     
     
@@ -419,6 +421,9 @@ public:
      */
     virtual void charactersUnit(const char * ch, int len) {
 
+        if(triggerField[op]){
+            curoper.append(ch,len);
+        }
         if((triggerField[decl_stmt] || triggerField[expr_stmt]) && triggerField[call] && 
             (triggerField[name]) && triggerField[argument_list] &&
             !(triggerField[index] || triggerField[op] || triggerField[preproc])){
@@ -466,6 +471,16 @@ public:
     virtual void endUnit(const char * localname, const char * prefix, const char * URI) {
 
     }
+    void updateUse(const NameLineNumberPair& nlnp){
+        if(!memberAccessStack.empty()){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
+            memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
+            if(!opassign){
+                memberAccessStack.front().second->use.insert(memberAccessStack.back().first);
+            }
+            memberAccessStack.front().second->lineNumberMemberVariableExtMap.insert(std::make_pair(nlnp.second, memberAccessStack));
+            memberAccessStack.front().second = nullptr;
+        }
+    }
     virtual void endElement(const char * localname, const char * prefix, const char * URI) {
         std::string lname(localname);
         std::string lnspace;
@@ -478,22 +493,25 @@ public:
         static std::unordered_map<std::string, std::function<void()>> process_map3 = {
 
             {"decl_stmt", [this](){
+                --triggerField[decl_stmt];
+
+                updateUse(currentDeclStmt);
+                
                 currentCallArgData.first.clear();
                 currentDeclArg.first.clear();
                 currentDeclStmt.first.clear();
                 currentDeclType.first.clear();
+                memberAccessStack.clear();
+                opassign = false;
                 potentialAlias = false;
-                --triggerField[decl_stmt];
+                
             } }, 
 
             { "expr_stmt", [this](){
                 --triggerField[expr_stmt];
-                if(!opassign && memberAccessStack.front().second){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
-                    memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
-                    memberAccessStack.front().second->use.insert(memberAccessStack.back().first);
-                }
-                memberAccessStack.front().second->lineNumberMemberVariableExtMap.insert(std::make_pair(currentExprStmt.second, memberAccessStack));
-                memberAccessStack.front().second = nullptr;
+                
+                updateUse(currentExprStmt);
+
                 opassign = false;
                 dereferenced = false;
                 memberAccessStack.clear();
@@ -627,24 +645,29 @@ public:
     
                 { "operator", [this](){
                     if(triggerField[expr_stmt] && triggerField[expr]){
-                        if(currentExprStmt.first == "="){
-                            opassign = true;
-                            if(memberAccessStack.front().second){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
-                                memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
-                                memberAccessStack.front().second->def.insert(memberAccessStack.back().first);
-                            }
-                        }
-                        if(currentExprStmt.first == "*"){
-                            dereferenced = true;
-                        }
-                        if(currentExprStmt.first == "->"){
-                            skipMember = true;
-                        }
-                        if(currentExprStmt.first == "."){
-                            skipMember = true;
+                        if(memberAccessStack.front().second){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
+                            memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
+                            memberAccessStack.front().second->def.insert(memberAccessStack.back().first);
                         }
                         currentExprStmt.first.clear();
                     }
+                    
+                    if(triggerField[expr_stmt] || triggerField[decl_stmt] || triggerField[call]){
+                        if(curoper == "*"){
+                            dereferenced = true;
+                        }
+                        if(curoper == "->"){
+                            skipMember = true;
+                        }
+                        if(curoper == "."){
+                            skipMember = true;
+                        }
+                        if(curoper == "="){
+                            opassign = true;
+                        }
+                        curoper.clear();
+                    }
+
                     if(triggerField[decl_stmt] && triggerField[decl]){
                         if(triggerField[type]){
                             currentDeclType.first.clear();
@@ -733,26 +756,33 @@ public:
                         GetDeclStmtData();
                     }                
                     //Get function arguments
-                    if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
+                    if((triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])) && !nameOfCurrentClldFcn.empty()){
                         GetCallData();//TODO issue with statements like object(var)
+                        if(skipMember){
+                            ProcessMemberDeref(NameLineNumberPair(nameOfCurrentClldFcn.top(), 0));
+                        }
                         while(!callArgData.empty())
                             callArgData.pop();
                     }
                     if(triggerField[expr_stmt] && triggerField[expr]){
                         ProcessExprStmt();//problems with exprs like blotttom->next = expr
+                        if(skipMember){
+                            ProcessMemberDeref(currentExprStmt);
+                        }
                     }
                     if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
                     !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
                         ProcessDeclStmt();
+                        if(skipMember){
+                            ProcessMemberDeref(currentDeclStmt);
+                        }
                     }
                     if(triggerField[classn]){
                         //std::cerr<<"Class: "<<currentClassName.first<<std::endl;
                         classIt = sysDict.classTable.insert(std::make_pair(currentClassName.first, ClassProfile())).first;
                     }
 
-                    if(skipMember){
-                        ProcessMemberDeref();
-                    }
+
                     --triggerField[name];
                 } },
     

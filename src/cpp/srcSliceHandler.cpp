@@ -23,60 +23,7 @@ SliceProfile* srcSliceHandler::Find(const std::string& varName){
         return nullptr;
 }
 
-/**
- *ProcessConstructorDecl
- *Processes decls of the form object(arg,arg)
- */
-void srcSliceHandler::ProcessConstructorDecl(){
-    auto sp = Find(currentDeclArg.first);
-    if(sp){
-        sp->dvars.insert(varIt->second.variableName);
-    }
-}
 
-/*
-* ProcessDeclStmt
-* Takes rhs of decl_stmt and processes it. Split by tokens and then throw against the map for an answer.
-* corner case at new operator because new makes an object even if its argument is an alias.
-*/
-void srcSliceHandler::ProcessDeclStmt(){
-    bool seenNew = false;
-    auto sp = Find(currentDeclStmt.first);
-    if(currentDeclStmt.first == "new"){seenNew = true;}
-    if(sp){
-        varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
-        sp->use.insert(currentDeclStmt.second);
-        if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
-            varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
-        }else{
-            sp->dvars.insert(varIt->second.variableName);
-            sp->use.insert(currentDeclStmt.second);
-        }
-    }
-    currentDeclStmt.first.clear(); //because if it's a multi-init decl then inits will run into one another.
-}
-
-/*
-* GetCallData
-* Knows the proper constrains for obtaining the name of arguments of currently called function
-* It stores data about those variables if it can find a slice profile entry for them.
-* Essentially, update the slice profile of the argument to reflect new data.
-*/
-void srcSliceHandler::GetCallData(){
-    //Get function arguments
-    if(triggerField[argument_list] && triggerField[argument] && 
-        triggerField[expr] && triggerField[name] && !nameOfCurrentClldFcn.empty()){
-        if(!callArgData.empty()){
-            auto sp = Find(callArgData.top().first); //check to find sp for the variable being called on fcn
-            if(sp){
-                sp->slines.insert(callArgData.top().second);
-                sp->use.insert(callArgData.top().second);
-                sp->index = declIndex;
-                sp->cfunctions.insert(std::make_pair(functionNameHash(nameOfCurrentClldFcn.top()), numArgs));
-            }
-        }
-    }
-}
 /**
 * GetFunctionData
 * Knows proper constraints for obtaining function's return type, name, and arguments. Stores all of this in
@@ -185,18 +132,97 @@ void srcSliceHandler::GetDeclStmtData(){
     }
     //Get Init of decl stmt
 }
-void srcSliceHandler::ProcessMemberDeref(){
+/*
+* GetCallData
+* Knows the proper constrains for obtaining the name of arguments of currently called function
+* It stores data about those variables if it can find a slice profile entry for them.
+* Essentially, update the slice profile of the argument to reflect new data.
+*/
+void srcSliceHandler::GetCallData(){
+    //std::cerr<<"Checking for: "<<currentExprStmt.first<<std::endl;
+    //Get function arguments
+    if(triggerField[argument_list] && triggerField[argument] && 
+        triggerField[expr] && triggerField[name]){
+        if(!callArgData.empty()){
+            UpdateMemberStack(callArgData.top());
+            auto sp = Find(callArgData.top().first); //check to find sp for the variable being called on fcn
+            if(sp){
+                sp->slines.insert(callArgData.top().second);
+                sp->use.insert(callArgData.top().second);
+                sp->index = declIndex;
+                sp->cfunctions.insert(std::make_pair(functionNameHash(nameOfCurrentClldFcn.top()), numArgs));
+            }
+        }
+    }
+}
+/**
+ *ProcessConstructorDecl
+ *Processes decls of the form object(arg,arg)
+ */
+void srcSliceHandler::ProcessConstructorDecl(){
+    auto sp = Find(currentDeclArg.first);
+    if(sp){
+        sp->dvars.insert(varIt->second.variableName);
+    }
+}
+
+void srcSliceHandler::UpdateMemberStack(const NameLineNumberPair& nlnp){
+    std::string name;
+    if(memberAccessStack.size() > 2){
+        name = (++memberAccessStack.rbegin())->second->variableName;
+    }else{
+        name = nlnp.first;
+    }
+    auto* tmp = Find(name); //update to search other places
+    if(tmp){ //Found it so store what its current name and line number are.
+        memberAccessStack.push_back(std::make_pair(nlnp.second, tmp));
+    }else if(triggerField[call] != triggerField[argument_list]){
+        return;
+    }else if (skipMember){ //Todo: make sure this works
+        SliceProfile* p = new SliceProfile(0,0,0,nlnp.second, nlnp.first,""); //(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, std::string type, bool alias = 0, bool global = 0)
+        memberAccessStack.push_back(std::make_pair(nlnp.second, p));
+    }    
+}
+
+/*
+* ProcessDeclStmt
+* Takes rhs of decl_stmt and processes it. Split by tokens and then throw against the map for an answer.
+* corner case at new operator because new makes an object even if its argument is an alias.
+*/
+void srcSliceHandler::ProcessDeclStmt(){
+    UpdateMemberStack(currentDeclStmt);
+    bool seenNew = false;
+    auto sp = Find(currentDeclStmt.first);
+    if(currentDeclStmt.first == "new"){seenNew = true;}
+    if(sp){
+        varIt->second.slines.insert(currentDeclStmt.second); //varIt is lhs
+        sp->use.insert(currentDeclStmt.second);
+        if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
+            varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
+        }else{
+            sp->dvars.insert(varIt->second.variableName);
+            sp->use.insert(currentDeclStmt.second);
+        }
+    }
+    currentDeclStmt.first.clear(); //because if it's a multi-init decl then inits will run into one another.
+}
+
+
+void srcSliceHandler::ProcessMemberDeref(const NameLineNumberPair& nlnp){
     skipMember= false;
     auto* sp = memberAccessStack.front().second == nullptr ? nullptr : Find(memberAccessStack.front().second->variableName); //find slice profile for lhs
     if(sp){
-        auto memIt = sp->memberVariableLineNumberMap.find(currentExprStmt.first); //find member variable
+        auto memIt = sp->memberVariableLineNumberMap.find(nlnp.first); //find member variable
         if(memIt != sp->memberVariableLineNumberMap.end()){
-            memIt->second.insert(currentExprStmt.second);
+            memIt->second.insert(nlnp.second);
+        }else if(triggerField[call] == triggerField[argument_list]){
+            return; //it's a member for some other class
         }else{
             //TODO This is a hack. Make it so that we properly hash the function on more than just the name. Probably need to get a functiontmplt going here
             //biggest issue will be collecting all data about the function for the tmplt. Consider for future versions.
-            auto fnh = functionNameHash(currentExprStmt.first);
-            sysDict.functionTable.insert(std::make_pair(fnh, currentExprStmt.first));
+            std::cerr<<"gmm: "<<nlnp.first<<std::endl;
+            auto fnh = functionNameHash(nlnp.first);
+            sysDict.functionTable.insert(std::make_pair(fnh, nlnp.first));
             sp->cfunctions.insert(std::make_pair(fnh, 0));
         }
     }
@@ -208,17 +234,11 @@ void srcSliceHandler::ProcessMemberDeref(){
  * process the rhs for any aliases, dvars, or function calls.
  */
 void srcSliceHandler::ProcessExprStmt(){
+  
   if(!opassign){ 
-    //std::cerr<<"Checking for: "<<currentExprStmt.first<<std::endl;
-    auto* tmp = Find(currentExprStmt.first);
-    if(tmp){ //Found it so store what its current name and line number are.
-        memberAccessStack.push_back(std::make_pair(currentExprStmt.second, tmp));
-    }else if (skipMember){ //Todo: make sure this works
-        SliceProfile* p = new SliceProfile(0,0,0,currentExprStmt.second, currentExprStmt.first,""); //(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, std::string type, bool alias = 0, bool global = 0)
-        memberAccessStack.push_back(std::make_pair(currentExprStmt.second, p));
-    }
+    UpdateMemberStack(currentExprStmt);
   }else{
-    if(memberAccessStack.back().second == nullptr){return;}
+    if(memberAccessStack.empty() || memberAccessStack.back().second == nullptr){return;}
     auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
     if(sprIt){ //lvalue depends on this rvalue
         //std::cerr<<"Here2"<<std::endl;
