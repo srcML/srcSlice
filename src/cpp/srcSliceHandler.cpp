@@ -12,7 +12,6 @@
 SliceProfile* srcSliceHandler::Find(const std::string& varName){    
         auto sp = FunctionIt->second.find(varName);
         if(sp != FunctionIt->second.end()){
-
             return &(sp->second);
         }else{ //check global map
             auto sp2 = sysDict.globalMap.find(varName);
@@ -107,7 +106,6 @@ void srcSliceHandler::GetDeclStmtData(){
             currentDeclStmt.first.erase(0,1);
         }//Globals won't be in FunctionIT
         if(!inGlobalScope){
-            std::cerr<<"Inserting: "<<currentDeclStmt.first<<std::endl;
             varIt = FunctionIt->second.insert(std::make_pair(currentDeclStmt.first,
                 SliceProfile(declIndex, fileNumber,
                     functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
@@ -220,7 +218,6 @@ void srcSliceHandler::ProcessMemberDeref(const NameLineNumberPair& nlnp){
         }else{
             //TODO This is a hack. Make it so that we properly hash the function on more than just the name. Probably need to get a functiontmplt going here
             //biggest issue will be collecting all data about the function for the tmplt. Consider for future versions.
-            std::cerr<<"gmm: "<<nlnp.first<<std::endl;
             auto fnh = functionNameHash(nlnp.first);
             sysDict.functionTable.insert(std::make_pair(fnh, nlnp.first));
             sp->cfunctions.insert(std::make_pair(fnh, 0));

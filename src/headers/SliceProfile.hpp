@@ -86,34 +86,34 @@ class SliceProfile{
 		SliceProfile(unsigned int idx, unsigned int fle, unsigned int fcn, unsigned int sline, std::string name, std::string type, bool alias = 0, bool global = 0):
         index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name), variableType(type), isGlobal(global) {
 			slines.insert(sline);
-            dereferenced = false;
+      dereferenced = false;
 		}
 
 		unsigned int index;
 		unsigned int file;
 		unsigned int function;
 		
-        std::unordered_set<std::string>::iterator lastInsertedAlias;
+    std::unordered_set<std::string>::iterator lastInsertedAlias;
 
 		bool potentialAlias;
-        bool dereferenced;
+    bool dereferenced;
 
-        bool isGlobal;
-        bool visited;
+    bool isGlobal;
+    bool visited;
 
 		std::string variableName;
 		std::string variableType;
 
 		std::unordered_set<unsigned int> slines; //Deprecated
         
-        std::set<unsigned int> def;
-        std::set<unsigned int> use;
-        std::unordered_map<TypeNamePair, std::unordered_set<unsigned int>, TypeNamePairHash> memberVariableLineNumberMap; //{<member name, linenumber>, {linenumber}} and size of set is the number of times member was used. This map only ontains first level member useage data mem->dat
+    std::set<unsigned int> def;
+    std::set<unsigned int> use;
+    std::unordered_map<TypeNamePair, std::unordered_set<unsigned int>, TypeNamePairHash> memberVariableLineNumberMap; //{<member name, linenumber>, {linenumber}} and size of set is the number of times member was used. This map only ontains first level member useage data mem->dat
 		//When an object has member variables, they can also have their own member variables. To deal with this, we create a list from the line number for this sp. Can then look up which variables were dereference.
 
-        std::unordered_map<unsigned int, std::deque<std::pair<unsigned int, SliceProfile*>>> lineNumberMemberVariableExtMap; //{linenumber, {type, name}} Primary purpose of this is to act as more fine-grain information for memberVariableLineNumberMap. It contains all data about member function calls of arbitrarily long chains mem->data->mem2->data
+    std::unordered_map<unsigned int, std::deque<std::pair<unsigned int, SliceProfile*>>> lineNumberMemberVariableExtMap; //{linenumber, {type, name}} Primary purpose of this is to act as more fine-grain information for memberVariableLineNumberMap. It contains all data about member function calls of arbitrarily long chains mem->data->mem2->data
         
-        std::unordered_set<HashedNameLineNumberPair, NameLineNumberPairHash> cfunctions;
+    std::unordered_set<HashedNameLineNumberPair, NameLineNumberPairHash> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
 };
@@ -127,9 +127,9 @@ class SystemDictionary{
 		/*This is a map of file, function/method, and variables. {file, {function, {SliceProfiles}}}*/
 		FileFunctionVarMap dictionary;
 		VarMap globalMap;
-        std::unordered_map<std::string, ClassProfile> classTable;
+    std::unordered_map<std::string, ClassProfile> classTable;
 		std::unordered_map<unsigned int, std::string> functionTable;
-        std::unordered_map<unsigned int, std::string> typeTable;
-        std::vector<std::pair<unsigned int, unsigned int>> controledges;
+    std::unordered_map<unsigned int, std::string> typeTable;
+    std::vector<std::pair<unsigned int, unsigned int>> controledges;
 };
 #endif

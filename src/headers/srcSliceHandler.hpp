@@ -216,7 +216,7 @@ public:
     */
     virtual void startElement(const char * localname, const char * prefix, const char * URI,
                                 int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
-                                const struct srcsax_attribute * attributes) {
+                                const struct srcsax_attribute * attributes){
         if(num_attributes){
             lineNum = strtoul(attributes[0].value, NULL, 0);
         }
