@@ -227,7 +227,7 @@ public:
         }
         if(lnspace == "cpp"){
             ++triggerField[preproc];
-        }          
+        }
         static std::unordered_map<std::string, std::function<void()>> process_map = {
             {"decl_stmt", [this](){
                 currentDeclStmt.first.clear();
