@@ -17,7 +17,7 @@
  * along with the srcML Toolkit; if not, write to the Free Software
  * Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
  */
-/*
+
 #include <srcSliceHandler.hpp>
 #include <srcSAXController.hpp>
 #include <time.h> 
@@ -181,7 +181,7 @@ void srcSliceToCsv(const srcSliceHandler& handler){
   methods
   statement #
   Consider output to srcML
-  
+  */
 int main(int argc, char * argv[]) {
 
   if(argc < 2) {
@@ -190,19 +190,10 @@ int main(int argc, char * argv[]) {
     exit(1);
 
   }
-  //clock_t t;
-  //t = clock();
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
-  //t = clock() - t;
-  //std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
-  //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
-  //handler.ComputeInterprocedural("SlicerTestSample.cpp");
-  TestSlice(handler.sysDict.dictionary, handler);
-  
-  //TestSlice2(handler.sysDict.globalMap);
-  //srcSliceToCsv(handler);
+  //TestSlice(handler.sysDict.dictionary, handler);
+  srcSliceToCsv(handler);
   return 0;
 }
-*/

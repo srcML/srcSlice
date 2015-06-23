@@ -432,7 +432,6 @@ public:
         if((triggerField[function] && triggerField[name]) && !(triggerField[block] || triggerField[argument_list] 
             || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
             currentFunctionBody.functionName.append(ch, len);
-            //std::cerr<<"Herr: "<<currentFunctionBody.functionName<<std::endl;
         }
         if((triggerField[functiondecl]) && !(triggerField[type] || triggerField[parameter_list])){
             currentFunctionDecl.functionName.append(ch,len);
@@ -589,21 +588,18 @@ public:
             } },
             { "function_decl", [this](){
                 if(triggerField[classn]){
-                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
                     classIt->second.memberFunctions.insert(functionTmplt);
                 }
                 --triggerField[functiondecl];
             } },
             { "constructor_decl", [this](){
                 if(triggerField[classn]){
-                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
                     classIt->second.memberFunctions.insert(functionTmplt);
                 }
                 --triggerField[functiondecl];
             } },
             { "destructor_decl", [this](){
                 if(triggerField[classn]){
-                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
                     classIt->second.memberFunctions.insert(functionTmplt);
                 }
                 --triggerField[functiondecl];
@@ -685,7 +681,6 @@ public:
 
                 { "block", [this]()
                 { //So we can discriminate against things in or outside of blocks
-                        //currentFunctionBody.functionName.clear();
                     --triggerField[block];
                 } },
     
@@ -725,14 +720,12 @@ public:
                 } },
     
                 { "expr", [this](){
-                    //typeMemberPtr = nullptr; //may be more cases for this
                     --triggerField[expr];
                 } },
     
                 { "name", [this](){
                     if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
                         functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
-                        //std::cerr<<"FNAME: "<<functionTmplt.functionName<<std::endl;
                         sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
                         FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
                     }
@@ -778,11 +771,8 @@ public:
                         }
                     }
                     if(triggerField[classn]){
-                        //std::cerr<<"Class: "<<currentClassName.first<<std::endl;
                         classIt = sysDict.classTable.insert(std::make_pair(currentClassName.first, ClassProfile())).first;
                     }
-
-
                     --triggerField[name];
                 } },
     
@@ -792,7 +782,7 @@ public:
         //            fprintf(stderr, "DEBUG:  %s %s %d\n", __FILE__,  __FUNCTION__, __LINE__);        
                     process4->second();
                 }else{
-                    //--triggerField[nonterminal]; 
+                    --triggerField[nonterminal]; 
                 }
             }
         }
