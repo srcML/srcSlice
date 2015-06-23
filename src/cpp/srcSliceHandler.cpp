@@ -33,7 +33,7 @@ void srcSliceHandler::GetFunctionData(){
     if(triggerField[type] && !(triggerField[parameter_list] || triggerField[block] || triggerField[member_list])){
         functionTmplt.returnType = currentFunctionBody.functionName;
     }
-    //Get function name
+    //Get function name -- check for triggerField[name] == 1 to avoid nested names
     if(triggerField[name] == 1 && !(triggerField[argument_list] || 
         triggerField[block] || triggerField[type] || triggerField[parameter_list] || triggerField[member_list])){ 
         std::size_t pos = currentFunctionBody.functionName.find("::");
@@ -97,7 +97,6 @@ void srcSliceHandler::GetDeclStmtData(){
     if(triggerField[decl] && !(triggerField[type] || triggerField[init] || triggerField[expr] || triggerField[index])){
         
         if(triggerField[classn]){ //In a class so just get type and name then leave. No special processing needed. TODO might need to deal with commas
-            //std::cerr<<"Type: "<<currentDeclType.first<<" Name: "<<currentDeclStmt.first<<std::endl;
             classIt->second.memberVariables.insert(std::make_pair(TypeNamePair(paramTypeHash(currentDeclType.first),currentDeclStmt.first), std::unordered_set<unsigned int>()));
             return;
         }
@@ -119,8 +118,6 @@ void srcSliceHandler::GetDeclStmtData(){
                 }
             }
         }else{ //TODO: Handle def use for globals
-            //std::cerr<<currentDeclStmt.first<<std::endl;
-            //std::cout<<"Name: "<<currentDeclStmt.first<<std::endl;
             auto iter = sysDict.globalMap.insert(std::make_pair(currentDeclStmt.first, 
                         SliceProfile(declIndex, fileNumber, 
                             functionTmplt.GetFunctionUID(), currentDeclStmt.second, 
@@ -154,8 +151,8 @@ void srcSliceHandler::GetCallData(){
     }
 }
 /**
- *ProcessConstructorDecl
- *Processes decls of the form object(arg,arg)
+ * ProcessConstructorDecl
+ * Processes decls of the form object(arg,arg)
  */
 void srcSliceHandler::ProcessConstructorDecl(){
     auto sp = Find(currentDeclArg.first);
@@ -267,11 +264,9 @@ void srcSliceHandler::ProcessExprStmt(){
 
 
 /*
- *ComputeInterprocedural
- *@param f- name of the file
- *No return value
- *
- *
+ * ComputeInterprocedural
+ * @param f- name of the file
+ * No return value
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     
@@ -305,16 +300,10 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 
 
 /*
- *ArgumentProfile
- *@param functIt- iterator to the FunctionVarMap, parameterIndex- index of the parameter 
- @Return SliceProfile of the variable
-  *
- *
- *
- *
+ * ArgumentProfile
+ * @param functIt- iterator to the FunctionVarMap, parameterIndex- index of the parameter 
+ * @Return SliceProfile of the variable
  */
-
-
 SliceProfile srcSliceHandler::ArgumentProfile(unsigned int fname, unsigned int parameterIndex){
     SliceProfile Spi;
     auto funcIt = FileIt->second.find(fname);

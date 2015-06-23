@@ -193,7 +193,7 @@ int main(int argc, char * argv[]) {
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
-  //TestSlice(handler.sysDict.dictionary, handler);
-  srcSliceToCsv(handler);
+  TestSlice(handler.sysDict.dictionary, handler);
+  //srcSliceToCsv(handler);
   return 0;
 }
