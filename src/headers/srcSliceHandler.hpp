@@ -526,6 +526,7 @@ public:
                 //Get function arguments
                 if((triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])) && !nameOfCurrentClldFcn.empty()){
                     GetCallData();//TODO issue with statements like object(var)
+                    
                     if(skipMember){
                         ProcessMemberDeref(NameLineNumberPair(nameOfCurrentClldFcn.top(), 0));
                     }

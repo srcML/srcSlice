@@ -47,7 +47,7 @@ void srcSliceHandler::GetFunctionData(){
         }
         functionTmplt.functionLineNumber = currentFunctionBody.functionLineNumber;
         functionTmplt.functionName = currentFunctionBody.functionName; //give me the hash num for this name.
-        //std::cerr<<"herher: "<<functionTmplt.functionName<<std::endl;
+        
     }
     //Get param types
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){
@@ -59,7 +59,7 @@ void srcSliceHandler::GetFunctionData(){
     }
     //Get Param names
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
-        //std::cerr<<"name: "<<currentParamType.first<<std::endl;
+        
         varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
             SliceProfile(declIndex, fileNumber, 
                 functionTmplt.GetFunctionUID(), currentParam.second, currentParam.first, currentParamType.first, potentialAlias, inGlobalScope))).first;
@@ -74,10 +74,10 @@ void srcSliceHandler::GetFunctionDeclData(){
     if(triggerField[name]){
         functionTmplt.functionLineNumber = currentFunctionDecl.functionLineNumber;
         functionTmplt.functionName = currentFunctionDecl.functionName;
-        //std::cerr<<"name: "<<functionTmplt.functionName<<std::endl;
+        
     }
     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
-        //std::cerr<<"type: "<<currentParamType.first<<std::endl;
+        
         unsigned int paramHash = paramTypeHash(currentParamType.first);
         functionTmplt.functionNumber += paramHash;
         functionTmplt.params.push_back(paramHash);
@@ -160,7 +160,7 @@ void srcSliceHandler::ProcessConstructorDecl(){
         sp->dvars.insert(varIt->second.variableName);
     }
 }
-
+/*
 void srcSliceHandler::UpdateMemberStack(const NameLineNumberPair& nlnp){
     std::string name;
     if(memberAccessStack.size() > 2){
@@ -178,7 +178,7 @@ void srcSliceHandler::UpdateMemberStack(const NameLineNumberPair& nlnp){
         memberAccessStack.push_back(std::make_pair(nlnp.second, p));
     }    
 }
-
+*/
 /*
 * ProcessDeclStmt
 * Takes rhs of decl_stmt and processes it. Split by tokens and then throw against the map for an answer.
