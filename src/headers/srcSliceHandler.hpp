@@ -88,7 +88,6 @@ private:
     bool inGlobalScope;
     bool isACallName;
     bool opassign;
-    bool skipMember;
 
     bool potentialAlias;
 
@@ -103,6 +102,8 @@ private:
     NameLineNumberPair currentParam;
     NameLineNumberPair currentParamType;
     
+    NameLineNumberPair currentFunctionReturnType;
+
     NameLineNumberPair currentDecl;
     NameLineNumberPair currentDeclType;
     NameLineNumberPair currentDeclInit;
@@ -111,14 +112,19 @@ private:
     NameLineNumberPair currentDeclArg;
     NameLineNumberPair currentClassName;
     
-    FunctionData currentFunctionBody;
-    FunctionData currentFunctionDecl;
+    NameLineNumberPair currentFunctionBody;
+    NameLineNumberPair currentFunctionDecl;
     /*function headers*/
     void GetCallData();
+    void GetParamName();
+    void GetParamType();
     void ProcessDeclStmt();
     void GetFunctionData();
     void GetDeclStmtData();
-    void ProcessExprStmt();
+    
+    void ProcessExprStmtPreAssign();
+    void ProcessExprStmtPostAssign();
+    
     void ProcessConstructorDecl();
     void GetFunctionDeclData();
 
@@ -138,7 +144,6 @@ public:
         lineNum = 0;
         
         lhs = nullptr;
-        skipMember = false;
 
         dereferenced = false;
         opassign = false;
@@ -157,9 +162,27 @@ public:
                 currentExprStmt.first.clear();
                 ++triggerField[expr_stmt];
             } },
-
             { "parameter_list", [this](){
+                if((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && !(triggerField[functionblock] || triggerField[parameter_list])){
+                    GetFunctionData();
+                }
                 ++triggerField[parameter_list];
+                if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
+                    functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
+                    sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
+                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
+                }
+                if(triggerField[constructordecl]){ //For the case where we need to get a constructor decl
+                    ProcessConstructorDecl();
+                    currentDeclArg.first.clear();
+                }
+                if(triggerField[functiondecl]){
+                    functionTmplt.functionLineNumber = currentFunctionDecl.second;
+                    functionTmplt.functionName = currentFunctionDecl.first;
+                    if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
+                        GetFunctionDeclData();
+                    }
+                }
             } },
 
             { "if", [this](){
@@ -198,7 +221,6 @@ public:
 
             { "function", [this](){
                 inGlobalScope = false;
-                currentFunctionBody.functionName.clear();
                 ++triggerField[function];
             } },
             { "constructor", [this](){
@@ -210,16 +232,19 @@ public:
                 ++triggerField[function];
             } },
             { "function_decl", [this](){
-                currentFunctionDecl.functionName.clear();
+                currentFunctionDecl.first.clear();
                 ++triggerField[functiondecl];
             } },
             { "destructor_decl", [this](){
-                currentFunctionDecl.functionName.clear();
+                currentFunctionDecl.first.clear();
                 ++triggerField[destructordecl];
             } },
             { "constructor_decl", [this](){
-                currentFunctionDecl.functionName.clear();
+                currentFunctionDecl.first.clear();
                 ++triggerField[constructordecl];
+            } },
+            { "template", [this](){
+                ++triggerField[templates];
             } },
             { "class", [this](){
                 ++triggerField[classn];
@@ -227,10 +252,9 @@ public:
 
             { "destructor", [this](){
                 inGlobalScope = false;
-                currentFunctionBody.functionName.clear();
                 ++triggerField[function];
             } },
-            { "param", [this](){
+            { "parameter", [this](){
                     ++triggerField[param];
                     ++declIndex;
             } },    
@@ -286,8 +310,8 @@ public:
             { "name", [this](){
                 ++triggerField[name];
                 currentCallArgData.second = currentParam.second = currentParamType.second = 
-                currentFunctionBody.functionLineNumber = currentDecl.second =  
-                currentExprStmt.second = currentFunctionDecl.functionLineNumber = currentDeclInit.second = lineNum;
+                currentFunctionBody.second = currentDecl.second =  
+                currentExprStmt.second = currentFunctionDecl.second = currentDeclInit.second = lineNum;
             } },
             { "macro", [this](){
                 ++triggerField[macro];
@@ -421,9 +445,10 @@ public:
                 */
                 --triggerField[classn];
             } },
-            { "param", [this](){
-                    currentParam.first.clear();
-                    currentParamType.first.clear();
+            { "parameter", [this](){
+                    if(triggerField[parameter_list] && triggerField[param] && !(triggerField[type] || triggerField[functionblock] || triggerField[templates])){
+                        GetParamName();
+                    }
                     potentialAlias = false;
                     --triggerField[param];
             } },    
@@ -445,19 +470,13 @@ public:
                     if(currentExprStmt.first == "*"){
                         dereferenced = true;
                     }
-                    if(currentExprStmt.first == "->"){
-                        skipMember = true;
-                    }
-                    if(currentExprStmt.first == "."){
-                        skipMember = true;
-                    }
                     currentExprStmt.first.clear();
                 }
                 if(currentDecl.first == "new"){
                     currentDecl.first.append("-"); //separate new operator because we kinda need to know when we see it.
                 }
-                if(triggerField[parameter_list] && triggerField[param] && triggerField[type]){
-                    currentParamType.first.clear();
+                if(triggerField[function] && !(triggerField[functionblock] || triggerField[templates] || triggerField[parameter_list] || triggerField[type] || triggerField[argument_list])){
+                    currentFunctionBody.first.clear();
                 }
                 --triggerField[op];
             } },
@@ -489,6 +508,9 @@ public:
                     potentialAlias = true;
                 }
                 --triggerField[modifier];
+            } },
+            { "template", [this](){
+                --triggerField[templates];
             } },    
             { "decl", [this](){
                 if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
@@ -502,12 +524,21 @@ public:
             } },    
             { "type", [this](){
                 if((triggerField[type] && triggerField[decl_stmt] && (triggerField[function] || triggerField[constructor]) && !(triggerField[modifier] || triggerField[argument_list]))){
-                    //std::cerr<<"Type: "<<currentDeclType.first<<std::endl;
+                    //Get the type -- news
                     currentSliceProfile.variableType = currentDeclType.first;
                     currentDeclType.first.clear();
                 }
-                if(triggerField[parameter_list] && triggerField[param]){
-                    currentParamType.first.clear();
+                if(triggerField[type] && triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[functionblock] || triggerField[templates])){
+                    GetParamType();
+                }
+                if(triggerField[function] && triggerField[type] && !(triggerField[functionblock] || triggerField[argument_list] || triggerField[templates] || triggerField[parameter_list])){
+                    //get functionr ret type  -- news
+                    functionTmplt.returnType = currentFunctionReturnType.first;
+                    currentFunctionReturnType.first.clear();
+                }
+                if(triggerField[functiondecl] && triggerField[type] && !(triggerField[parameter_list] || triggerField[block] || triggerField[member_list])){
+                    //get function decl return type
+                    functionTmplt.returnType = currentFunctionDecl.first;
                 }
                 --triggerField[type];
             } },    
@@ -515,34 +546,21 @@ public:
                 --triggerField[expr];
             } },    
             { "name", [this](){
-                if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
-                    functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
-                    sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
-                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
-                }
-                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
-                        !triggerField[type]){ //For the case where we need to get a constructor decl
-                    ProcessConstructorDecl();
-                    currentDeclArg.first.clear();
-                }
                 if(triggerField[call] && triggerField[argument]){
                     callArgData.push(currentCallArgData);
                 }
-                //Get Function names and arguments
-                if(triggerField[function]){
-                    GetFunctionData();
-                }
-                if(triggerField[functiondecl]){
-                    GetFunctionDeclData();
-                }  
                 //Get function arguments
                 if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
                     GetCallData();//issue with statements like object(var)
                     while(!callArgData.empty())
                         callArgData.pop();
                 }
-                if(triggerField[expr_stmt] && triggerField[expr]){
-                    ProcessExprStmt();//problems with exprs like blotttom->next = expr
+                if(triggerField[expr] && triggerField[expr_stmt]){
+                    if(opassign){
+                        ProcessExprStmtPostAssign();//problems with exprs like blotttom->next = expr
+                    }else{
+                        ProcessExprStmtPreAssign();
+                    }
                 }
                 --triggerField[name];
             } },
@@ -662,18 +680,30 @@ public:
             !(triggerField[index] || triggerField[op] || triggerField[preproc])){
             currentCallArgData.first.append(ch, len);
         }
-        if((triggerField[function] && triggerField[name]) && !(triggerField[block] || triggerField[argument_list] 
-            || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
-            currentFunctionBody.functionName.append(ch, len);
+        if(((triggerField[function] || triggerField[constructor] || triggerField[destructor]) && triggerField[name]) 
+        && !(triggerField[argument_list] || triggerField[argument_list_template] || triggerField[functionblock] || triggerField[type]
+        || triggerField[parameter_list] || triggerField[index] || triggerField[preproc] || triggerField[op]|| triggerField[macro])){                
+            currentFunctionBody.first.append(ch, len);
         }
-        if((triggerField[functiondecl]) && !(triggerField[type] || triggerField[parameter_list])){
-            currentFunctionDecl.functionName.append(ch,len);
+        if(triggerField[function] && triggerField[type] 
+            && !(triggerField[op] || triggerField[functionblock] || triggerField[argument_list] || triggerField[argument_list_template] || triggerField[templates] || triggerField[parameter_list]|| triggerField[macro] || triggerField[preproc])){
+            if(!triggerField[modifier]){
+                currentFunctionReturnType.first = std::string(ch, len);
+            }else{
+                currentFunctionReturnType.first.append(ch, len);
+            }                
         }
-        if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && !triggerField[type]){
+        if((triggerField[functiondecl] || triggerField[constructordecl]) && !(triggerField[type] || triggerField[parameter_list])){
+            currentFunctionDecl.first.append(ch,len);
+            std::cerr<<"delc: "<<currentFunctionDecl.first<<std::endl;
+        }
+        if(((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param])
+            && !(triggerField[type] || triggerField[templates] || triggerField[argument_list]|| triggerField[macro] || triggerField[preproc])){
             currentParam.first.append(ch, len);
         }
-        if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && triggerField[type] && !triggerField[argument_list]){
-            currentParamType.first.append(ch, len);
+        if(((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && triggerField[type]
+        && !(triggerField[templates] || triggerField[op] || triggerField[argument_list] || triggerField[macro] || triggerField[preproc])){
+            currentParamType.first = std::string(ch, len);
         }
         if((triggerField[type] && triggerField[decl_stmt] && triggerField[name] && !(triggerField[argument_list] || triggerField[modifier] || triggerField[op]|| triggerField[macro] || triggerField[preproc]))){
             currentDeclType.first = std::string(ch,len);
@@ -681,9 +711,9 @@ public:
         if(triggerField[decl] && triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && !(triggerField[argument_list] 
             || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
             if(triggerField[init]){
-                currentDecl.first.append(ch,len);
+                currentDeclInit.first.append(ch,len);
             }else{
-                currentDeclInit.first.append(ch,len);    
+                currentDecl.first.append(ch,len);    
             }
         }
         if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc])){
