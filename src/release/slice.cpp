@@ -190,14 +190,15 @@ int main(int argc, char * argv[]) {
     exit(1);
 
   }
-  clock_t t;
-  t = clock();
+
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
+  clock_t t;
+  t = clock();
   control.parse(&handler);
+  //TestSlice(handler.sysDict.dictionary, handler);
+  srcSliceToCsv(handler);
   t = clock() - t;
   std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
-  //TestSlice(handler.sysDict.dictionary, handler);
-  //srcSliceToCsv(handler);
   return 0;
 }

@@ -26,7 +26,6 @@
 
 #include <iostream>
 #include <vector>
-#include <deque>
 #include <algorithm>
 #include <sstream>
 #include <stack>
@@ -37,17 +36,26 @@ private:
      *triggerField vector and figuring out which tags have been seen. It keeps a count of how many of each
      *tag is currently open. Increments at a start tag and decrements at an end tag*/
     enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, 
-        argument_list, call, ctrlflow, endflow, name, function, functiondecl,
-        constructordecl, destructordecl, argument, index, block, type, init, op, 
-        literal, modifier, member_list, classn, preproc,
-        whileloop, forloop, ifcond, nonterminal, empty, 
-        MAXENUMVALUE = empty};
+        argument_list, argument_list_template, call, templates, ctrlflow, endflow, 
+        name, function, functiondecl, constructor, constructordecl, destructordecl, destructor,
+        argument, index, block, type, init, op, literal, modifier, member_list, classn,
+        preproc, whileloop, forloop, ifcond, nonterminal, macro, classblock, functionblock,
+        specifier, empty, MAXENUMVALUE = empty};
+
+    std::unordered_map<std::string, std::function<void()>> process_map;
+    std::unordered_map<std::string, std::function<void()>> process_map3;
 
     unsigned int fileNumber;
     unsigned int numArgs;
     unsigned int declIndex;
 
     int constructorNum;
+
+    SliceProfile currentSliceProfile;
+    SliceProfile* lhs;
+
+    std::string lhsName;
+    unsigned int lhsLine;
 
     /*Hashing function/file names. This will accomplish that.*/
     std::hash<std::string> functionNameHash;
@@ -61,7 +69,6 @@ private:
     /*keeps track of which functioni has been called. Useful for when argument slice profiles need to be updated*/
     std::stack<std::string> nameOfCurrentClldFcn;
     std::stack<unsigned int> controlFlowLineNum;
-    
     /*These two iterators keep track of where we are inside of the system dictionary. They're primarily so that
      *there's no need to do any nasty map.finds on the dictionary (since it's a nested map of maps). These must
      *be updated as the file is parsed*/
@@ -86,30 +93,26 @@ private:
     bool potentialAlias;
 
     bool dereferenced;
-    
     /*These along with triggerfield make up the meat of this slicer.Check the triggerfield for context (E.g., triggerField[init])
      *and then once you know the right tags are open, check the correct line/string pair to see what the name is
      *at that position and its line number to be stored in the slice profile*/ 
     std::vector<unsigned short int> triggerField;
     std::string calledFunctionName;
-    std::string curoper;
     std::stack<NameLineNumberPair> callArgData;
-    std::deque<std::pair<unsigned int, SliceProfile*>> memberAccessStack; //deals with objects of form obj->obj2.obj3
-    
-    std::unordered_map< std::string, std::function<void()>> process_map;
-    std::unordered_map< std::string, std::function<void()>> process_map3;
-
     NameLineNumberPair currentCallArgData;
     NameLineNumberPair currentParam;
     NameLineNumberPair currentParamType;
-    NameLineNumberPair currentDeclStmt;
+    
+    NameLineNumberPair currentDecl;
     NameLineNumberPair currentDeclType;
+    NameLineNumberPair currentDeclInit;
+    
     NameLineNumberPair currentExprStmt;
     NameLineNumberPair currentDeclArg;
     NameLineNumberPair currentClassName;
+    
     FunctionData currentFunctionBody;
     FunctionData currentFunctionDecl;
-    
     /*function headers*/
     void GetCallData();
     void ProcessDeclStmt();
@@ -118,12 +121,8 @@ private:
     void ProcessExprStmt();
     void ProcessConstructorDecl();
     void GetFunctionDeclData();
-    void ProcessMemberDeref(const NameLineNumberPair&);
-    void UpdateMemberStack(const NameLineNumberPair& nlnp);
+
     SliceProfile* Find(const std::string&);
-    
-    
-    
     SliceProfile ArgumentProfile(unsigned int, unsigned int);
 
 public:
@@ -137,7 +136,8 @@ public:
 
         constructorNum = 0;
         lineNum = 0;
-
+        
+        lhs = nullptr;
         skipMember = false;
 
         dereferenced = false;
@@ -147,10 +147,8 @@ public:
         isConstructor = false;
         inGlobalScope = true;
         triggerField = std::vector<unsigned short int>(MAXENUMVALUE, 0);
-        
         process_map = {
             {"decl_stmt", [this](){
-                currentDeclStmt.first.clear();
                 ++declIndex; //to keep track of index of declarations
                 ++triggerField[decl_stmt];
             } }, 
@@ -166,17 +164,17 @@ public:
 
             { "if", [this](){
                 ++triggerField[ifcond];
-                controlFlowLineNum.push(lineNum);
+                //controlFlowLineNum.push(lineNum);
             } },
 
             { "for", [this](){
                 ++triggerField[forloop];
-                controlFlowLineNum.push(lineNum);
+                //controlFlowLineNum.push(lineNum);
             } },
 
             { "while", [this](){
                 ++triggerField[whileloop];
-                controlFlowLineNum.push(lineNum);
+                //controlFlowLineNum.push(lineNum);
             } },
 
             { "argument_list", [this](){
@@ -217,11 +215,11 @@ public:
             } },
             { "destructor_decl", [this](){
                 currentFunctionDecl.functionName.clear();
-                ++triggerField[functiondecl];
+                ++triggerField[destructordecl];
             } },
             { "constructor_decl", [this](){
                 currentFunctionDecl.functionName.clear();
-                ++triggerField[functiondecl];
+                ++triggerField[constructordecl];
             } },
             { "class", [this](){
                 ++triggerField[classn];
@@ -251,17 +249,17 @@ public:
                 if(triggerField[expr_stmt]){
                     currentExprStmt.first.clear(); 
                 }
-                if(triggerField[decl_stmt]){
-                    currentDeclStmt.first.clear();
+            } },    
+            { "block", [this](){     
+                if((triggerField[function] || triggerField[constructor])){
+                    ++triggerField[functionblock];
                 }
-            } },    
-            { "block", [this]()
-            { //So we can discriminate against things in or outside of blocks
-                    //currentFunctionBody.functionName.clear();
+                if(triggerField[classn]){
+                    ++triggerField[classblock];
+                }
                 ++triggerField[block];
-            } },    
+            } },
             { "init", [this](){//so that we can get more stuff after the decl's name 
-                currentDeclStmt.first.clear();
                 ++triggerField[init];
             } },    
             { "argument", [this](){
@@ -274,9 +272,6 @@ public:
                 ++triggerField[literal];
             } },    
             { "modifier", [this](){
-                if(triggerField[decl_stmt]){
-                    currentDeclStmt.first.clear();
-                }
                 ++triggerField[modifier];
             } },    
             { "decl", [this](){
@@ -291,34 +286,36 @@ public:
             { "name", [this](){
                 ++triggerField[name];
                 currentCallArgData.second = currentParam.second = currentParamType.second = 
-                currentFunctionBody.functionLineNumber = currentDeclStmt.second =  
-                currentExprStmt.second = currentFunctionDecl.functionLineNumber = lineNum;
+                currentFunctionBody.functionLineNumber = currentDecl.second =  
+                currentExprStmt.second = currentFunctionDecl.functionLineNumber = currentDeclInit.second = lineNum;
             } },
+            { "macro", [this](){
+                ++triggerField[macro];
+            } },
+            { "specifier", [this](){
+                ++triggerField[specifier];
+            } }
         };
         process_map3 = {
-            {"decl_stmt", [this](){
-                --triggerField[decl_stmt];
 
-                updateUse(currentDeclStmt);
-                
+            {"decl_stmt", [this](){
                 currentCallArgData.first.clear();
                 currentDeclArg.first.clear();
-                currentDeclStmt.first.clear();
-                currentDeclType.first.clear();
-                memberAccessStack.clear();
-                opassign = false;
                 potentialAlias = false;
-                
+                --triggerField[decl_stmt];
             } }, 
 
             { "expr_stmt", [this](){
                 --triggerField[expr_stmt];
-                
-                updateUse(currentExprStmt);
-
+                if(!opassign && lhs){//Don't know if an lhs is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
+                    lhs->slines.insert(lhsLine);
+                    lhs->use.insert(lhsLine);
+                }
+                lhs = nullptr;
                 opassign = false;
                 dereferenced = false;
-                memberAccessStack.clear();
+                lhsLine = 0;
+                lhsName.clear();
                 currentCallArgData.first.clear();
                 currentExprStmt.first.clear();
             } },
@@ -328,20 +325,20 @@ public:
             } },
 
             { "if", [this](){
-                sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-                controlFlowLineNum.pop();
+                //sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                //controlFlowLineNum.pop();
                 --triggerField[ifcond];
             } },
 
             { "for", [this](){
-                sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-                controlFlowLineNum.pop();
+                //sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                //controlFlowLineNum.pop();
                 --triggerField[forloop];
             } },
 
             { "while", [this](){
-                sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-                controlFlowLineNum.pop();
+                //sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                //controlFlowLineNum.pop();
                 --triggerField[whileloop];
             } },
 
@@ -366,7 +363,7 @@ public:
                 declIndex = 0;
                 inGlobalScope = true;
                 //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;
-                classIt->second.memberFunctions.insert(functionTmplt);
+                //classIt->second.memberFunctions.insert(functionTmplt);
                 
                 functionTmplt.clear();
                 --triggerField[function];
@@ -375,7 +372,7 @@ public:
                 isConstructor = false;
                 declIndex = 0;
 
-                classIt->second.memberFunctions.insert(functionTmplt);
+                //classIt->second.memberFunctions.insert(functionTmplt);
                 
                 inGlobalScope = true;
                 functionTmplt.clear();
@@ -385,7 +382,7 @@ public:
             { "destructor", [this](){
                 declIndex = 0;
 
-                classIt->second.memberFunctions.insert(functionTmplt);
+                //classIt->second.memberFunctions.insert(functionTmplt);
 
                 inGlobalScope = true;
                 functionTmplt.clear();
@@ -393,25 +390,35 @@ public:
             } },
             { "function_decl", [this](){
                 if(triggerField[classn]){
-                    classIt->second.memberFunctions.insert(functionTmplt);
+                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
+                    //classIt->second.memberFunctions.insert(functionTmplt);
                 }
                 --triggerField[functiondecl];
             } },
             { "constructor_decl", [this](){
                 if(triggerField[classn]){
-                    classIt->second.memberFunctions.insert(functionTmplt);
+                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
+                    //classIt->second.memberFunctions.insert(functionTmplt);
                 }
                 --triggerField[functiondecl];
             } },
             { "destructor_decl", [this](){
                 if(triggerField[classn]){
-                    classIt->second.memberFunctions.insert(functionTmplt);
+                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
+                    //classIt->second.memberFunctions.insert(functionTmplt);
                 }
                 --triggerField[functiondecl];
             } },            
             { "class", [this](){
                 currentClassName.first.clear();
-                classIt = sysDict.classTable.find("GLOBAL");
+                //classIt = sysDict.classTable.find("GLOBAL");
+                /*
+                std::cerr<<"Class mfs: "<<sysDict.classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
+                std::cerr<<"Class mvs: "<<sysDict.classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
+
+                std::cerr<<"Class mfs: "<<sysDict.classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
+                std::cerr<<"Class mvs: "<<sysDict.classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
+                */
                 --triggerField[classn];
             } },
             { "param", [this](){
@@ -428,42 +435,39 @@ public:
             } },    
             { "operator", [this](){
                 if(triggerField[expr_stmt] && triggerField[expr]){
-                    if(memberAccessStack.front().second){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
-                        memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
-                        memberAccessStack.front().second->def.insert(memberAccessStack.back().first);
+                    if(currentExprStmt.first == "="){
+                        opassign = true;
+                        if(lhs){//Don't know if an lhs is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
+                            lhs->slines.insert(lhsLine);
+                            lhs->def.insert(lhsLine);
+                        }
                     }
-                    currentExprStmt.first.clear();
-                }                    
-                if(triggerField[expr_stmt] || triggerField[decl_stmt] || triggerField[call]){
-                    if(curoper == "*"){
+                    if(currentExprStmt.first == "*"){
                         dereferenced = true;
                     }
-                    if(curoper == "->"){
+                    if(currentExprStmt.first == "->"){
                         skipMember = true;
                     }
-                    if(curoper == "."){
+                    if(currentExprStmt.first == "."){
                         skipMember = true;
                     }
-                    if(curoper == "="){
-                        opassign = true;
-                    }
-                    curoper.clear();
+                    currentExprStmt.first.clear();
                 }
-                if(triggerField[decl_stmt] && triggerField[decl]){
-                    if(triggerField[type]){
-                        currentDeclType.first.clear();
-                    }
-                    currentDeclStmt.first.clear();
-                }
-                if(currentDeclStmt.first == "new"){
-                    currentDeclStmt.first.append("-"); //separate new operator because we kinda need to know when we see it.
+                if(currentDecl.first == "new"){
+                    currentDecl.first.append("-"); //separate new operator because we kinda need to know when we see it.
                 }
                 if(triggerField[parameter_list] && triggerField[param] && triggerField[type]){
                     currentParamType.first.clear();
                 }
                 --triggerField[op];
             } },
-            { "block", [this](){ //So we can discriminate against things in or outside of blocks
+            { "block", [this](){ 
+                if((triggerField[function] || triggerField[constructor])){
+                    --triggerField[functionblock];
+                }
+                if(triggerField[classn]){
+                    --triggerField[classblock];
+                }
                 --triggerField[block];
             } },
             { "init", [this](){//so that we can get more stuff after the decl's name 
@@ -487,11 +491,23 @@ public:
                 --triggerField[modifier];
             } },    
             { "decl", [this](){
+                if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                    GetDeclStmtData();
+                    if(triggerField[init] && !triggerField[argument_list]){
+                        ProcessDeclStmt();
+                    }
+                }
+                currentDecl.first.clear();
                 --triggerField[decl]; 
             } },    
             { "type", [this](){
-                if(triggerField[decl_stmt] || (triggerField[function] && ! triggerField[block])) {
-                    currentDeclStmt.first.clear();
+                if((triggerField[type] && triggerField[decl_stmt] && (triggerField[function] || triggerField[constructor]) && !(triggerField[modifier] || triggerField[argument_list]))){
+                    //std::cerr<<"Type: "<<currentDeclType.first<<std::endl;
+                    currentSliceProfile.variableType = currentDeclType.first;
+                    currentDeclType.first.clear();
+                }
+                if(triggerField[parameter_list] && triggerField[param]){
+                    currentParamType.first.clear();
                 }
                 --triggerField[type];
             } },    
@@ -518,40 +534,28 @@ public:
                 }
                 if(triggerField[functiondecl]){
                     GetFunctionDeclData();
-                }
-                //Get variable decls
-                if(triggerField[decl_stmt]){
-                    GetDeclStmtData();
-                }                
+                }  
                 //Get function arguments
-                if((triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])) && !nameOfCurrentClldFcn.empty()){
-                    GetCallData();//TODO issue with statements like object(var)
-                    
-                    if(skipMember){
-                        ProcessMemberDeref(NameLineNumberPair(nameOfCurrentClldFcn.top(), 0));
-                    }
+                if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
+                    GetCallData();//issue with statements like object(var)
                     while(!callArgData.empty())
                         callArgData.pop();
                 }
                 if(triggerField[expr_stmt] && triggerField[expr]){
                     ProcessExprStmt();//problems with exprs like blotttom->next = expr
-                    if(skipMember){
-                        ProcessMemberDeref(currentExprStmt);
-                    }
-                }
-                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[init] && 
-                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
-                    ProcessDeclStmt();
-                    if(skipMember){
-                        ProcessMemberDeref(currentDeclStmt);
-                    }
-                }
-                if(triggerField[classn]){
-                    classIt = sysDict.classTable.insert(std::make_pair(currentClassName.first, ClassProfile())).first;
                 }
                 --triggerField[name];
             } },
+            { "macro", [this](){
+                currentDeclType.first.clear();
+                currentDecl.first.clear();
+                --triggerField[macro];
+            } },
+            { "specifier", [this](){
+                --triggerField[specifier];
+            } },
         };
+
     }
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wunused-parameter"
@@ -606,7 +610,7 @@ public:
         //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
         unsigned int ghash = functionNameHash("GLOBAL");
         sysDict.functionTable.insert(std::make_pair(functionNameHash("GLOBAL"), "GLOBAL"));
-        classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
+        //classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
         FunctionIt = FileIt->second.insert(std::make_pair(ghash, VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
@@ -625,7 +629,7 @@ public:
     */
     virtual void startElement(const char * localname, const char * prefix, const char * URI,
                                 int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
-                                const struct srcsax_attribute * attributes){
+                                const struct srcsax_attribute * attributes) {
         if(num_attributes){
             lineNum = strtoul(attributes[0].value, NULL, 0);
         }
@@ -636,12 +640,11 @@ public:
         }
         if(lnspace == "cpp"){
             ++triggerField[preproc];
-        }
+        }          
+        
         std::unordered_map<std::string, std::function<void()>>::const_iterator process = process_map.find(lname);
         if (process != process_map.end()) {
             process->second();
-        }else{
-            ++triggerField[nonterminal];
         }
     }
     /**
@@ -654,9 +657,6 @@ public:
      */
     virtual void charactersUnit(const char * ch, int len) {
 
-        if(triggerField[op]){
-            curoper.append(ch,len);
-        }
         if((triggerField[decl_stmt] || triggerField[expr_stmt]) && triggerField[call] && 
             (triggerField[name]) && triggerField[argument_list] &&
             !(triggerField[index] || triggerField[op] || triggerField[preproc])){
@@ -675,10 +675,18 @@ public:
         if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && triggerField[type] && !triggerField[argument_list]){
             currentParamType.first.append(ch, len);
         }
-        if(triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && triggerField[decl] && !(triggerField[index] || triggerField[preproc] || triggerField[type])) {
-            currentDeclStmt.first.append(ch, len);
-            
-        }else if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc])){
+        if((triggerField[type] && triggerField[decl_stmt] && triggerField[name] && !(triggerField[argument_list] || triggerField[modifier] || triggerField[op]|| triggerField[macro] || triggerField[preproc]))){
+            currentDeclType.first = std::string(ch,len);
+        }
+        if(triggerField[decl] && triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && !(triggerField[argument_list] 
+            || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
+            if(triggerField[init]){
+                currentDecl.first.append(ch,len);
+            }else{
+                currentDeclInit.first.append(ch,len);    
+            }
+        }
+        if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc])){
             currentExprStmt.first.append(ch, len);
         }
         if(triggerField[call]){
@@ -691,9 +699,6 @@ public:
         if(!triggerField[block] && (triggerField[name] && triggerField[classn])){
             currentClassName.first.append(ch,len);
         }
-        if(!(triggerField[argument_list] || triggerField[modifier]) && (triggerField[type] && triggerField[decl_stmt] && ch[0] != ' ')){
-            currentDeclType.first.append(ch,len);
-        }
     }
 
     // end elements may need to be used if you want to collect only on per file basis or some other granularity.
@@ -703,16 +708,6 @@ public:
     virtual void endUnit(const char * localname, const char * prefix, const char * URI) {
 
     }
-    void updateUse(const NameLineNumberPair& nlnp){
-        if(!memberAccessStack.empty()){//Don't know if an memberAccessStack.front().second is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
-            memberAccessStack.front().second->slines.insert(memberAccessStack.back().first);
-            if(!opassign){
-                memberAccessStack.front().second->use.insert(memberAccessStack.back().first);
-            }
-            memberAccessStack.front().second->lineNumberMemberVariableExtMap.insert(std::make_pair(nlnp.second, memberAccessStack));
-            memberAccessStack.front().second = nullptr;
-        }
-    }
     virtual void endElement(const char * localname, const char * prefix, const char * URI) {
         std::string lname(localname);
         std::string lnspace;
@@ -720,17 +715,17 @@ public:
             lnspace.append(prefix);
         }
         if(lnspace == "cpp"){
+            currentDeclType.first.clear();
+            currentDecl.first.clear();
             --triggerField[preproc];
         }
         
         std::unordered_map<std::string, std::function<void()>>::const_iterator process3 = process_map3.find(lname);
         if (process3 != process_map3.end()) {
             process3->second();
-        }else{
-            --triggerField[nonterminal]; 
         }
-    }
 #pragma GCC diagnostic pop
+    }
 };
 
 #endif
