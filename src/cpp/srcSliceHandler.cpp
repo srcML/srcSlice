@@ -40,7 +40,7 @@ void srcSliceHandler::ProcessConstructorDecl(){
 */
 void srcSliceHandler::ProcessDeclStmt(){
     auto sp = Find(currentDeclInit.first);
-    
+    std::cerr<<currentDeclInit.first<<std::endl;
     if(sawnew){sawnew = false;}
     if(sp){
         std::cerr<<"ENTER: "<<varIt->second.variableName<<std::endl;
@@ -154,10 +154,19 @@ void srcSliceHandler::GetDeclStmtData(){
  * process the rhs for any aliases, dvars, or function calls.
  */
 void srcSliceHandler::ProcessExprStmtPreAssign(){
-    lhs = Find(currentExprStmt.first);
-    if(lhs){ //Found it so store what its current name and line number are.
-        lhsName = currentExprStmt.first;
-        lhsLine = currentExprStmt.second;
+    if(!currentExprStmt.first.empty()){
+        SliceProfile* lhs = Find(currentExprStmt.first);
+        if(!lhs){
+            currentSliceProfile.index = -1;
+            currentSliceProfile.file = fileNumber;
+            currentSliceProfile.function = functionTmplt.GetFunctionUID();
+            currentSliceProfile.variableName = currentExprStmt.first;
+            currentSliceProfile.potentialAlias = false;
+            currentSliceProfile.isGlobal = inGlobalScope;
+            
+            varIt = FunctionIt->second.insert(std::make_pair(currentExprStmt.first, std::move(currentSliceProfile))).first;
+            varIt->second.def.insert(currentExprStmt.second);
+        }        
     }
 }
 
@@ -168,7 +177,15 @@ void srcSliceHandler::ProcessExprStmtPreAssign(){
  * process the rhs for any aliases, dvars, or function calls.
  */
 void srcSliceHandler::ProcessExprStmtPostAssign(){
+    SliceProfile* lhs = Find(lhsName);
     if(!lhs){return;}
+    currentSliceProfile.index = -1;
+    currentSliceProfile.file = fileNumber;
+    currentSliceProfile.function = functionTmplt.GetFunctionUID();
+    currentSliceProfile.variableName = currentExprStmt.first;
+    currentSliceProfile.potentialAlias = false;
+    currentSliceProfile.isGlobal = inGlobalScope;
+
     auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
     if(sprIt){ //lvalue depends on this rvalue
         //std::cerr<<"Here2"<<std::endl;

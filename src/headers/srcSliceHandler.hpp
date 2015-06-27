@@ -52,7 +52,6 @@ private:
     int constructorNum;
 
     SliceProfile currentSliceProfile;
-    SliceProfile* lhs;
 
     std::string lhsName;
     unsigned int lhsLine;
@@ -89,7 +88,11 @@ private:
     bool isACallName;
     bool opassign;
     bool sawnew;
+    
     bool sawinit;
+    
+    bool exprassign;
+    bool exprop;
 
     bool potentialAlias;
 
@@ -145,12 +148,14 @@ public:
         constructorNum = 0;
         lineNum = 0;
         
-        lhs = nullptr;
 
         dereferenced = false;
         opassign = false;
         sawnew = false;
         sawinit = false;
+
+        exprassign = false;
+        exprop = false;
 
         isACallName = false;
         isConstructor = false;
@@ -163,7 +168,6 @@ public:
             } }, 
 
             { "expr_stmt", [this](){
-                currentExprStmt.first.clear();
                 ++triggerField[expr_stmt];
             } },
             { "parameter_list", [this](){
@@ -270,13 +274,14 @@ public:
             } },    
             { "operator", [this](){
                 ++triggerField[op];
+                if(triggerField[expr_stmt]){
+                    exprop = true; //assume we're not seeing =
+                }
                 //Don't want the operators. But do make a caveat for ->
                 if(triggerField[call]){
                     currentCallArgData.first.clear();
                 }
-                if(triggerField[expr_stmt]){
-                    currentExprStmt.first.clear(); 
-                }
+
             } },    
             { "block", [this](){     
                 if((triggerField[function] || triggerField[constructor])){
@@ -340,17 +345,12 @@ public:
 
             { "expr_stmt", [this](){
                 --triggerField[expr_stmt];
-                if(!opassign && lhs){//Don't know if an lhs is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
-                    lhs->slines.insert(lhsLine);
-                    lhs->use.insert(lhsLine);
-                }
-                lhs = nullptr;
                 opassign = false;
                 dereferenced = false;
                 lhsLine = 0;
                 lhsName.clear();
-                currentCallArgData.first.clear();
                 currentExprStmt.first.clear();
+                currentCallArgData.first.clear();
             } },
 
             { "parameter_list", [this](){
@@ -468,23 +468,20 @@ public:
                 --triggerField[index];
             } },    
             { "operator", [this](){
-                if(triggerField[expr_stmt] && triggerField[expr]){
-                    if(currentExprStmt.first == "="){
-                        opassign = true;
-                        if(lhs){//Don't know if an lhs is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
-                            lhs->slines.insert(lhsLine);
-                            lhs->def.insert(lhsLine);
-                        }
-                    }
-                    if(currentExprStmt.first == "*"){
-                        dereferenced = true;
-                    }
-                    currentExprStmt.first.clear();
-                }
-                
                 if(currentDeclInit.first == "new"){
                      //separate new operator because we kinda need to know when we see it.
                     sawnew = true;
+                }
+                //The logic for exprassign and op is basically that we want to know when we've hit the left and right hand side of expr stmt
+                //expr assign is set when we see =. Everything read up to that point is lhs. exprop is any other operator. When I see that
+                //I know that we're probably in a member call chain a->b->c etc. I don't care about b and c, so expr op helps skip those.
+                if(triggerField[expr_stmt]){
+                    if(exprassign){
+                        ProcessExprStmtPreAssign();
+                        exprop = false;
+                        lhsName = currentExprStmt.first;
+                        currentExprStmt.first.clear();
+                    }
                 }
                 currentDeclInit.first.clear(); //this doesn't need to keep track of operators other than new
 
@@ -567,16 +564,16 @@ public:
                         callArgData.pop();
                 }
                 if(triggerField[expr] && triggerField[expr_stmt]){
-                    if(opassign){
+                    if(exprassign){
                         ProcessExprStmtPostAssign();//problems with exprs like blotttom->next = expr
-                    }else{
-                        ProcessExprStmtPreAssign();
+                        exprassign = false;
                     }
                 }
                 if(triggerField[init] && triggerField[decl] && triggerField[decl_stmt] && 
                 !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
                     ProcessDeclStmt();
                 }
+                exprop = false;
                 --triggerField[name];
             } },
             { "macro", [this](){
@@ -710,7 +707,6 @@ public:
         }
         if((triggerField[functiondecl] || triggerField[constructordecl]) && !(triggerField[type] || triggerField[parameter_list])){
             currentFunctionDecl.first.append(ch,len);
-            std::cerr<<"delc: "<<currentFunctionDecl.first<<std::endl;
         }
         if(((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param])
             && !(triggerField[type] || triggerField[templates] || triggerField[argument_list]|| triggerField[macro] || triggerField[preproc])){
@@ -738,8 +734,25 @@ public:
                 currentDecl.first.append(ch,len);    
             }
         }
-        if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc])){
-            currentExprStmt.first.append(ch, len);
+        if((triggerField[name] || triggerField[op]) && triggerField[expr] && triggerField[expr_stmt] && !(triggerField[index] || triggerField[preproc])){
+            std::string str = std::string(ch, len);
+            if(str == "="){
+                exprassign = true;
+                str.clear(); //don't read the =, just want to know it was there.
+            }
+            if(str == "*"){
+                str.clear();
+                exprop = false;
+            }
+            if(!exprop){
+                if(!triggerField[call]){//if it's not in a call then we can do like normal
+                    currentExprStmt.first.append(str);
+                }else{
+                    if(triggerField[argument]){//if it's in a call, ignore until we hit an argument
+                        currentExprStmt.first.append(str);
+                    }
+                }
+            }
         }
         if(triggerField[call]){
             calledFunctionName.append(ch, len);
