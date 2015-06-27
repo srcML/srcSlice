@@ -88,6 +88,8 @@ private:
     bool inGlobalScope;
     bool isACallName;
     bool opassign;
+    bool sawnew;
+    bool sawinit;
 
     bool potentialAlias;
 
@@ -147,6 +149,8 @@ public:
 
         dereferenced = false;
         opassign = false;
+        sawnew = false;
+        sawinit = false;
 
         isACallName = false;
         isConstructor = false;
@@ -167,7 +171,7 @@ public:
                     GetFunctionData();
                 }
                 ++triggerField[parameter_list];
-                if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
+                if(triggerField[function] && (!triggerField[functionblock] || triggerField[type] || triggerField[parameter_list])){
                     functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
                     sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
                     FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
@@ -283,7 +287,12 @@ public:
                 }
                 ++triggerField[block];
             } },
-            { "init", [this](){//so that we can get more stuff after the decl's name 
+            { "init", [this](){
+                //This one is only called if we see init. If there's no init, it's safely ignored.
+                if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                    GetDeclStmtData();
+                    sawinit = true;
+                }
                 ++triggerField[init];
             } },    
             { "argument", [this](){
@@ -472,9 +481,13 @@ public:
                     }
                     currentExprStmt.first.clear();
                 }
-                if(currentDecl.first == "new"){
-                    currentDecl.first.append("-"); //separate new operator because we kinda need to know when we see it.
+                
+                if(currentDeclInit.first == "new"){
+                     //separate new operator because we kinda need to know when we see it.
+                    sawnew = true;
                 }
+                currentDeclInit.first.clear(); //this doesn't need to keep track of operators other than new
+
                 if(triggerField[function] && !(triggerField[functionblock] || triggerField[templates] || triggerField[parameter_list] || triggerField[type] || triggerField[argument_list])){
                     currentFunctionBody.first.clear();
                 }
@@ -513,11 +526,9 @@ public:
                 --triggerField[templates];
             } },    
             { "decl", [this](){
-                if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                if(!sawinit && triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                    //only run if we didn't run it during init
                     GetDeclStmtData();
-                    if(triggerField[init] && !triggerField[argument_list]){
-                        ProcessDeclStmt();
-                    }
                 }
                 currentDecl.first.clear();
                 --triggerField[decl]; 
@@ -536,7 +547,7 @@ public:
                     functionTmplt.returnType = currentFunctionReturnType.first;
                     currentFunctionReturnType.first.clear();
                 }
-                if(triggerField[functiondecl] && triggerField[type] && !(triggerField[parameter_list] || triggerField[block] || triggerField[member_list])){
+                if(triggerField[functiondecl] && triggerField[type] && !(triggerField[parameter_list] || triggerField[member_list])){
                     //get function decl return type
                     functionTmplt.returnType = currentFunctionDecl.first;
                 }
@@ -561,6 +572,10 @@ public:
                     }else{
                         ProcessExprStmtPreAssign();
                     }
+                }
+                if(triggerField[init] && triggerField[decl] && triggerField[decl_stmt] && 
+                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
+                    ProcessDeclStmt();
                 }
                 --triggerField[name];
             } },
@@ -708,10 +723,17 @@ public:
         if((triggerField[type] && triggerField[decl_stmt] && triggerField[name] && !(triggerField[argument_list] || triggerField[modifier] || triggerField[op]|| triggerField[macro] || triggerField[preproc]))){
             currentDeclType.first = std::string(ch,len);
         }
-        if(triggerField[decl] && triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && !(triggerField[argument_list] 
+        //this is to handle lhs of decl stmts and rhs of decl stmts
+        if((triggerField[name] || triggerField[op]) && triggerField[decl] && triggerField[decl_stmt] && !(triggerField[argument_list] 
             || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
             if(triggerField[init]){
-                currentDeclInit.first.append(ch,len);
+                if(!triggerField[call]){//if it's not in a call then we can do like normal
+                    currentDeclInit.first.append(ch,len);
+                }else{
+                    if(triggerField[argument]){//if it's in a call, ignore until we hit an argument
+                        currentDeclInit.first.append(ch,len);
+                    }
+                }
             }else{
                 currentDecl.first.append(ch,len);    
             }
@@ -726,7 +748,7 @@ public:
             !triggerField[type]){
             currentDeclArg.first.append(ch,len);
         }
-        if(!triggerField[block] && (triggerField[name] && triggerField[classn])){
+        if(!triggerField[classblock] && (triggerField[name] && triggerField[classn])){
             currentClassName.first.append(ch,len);
         }
     }

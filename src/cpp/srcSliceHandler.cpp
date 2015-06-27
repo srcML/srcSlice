@@ -39,20 +39,21 @@ void srcSliceHandler::ProcessConstructorDecl(){
 *corner case at new operator because new makes an object even if its argument is an alias.
 */
 void srcSliceHandler::ProcessDeclStmt(){
-    bool seenNew = false;
     auto sp = Find(currentDeclInit.first);
-    if(currentDeclInit.first == "new"){seenNew = true;}
+    
+    if(sawnew){sawnew = false;}
     if(sp){
+        std::cerr<<"ENTER: "<<varIt->second.variableName<<std::endl;
         varIt->second.slines.insert(currentDeclInit.second); //varIt is lhs
         sp->use.insert(currentDeclInit.second);
-        if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
+        if(varIt->second.potentialAlias && !sawnew){ //new operator of the form int i = new int(tmp); screws around with aliasing
             varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
         }else{
             sp->dvars.insert(varIt->second.variableName);
             sp->use.insert(currentDeclInit.second);
         }
     }
-    currentDeclInit.first.clear(); //because if it's a multi-init decl then inits will run into one another.
+    currentDeclInit.first.clear();
 }
 
 /*
@@ -94,6 +95,7 @@ void srcSliceHandler::GetParamName(){
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
 
+    //std::cerr<<"PARA: "<<currentParam.first<<std::endl;
     varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, std::move(currentSliceProfile))).first;
     varIt->second.def.insert(currentParam.second);
 
@@ -137,6 +139,7 @@ void srcSliceHandler::GetDeclStmtData(){
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
     if(!inGlobalScope){
+        std::cerr<<"GLOBAL:"<<currentDecl.first<<std::endl;
         varIt = FunctionIt->second.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile))).first;
         varIt->second.def.insert(currentDecl.second);
     }else{ //TODO: Handle def use for globals

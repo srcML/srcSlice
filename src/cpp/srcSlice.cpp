@@ -38,7 +38,7 @@ void TestSlice2(const VarMap& mp){
 			std::cerr<<dv<<",";
 		}
 		std::cerr<<"}"<<std::endl;
-		std::cerr<<"aliases: {";
+		std::cerr<<"is aliase for: {";
 		for(std::string al : vmIt->second.aliases){
 			std::cerr<<al<<",";
 		}
@@ -69,7 +69,7 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 					std::cerr<<dv<<",";
 				}
 				std::cerr<<"}"<<std::endl;
-				std::cerr<<"aliases: {";
+				std::cerr<<"is aliase for: {";
 				for(std::string al : vmIt->second.aliases){
 					std::cerr<<al<<",";
 				}
