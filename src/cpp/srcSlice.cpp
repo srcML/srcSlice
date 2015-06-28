@@ -181,6 +181,6 @@ int main(int argc, char * argv[]) {
   //TestSlice(handler.sysDict.dictionary, handler);
   
   //TestSlice2(handler.sysDict.globalMap);
-  //srcSliceToCsv(handler);
+  srcSliceToCsv(handler);
   return 0;
 }
