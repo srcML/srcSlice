@@ -98,6 +98,7 @@ private:
     bool exprassign;
     bool exprop;
     bool foundexprlhs;
+
     std::list<NameLineNumberPair> useExprStack;
 
     bool potentialAlias;
@@ -122,6 +123,7 @@ private:
 
     NameLineNumberPair currentExprStmt;
     NameLineNumberPair lhsExprStmt;
+
     NameLineNumberPair useExprStmt;
 
     NameLineNumberPair currentDeclArg;
@@ -337,6 +339,7 @@ public:
             } },    
             { "name", [this](){
                 ++triggerField[name];
+
                 useExprStmt.second = lhsExprStmt.second = currentCallArgData.second = currentParam.second = currentParamType.second = 
                 currentFunctionBody.second = currentDecl.second =  
                 currentExprStmt.second = currentFunctionDecl.second = currentDeclInit.second = lineNum;
@@ -370,6 +373,7 @@ public:
                 foundexprlhs = false;
                 exprop = false;
                 exprassign = false;
+
                 ProcessExprStmtNoAssign(); //collect data about things that were not in assignment expr_stmts
                 useExprStack.clear(); //clear data
 
@@ -378,7 +382,9 @@ public:
                 lhsName.clear();
                 currentExprStmt.first.clear();
                 lhsExprStmt.first.clear();
+
                 useExprStmt.first.clear();
+
                 currentCallArgData.first.clear();
             } },
 
@@ -506,7 +512,9 @@ public:
                 //expr assign is set when we see =. Everything read up to that point is lhs. exprop is any other operator. When I see that
                 //I know that we're probably in a member call chain a->b->c etc. I don't care about b and c, so expr op helps skip those.
                 if(triggerField[expr_stmt]){
+
                     useExprStmt.first.clear();
+
                     if(exprassign){
                         ProcessExprStmtPreAssign();
                         if(!lhsExprStmt.first.empty()){
@@ -623,7 +631,6 @@ public:
                             }
                             useExprStmt.first.clear();                            
                         }
-
                     }
                 }
                 if(triggerField[init] && triggerField[decl] && triggerField[decl_stmt] && 
@@ -761,6 +768,7 @@ public:
         }
         if(triggerField[type] && triggerField[function]  
             && !(triggerField[functionblock] || triggerField[op] || triggerField[argument_list] || triggerField[argument_list_template] || triggerField[templates] || triggerField[parameter_list]|| triggerField[macro] || triggerField[preproc])){
+
             if(!triggerField[modifier]){
                 currentFunctionReturnType.first = std::string(ch, len);
             }else{
@@ -826,6 +834,7 @@ public:
                 if(!exprop){
                     lhsExprStmt.first.append(str);
                     useExprStmt.first.append(str);
+
                 }
             }
             
