@@ -38,7 +38,7 @@ void TestSlice2(const VarMap& mp){
 			std::cerr<<dv<<",";
 		}
 		std::cerr<<"}"<<std::endl;
-		std::cerr<<"aliases: {";
+		std::cerr<<"is aliase for: {";
 		for(std::string al : vmIt->second.aliases){
 			std::cerr<<al<<",";
 		}
@@ -64,12 +64,12 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 					std::cerr<<sl<<",";
 				}
 				std::cerr<<"}"<<std::endl;
-				std::cerr<<"dvars: {";
+				std::cerr<<"variables dependant on this one: {";
 				for(std::string dv : vmIt->second.dvars){
 					std::cerr<<dv<<",";
 				}
 				std::cerr<<"}"<<std::endl;
-				std::cerr<<"aliases: {";
+				std::cerr<<"is aliase for: {";
 				for(std::string al : vmIt->second.aliases){
 					std::cerr<<al<<",";
 				}
@@ -178,7 +178,7 @@ int main(int argc, char * argv[]) {
   std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
   //handler.ComputeInterprocedural("SlicerTestSample.cpp");
-  TestSlice(handler.sysDict.dictionary, handler);
+  //TestSlice(handler.sysDict.dictionary, handler);
   
   //TestSlice2(handler.sysDict.globalMap);
   //srcSliceToCsv(handler);

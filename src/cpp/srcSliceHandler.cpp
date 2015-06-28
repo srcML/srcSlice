@@ -2,25 +2,24 @@
 #include <Utility.hpp>
 
 /**
- * Find
- * @param varName - Name of the variable whose slice profile we want
- * @return Pointer to Slice Profile or Null
- * Find function takes a variable name and searches first the local table to the function it was in
- * and if it's not found there, then it searches the global table to see if it's in there.
- * If neither has the variable, it returns null otherwise returns a pointer to the slice profile
+ *Find
+ *@param varName - Name of the variable whose slice profile we want
+ *@return Pointer to Slice Profile or Null
+ *Find function takes a variable name and searches first the local table to the function it was in
+ *and if it's not found there, then it searches the global table to see if it's in there.
+ *If neither has the variable, it returns null otherwise returns a pointer to the slice profile
  */
 SliceProfile* srcSliceHandler::Find(const std::string& varName){    
-        auto sp = FunctionIt->second.find(varName);
-        if(sp != FunctionIt->second.end()){
-
-            return &(sp->second);
-        }else{ //check global map
-            auto sp2 = sysDict.globalMap.find(varName);
-            if(sp2 != sysDict.globalMap.end()){
-                return &(sp2->second);
-            }
+    auto sp = FunctionIt->second.find(varName);
+    if(sp != FunctionIt->second.end()){
+        return &(sp->second);
+    }else{ //check global map
+        auto sp2 = sysDict.globalMap.find(varName);
+        if(sp2 != sysDict.globalMap.end()){
+            return &(sp2->second);
         }
-        return nullptr;
+    }
+    return nullptr;
 }
 
 /**
@@ -35,25 +34,24 @@ void srcSliceHandler::ProcessConstructorDecl(){
 }
 
 /*
-* ProcessDeclStmt
-* Takes rhs of decl_stmt and processes it. Split by tokens and then throw against the map for an answer.
-* corner case at new operator because new makes an object even if its argument is an alias.
+*ProcessDeclStmt
+*Takes rhs of decl_stmt and processes it. Split by tokens and then throw against the map for an answer.
+*corner case at new operator because new makes an object even if its argument is an alias.
 */
 void srcSliceHandler::ProcessDeclStmt(){
-    bool seenNew = false;
     auto sp = Find(currentDeclInit.first);
-    if(currentDeclInit.first == "new"){seenNew = true;}
+    if(sawnew){sawnew = false;}
     if(sp){
         varIt->second.slines.insert(currentDeclInit.second); //varIt is lhs
         sp->use.insert(currentDeclInit.second);
-        if(varIt->second.potentialAlias && !seenNew){ //new operator of the form int i = new int(tmp); screws around with aliasing
+        if(varIt->second.potentialAlias && !sawnew){ //new operator of the form int i = new int(tmp); screws around with aliasing
             varIt->second.lastInsertedAlias = varIt->second.aliases.insert(sp->variableName).first;
         }else{
             sp->dvars.insert(varIt->second.variableName);
             sp->use.insert(currentDeclInit.second);
         }
     }
-    currentDeclInit.first.clear(); //because if it's a multi-init decl then inits will run into one another.
+    currentDeclInit.first.clear();
 }
 
 /*
@@ -77,66 +75,55 @@ void srcSliceHandler::GetCallData(){
         }
     }
 }
+
+void srcSliceHandler::GetParamType(){
+    currentSliceProfile.variableType = currentParamType.first;
+    unsigned int paramHash = paramTypeHash(currentParamType.first);
+    functionTmplt.params.push_back(paramHash);
+    functionTmplt.functionNumber += paramHash;
+    sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
+    currentParamType.first.clear();
+}
+
+void srcSliceHandler::GetParamName(){
+    currentSliceProfile.index = declIndex;
+    currentSliceProfile.file = fileNumber;
+    currentSliceProfile.function = functionTmplt.GetFunctionUID();
+    currentSliceProfile.variableName = currentParam.first;
+    currentSliceProfile.potentialAlias = potentialAlias;
+    currentSliceProfile.isGlobal = inGlobalScope;
+
+    //std::cerr<<"PARA: "<<currentParam.first<<std::endl;
+    varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, std::move(currentSliceProfile))).first;
+    varIt->second.def.insert(currentParam.second);
+
+    currentParam.first.clear();
+}
+
 /**
 * GetFunctionData
 * Knows proper constraints for obtaining function's return type, name, and arguments. Stores all of this in
 * functionTmplt.
 */
 void srcSliceHandler::GetFunctionData(){
-    //Get function type
-    if(triggerField[type] && !(triggerField[parameter_list] || triggerField[block] || triggerField[member_list])){
-        functionTmplt.returnType = currentFunctionBody.functionName;
-    }
     //Get function name
-    if(triggerField[name] == 1 && !(triggerField[argument_list] || 
-        triggerField[block] || triggerField[type] || triggerField[parameter_list] || triggerField[member_list])){ 
-        std::size_t pos = currentFunctionBody.functionName.find("::");
-        if(pos != std::string::npos){
-            currentFunctionBody.functionName.erase(0, pos+2);
-        }
-        if(isConstructor){
-            std::stringstream ststrm;
-            ststrm<<constructorNum;
-            currentFunctionBody.functionName+=ststrm.str(); //number the constructor. Find a better way than stringstreams someday.
-        }
-        functionTmplt.functionLineNumber = currentFunctionBody.functionLineNumber;
-        functionTmplt.functionName = currentFunctionBody.functionName; //give me the hash num for this name.            
+    if(isConstructor){
+        std::stringstream ststrm;
+        ststrm<<constructorNum;
+        currentFunctionBody.first+=ststrm.str(); //number the constructor. Find a better way than stringstreams someday.
     }
-    //Get param types
-    if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type] && !triggerField[block]){
-        //std::cerr<<"type: "<<currentParamType.first<<std::endl;
-        unsigned int paramHash = paramTypeHash(currentParamType.first);
-        functionTmplt.params.push_back(paramHash);
-        functionTmplt.functionNumber += paramHash;
-        sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
-    }
-    //Get Param names
-    if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[type] || triggerField[block])){
-        //std::cerr<<"name: "<<currentParam.first<<std::endl;
-        varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, 
-            SliceProfile(declIndex, fileNumber, 
-                functionTmplt.GetFunctionUID(), currentParam.second, currentParam.first, potentialAlias, inGlobalScope))).first;
-        varIt->second.def.insert(currentDecl.second);
-    }
+    functionTmplt.functionLineNumber = currentFunctionBody.second;
+    functionTmplt.functionName = currentFunctionBody.first; //give me the hash num for this name.
+    currentFunctionBody.first.clear();
 }
 
 void srcSliceHandler::GetFunctionDeclData(){
-    if(triggerField[type] && !(triggerField[parameter_list] || triggerField[block] || triggerField[member_list])){
-        functionTmplt.returnType = currentFunctionDecl.functionName;
-    }
-    if(triggerField[name]){
-        functionTmplt.functionLineNumber = currentFunctionDecl.functionLineNumber;
-        functionTmplt.functionName = currentFunctionDecl.functionName;
-        //std::cerr<<"name: "<<functionTmplt.functionName<<std::endl;
-    }
-    if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
-        //std::cerr<<"type: "<<currentParamType.first<<std::endl;
-        unsigned int paramHash = paramTypeHash(currentParamType.first);
-        functionTmplt.functionNumber += paramHash;
-        functionTmplt.params.push_back(paramHash);
-        sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
-    }
+    unsigned int paramHash = paramTypeHash(currentParamType.first);
+    functionTmplt.functionNumber += paramHash;
+    functionTmplt.params.push_back(paramHash);
+    sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
 }
+
 /**
 * GetDeclStmtData
 * Knows proper constraints for obtaining DeclStmt type and name.
@@ -150,13 +137,9 @@ void srcSliceHandler::GetDeclStmtData(){
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
     if(!inGlobalScope){
-        std::cerr<<"NAME: "<<currentDecl.first<<std::endl;
         varIt = FunctionIt->second.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile))).first;
         varIt->second.def.insert(currentDecl.second);
     }else{ //TODO: Handle def use for globals
-        std::cerr<<"NAME: "<<currentDecl.first<<std::endl;
-        //std::cerr<<currentDecl.first<<std::endl;
-        //std::cout<<"Name: "<<currentDecl.first<<std::endl;
         sysDict.globalMap.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile)));
     }
 }
@@ -167,40 +150,49 @@ void srcSliceHandler::GetDeclStmtData(){
  * by saving its slines if it can be found in the map. After lhs is processed, keep track of it and then
  * process the rhs for any aliases, dvars, or function calls.
  */
-void srcSliceHandler::ProcessExprStmt(){
-  if(skipMember){
-    currentExprStmt.first = lhsName;
-    currentExprStmt.second = lhsLine;
-    skipMember = false;
-    return;
-  }
-  if(!opassign){
-    
-    lhs = Find(currentExprStmt.first);
-    if(lhs){ //Found it so store what its current name and line number are.
-        lhsName = currentExprStmt.first;
-        lhsLine = currentExprStmt.second;
+void srcSliceHandler::ProcessExprStmtPreAssign(){
+    if(!lhsExprStmt.first.empty()){
+        SliceProfile* lhs = Find(lhsExprStmt.first);
+        if(!lhs){
+            currentSliceProfile.index = -1;
+            currentSliceProfile.file = fileNumber;
+            currentSliceProfile.function = functionTmplt.GetFunctionUID();
+            currentSliceProfile.variableName = lhsExprStmt.first;
+            currentSliceProfile.potentialAlias = false;
+            currentSliceProfile.isGlobal = inGlobalScope;
+            
+            varIt = FunctionIt->second.insert(std::make_pair(lhsExprStmt.first, std::move(currentSliceProfile))).first;
+            varIt->second.def.insert(lhsExprStmt.second);
+        }else{
+            lhs->def.insert(lhsExprStmt.second);
+        }        
     }
-  }else{
+}
+
+/**
+ * ProcessExprStmt
+ * Get entire expression statement and then process by first splitting to lhs and rhs. Process the lhs
+ * by saving its slines if it can be found in the map. After lhs is processed, keep track of it and then
+ * process the rhs for any aliases, dvars, or function calls.
+ */
+void srcSliceHandler::ProcessExprStmtPostAssign(){
+    SliceProfile* lhs = Find(lhsName);
     if(!lhs){return;}
+
     auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
     if(sprIt){ //lvalue depends on this rvalue
-        //std::cerr<<"Here2"<<std::endl;
         if(lhs->variableName != sprIt->variableName){    
             if(!lhs->potentialAlias || dereferenced){ //It is not potentially a reference and if it is, it must not have been dereferenced
                 sprIt->dvars.insert(lhs->variableName); //it's not an alias so it's a dvar
             }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
-                //dirtyAlias = true;
                 lhs->lastInsertedAlias = lhs->aliases.insert(sprIt->variableName).first;
             }
             sprIt->slines.insert(currentExprStmt.second);
             sprIt->use.insert(currentExprStmt.second);           
-            if(sprIt->potentialAlias){//Union things together. If this was an alias of anoter thing, update the other thing
+            if(sprIt->potentialAlias && !dereferenced){//Union things together. If this was an alias of anoter thing, update the other thing
                 if(!sprIt->aliases.empty()){
-                    //std::cerr<<"Name1: "<<*(sprIt->lastInsertedAlias); //Get vars that sprit aliases
                     auto spaIt = FunctionIt->second.find(*(sprIt->lastInsertedAlias)); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
                     if(spaIt != FunctionIt->second.end()){
-                        //std::cerr<<"Name: "<<spaIt->second.variableName<<" "<<lhs->variableName<<std::endl;
                         spaIt->second.dvars.insert(lhs->variableName);
                         spaIt->second.use.insert(currentExprStmt.second);  
                         spaIt->second.slines.insert(currentExprStmt.second);
@@ -209,16 +201,35 @@ void srcSliceHandler::ProcessExprStmt(){
             }
         }
     }
-    }
 }
+void srcSliceHandler::ProcessExprStmtNoAssign(){
+    for(NameLineNumberPair name : useExprStack){
+        SliceProfile* useProfile = Find(name.first);
+        if(!useProfile){continue;}
+        else{//it's running on the same word as the other two exprstmt functions
+            useProfile->use.insert(name.second);
+        }        
+    }
 
-
+}
+void srcSliceHandler::ProcessDeclCtor(){
+    SliceProfile* lhs = Find(currentDecl.first);
+    if(!lhs){
+        return;
+    }else{
+        lhs->use.insert(currentDecl.second);
+    }
+    SliceProfile* rhs = Find(currentDeclCtor.first);
+    if(rhs){
+        rhs->dvars.insert(lhs->variableName);
+        rhs->use.insert(currentDecl.second);
+    }
+    
+}
 /*
  *ComputeInterprocedural
  *@param f- name of the file
  *No return value
- *
- *
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     
@@ -249,19 +260,11 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     }  
 }
 
-
-
 /*
  *ArgumentProfile
  *@param functIt- iterator to the FunctionVarMap, parameterIndex- index of the parameter 
- @Return SliceProfile of the variable
-  *
- *
- *
- *
- */
-
-
+ *@Return SliceProfile of the variable
+*/
 SliceProfile srcSliceHandler::ArgumentProfile(unsigned int fname, unsigned int parameterIndex){
     SliceProfile Spi;
     auto funcIt = FileIt->second.find(fname);

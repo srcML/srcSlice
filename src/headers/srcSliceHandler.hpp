@@ -26,6 +26,7 @@
 
 #include <iostream>
 #include <vector>
+#include <list>
 #include <algorithm>
 #include <sstream>
 #include <stack>
@@ -52,7 +53,6 @@ private:
     int constructorNum;
 
     SliceProfile currentSliceProfile;
-    SliceProfile* lhs;
 
     std::string lhsName;
     unsigned int lhsLine;
@@ -87,8 +87,18 @@ private:
     /*bool to tell us when we're not in a function*/
     bool inGlobalScope;
     bool isACallName;
+
+    //for decl_stmts
     bool opassign;
-    bool skipMember;
+    bool sawnew;
+    bool sawinit;
+    bool sawgeneric;
+
+    //for expr_stmts    
+    bool exprassign;
+    bool exprop;
+    bool foundexprlhs;
+    std::list<NameLineNumberPair> useExprStack;
 
     bool potentialAlias;
 
@@ -103,22 +113,35 @@ private:
     NameLineNumberPair currentParam;
     NameLineNumberPair currentParamType;
     
+    NameLineNumberPair currentFunctionReturnType;
+
     NameLineNumberPair currentDecl;
     NameLineNumberPair currentDeclType;
     NameLineNumberPair currentDeclInit;
-    
+    NameLineNumberPair currentDeclCtor;
+
     NameLineNumberPair currentExprStmt;
+    NameLineNumberPair lhsExprStmt;
+    NameLineNumberPair useExprStmt;
+
     NameLineNumberPair currentDeclArg;
     NameLineNumberPair currentClassName;
     
-    FunctionData currentFunctionBody;
-    FunctionData currentFunctionDecl;
+    NameLineNumberPair currentFunctionBody;
+    NameLineNumberPair currentFunctionDecl;
     /*function headers*/
     void GetCallData();
+    void GetParamName();
+    void GetParamType();
     void ProcessDeclStmt();
     void GetFunctionData();
     void GetDeclStmtData();
-    void ProcessExprStmt();
+    void ProcessDeclCtor();
+    
+    void ProcessExprStmtPreAssign();
+    void ProcessExprStmtPostAssign();
+    void ProcessExprStmtNoAssign();
+
     void ProcessConstructorDecl();
     void GetFunctionDeclData();
 
@@ -137,11 +160,16 @@ public:
         constructorNum = 0;
         lineNum = 0;
         
-        lhs = nullptr;
-        skipMember = false;
 
         dereferenced = false;
         opassign = false;
+        sawnew = false;
+        sawinit = false;
+        sawgeneric = false;
+
+        exprassign = false;
+        exprop = false;
+        foundexprlhs = false;
 
         isACallName = false;
         isConstructor = false;
@@ -154,12 +182,29 @@ public:
             } }, 
 
             { "expr_stmt", [this](){
-                currentExprStmt.first.clear();
                 ++triggerField[expr_stmt];
             } },
-
             { "parameter_list", [this](){
+                if((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && !(triggerField[functionblock] || triggerField[parameter_list])){
+                    GetFunctionData();
+                }
                 ++triggerField[parameter_list];
+                if(triggerField[function] && (!triggerField[functionblock] || triggerField[type] || triggerField[parameter_list])){
+                    functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
+                    sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
+                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
+                }
+                if(triggerField[constructordecl]){ //For the case where we need to get a constructor decl
+                    ProcessConstructorDecl();
+                    currentDeclArg.first.clear();
+                }
+                if(triggerField[functiondecl]){
+                    functionTmplt.functionLineNumber = currentFunctionDecl.second;
+                    functionTmplt.functionName = currentFunctionDecl.first;
+                    if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
+                        GetFunctionDeclData();
+                    }
+                }
             } },
 
             { "if", [this](){
@@ -198,7 +243,6 @@ public:
 
             { "function", [this](){
                 inGlobalScope = false;
-                currentFunctionBody.functionName.clear();
                 ++triggerField[function];
             } },
             { "constructor", [this](){
@@ -210,16 +254,19 @@ public:
                 ++triggerField[function];
             } },
             { "function_decl", [this](){
-                currentFunctionDecl.functionName.clear();
+                currentFunctionDecl.first.clear();
                 ++triggerField[functiondecl];
             } },
             { "destructor_decl", [this](){
-                currentFunctionDecl.functionName.clear();
+                currentFunctionDecl.first.clear();
                 ++triggerField[destructordecl];
             } },
             { "constructor_decl", [this](){
-                currentFunctionDecl.functionName.clear();
+                currentFunctionDecl.first.clear();
                 ++triggerField[constructordecl];
+            } },
+            { "template", [this](){
+                ++triggerField[templates];
             } },
             { "class", [this](){
                 ++triggerField[classn];
@@ -227,10 +274,9 @@ public:
 
             { "destructor", [this](){
                 inGlobalScope = false;
-                currentFunctionBody.functionName.clear();
                 ++triggerField[function];
             } },
-            { "param", [this](){
+            { "parameter", [this](){
                     ++triggerField[param];
                     ++declIndex;
             } },    
@@ -242,13 +288,14 @@ public:
             } },    
             { "operator", [this](){
                 ++triggerField[op];
+                if(triggerField[expr_stmt]){
+                    exprop = true; //assume we're not seeing =
+                }
                 //Don't want the operators. But do make a caveat for ->
                 if(triggerField[call]){
                     currentCallArgData.first.clear();
                 }
-                if(triggerField[expr_stmt]){
-                    currentExprStmt.first.clear(); 
-                }
+
             } },    
             { "block", [this](){     
                 if((triggerField[function] || triggerField[constructor])){
@@ -259,7 +306,12 @@ public:
                 }
                 ++triggerField[block];
             } },
-            { "init", [this](){//so that we can get more stuff after the decl's name 
+            { "init", [this](){
+                //This one is only called if we see init. If there's no init, it's safely ignored.
+                if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                    GetDeclStmtData();
+                    sawinit = true;
+                }
                 ++triggerField[init];
             } },    
             { "argument", [this](){
@@ -285,9 +337,9 @@ public:
             } },    
             { "name", [this](){
                 ++triggerField[name];
-                currentCallArgData.second = currentParam.second = currentParamType.second = 
-                currentFunctionBody.functionLineNumber = currentDecl.second =  
-                currentExprStmt.second = currentFunctionDecl.functionLineNumber = currentDeclInit.second = lineNum;
+                useExprStmt.second = lhsExprStmt.second = currentCallArgData.second = currentParam.second = currentParamType.second = 
+                currentFunctionBody.second = currentDecl.second =  
+                currentExprStmt.second = currentFunctionDecl.second = currentDeclInit.second = lineNum;
             } },
             { "macro", [this](){
                 ++triggerField[macro];
@@ -301,23 +353,33 @@ public:
             {"decl_stmt", [this](){
                 currentCallArgData.first.clear();
                 currentDeclArg.first.clear();
+                currentDeclCtor.first.clear();
                 potentialAlias = false;
+                sawinit = false;
                 --triggerField[decl_stmt];
             } }, 
 
             { "expr_stmt", [this](){
                 --triggerField[expr_stmt];
-                if(!opassign && lhs){//Don't know if an lhs is a def or use until I see '='. If I don't see it (expr_stmt closes before I see it) then it's definitely use.
-                    lhs->slines.insert(lhsLine);
-                    lhs->use.insert(lhsLine);
-                }
-                lhs = nullptr;
+                
+                //for decl_stmts
                 opassign = false;
                 dereferenced = false;
+                
+                //for expr_stmts
+                foundexprlhs = false;
+                exprop = false;
+                exprassign = false;
+                ProcessExprStmtNoAssign(); //collect data about things that were not in assignment expr_stmts
+                useExprStack.clear(); //clear data
+
+                //uncategorized
                 lhsLine = 0;
                 lhsName.clear();
-                currentCallArgData.first.clear();
                 currentExprStmt.first.clear();
+                lhsExprStmt.first.clear();
+                useExprStmt.first.clear();
+                currentCallArgData.first.clear();
             } },
 
             { "parameter_list", [this](){
@@ -344,6 +406,7 @@ public:
 
             { "argument_list", [this](){
                 numArgs = 0;
+                sawgeneric = false;
                 calledFunctionName.clear();
                 --triggerField[argument_list];
             } },
@@ -421,9 +484,10 @@ public:
                 */
                 --triggerField[classn];
             } },
-            { "param", [this](){
-                    currentParam.first.clear();
-                    currentParamType.first.clear();
+            { "parameter", [this](){
+                    if(triggerField[parameter_list] && triggerField[param] && !(triggerField[type] || triggerField[functionblock] || triggerField[templates])){
+                        GetParamName();
+                    }
                     potentialAlias = false;
                     --triggerField[param];
             } },    
@@ -434,30 +498,37 @@ public:
                 --triggerField[index];
             } },    
             { "operator", [this](){
-                if(triggerField[expr_stmt] && triggerField[expr]){
-                    if(currentExprStmt.first == "="){
-                        opassign = true;
-                        if(lhs){//Don't know if an lhs is a def or use until I see '='. Once '=' is found, it's definitely a def. Otherwise, it's a use (taken care of at end tag of expr_stmt).
-                            lhs->slines.insert(lhsLine);
-                            lhs->def.insert(lhsLine);
+                if(currentDeclInit.first == "new"){
+                     //separate new operator because we kinda need to know when we see it.
+                    sawnew = true;
+                }
+                //The logic for exprassign and op is basically that we want to know when we've hit the left and right hand side of expr stmt
+                //expr assign is set when we see =. Everything read up to that point is lhs. exprop is any other operator. When I see that
+                //I know that we're probably in a member call chain a->b->c etc. I don't care about b and c, so expr op helps skip those.
+                if(triggerField[expr_stmt]){
+                    useExprStmt.first.clear();
+                    if(exprassign){
+                        ProcessExprStmtPreAssign();
+                        if(!lhsExprStmt.first.empty()){
+                            lhsName = lhsExprStmt.first;
                         }
+                        lhsExprStmt.first.clear();
+                        exprop = false;
+                        //foundexprlhs = true;
                     }
-                    if(currentExprStmt.first == "*"){
-                        dereferenced = true;
-                    }
-                    if(currentExprStmt.first == "->"){
-                        skipMember = true;
-                    }
-                    if(currentExprStmt.first == "."){
-                        skipMember = true;
-                    }
-                    currentExprStmt.first.clear();
                 }
-                if(currentDecl.first == "new"){
-                    currentDecl.first.append("-"); //separate new operator because we kinda need to know when we see it.
+                if(!(sawgeneric || currentDeclCtor.first.empty()) && triggerField[decl_stmt] && triggerField[argument] && (!triggerField[init])){
+                    GetDeclStmtData();
+                    ProcessDeclCtor(); //-- to process decl_stmts that use constructor syntax
+                    sawinit = true;
+                    currentDeclCtor.first.clear();
                 }
-                if(triggerField[parameter_list] && triggerField[param] && triggerField[type]){
-                    currentParamType.first.clear();
+                
+
+                currentDeclInit.first.clear(); //this doesn't need to keep track of operators other than new
+
+                if(triggerField[function] && !(triggerField[functionblock] || triggerField[templates] || triggerField[parameter_list] || triggerField[type] || triggerField[argument_list])){
+                    currentFunctionBody.first.clear();
                 }
                 --triggerField[op];
             } },
@@ -477,6 +548,12 @@ public:
                 currentDeclArg.first.clear(); //get rid of the name of the var that came before it for ctor calls like: object(InitVarable)
                 currentCallArgData.first.clear();
                 calledFunctionName.clear();
+                if(!(sawgeneric || currentDeclCtor.first.empty()) && triggerField[decl_stmt] && triggerField[argument] && !triggerField[init]){
+                    GetDeclStmtData();
+                    ProcessDeclCtor(); //-- to process decl_stmts that use constructor syntax
+                    sawinit = true;
+                    currentDeclCtor.first.clear();
+                }
                 --triggerField[argument];
             } },    
             { "literal", [this](){
@@ -489,25 +566,35 @@ public:
                     potentialAlias = true;
                 }
                 --triggerField[modifier];
+            } },
+            { "template", [this](){
+                --triggerField[templates];
             } },    
             { "decl", [this](){
-                if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                if(!sawinit && triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                    //only run if we didn't run it during init
                     GetDeclStmtData();
-                    if(triggerField[init] && !triggerField[argument_list]){
-                        ProcessDeclStmt();
-                    }
                 }
                 currentDecl.first.clear();
                 --triggerField[decl]; 
             } },    
             { "type", [this](){
                 if((triggerField[type] && triggerField[decl_stmt] && (triggerField[function] || triggerField[constructor]) && !(triggerField[modifier] || triggerField[argument_list]))){
-                    //std::cerr<<"Type: "<<currentDeclType.first<<std::endl;
+                    //Get the type -- news
                     currentSliceProfile.variableType = currentDeclType.first;
                     currentDeclType.first.clear();
                 }
-                if(triggerField[parameter_list] && triggerField[param]){
-                    currentParamType.first.clear();
+                if(triggerField[type] && triggerField[parameter_list] && triggerField[param] && triggerField[decl] && !(triggerField[functionblock] || triggerField[templates])){
+                    GetParamType();
+                }
+                if(triggerField[function] && triggerField[type] && !(triggerField[functionblock] || triggerField[argument_list] || triggerField[templates] || triggerField[parameter_list])){
+                    //get functionr ret type  -- news
+                    functionTmplt.returnType = currentFunctionReturnType.first;
+                    currentFunctionReturnType.first.clear();
+                }
+                if(triggerField[functiondecl] && triggerField[type] && !(triggerField[parameter_list] || triggerField[member_list])){
+                    //get function decl return type
+                    functionTmplt.returnType = currentFunctionDecl.first;
                 }
                 --triggerField[type];
             } },    
@@ -515,35 +602,35 @@ public:
                 --triggerField[expr];
             } },    
             { "name", [this](){
-                if(triggerField[function] && (!triggerField[block] || triggerField[type] || triggerField[parameter_list])){
-                    functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
-                    sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
-                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
-                }
-                if(triggerField[decl_stmt] && triggerField[decl] && triggerField[argument_list] && triggerField[argument] && triggerField[expr] &&
-                        !triggerField[type]){ //For the case where we need to get a constructor decl
-                    ProcessConstructorDecl();
-                    currentDeclArg.first.clear();
-                }
                 if(triggerField[call] && triggerField[argument]){
                     callArgData.push(currentCallArgData);
                 }
-                //Get Function names and arguments
-                if(triggerField[function]){
-                    GetFunctionData();
-                }
-                if(triggerField[functiondecl]){
-                    GetFunctionDeclData();
-                }  
                 //Get function arguments
                 if(triggerField[call] || (triggerField[decl_stmt] && triggerField[argument_list])){
                     GetCallData();//issue with statements like object(var)
                     while(!callArgData.empty())
                         callArgData.pop();
                 }
-                if(triggerField[expr_stmt] && triggerField[expr]){
-                    ProcessExprStmt();//problems with exprs like blotttom->next = expr
+                if(triggerField[expr] && triggerField[expr_stmt]){
+                    if(exprassign){
+                        ProcessExprStmtPostAssign();//problems with exprs like blotttom->next = expr
+                        useExprStack.clear(); //found an assignment so throw everything off of the other stack TODO: Potential better way?
+                        currentExprStmt.first.clear();
+                    }else{
+                        if(!useExprStmt.first.empty()){
+                            if(Find(useExprStmt.first)){
+                                useExprStack.push_back(useExprStmt);
+                            }
+                            useExprStmt.first.clear();                            
+                        }
+
+                    }
                 }
+                if(triggerField[init] && triggerField[decl] && triggerField[decl_stmt] && 
+                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
+                    ProcessDeclStmt();
+                }
+                exprop = false; //reset expr after each name so that the next name will be read unless there's another op in front of it
                 --triggerField[name];
             } },
             { "macro", [this](){
@@ -630,8 +717,10 @@ public:
     virtual void startElement(const char * localname, const char * prefix, const char * URI,
                                 int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                                 const struct srcsax_attribute * attributes) {
+        std::string name;
         if(num_attributes){
             lineNum = strtoul(attributes[0].value, NULL, 0);
+            name = attributes[0].value;
         }
         std::string lname(localname);
         std::string lnspace;
@@ -640,7 +729,10 @@ public:
         }
         if(lnspace == "cpp"){
             ++triggerField[preproc];
-        }          
+        }
+        if(name == "generic"){
+            sawgeneric = true;
+        }
         
         std::unordered_map<std::string, std::function<void()>>::const_iterator process = process_map.find(lname);
         if (process != process_map.end()) {
@@ -662,32 +754,81 @@ public:
             !(triggerField[index] || triggerField[op] || triggerField[preproc])){
             currentCallArgData.first.append(ch, len);
         }
-        if((triggerField[function] && triggerField[name]) && !(triggerField[block] || triggerField[argument_list] 
-            || triggerField[type] || triggerField[parameter_list] || triggerField[index] || triggerField[preproc])){
-            currentFunctionBody.functionName.append(ch, len);
+        if(((triggerField[function] || triggerField[constructor] || triggerField[destructor]) && triggerField[name]) 
+        && !(triggerField[functionblock] || triggerField[parameter_list]|| triggerField[argument_list] || triggerField[argument_list_template] || triggerField[type]
+         || triggerField[index] || triggerField[preproc] || triggerField[op]|| triggerField[macro])){                
+            currentFunctionBody.first.append(ch, len);
         }
-        if((triggerField[functiondecl]) && !(triggerField[type] || triggerField[parameter_list])){
-            currentFunctionDecl.functionName.append(ch,len);
+        if(triggerField[type] && triggerField[function]  
+            && !(triggerField[functionblock] || triggerField[op] || triggerField[argument_list] || triggerField[argument_list_template] || triggerField[templates] || triggerField[parameter_list]|| triggerField[macro] || triggerField[preproc])){
+            if(!triggerField[modifier]){
+                currentFunctionReturnType.first = std::string(ch, len);
+            }else{
+                currentFunctionReturnType.first.append(ch, len);
+            }                
         }
-        if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && !triggerField[type]){
+        if((triggerField[functiondecl] || triggerField[constructordecl]) && !(triggerField[type] || triggerField[parameter_list])){
+            currentFunctionDecl.first.append(ch,len);
+        }
+        if((triggerField[param] && (triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && triggerField[name])
+            && !(triggerField[type] || triggerField[argument_list] || triggerField[templates]|| triggerField[macro] || triggerField[preproc])){
             currentParam.first.append(ch, len);
         }
-        if(((triggerField[function] || triggerField[functiondecl]) && triggerField[name]  && triggerField[parameter_list] && triggerField[param]) && triggerField[type] && !triggerField[argument_list]){
-            currentParamType.first.append(ch, len);
+        if((triggerField[param] && (triggerField[function] || triggerField[functiondecl] || triggerField[constructor])) && triggerField[name] &&  triggerField[type]
+        && !(triggerField[argument_list] || triggerField[templates] || triggerField[op] || triggerField[macro] || triggerField[preproc])){
+            currentParamType.first = std::string(ch, len);
         }
         if((triggerField[type] && triggerField[decl_stmt] && triggerField[name] && !(triggerField[argument_list] || triggerField[modifier] || triggerField[op]|| triggerField[macro] || triggerField[preproc]))){
             currentDeclType.first = std::string(ch,len);
         }
-        if(triggerField[decl] && triggerField[decl_stmt] && (triggerField[name] || triggerField[op]) && !(triggerField[argument_list] 
-            || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
+        //this is to handle lhs of decl stmts and rhs of decl stmts
+        if((triggerField[name] || triggerField[op]) && triggerField[decl_stmt] && triggerField[decl] && !(triggerField[argument_list] || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
             if(triggerField[init]){
-                currentDecl.first.append(ch,len);
+                if(!triggerField[call]){//if it's not in a call then we can do like normal
+                    currentDeclInit.first.append(ch,len);
+                }else{
+                    if(triggerField[argument]){//if it's in a call, ignore until we hit an argument
+                        currentDeclInit.first.append(ch,len);
+                    }
+                }
             }else{
-                currentDeclInit.first.append(ch,len);    
+                currentDecl.first.append(ch,len);
             }
         }
-        if(triggerField[expr_stmt] && (triggerField[name] || triggerField[op]) && triggerField[expr] && !(triggerField[index] || triggerField[preproc])){
-            currentExprStmt.first.append(ch, len);
+        //this is to handle lhs of decl stmts and rhs of decl stmts
+        if(!sawgeneric && (triggerField[name]) && triggerField[decl_stmt] && triggerField[argument_list] && triggerField[decl] &&  !(triggerField[op] || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
+                currentDeclCtor.first.append(ch,len);
+        }
+        //This only handles expr statments of the form a = b. Anything without = in it is skipped here
+        if((triggerField[name] || triggerField[op]) && triggerField[expr] && triggerField[expr_stmt] && !(triggerField[index] || triggerField[preproc])){
+            std::string str = std::string(ch, len);
+            if(str.back() == '='){
+                exprassign = true;
+                exprop = false; //assumed above in "operator" that I wouldn't see =. This takes care of when I assume wrong.
+                str.clear(); //don't read the =, just want to know it was there.
+            }
+            if(triggerField[op]){
+                if(str == "*"){
+                    dereferenced = true; //most recent word was dereferenced
+                    exprop = false; //slight hack. Need to be able to tell when * is used as dereferenced because I don't wanna skip
+                }
+                str.clear();
+            }
+            if(exprassign){
+                if(!triggerField[call]){//if it's not in a call then we can do like normal
+                    currentExprStmt.first.append(str);
+                }else{
+                    if(triggerField[argument]){//if it's in a call, ignore until we hit an argument
+                        currentExprStmt.first.append(str);
+                    }
+                }
+            }else{
+                if(!exprop){
+                    lhsExprStmt.first.append(str);
+                    useExprStmt.first.append(str);
+                }
+            }
+            
         }
         if(triggerField[call]){
             calledFunctionName.append(ch, len);
@@ -696,7 +837,7 @@ public:
             !triggerField[type]){
             currentDeclArg.first.append(ch,len);
         }
-        if(!triggerField[block] && (triggerField[name] && triggerField[classn])){
+        if(!triggerField[classblock] && (triggerField[name] && triggerField[classn])){
             currentClassName.first.append(ch,len);
         }
     }
@@ -719,7 +860,6 @@ public:
             currentDecl.first.clear();
             --triggerField[preproc];
         }
-        
         std::unordered_map<std::string, std::function<void()>>::const_iterator process3 = process_map3.find(lname);
         if (process3 != process_map3.end()) {
             process3->second();
