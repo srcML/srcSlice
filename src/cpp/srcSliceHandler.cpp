@@ -40,10 +40,8 @@ void srcSliceHandler::ProcessConstructorDecl(){
 */
 void srcSliceHandler::ProcessDeclStmt(){
     auto sp = Find(currentDeclInit.first);
-    std::cerr<<currentDeclInit.first<<std::endl;
     if(sawnew){sawnew = false;}
     if(sp){
-        std::cerr<<"ENTER: "<<varIt->second.variableName<<std::endl;
         varIt->second.slines.insert(currentDeclInit.second); //varIt is lhs
         sp->use.insert(currentDeclInit.second);
         if(varIt->second.potentialAlias && !sawnew){ //new operator of the form int i = new int(tmp); screws around with aliasing
@@ -139,7 +137,6 @@ void srcSliceHandler::GetDeclStmtData(){
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
     if(!inGlobalScope){
-        std::cerr<<"GLOBAL:"<<currentDecl.first<<std::endl;
         varIt = FunctionIt->second.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile))).first;
         varIt->second.def.insert(currentDecl.second);
     }else{ //TODO: Handle def use for globals
@@ -154,18 +151,20 @@ void srcSliceHandler::GetDeclStmtData(){
  * process the rhs for any aliases, dvars, or function calls.
  */
 void srcSliceHandler::ProcessExprStmtPreAssign(){
-    if(!currentExprStmt.first.empty()){
-        SliceProfile* lhs = Find(currentExprStmt.first);
+    if(!lhsExprStmt.first.empty()){
+        SliceProfile* lhs = Find(lhsExprStmt.first);
         if(!lhs){
             currentSliceProfile.index = -1;
             currentSliceProfile.file = fileNumber;
             currentSliceProfile.function = functionTmplt.GetFunctionUID();
-            currentSliceProfile.variableName = currentExprStmt.first;
+            currentSliceProfile.variableName = lhsExprStmt.first;
             currentSliceProfile.potentialAlias = false;
             currentSliceProfile.isGlobal = inGlobalScope;
             
-            varIt = FunctionIt->second.insert(std::make_pair(currentExprStmt.first, std::move(currentSliceProfile))).first;
-            varIt->second.def.insert(currentExprStmt.second);
+            varIt = FunctionIt->second.insert(std::make_pair(lhsExprStmt.first, std::move(currentSliceProfile))).first;
+            varIt->second.def.insert(lhsExprStmt.second);
+        }else{
+            lhs->def.insert(lhsExprStmt.second);
         }        
     }
 }
@@ -188,22 +187,18 @@ void srcSliceHandler::ProcessExprStmtPostAssign(){
 
     auto sprIt = Find(currentExprStmt.first);//find the sp for the rhs
     if(sprIt){ //lvalue depends on this rvalue
-        //std::cerr<<"Here2"<<std::endl;
         if(lhs->variableName != sprIt->variableName){    
             if(!lhs->potentialAlias || dereferenced){ //It is not potentially a reference and if it is, it must not have been dereferenced
                 sprIt->dvars.insert(lhs->variableName); //it's not an alias so it's a dvar
             }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
-                //dirtyAlias = true;
                 lhs->lastInsertedAlias = lhs->aliases.insert(sprIt->variableName).first;
             }
             sprIt->slines.insert(currentExprStmt.second);
             sprIt->use.insert(currentExprStmt.second);           
-            if(sprIt->potentialAlias){//Union things together. If this was an alias of anoter thing, update the other thing
+            if(sprIt->potentialAlias && !dereferenced){//Union things together. If this was an alias of anoter thing, update the other thing
                 if(!sprIt->aliases.empty()){
-                    //std::cerr<<"Name1: "<<*(sprIt->lastInsertedAlias); //Get vars that sprit aliases
                     auto spaIt = FunctionIt->second.find(*(sprIt->lastInsertedAlias)); //problem  because last alias is an iterator and can reference things in other functions. Maybe make into a pointer. Figure out why I need it.
                     if(spaIt != FunctionIt->second.end()){
-                        //std::cerr<<"Name: "<<spaIt->second.variableName<<" "<<lhs->variableName<<std::endl;
                         spaIt->second.dvars.insert(lhs->variableName);
                         spaIt->second.use.insert(currentExprStmt.second);  
                         spaIt->second.slines.insert(currentExprStmt.second);
@@ -213,7 +208,20 @@ void srcSliceHandler::ProcessExprStmtPostAssign(){
         }
     }
 }
-
+void srcSliceHandler::ProcessDeclCtor(){
+    SliceProfile* lhs = Find(currentDecl.first);
+    if(!lhs){
+        return;
+    }else{
+        lhs->use.insert(currentDecl.second);
+    }
+    SliceProfile* rhs = Find(currentDeclCtor.first);
+    if(rhs){
+        rhs->dvars.insert(lhs->variableName);
+        rhs->use.insert(currentDecl.second);
+    }
+    
+}
 /*
  *ComputeInterprocedural
  *@param f- name of the file
