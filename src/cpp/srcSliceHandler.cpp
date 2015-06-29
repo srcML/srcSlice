@@ -70,7 +70,7 @@ void srcSliceHandler::GetCallData(){
                 sp->slines.insert(callArgData.top().second);
                 sp->use.insert(callArgData.top().second);
                 sp->index = declIndex;
-                sp->cfunctions.insert(std::make_pair(functionNameHash(nameOfCurrentClldFcn.top()), numArgs));
+                sp->cfunctions.insert(std::make_pair(nameOfCurrentClldFcn.top(), numArgs));
             }
         }
     }
@@ -236,7 +236,7 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     
     FileIt = sysDict.dictionary.find(f);
     if(FileIt == sysDict.dictionary.end()){
-        std::cerr<<"FATAL ERROR";
+        std::cerr<<"CAN'T FIND FILE"<<std::endl;
         return;
     }
     
@@ -266,10 +266,11 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
  *@param functIt- iterator to the FunctionVarMap, parameterIndex- index of the parameter 
  *@Return SliceProfile of the variable
 */
-SliceProfile srcSliceHandler::ArgumentProfile(unsigned int fname, unsigned int parameterIndex){
+SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int parameterIndex){
     SliceProfile Spi;
     auto funcIt = FileIt->second.find(fname);
     if(funcIt != FileIt->second.end()){
+        //std::cerr<<"file tried: "<<fname<<std::endl;
         VarMap::iterator v = funcIt->second.begin();    
         for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
             if (it->second.index == (parameterIndex)){
@@ -278,7 +279,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(unsigned int fname, unsigned int p
                     return Spi;
                 }else{//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto
                     for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
-                        unsigned int newFunctionName = itCF->first;
+                        std::string newFunctionName = itCF->first;
                         unsigned int newParameterIndex = itCF->second; 
                         if(newFunctionName != fname){
                             //std::cerr<<"Now: "<<newFunctionName<<std::endl;
@@ -290,7 +291,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(unsigned int fname, unsigned int p
             }
         }
     }else{
-        std::cerr<<"FATAL ERROR";
+        std::cerr<<"ERROR IN ARGUMENT PROFILE"<<std::endl;
     }
     return Spi;
 }

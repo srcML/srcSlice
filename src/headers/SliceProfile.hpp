@@ -8,7 +8,7 @@
 #include <set>
 class SliceProfile;
 typedef std::unordered_map<std::string, SliceProfile> VarMap;
-typedef std::unordered_map<unsigned int, VarMap> FunctionVarMap;
+typedef std::unordered_map<std::string, VarMap> FunctionVarMap;
 typedef std::unordered_map<std::string, FunctionVarMap> FileFunctionVarMap;
 typedef std::pair<std::string, unsigned int> NameLineNumberPair;
 typedef std::pair<unsigned int, unsigned int> HashedNameLineNumberPair;
@@ -19,7 +19,7 @@ public:
   template <typename T, typename U>
   std::size_t operator()(const std::pair<T, U> &x) const
   {
-    return std::hash<U>()(x.second);
+    return std::hash<T>()(x.first);
   }
 };
 struct FunctionArgtypeArgnumHash {
@@ -92,7 +92,7 @@ class SliceProfile{
         std::set<unsigned int> def;
         std::set<unsigned int> use;
 		
-        std::unordered_set<HashedNameLineNumberPair, NameLineNumberPairHash> cfunctions;
+        std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfunctions;
 		std::unordered_set<std::string> dvars;//maybe hash
 		std::unordered_set<std::string> aliases;//maybe hash
 };
@@ -105,7 +105,6 @@ struct SystemDictionary{
 	FileFunctionVarMap dictionary;
 	VarMap globalMap;
     std::unordered_map<std::string, ClassProfile> classTable;
-	std::unordered_map<unsigned int, std::string> functionTable;
     std::unordered_map<unsigned int, std::string> typeTable;
     std::vector<std::pair<unsigned int, unsigned int>> controledges;
 };

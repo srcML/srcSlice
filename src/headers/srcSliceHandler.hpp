@@ -57,9 +57,6 @@ private:
     std::string lhsName;
     unsigned int lhsLine;
 
-    /*Hashing function/file names. This will accomplish that.*/
-    std::hash<std::string> functionNameHash;
-
     /*Hashing param types*/
     std::hash<std::string> paramTypeHash;
 
@@ -148,7 +145,7 @@ private:
     void GetFunctionDeclData();
 
     SliceProfile* Find(const std::string&);
-    SliceProfile ArgumentProfile(unsigned int, unsigned int);
+    SliceProfile ArgumentProfile(std::string, unsigned int);
 
 public:
     void ComputeInterprocedural(const std::string&);
@@ -192,9 +189,7 @@ public:
                 }
                 ++triggerField[parameter_list];
                 if(triggerField[function] && (!triggerField[functionblock] || triggerField[type] || triggerField[parameter_list])){
-                    functionTmplt.functionHash = functionNameHash(functionTmplt.functionName);
-                    sysDict.functionTable.insert(std::make_pair(functionTmplt.functionHash, functionTmplt.functionName));
-                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionHash, VarMap())).first;
+                    FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
                 }
                 if(triggerField[constructordecl]){ //For the case where we need to get a constructor decl
                     ProcessConstructorDecl();
@@ -700,12 +695,10 @@ public:
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
         //fileNumber = functionNameHash(attributes[1].value);
-        FileIt = sysDict.dictionary.insert(std::make_pair(std::string(attributes[1].value), FunctionVarMap())).first; //insert and keep track of most recent.         
+        FileIt = sysDict.dictionary.insert(std::make_pair(std::string(attributes[2].value), FunctionVarMap())).first; //insert and keep track of most recent.         
         //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
-        unsigned int ghash = functionNameHash("GLOBAL");
-        sysDict.functionTable.insert(std::make_pair(functionNameHash("GLOBAL"), "GLOBAL"));
         //classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
-        FunctionIt = FileIt->second.insert(std::make_pair(ghash, VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
+        FunctionIt = FileIt->second.insert(std::make_pair("GLOBAL", VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
      * startElementNs
