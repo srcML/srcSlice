@@ -33,3 +33,4 @@ include_directories(src/headers src/cpp
 	src/srcSAX/src/srcsax src/srcSAX/src/cpp src/srcSAX/src/windows)
 
 add_subdirectory(src)
+add_subdirectory(src/srcSAX/src)

@@ -1,5 +1,3 @@
-add_subdirectory(srcSAX/src)
-
 file(GLOB SRCSLICEHANDLER_SOURCE cpp/*.cpp)
 file(GLOB SRCSLICEHANDLER_INCLUDE headers/*.hpp)
 
