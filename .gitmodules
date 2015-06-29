@@ -1,0 +1,3 @@
+[submodule "src/srcSAX"]
+	path = src/srcSAX
+	url = https://github.com/srcML/srcSAX.git

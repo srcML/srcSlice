@@ -1,7 +1,7 @@
 ##
-#  CMakeLists.txt
+#  config.cmake
 #
-#  Copyright (C) 2015 SDML (www.sdml.info)
+#  Copyright (C) 2014-2015 SDML (www.sdml.info)
 #
 #  This file is part of the srcSlice.
 #
@@ -21,15 +21,17 @@
 #
 #  Build configuration file
 
-cmake_minimum_required(VERSION 2.8)
-project(srcSlice)
+# build options
+#option(BUILD_UNIT_TESTS "Build unit tests for srcSlice"    ON)
+#option(BUILD_EXAMPLES   "Build example tests for srcSlice" ON)
 
-enable_testing()
+# find needed libraries
+find_package(LibXml2 REQUIRED)
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
-include(srcslice)
+# include needed includes
+include_directories(${LIBXML2_INCLUDE_DIR})
+add_definitions("-std=c++0x -O3")
 
-include_directories(src/headers src/cpp
-	src/srcSAX/src/srcsax src/srcSAX/src/cpp src/srcSAX/src/windows)
-
-add_subdirectory(src)
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)

@@ -1,7 +1,7 @@
 ##
-#  CMakeLists.txt
+#  srcslice.cmake
 #
-#  Copyright (C) 2015 SDML (www.sdml.info)
+#  Copyright (C) 2014 SDML (www.sdml.info)
 #
 #  This file is part of the srcSlice.
 #
@@ -18,18 +18,6 @@
 #  You should have received a copy of the GNU General Public License
 #  along with the srcSlice; if not, write to the Free Software
 #  Foundation, Inc., 59 Temple Place, Suite 330, Boston, MA  02111-1307  USA
-#
-#  Build configuration file
 
-cmake_minimum_required(VERSION 2.8)
-project(srcSlice)
-
-enable_testing()
-
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
-include(srcslice)
-
-include_directories(src/headers src/cpp
-	src/srcSAX/src/srcsax src/srcSAX/src/cpp src/srcSAX/src/windows)
-
-add_subdirectory(src)
+include(config)
+include(install)
