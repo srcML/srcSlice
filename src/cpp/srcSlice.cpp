@@ -1,5 +1,5 @@
 /**
- * @file element_count.hpp
+ * @file srcSlice.cpp
  *
  * @copyright Copyright (C) 2013-2014  SDML (www.srcML.org)
  *
@@ -123,25 +123,25 @@ void srcSliceToCsv(const srcSliceHandler& handler){
                 if(str.at(str.length()-1) == ',')
                     str.erase(str.length()-1);
                 str.append("},");
-				str.append("dv{");
+				str.append("dvars{");
 				for(std::string dv : vmIt->second.dvars){
 					str.append(dv.append(","));
 				}
 				if(str.at(str.length()-1) == ',')
 					str.erase(str.length()-1);
 				str.append("},");
-				str.append("al{");
+				str.append("pointers{");
 				for(std::string al : vmIt->second.aliases){
 					str.append(al.append(","));
 				}
 				if(str.at(str.length()-1) == ',')
 					str.erase(str.length()-1);
 				str.append("},");
-				str.append("cfunc{");
+				str.append("cfuncs{");
 				for(auto cfunc : vmIt->second.cfunctions){
             			std::stringstream ststrm;
             			ststrm<<cfunc.second;
-						str.append(cfunc.first).append(" ").append(ststrm.str()).append(",");
+						str.append(cfunc.first).append("{").append(ststrm.str()).append("},");
 				}
 				if(str.at(str.length()-1) == ',')
 					str.erase(str.length()-1);
@@ -179,13 +179,13 @@ int main(int argc, char * argv[]) {
     exit(1);
 
   }
-  clock_t t;
-  t = clock();
+  //clock_t t;
+  //t = clock();
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
   DoComputation(handler, handler.sysDict.dictionary);
-  t = clock() - t;
+  //t = clock() - t;
   //std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");
   //handler.ComputeInterprocedural("SlicerTestSample.cpp");
