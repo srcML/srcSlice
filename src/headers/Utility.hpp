@@ -23,22 +23,23 @@
 #include <unordered_set>
 #include <string>
 #include <vector>
-
+#include <set>
 template <typename T> 
 void SetUnion(std::unordered_set<T>& set1, std::unordered_set<T> set2){
-    if(set1.empty() || set2.empty()){
-        return;
-    }
     for(typename std::unordered_set<T>::iterator itr = set2.begin(); itr != set2.end(); ++itr){
+        set1.insert(*itr);
+    }
+}
+
+template <typename T> 
+void SetUnion(std::set<T>& set1, std::set<T> set2){
+    for(typename std::set<T>::iterator itr = set2.begin(); itr != set2.end(); ++itr){
         set1.insert(*itr);
     }
 }
 
 template <typename T, typename U>
 void SetUnion(std::unordered_set<T, U>& set1, std::unordered_set<T, U>& set2){
-    if(set1.empty() || set2.empty()){
-        return;
-    }
     for(typename std::unordered_set<T, U>::iterator itr = set2.begin(); itr != set2.end(); ++itr){
         set1.insert(*itr);
     }

@@ -265,12 +265,13 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
         for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){
-            if(it->second.visited == false){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
+            if(it->second.visited == true){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
                 for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                     unsigned int argumentIndex = itCF->second;
                     //std::cerr<<"caller: "<<itCF->first<<std::endl;
                     SliceProfile Spi = ArgumentProfile(itCF->first, argumentIndex);
-                    SetUnion(it->second.slines, Spi.slines);
+                    SetUnion(it->second.def, Spi.def);
+                    SetUnion(it->second.use, Spi.use);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
                     SetUnion(it->second.aliases, Spi.aliases);
                     SetUnion(it->second.dvars, Spi.dvars);
