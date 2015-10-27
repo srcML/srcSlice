@@ -824,11 +824,10 @@ public:
                     }
                 }
             }else{
-                if(!exprop){
+                if(!exprop){ //haven't seen any operator (including =)
                     lhsExprStmt.first.append(str);
-                    useExprStmt.first.append(str);
-
                 }
+                useExprStmt.first.append(str); //catch expr_stmts like cout<<identifier;
             }
             
         }
