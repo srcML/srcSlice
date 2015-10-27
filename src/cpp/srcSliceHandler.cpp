@@ -89,7 +89,7 @@ void srcSliceHandler::GetCallData(){
             if(sp){
                 sp->slines.insert(callArgData.top().second);
                 sp->use.insert(callArgData.top().second);
-                sp->index = declIndex;
+                sp->index = numArgs;
                 sp->cfunctions.insert(std::make_pair(nameOfCurrentClldFcn.top(), numArgs));
             }
         }
@@ -261,20 +261,19 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     }
     
     FunctionIt = (FileIt)->second.begin();
-    FunctionVarMap::iterator FunctionItEnd = (FileIt)->second.end();
+    FunctionVarMap::iterator FunctionItEnd = FileIt->second.end();
 
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
         for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){
             if(it->second.visited == true){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
                 for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                     unsigned int argumentIndex = itCF->second;
-                    //std::cerr<<"caller: "<<itCF->first<<std::endl;
                     SliceProfile Spi = ArgumentProfile(itCF->first, argumentIndex);
                     SetUnion(it->second.def, Spi.def);
                     SetUnion(it->second.use, Spi.use);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
-                    SetUnion(it->second.aliases, Spi.aliases);
                     SetUnion(it->second.dvars, Spi.dvars);
+                    SetUnion(it->second.aliases, Spi.aliases);
                 }
                 it->second.visited = true;
             } 
@@ -291,7 +290,6 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
     SliceProfile Spi;
     auto funcIt = FileIt->second.find(fname);
     if(funcIt != FileIt->second.end()){
-        //std::cerr<<"file tried: "<<fname<<std::endl;
         VarMap::iterator v = funcIt->second.begin();    
         for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
             if (it->second.index == (parameterIndex)){
@@ -303,7 +301,6 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
                         std::string newFunctionName = itCF->first;
                         unsigned int newParameterIndex = itCF->second; 
                         if(newFunctionName != fname){
-                            //std::cerr<<"Now: "<<newFunctionName<<std::endl;
                             Spi = ArgumentProfile(newFunctionName, newParameterIndex);
                         }
                     }
