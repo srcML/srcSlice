@@ -145,7 +145,7 @@ private:
     void GetFunctionDeclData();
 
     SliceProfile* Find(const std::string&);
-    SliceProfile ArgumentProfile(std::string, unsigned int);
+    SliceProfile ArgumentProfile(std::string, unsigned int, VarMap::iterator);
 
 public:
     void ComputeInterprocedural(const std::string&);
@@ -158,7 +158,7 @@ public:
 
         constructorNum = 0;
         lineNum = 0;
-        
+        potentialAlias = false;
 
         dereferenced = false;
         opassign = false;
