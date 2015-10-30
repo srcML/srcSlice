@@ -98,7 +98,7 @@ void TestSlice(const FileFunctionVarMap& mp, srcSliceHandler handler){
 
 void srcSliceToCsv(const srcSliceHandler& handler){
 	std::string str;
-	for(FileFunctionVarMap::const_iterator ffvmIt = handler.sysDict.dictionary.begin(); ffvmIt != handler.sysDict.dictionary.end(); ++ffvmIt){
+	for(FileFunctionVarMap::const_iterator ffvmIt = handler.sysDict.dictionary.ffvMap.begin(); ffvmIt != handler.sysDict.dictionary.ffvMap.end(); ++ffvmIt){
 		//auto fileNameIt = handler.sysDict.fileTable.find(ffvmIt->first);
 		//if(fileNameIt != handler.sysDict.fileTable.end())
 		for(FunctionVarMap::const_iterator fvmIt = ffvmIt->second.begin(); fvmIt != ffvmIt->second.end(); ++fvmIt){
@@ -184,7 +184,7 @@ int main(int argc, char * argv[]) {
   srcSAXController control(argv[1]);
   srcSliceHandler handler;
   control.parse(&handler);
-  DoComputation(handler, handler.sysDict.dictionary);
+  DoComputation(handler, handler.sysDict.dictionary.ffvMap);
   //t = clock() - t;
   //std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
   //std::string filename = handler.sysDict.dictionary.find("stack.cpp.xml");

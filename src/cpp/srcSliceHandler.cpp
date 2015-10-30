@@ -20,7 +20,6 @@
 
 #include <srcSliceHandler.hpp>
 #include <Utility.hpp>
-
 /**
  *Find
  *@param varName - Name of the variable whose slice profile we want
@@ -41,7 +40,6 @@ SliceProfile* srcSliceHandler::Find(const std::string& varName){
     }
     return nullptr;
 }
-
 /**
  *ProcessConstructorDecl
  *Processes decls of the form object(arg,arg)
@@ -254,8 +252,8 @@ void srcSliceHandler::ProcessDeclCtor(){
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     
-    FileIt = sysDict.dictionary.find(f);
-    if(FileIt == sysDict.dictionary.end()){
+    FileIt = sysDict.dictionary.ffvMap.find(f);
+    if(FileIt == sysDict.dictionary.ffvMap.end()){
         std::cerr<<"CAN'T FIND FILE"<<std::endl;
         return;
     }
@@ -265,11 +263,11 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 
     for(FunctionIt; FunctionIt != FunctionItEnd; ++FunctionIt){
         for(VarMap::iterator it = FunctionIt->second.begin(); it != FunctionIt->second.end(); ++it){
-            if(it->second.visited == true){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
+            if(it->second.visited == false){//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto       
                 for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                     unsigned int argumentIndex = itCF->second;
                     SliceProfile Spi = ArgumentProfile(itCF->first, argumentIndex, it);
-                    SetUnion(it->second.def, Spi.def);
+                    //SetUnion(it->second.def, Spi.def); Also suspect this is wrong. Only want to do this if the rhs is an alias
                     SetUnion(it->second.use, Spi.use);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
                     SetUnion(it->second.dvars, Spi.dvars);
@@ -293,10 +291,11 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
         VarMap::iterator v = funcIt->second.begin();    
         for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
             if (it->second.index == (parameterIndex)){
-                if(it->second.visited == true){
+                if(it->second.visited == false){
                     std::cerr<<"Variable: "<<it->second.variableName<<" "<<it->second.potentialAlias<<" END"<<std::endl;
                     if(it->second.potentialAlias){
                         it->second.aliases.insert(vIt->second.variableName);
+                        SetUnion(vIt->second.def, it->second.def);//Only if it's an alias
                     }
                     Spi = it->second; 
                     return Spi;

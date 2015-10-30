@@ -66,6 +66,7 @@ private:
     /*keeps track of which functioni has been called. Useful for when argument slice profiles need to be updated*/
     std::stack<std::string> nameOfCurrentClldFcn;
     std::stack<unsigned int> controlFlowLineNum;
+    
     /*These two iterators keep track of where we are inside of the system dictionary. They're primarily so that
      *there's no need to do any nasty map.finds on the dictionary (since it's a nested map of maps). These must
      *be updated as the file is parsed*/
@@ -144,12 +145,11 @@ private:
     void ProcessConstructorDecl();
     void GetFunctionDeclData();
 
-    SliceProfile* Find(const std::string&);
     SliceProfile ArgumentProfile(std::string, unsigned int, VarMap::iterator);
-
+    SliceProfile* Find(const std::string& varName);
 public:
     void ComputeInterprocedural(const std::string&);
-    SystemDictionary sysDict;
+    srcSlice sysDict;
     unsigned int lineNum;
     srcSliceHandler(){
         fileNumber = 0;
@@ -695,7 +695,7 @@ public:
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
         //fileNumber = functionNameHash(attributes[1].value);
-        FileIt = sysDict.dictionary.insert(std::make_pair(std::string(attributes[2].value), FunctionVarMap())).first; //insert and keep track of most recent.         
+        FileIt = sysDict.dictionary.ffvMap.insert(std::make_pair(std::string(attributes[2].value), FunctionVarMap())).first; //insert and keep track of most recent.         
         //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
         //classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
         FunctionIt = FileIt->second.insert(std::make_pair("GLOBAL", VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
@@ -800,7 +800,7 @@ public:
         if(!sawgeneric && (triggerField[name]) && triggerField[decl_stmt] && triggerField[argument_list] && triggerField[decl] &&  !(triggerField[op] || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
                 currentDeclCtor.first.append(ch,len);
         }
-        //This only handles expr statments of the form a = b. Anything without = in it is skipped here
+        //This only handles expr statments of the form a = b. Anything without = in it is skipped here -- Not entirely true anymore
         if((triggerField[name] || triggerField[op]) && triggerField[expr] && triggerField[expr_stmt] && !(triggerField[index] || triggerField[preproc])){
             std::string str = std::string(ch, len);
             if(str.back() == '='){
