@@ -23,14 +23,14 @@
 
 #include <srcSAXHandler.hpp>
 #include <SliceProfile.hpp>
-
+#include <Utility.hpp>
+#include <srcSlice.hpp>
 #include <iostream>
 #include <vector>
 #include <list>
 #include <algorithm>
 #include <sstream>
 #include <stack>
-
 class srcSliceHandler : public srcSAXHandler {
 private:
     /*ParserState is a set of enums corresponding to srcML tags. Primarily, they're for addressing into the 
@@ -149,9 +149,11 @@ private:
     SliceProfile* Find(const std::string& varName);
 public:
     void ComputeInterprocedural(const std::string&);
-    srcSlice sysDict;
+    SliceDictionary* sysDict;
     unsigned int lineNum;
-    srcSliceHandler(){
+    srcSliceHandler(SliceDictionary* dict){
+        sysDict = dict;
+
         fileNumber = 0;
         numArgs = 0;
         declIndex = 0;
@@ -388,19 +390,19 @@ public:
             } },
 
             { "if", [this](){
-                //sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                //sysDict->controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
                 //controlFlowLineNum.pop();
                 --triggerField[ifcond];
             } },
 
             { "for", [this](){
-                //sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                //sysDict->controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
                 //controlFlowLineNum.pop();
                 --triggerField[forloop];
             } },
 
             { "while", [this](){
-                //sysDict.controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
+                //sysDict->controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
                 //controlFlowLineNum.pop();
                 --triggerField[whileloop];
             } },
@@ -475,13 +477,13 @@ public:
             } },            
             { "class", [this](){
                 currentClassName.first.clear();
-                //classIt = sysDict.classTable.find("GLOBAL");
+                //classIt = sysDict->classTable.find("GLOBAL");
                 /*
-                std::cerr<<"Class mfs: "<<sysDict.classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
-                std::cerr<<"Class mvs: "<<sysDict.classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
+                std::cerr<<"Class mfs: "<<sysDict->classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
+                std::cerr<<"Class mvs: "<<sysDict->classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
 
-                std::cerr<<"Class mfs: "<<sysDict.classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
-                std::cerr<<"Class mvs: "<<sysDict.classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
+                std::cerr<<"Class mfs: "<<sysDict->classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
+                std::cerr<<"Class mvs: "<<sysDict->classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
                 */
                 --triggerField[classn];
             } },
@@ -695,9 +697,9 @@ public:
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
         //fileNumber = functionNameHash(attributes[1].value);
-        FileIt = sysDict.dictionary.ffvMap.insert(std::make_pair(std::string(attributes[2].value), FunctionVarMap())).first; //insert and keep track of most recent.         
+        FileIt = sysDict->ffvMap.insert(std::make_pair(std::string(attributes[2].value), FunctionVarMap())).first; //insert and keep track of most recent.         
         //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
-        //classIt = sysDict.classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
+        //classIt = sysDict->classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
         FunctionIt = FileIt->second.insert(std::make_pair("GLOBAL", VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
     }
     /**
@@ -868,5 +870,9 @@ public:
 #pragma GCC diagnostic pop
     }
 };
-
+inline void DoComputation(srcSliceHandler& h, const FileFunctionVarMap& mp){
+    for(FileFunctionVarMap::const_iterator ffvmIt = mp.begin(); ffvmIt != mp.end(); ++ffvmIt){
+        h.ComputeInterprocedural(ffvmIt->first);
+    }
+}
 #endif

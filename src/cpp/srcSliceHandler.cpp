@@ -33,8 +33,8 @@ SliceProfile* srcSliceHandler::Find(const std::string& varName){
     if(sp != FunctionIt->second.end()){
         return &(sp->second);
     }else{ //check global map
-        auto sp2 = sysDict.globalMap.find(varName);
-        if(sp2 != sysDict.globalMap.end()){
+        auto sp2 = sysDict->globalMap.find(varName);
+        if(sp2 != sysDict->globalMap.end()){
             return &(sp2->second);
         }
     }
@@ -99,7 +99,7 @@ void srcSliceHandler::GetParamType(){
     unsigned int paramHash = paramTypeHash(currentParamType.first);
     functionTmplt.params.push_back(paramHash);
     functionTmplt.functionNumber += paramHash;
-    sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
+    sysDict->typeTable.insert(std::make_pair(paramHash, currentParamType.first));
     currentParamType.first.clear();
 }
 
@@ -139,7 +139,7 @@ void srcSliceHandler::GetFunctionDeclData(){
     unsigned int paramHash = paramTypeHash(currentParamType.first);
     functionTmplt.functionNumber += paramHash;
     functionTmplt.params.push_back(paramHash);
-    sysDict.typeTable.insert(std::make_pair(paramHash, currentParamType.first));
+    sysDict->typeTable.insert(std::make_pair(paramHash, currentParamType.first));
 }
 
 /**
@@ -158,7 +158,7 @@ void srcSliceHandler::GetDeclStmtData(){
         varIt = FunctionIt->second.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile))).first;
         varIt->second.def.insert(currentDecl.second);
     }else{ //TODO: Handle def use for globals
-        sysDict.globalMap.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile)));
+        sysDict->globalMap.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile)));
     }
 }
 
@@ -252,8 +252,8 @@ void srcSliceHandler::ProcessDeclCtor(){
  */
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){
     
-    FileIt = sysDict.dictionary.ffvMap.find(f);
-    if(FileIt == sysDict.dictionary.ffvMap.end()){
+    FileIt = sysDict->ffvMap.find(f);
+    if(FileIt == sysDict->ffvMap.end()){
         std::cerr<<"CAN'T FIND FILE"<<std::endl;
         return;
     }
