@@ -284,7 +284,6 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
         for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
             if (it->second.index == (parameterIndex)){
                 if(it->second.visited == false){
-                    std::cerr<<"Variable: "<<it->second.variableName<<" "<<it->second.potentialAlias<<" END"<<std::endl;
                     if(it->second.potentialAlias){
                         it->second.aliases.insert(vIt->second.variableName);
                         SetUnion(vIt->second.def, it->second.def);//Only if it's an alias
