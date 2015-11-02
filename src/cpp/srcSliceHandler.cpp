@@ -96,17 +96,13 @@ void srcSliceHandler::GetCallData(){
 
 void srcSliceHandler::GetParamType(){
     currentSliceProfile.variableType = currentParamType.first;
-    unsigned int paramHash = paramTypeHash(currentParamType.first);
-    functionTmplt.params.push_back(paramHash);
-    functionTmplt.functionNumber += paramHash;
-    sysDict->typeTable.insert(std::make_pair(paramHash, currentParamType.first));
     currentParamType.first.clear();
 }
 
 void srcSliceHandler::GetParamName(){
     currentSliceProfile.index = declIndex;
-    currentSliceProfile.file = fileNumber;
-    currentSliceProfile.function = functionTmplt.GetFunctionUID();
+    currentSliceProfile.file = fileName;
+    currentSliceProfile.function = functionTmplt.functionName;
     currentSliceProfile.variableName = currentParam.first;
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
@@ -136,10 +132,7 @@ void srcSliceHandler::GetFunctionData(){
 }
 
 void srcSliceHandler::GetFunctionDeclData(){
-    unsigned int paramHash = paramTypeHash(currentParamType.first);
-    functionTmplt.functionNumber += paramHash;
-    functionTmplt.params.push_back(paramHash);
-    sysDict->typeTable.insert(std::make_pair(paramHash, currentParamType.first));
+    functionTmplt.params.push_back(currentParamType.first);
 }
 
 /**
@@ -149,8 +142,8 @@ void srcSliceHandler::GetFunctionDeclData(){
 */
 void srcSliceHandler::GetDeclStmtData(){
     currentSliceProfile.index = declIndex;
-    currentSliceProfile.file = fileNumber;
-    currentSliceProfile.function = functionTmplt.GetFunctionUID();
+    currentSliceProfile.file = fileName;
+    currentSliceProfile.function = functionTmplt.functionName;
     currentSliceProfile.variableName = currentDecl.first;
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
@@ -173,8 +166,8 @@ void srcSliceHandler::ProcessExprStmtPreAssign(){
         SliceProfile* lhs = Find(lhsExprStmt.first);
         if(!lhs){
             currentSliceProfile.index = -1;
-            currentSliceProfile.file = fileNumber;
-            currentSliceProfile.function = functionTmplt.GetFunctionUID();
+            currentSliceProfile.file = fileName;
+            currentSliceProfile.function = functionTmplt.functionName;
             currentSliceProfile.variableName = lhsExprStmt.first;
             currentSliceProfile.potentialAlias = false;
             currentSliceProfile.isGlobal = inGlobalScope;
@@ -250,8 +243,7 @@ void srcSliceHandler::ProcessDeclCtor(){
  *@param f- name of the file
  *No return value
  */
-void srcSliceHandler::ComputeInterprocedural(const std::string& f){
-    
+void srcSliceHandler::ComputeInterprocedural(const std::string& f){   
     FileIt = sysDict->ffvMap.find(f);
     if(FileIt == sysDict->ffvMap.end()){
         std::cerr<<"CAN'T FIND FILE"<<std::endl;

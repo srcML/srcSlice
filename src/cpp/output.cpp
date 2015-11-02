@@ -177,7 +177,7 @@ int main(int argc, char * argv[]) {
   //clock_t t;
   //t = clock();
   srcSlice sslice;
-  sslice.ReadArchiveFile("srcslicetest.cpp.xml");
+  sslice.ReadArchiveFile(argv[1]);
   //t = clock() - t;
   //std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
   //std::string filename = handler.sysDict->find("stack.cpp.xml");

@@ -39,7 +39,6 @@ struct SliceDictionary{
     };
     VarMap globalMap;
     std::unordered_map<std::string, ClassProfile> classTable;
-    std::unordered_map<unsigned int, std::string> typeTable;
     std::vector<std::pair<unsigned int, unsigned int>> controledges;
     Context currentContext;
     FileFunctionVarMap ffvMap;

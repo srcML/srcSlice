@@ -46,7 +46,7 @@ private:
     std::unordered_map<std::string, std::function<void()>> process_map;
     std::unordered_map<std::string, std::function<void()>> process_map3;
 
-    unsigned int fileNumber;
+    std::string fileName;
     unsigned int numArgs;
     unsigned int declIndex;
 
@@ -153,8 +153,6 @@ public:
     unsigned int lineNum;
     srcSliceHandler(SliceDictionary* dict){
         sysDict = dict;
-
-        fileNumber = 0;
         numArgs = 0;
         declIndex = 0;
 
@@ -855,6 +853,7 @@ public:
     virtual void endElement(const char * localname, const char * prefix, const char * URI) {
         std::string lname(localname);
         std::string lnspace;
+        lineNum = 0;
         if(prefix){
             lnspace.append(prefix);
         }

@@ -67,18 +67,25 @@ std::string StringToSrcML(std::string str){
 bool TestPrimitiveTypes(){
     std::string srcmlStr = StringToSrcML(FlatSlicePrograms::FlatSliceOne());
     try{
-        std::cerr<<srcmlStr<<std::endl;
-        srcSlice sslice;
-        sslice.ReadArchiveFile("srcslicetest.cpp.xml");
-        sslice.SetContext("home/workbox/srcTools/build/bin/srcslicetest.cpp", "main",10);
+        //std::cerr<<srcmlStr<<std::endl;
+        srcSlice sslice(srcmlStr, 0);
+        //sslice.ReadArchiveFile("srcslicetest.cpp.xml");
+        //sslice.SetContext("home/workbox/srcTools/build/bin/srcslicetest.cpp", "main",10);
+        sslice.SetContext("testsrcSlice.cpp", "main",10);
         auto sumSlice = sslice.Find("sum");
-        //std::cerr<<sumSlice.first;
-        for(unsigned int i : sumSlice.second.def){
-            std::cerr<<i<<std::endl;
-        }
-        for(unsigned int i : sumSlice.second.use){
-            std::cerr<<i<<std::endl;
-        }
+        
+        std::set<unsigned int> defanswer = {4,9,15};
+        std::set<unsigned int> useanswer = {2,5,12,14};
+        std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
+        cfuncanswer.insert(std::make_pair("fun", 1));
+        cfuncanswer.insert(std::make_pair("foo", 1));
+
+        assert(sumSlice.second.def == defanswer);
+        assert(sumSlice.second.use == useanswer);
+        assert(sumSlice.second.cfunctions == cfuncanswer);
+        assert(sumSlice.second.aliases.empty());
+        assert(sumSlice.second.dvars.empty());
+        
     }catch(SAXError e){
         std::cerr<<"ERROR: "<<e.message;
     }
