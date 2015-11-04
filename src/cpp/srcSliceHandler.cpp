@@ -259,11 +259,11 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
                 for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                     unsigned int argumentIndex = itCF->second;
                     SliceProfile Spi = ArgumentProfile(itCF->first, argumentIndex, it);
-                    //SetUnion(it->second.def, Spi.def); Also suspect this is wrong. Only want to do this if the rhs is an alias
+                    SetUnion(it->second.use, Spi.def);
                     SetUnion(it->second.use, Spi.use);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
                     SetUnion(it->second.dvars, Spi.dvars);
-                    //SetUnion(it->second.aliases, Spi.aliases); I suspect this is wrong, but I'll leave it here in case I'm wrong.
+                    SetUnion(it->second.aliases, Spi.aliases); //I suspect this is wrong, but I'll leave it here in case I'm wrong.
                 }
                 it->second.visited = true;
             } 
@@ -282,23 +282,31 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
     if(funcIt != FileIt->second.end()){
         VarMap::iterator v = funcIt->second.begin();    
         for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
+            std::cerr<<fname<<" "<<it->second.variableName<<" "<<it->second.index<<" "<<vIt->second.variableName<<" "<<parameterIndex<<" "<<it->second.potentialAlias<<std::endl;
             if (it->second.index == (parameterIndex)){
-                if(it->second.visited == false){
+                if(it->second.visited == true){
                     if(it->second.potentialAlias){
                         it->second.aliases.insert(vIt->second.variableName);
-                        SetUnion(vIt->second.def, it->second.def);//Only if it's an alias
                     }
-                    Spi = it->second; 
-                    return Spi;
-                }else{//std::unordered_set<NameLineNumberPair, NameLineNumberPairHash>::iterator - auto
+                    return it->second;
+                }else{
                     for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                         std::string newFunctionName = itCF->first;
                         unsigned int newParameterIndex = itCF->second; 
                         if(newFunctionName != fname){
                             Spi = ArgumentProfile(newFunctionName, newParameterIndex, it);
+                            SetUnion(it->second.use, Spi.def);
+                            SetUnion(it->second.use, Spi.use);
+                            SetUnion(it->second.cfunctions, Spi.cfunctions);
+                            SetUnion(it->second.dvars, Spi.dvars);
+                            SetUnion(it->second.aliases, Spi.aliases);
                         }
                     }
+                    if(it->second.potentialAlias){
+                        it->second.aliases.insert(vIt->second.variableName);
+                    }
                     it->second.visited = true;
+                    return it->second;
                 }
             }
         }

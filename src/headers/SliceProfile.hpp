@@ -64,10 +64,11 @@ struct ClassProfile{
 
 class SliceProfile{
 	public:
-		SliceProfile() = default;
+		SliceProfile():index(0),visited(false),potentialAlias(false),dereferenced(false),isGlobal(false){}
 		SliceProfile(unsigned int idx, std::string fle, std::string fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
         index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isGlobal(global) {
             dereferenced = false;
+            visited = false;
 		}
 
 		unsigned int index;
