@@ -199,7 +199,6 @@ void srcSliceHandler::ProcessExprStmtPostAssign(){
             }else{//it is an alias, so save that this is the most recent alias and insert it into rhs alias list
                 lhs->lastInsertedAlias = lhs->aliases.insert(sprIt->variableName).first;
             }
-            sprIt->slines.insert(currentExprStmt.second);
             sprIt->use.insert(currentExprStmt.second);           
             if(sprIt->potentialAlias && !dereferenced){//Union things together. If this was an alias of anoter thing, update the other thing
                 if(!sprIt->aliases.empty()){
@@ -265,7 +264,7 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
                     SetUnion(it->second.use, Spi.use);
                     SetUnion(it->second.cfunctions, Spi.cfunctions);
                     SetUnion(it->second.dvars, Spi.dvars);
-                    SetUnion(it->second.aliases, Spi.aliases); //I suspect this is wrong, but I'll leave it here in case I'm wrong.
+                    //SetUnion(it->second.aliases, Spi.aliases); //I suspect this is wrong, but I'll leave it here in case I'm wrong.
                 }
                 it->second.visited = true;
             } 

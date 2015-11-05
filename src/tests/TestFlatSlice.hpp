@@ -4,8 +4,9 @@ struct FlatSlicePrograms{
 		std::string FlatSliceOneV = 
 			"void fun(int z){\n"
 			"	z++;\n"
+			"	return z;\n"
 			"}\n"
-			"void foo(int &x, int &y){\n"
+			"void foo(int &x, int *y){\n"
 				"fun(x);\n"
 				"y++;\n"
 			"}\n"
@@ -15,7 +16,8 @@ struct FlatSlicePrograms{
 				"while (i<=10){\n"
 					"foo(sum, i);\n"
 				"}\n"
-				"std::cout<<sum<<i<<fun(sum);\n"
+				"std::cout<<\"i: \"<<i<<\"sum: \"<<sum<<std::endl;\n"
+				"std::cout<<fun(i);\n"
 				"sum=sum+i;\n"
 			"}\n";
 		return FlatSliceOneV;

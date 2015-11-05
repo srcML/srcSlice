@@ -75,11 +75,12 @@ bool TestPrimitiveTypes(){
             assert(sslice.SetContext("testsrcSlice.cpp", "main",10));
             auto iSlice = sslice.Find("i");
 
-            const std::set<unsigned int> defanswer = {4,10};
-            const std::set<unsigned int> useanswer = {6,12,14,15};
+            const std::set<unsigned int> defanswer = {11};
+            const std::set<unsigned int> useanswer = {1,2,5,7,12,13,15,16,17};
             const std::unordered_set<std::string> dvarsanswer = {"sum"};
             std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
             cfuncanswer.insert(std::make_pair("foo", 2));
+            cfuncanswer.insert(std::make_pair("fun", 1));
 
             assert(iSlice.second.def == defanswer);
             assert(iSlice.second.use == useanswer);
@@ -94,8 +95,8 @@ bool TestPrimitiveTypes(){
             assert(sslice.SetContext("testsrcSlice.cpp", "main",10));
             auto sumSlice = sslice.Find("sum");
             
-            std::set<unsigned int> defanswer = {4,9,15};
-            std::set<unsigned int> useanswer = {2,5,12,14};
+            std::set<unsigned int> defanswer = {10,17};
+            std::set<unsigned int> useanswer = {1,2,5,6,13,15};
             std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
             cfuncanswer.insert(std::make_pair("fun", 1));
             cfuncanswer.insert(std::make_pair("foo", 1));
@@ -127,8 +128,8 @@ bool TestPrimitiveTypes(){
             assert(sslice.SetContext("testsrcSlice.cpp", "foo",4));
             auto ySlice = sslice.Find("y");
             
-            std::set<unsigned int> defanswer = {4};
-            std::set<unsigned int> useanswer = {6};
+            std::set<unsigned int> defanswer = {5};
+            std::set<unsigned int> useanswer = {7};
             std::unordered_set<std::string> aliasanswer = {"i"};
             assert(ySlice.second.def == defanswer);
             assert(ySlice.second.use == useanswer);
@@ -142,8 +143,8 @@ bool TestPrimitiveTypes(){
             assert(sslice.SetContext("testsrcSlice.cpp", "foo",4));
             auto xSlice = sslice.Find("x");
             
-            std::set<unsigned int> defanswer = {4};
-            std::set<unsigned int> useanswer = {5};
+            std::set<unsigned int> defanswer = {5};
+            std::set<unsigned int> useanswer = {1,2,6};
             
             std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
             cfuncanswer.insert(std::make_pair("fun", 1));

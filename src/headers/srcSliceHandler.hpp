@@ -107,6 +107,7 @@ private:
      *at that position and its line number to be stored in the slice profile*/ 
     std::vector<unsigned short int> triggerField;
     std::string calledFunctionName;
+    std::string currentOperator;
     std::stack<NameLineNumberPair> callArgData;
     NameLineNumberPair currentCallArgData;
     NameLineNumberPair currentParam;
@@ -559,6 +560,7 @@ public:
                 if(triggerField[function] && !(triggerField[functionblock] || triggerField[templates] || triggerField[parameter_list] || triggerField[type] || triggerField[argument_list])){
                     currentFunctionBody.first.clear();
                 }
+                currentOperator.clear();
                 --triggerField[op];
             } },
             { "block", [this](){ 
@@ -826,10 +828,15 @@ public:
         if(!sawgeneric && (triggerField[name]) && triggerField[decl_stmt] && triggerField[argument_list] && triggerField[decl] &&  !(triggerField[op] || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
                 currentDeclCtor.first.append(ch,len);
         }
+        if(triggerField[op]){
+            currentOperator.append(ch, len);
+        }
         //This only handles expr statments of the form a = b. Anything without = in it is skipped here -- Not entirely true anymore
         if((triggerField[name] || triggerField[op]) && triggerField[expr] && (triggerField[expr_stmt] || triggerField[condition]) && !(triggerField[index] || triggerField[preproc])){
             std::string str = std::string(ch, len);
-            if(str.back() == '=' && !str.size() > 1){
+            //kind of a hack here; currentOperator basically tells me if the operator was actually assignment
+            //or some kinda compare operator like <=. Important to know which one I just saw since I need to assign to use or def.
+            if(str.back() == '=' && currentOperator.size() < 2){ 
                 exprassign = true;
                 exprop = false; //assumed above in "operator" that I wouldn't see =. This takes care of when I assume wrong.
                 str.clear(); //don't read the =, just want to know it was there.
