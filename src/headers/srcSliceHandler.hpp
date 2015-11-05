@@ -37,7 +37,7 @@ private:
      *triggerField vector and figuring out which tags have been seen. It keeps a count of how many of each
      *tag is currently open. Increments at a start tag and decrements at an end tag*/
     enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, 
-        argument_list, argument_list_template, call, templates, ctrlflow, endflow, 
+        argument_list, argument_list_template, condition, call, templates, ctrlflow, endflow, 
         name, function, functiondecl, constructor, constructordecl, destructordecl, destructor,
         argument, index, block, type, init, op, literal, modifier, member_list, classn,
         preproc, whileloop, forloop, ifcond, nonterminal, macro, classblock, functionblock,
@@ -217,6 +217,13 @@ public:
             { "while", [this](){
                 ++triggerField[whileloop];
                 //controlFlowLineNum.push(lineNum);
+            } },
+            
+            { "condition", [this](){
+                //This gets used with expr_stmts since conditionals can basically contain everything an expr_stmt can contain
+                //This means that rules for expr_stmt usually have || condition next to them to re-use those same functions for
+                //things like while loops. If this becomes too big of a deal, might just write separate functions for conditions
+                ++triggerField[condition];
             } },
 
             { "argument_list", [this](){
@@ -405,6 +412,25 @@ public:
                 --triggerField[whileloop];
             } },
 
+            { "condition", [this](){
+                --triggerField[condition];
+                //for expr_stmts
+                foundexprlhs = false;
+                exprop = false;
+                exprassign = false;
+
+                ProcessExprStmtNoAssign(); //collect data about things that were not in assignment expr_stmts
+                useExprStack.clear(); //clear data
+
+                //uncategorized
+                lhsLine = 0;
+                lhsName.clear();
+                currentExprStmt.first.clear();
+                lhsExprStmt.first.clear();
+
+                useExprStmt.first.clear();
+            } },
+
             { "argument_list", [this](){
                 numArgs = 0;
                 sawgeneric = false;
@@ -506,7 +532,7 @@ public:
                 //The logic for exprassign and op is basically that we want to know when we've hit the left and right hand side of expr stmt
                 //expr assign is set when we see =. Everything read up to that point is lhs. exprop is any other operator. When I see that
                 //I know that we're probably in a member call chain a->b->c etc. I don't care about b and c, so expr op helps skip those.
-                if(triggerField[expr_stmt]){
+                if(triggerField[expr_stmt] || triggerField[condition]){
 
                     useExprStmt.first.clear();
 
@@ -614,7 +640,7 @@ public:
                     while(!callArgData.empty())
                         callArgData.pop();
                 }
-                if(triggerField[expr] && triggerField[expr_stmt]){
+                if(triggerField[expr] && (triggerField[expr_stmt] || triggerField[condition])){
                     if(exprassign){
                         ProcessExprStmtPostAssign();//problems with exprs like blotttom->next = expr
                         useExprStack.clear(); //found an assignment so throw everything off of the other stack TODO: Potential better way?
@@ -801,9 +827,9 @@ public:
                 currentDeclCtor.first.append(ch,len);
         }
         //This only handles expr statments of the form a = b. Anything without = in it is skipped here -- Not entirely true anymore
-        if((triggerField[name] || triggerField[op]) && triggerField[expr] && triggerField[expr_stmt] && !(triggerField[index] || triggerField[preproc])){
+        if((triggerField[name] || triggerField[op]) && triggerField[expr] && (triggerField[expr_stmt] || triggerField[condition]) && !(triggerField[index] || triggerField[preproc])){
             std::string str = std::string(ch, len);
-            if(str.back() == '='){
+            if(str.back() == '=' && !str.size() > 1){
                 exprassign = true;
                 exprop = false; //assumed above in "operator" that I wouldn't see =. This takes care of when I assume wrong.
                 str.clear(); //don't read the =, just want to know it was there.

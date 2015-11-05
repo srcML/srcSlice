@@ -163,6 +163,7 @@ void srcSliceHandler::GetDeclStmtData(){
  */
 void srcSliceHandler::ProcessExprStmtPreAssign(){
     if(!lhsExprStmt.first.empty()){
+        //std::cerr<<"lhs: "<<lhsExprStmt.first<<" "<<lhsExprStmt.second<<std::endl;
         SliceProfile* lhs = Find(lhsExprStmt.first);
         if(!lhs){
             currentSliceProfile.index = -1;
@@ -215,6 +216,7 @@ void srcSliceHandler::ProcessExprStmtPostAssign(){
 }
 void srcSliceHandler::ProcessExprStmtNoAssign(){
     for(NameLineNumberPair name : useExprStack){
+        //std::cerr<<"Name: "<<name.first<<" "<<name.second<<std::endl;
         SliceProfile* useProfile = Find(name.first);
         if(!useProfile){continue;}
         else{//it's running on the same word as the other two exprstmt functions
@@ -282,7 +284,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
     if(funcIt != FileIt->second.end()){
         VarMap::iterator v = funcIt->second.begin();    
         for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
-            std::cerr<<fname<<" "<<it->second.variableName<<" "<<it->second.index<<" "<<vIt->second.variableName<<" "<<parameterIndex<<" "<<it->second.potentialAlias<<std::endl;
+            //std::cerr<<fname<<" "<<it->second.variableName<<" "<<it->second.index<<" "<<vIt->second.variableName<<" "<<parameterIndex<<" "<<it->second.potentialAlias<<std::endl;
             if (it->second.index == (parameterIndex)){
                 if(it->second.visited == true){
                     if(it->second.potentialAlias){
