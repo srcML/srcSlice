@@ -247,10 +247,9 @@ void srcSliceHandler::ProcessDeclCtor(){
 void srcSliceHandler::ComputeInterprocedural(const std::string& f){   
     FileIt = sysDict->ffvMap.find(f);
     if(FileIt == sysDict->ffvMap.end()){
-        std::cerr<<"CAN'T FIND FILE"<<std::endl;
+        //std::cerr<<"CAN'T FIND FILE"<<std::endl;
         return;
     }
-    
     FunctionIt = (FileIt)->second.begin();
     FunctionVarMap::iterator FunctionItEnd = FileIt->second.end();
 
@@ -283,7 +282,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
     if(funcIt != FileIt->second.end()){
         VarMap::iterator v = funcIt->second.begin();    
         for(VarMap::iterator it = v; it != funcIt->second.end(); ++it){
-            //std::cerr<<fname<<" "<<it->second.variableName<<" "<<it->second.index<<" "<<vIt->second.variableName<<" "<<parameterIndex<<" "<<it->second.potentialAlias<<std::endl;
+        
             if (it->second.index == (parameterIndex)){
                 if(it->second.visited == true){
                     if(it->second.potentialAlias){
@@ -293,8 +292,9 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
                 }else{
                     for(auto itCF = it->second.cfunctions.begin(); itCF != it->second.cfunctions.end(); ++itCF ){
                         std::string newFunctionName = itCF->first;
-                        unsigned int newParameterIndex = itCF->second; 
+                        unsigned int newParameterIndex = itCF->second;
                         if(newFunctionName != fname){
+                            it->second.visited = true;
                             Spi = ArgumentProfile(newFunctionName, newParameterIndex, it);
                             SetUnion(it->second.use, Spi.def);
                             SetUnion(it->second.use, Spi.use);
@@ -312,7 +312,7 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
             }
         }
     }else{
-        std::cerr<<"ERROR IN ARGUMENT PROFILE"<<std::endl;
+        //std::cout<<"ERROR IN ARGUMENT PROFILE WHEN ACCESSING"<<fname<<std::endl;
     }
     return Spi;
 }

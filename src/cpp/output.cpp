@@ -174,12 +174,12 @@ int main(int argc, char * argv[]) {
     exit(1);
 
   }
-  //clock_t t;
-  //t = clock();
+  clock_t t;
+  t = clock();
   srcSlice sslice;
   sslice.ReadArchiveFile(argv[1]);
-  //t = clock() - t;
-  //std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
+  t = clock() - t;
+  std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
   //std::string filename = handler.sysDict->find("stack.cpp.xml");
   //handler.ComputeInterprocedural("SlicerTestSample.cpp");
   //TestSlice(handler.sysDict-> handler);
