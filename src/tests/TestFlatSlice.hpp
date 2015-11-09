@@ -22,5 +22,17 @@ struct FlatSlicePrograms{
 			"}\n";
 		return FlatSliceOneV;
 	}
-
+	static std::string DeclSlice(){
+		std::string dslice = 
+		"int main(){\n"
+			"std::string x;\n"
+			"std::string b(\"abc\");\n"
+			"const static std::string y = x + b;\n"
+			"std::string str1, str2, str3 = \"abc\";\n"
+			"std::string str4(b, 5), str6(str4);\n"
+			"std::map<int, int>* mp1 = new std::map<int, int>();\n"
+			"std::string& str5 = str4;\n"
+		"}\n";
+		return dslice;
+	}
 };

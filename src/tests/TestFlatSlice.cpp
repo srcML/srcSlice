@@ -82,7 +82,13 @@ bool TestPrimitiveTypes(){
             cfuncanswer.insert(std::make_pair("foo", 2));
             cfuncanswer.insert(std::make_pair("fun", 1));
 
+            for(unsigned int i : iSlice.second.def){
+                std::cerr<<i<<std::endl;    
+            }
             assert(iSlice.second.def == defanswer);
+            for(unsigned int i : iSlice.second.use){
+                std::cerr<<i<<std::endl;    
+            }
             assert(iSlice.second.use == useanswer);
             assert(iSlice.second.cfunctions == cfuncanswer);
             assert(iSlice.second.aliases.empty());
@@ -156,6 +162,35 @@ bool TestPrimitiveTypes(){
             assert(xSlice.second.cfunctions == cfuncanswer);
             assert(xSlice.second.aliases == aliasanswer);
             assert(xSlice.second.dvars.empty());   
+        }
+    }catch(SAXError e){
+        std::cerr<<"ERROR: "<<e.message;
+    }
+    return true;
+}
+bool TestDecl(){
+    std::string srcmlStr = StringToSrcML(FlatSlicePrograms::FlatSliceOne());
+    try{
+        //Run srcSlice
+        srcSlice sslice(srcmlStr, 0);
+        /*test sum's slice*/
+        {
+            std::cerr<< "TESTING sum's SLICE"<<std::endl;
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",10));
+            auto sumSlice = sslice.Find("sum");
+            
+            std::set<unsigned int> defanswer = {10,17};
+            std::set<unsigned int> useanswer = {1,2,5,6,13,15};
+            std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
+            cfuncanswer.insert(std::make_pair("fun", 1));
+            cfuncanswer.insert(std::make_pair("foo", 1));
+    
+            assert(sumSlice.second.def == defanswer);
+            assert(sumSlice.second.use == useanswer);
+            assert(sumSlice.second.cfunctions == cfuncanswer);
+            assert(sumSlice.second.aliases.empty());
+            assert(sumSlice.second.dvars.empty());
+            std::cerr<< "COMPLETE"<<std::endl;  
         }
     }catch(SAXError e){
         std::cerr<<"ERROR: "<<e.message;

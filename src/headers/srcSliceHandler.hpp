@@ -138,7 +138,8 @@ private:
     void GetFunctionData();
     void GetDeclStmtData();
     void ProcessDeclCtor();
-    
+    void AssignProfile();
+
     void ProcessExprStmtPreAssign();
     void ProcessExprStmtPostAssign();
     void ProcessExprStmtNoAssign();
@@ -185,7 +186,7 @@ public:
                 ++triggerField[expr_stmt];
             } },
             { "parameter_list", [this](){
-                if((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && !(triggerField[functionblock] || triggerField[parameter_list])){
+                if((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && !(triggerField[functionblock] || triggerField[parameter_list] || triggerField[macro])){
                     GetFunctionData();
                 }
                 ++triggerField[parameter_list];
@@ -199,6 +200,8 @@ public:
                 if(triggerField[functiondecl]){
                     functionTmplt.functionLineNumber = currentFunctionDecl.second;
                     functionTmplt.functionName = currentFunctionDecl.first;
+                    //std::cerr<<currentFunctionDecl.first<<std::endl;
+                    currentFunctionDecl.first.clear();
                     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
                         GetFunctionDeclData();
                     }
@@ -314,9 +317,11 @@ public:
             { "init", [this](){
                 //This one is only called if we see init. If there's no init, it's safely ignored.
                 if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
+                    //std::cerr<<"Call from init"<<std::endl;
                     GetDeclStmtData();
                     sawinit = true;
                 }
+                currentDecl.first.clear();
                 ++triggerField[init];
             } },    
             { "argument", [this](){
@@ -433,6 +438,9 @@ public:
             } },
 
             { "argument_list", [this](){
+                if(triggerField[decl] && triggerField[decl_stmt] && (!triggerField[init] || triggerField[argument] || triggerField[macro])){
+                    GetDeclStmtData();
+                }
                 numArgs = 0;
                 sawgeneric = false;
                 calledFunctionName.clear();
@@ -484,6 +492,7 @@ public:
                     //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
                     //classIt->second.memberFunctions.insert(functionTmplt);
                 }
+                currentFunctionDecl.first.clear();
                 --triggerField[functiondecl];
             } },
             { "constructor_decl", [this](){
@@ -491,6 +500,7 @@ public:
                     //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
                     //classIt->second.memberFunctions.insert(functionTmplt);
                 }
+                currentFunctionDecl.first.clear();
                 --triggerField[functiondecl];
             } },
             { "destructor_decl", [this](){
@@ -498,6 +508,7 @@ public:
                     //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
                     //classIt->second.memberFunctions.insert(functionTmplt);
                 }
+                currentFunctionDecl.first.clear();
                 --triggerField[functiondecl];
             } },            
             { "class", [this](){
@@ -548,7 +559,8 @@ public:
                     }
                 }
                 if(!(sawgeneric || currentDeclCtor.first.empty()) && triggerField[decl_stmt] && triggerField[argument] && (!triggerField[init])){
-                    GetDeclStmtData();
+                    //std::cerr<<"Call from op"<<std::endl;
+                    //GetDeclStmtData();
                     ProcessDeclCtor(); //-- to process decl_stmts that use constructor syntax
                     sawinit = true;
                     currentDeclCtor.first.clear();
@@ -580,7 +592,8 @@ public:
                 currentCallArgData.first.clear();
                 calledFunctionName.clear();
                 if(!(sawgeneric || currentDeclCtor.first.empty()) && triggerField[decl_stmt] && triggerField[argument] && !triggerField[init]){
-                    GetDeclStmtData();
+                    //std::cerr<<"Call from arg"<<std::endl;
+                    //GetDeclStmtData();
                     ProcessDeclCtor(); //-- to process decl_stmts that use constructor syntax
                     sawinit = true;
                     currentDeclCtor.first.clear();
@@ -604,6 +617,7 @@ public:
             { "decl", [this](){
                 if(!sawinit && triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
                     //only run if we didn't run it during init
+                    //std::cerr<<"Call from decl"<<std::endl;
                     GetDeclStmtData();
                 }
                 currentDecl.first.clear();
@@ -786,6 +800,7 @@ public:
         && !(triggerField[functionblock] || triggerField[parameter_list]|| triggerField[argument_list] || triggerField[argument_list_template] || triggerField[type]
          || triggerField[index] || triggerField[preproc] || triggerField[op]|| triggerField[macro])){                
             currentFunctionBody.first.append(ch, len);
+            //std::cerr<<currentFunctionBody.first<<std::endl;
         }
         if(triggerField[type] && triggerField[function]  
             && !(triggerField[functionblock] || triggerField[op] || triggerField[argument_list] || triggerField[argument_list_template] || triggerField[templates] || triggerField[parameter_list]|| triggerField[macro] || triggerField[preproc])){
@@ -796,7 +811,8 @@ public:
                 currentFunctionReturnType.first.append(ch, len);
             }                
         }
-        if((triggerField[functiondecl] || triggerField[constructordecl]) && !(triggerField[type] || triggerField[parameter_list])){
+        if((triggerField[functiondecl] || triggerField[constructordecl]) && triggerField[name] && !((triggerField[functionblock] || triggerField[parameter_list]|| triggerField[argument_list] || triggerField[argument_list_template] || triggerField[type]
+         || triggerField[index] || triggerField[preproc] || triggerField[op] || triggerField[macro]))){
             currentFunctionDecl.first.append(ch,len);
         }
         if((triggerField[param] && (triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && triggerField[name])
@@ -821,7 +837,9 @@ public:
                     }
                 }
             }else{
-                currentDecl.first.append(ch,len);
+                if(!triggerField[op]){
+                    currentDecl.first.append(ch,len);
+                }
             }
         }
         //this is to handle lhs of decl stmts and rhs of decl stmts

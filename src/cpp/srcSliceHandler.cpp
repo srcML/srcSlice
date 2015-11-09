@@ -134,25 +134,48 @@ void srcSliceHandler::GetFunctionData(){
 void srcSliceHandler::GetFunctionDeclData(){
     functionTmplt.params.push_back(currentParamType.first);
 }
-
+void srcSliceHandler::AssignProfile(){
+    if(currentSliceProfile.index == 0){
+        currentSliceProfile.index = declIndex;
+    }
+    if(currentSliceProfile.file.empty()){
+        currentSliceProfile.file = fileName;
+    }
+    if(currentSliceProfile.function.empty()){
+        currentSliceProfile.function = functionTmplt.functionName;
+    }
+    if(currentSliceProfile.variableName.empty()){
+        currentSliceProfile.variableName = currentDecl.first;
+        //std::cerr<<currentDecl.first<<std::endl;
+    }
+    if(!currentSliceProfile.potentialAlias){
+        currentSliceProfile.potentialAlias = potentialAlias;
+    }
+    if(!currentSliceProfile.isGlobal){
+        currentSliceProfile.isGlobal = inGlobalScope;
+    }
+}
 /**
 * GetDeclStmtData
 * Knows proper constraints for obtaining DeclStmt type and name.
 * creates a new slice profile and stores data about decle statement inside.
 */
 void srcSliceHandler::GetDeclStmtData(){
+    if(currentDecl.first.empty()) return;
     currentSliceProfile.index = declIndex;
     currentSliceProfile.file = fileName;
     currentSliceProfile.function = functionTmplt.functionName;
     currentSliceProfile.variableName = currentDecl.first;
+    //std::cerr<<currentDecl.first<<std::endl;
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
     if(!inGlobalScope){
-        varIt = FunctionIt->second.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile))).first;
+        varIt = FunctionIt->second.insert(std::make_pair(currentSliceProfile.variableName, std::move(currentSliceProfile))).first;
         varIt->second.def.insert(currentDecl.second);
     }else{ //TODO: Handle def use for globals
-        sysDict->globalMap.insert(std::make_pair(currentDecl.first, std::move(currentSliceProfile)));
+        sysDict->globalMap.insert(std::make_pair(currentSliceProfile.variableName, std::move(currentSliceProfile)));
     }
+    currentDecl.first.clear();
 }
 
 /**
@@ -233,6 +256,7 @@ void srcSliceHandler::ProcessDeclCtor(){
     }
     SliceProfile* rhs = Find(currentDeclCtor.first);
     if(rhs){
+        //std::cerr<<lhs->variableName<<std::endl;
         rhs->dvars.insert(lhs->variableName);
         rhs->use.insert(currentDecl.second);
     }
