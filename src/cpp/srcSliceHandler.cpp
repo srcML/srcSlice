@@ -126,7 +126,6 @@ void srcSliceHandler::GetFunctionData(){
         ststrm<<constructorNum;
         currentFunctionBody.first+=ststrm.str(); //number the constructor. Find a better way than stringstreams someday.
     }
-    functionTmplt.functionLineNumber = currentFunctionBody.second;
     functionTmplt.functionName = currentFunctionBody.first; //give me the hash num for this name.
     currentFunctionBody.first.clear();
 }
@@ -302,6 +301,10 @@ void srcSliceHandler::ComputeInterprocedural(const std::string& f){
 */
 SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int parameterIndex, VarMap::iterator vIt){ //TODO varIt is a hack here. Fix. We shouldn't need to pass an extra param to do this.
     SliceProfile Spi;
+    auto gFuncIt = sysDict->fileFunctionTable.find(fname);
+    if(gFuncIt != sysDict->fileFunctionTable.end()){
+        FileIt = sysDict->ffvMap.find(gFuncIt->second.fileName);
+    }
     auto funcIt = FileIt->second.find(fname);
     if(funcIt != FileIt->second.end()){
         VarMap::iterator v = funcIt->second.begin();    
@@ -336,7 +339,10 @@ SliceProfile srcSliceHandler::ArgumentProfile(std::string fname, unsigned int pa
             }
         }
     }else{
-        //std::cout<<"ERROR IN ARGUMENT PROFILE WHEN ACCESSING"<<fname<<std::endl;
+        //uncomment to see errors. Need to handle this properly. Also, currently, a lot of these misses are calls 
+        //into functions in header files or libraries that I can't see. Running preprocessor before srcML should
+        //help but will also make things messy.
+        //std::cout<<"ERROR IN ARGUMENT PROFILE WHEN ACCESSING: "<<fname<<std::endl;
     }
     return Spi;
 }

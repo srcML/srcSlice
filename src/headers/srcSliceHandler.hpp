@@ -46,13 +46,14 @@ private:
     std::unordered_map<std::string, std::function<void()>> process_map;
     std::unordered_map<std::string, std::function<void()>> process_map3;
 
-    std::string fileName;
     unsigned int numArgs;
     unsigned int declIndex;
 
     int constructorNum;
 
     SliceProfile currentSliceProfile;
+
+    std::string fileName;
 
     std::string lhsName;
     unsigned int lhsLine;
@@ -198,7 +199,6 @@ public:
                     currentDeclArg.first.clear();
                 }
                 if(triggerField[functiondecl]){
-                    functionTmplt.functionLineNumber = currentFunctionDecl.second;
                     functionTmplt.functionName = currentFunctionDecl.first;
                     //std::cerr<<currentFunctionDecl.first<<std::endl;
                     currentFunctionDecl.first.clear();
@@ -251,6 +251,7 @@ public:
 
             { "function", [this](){
                 inGlobalScope = false;
+                functionTmplt.fileName = fileName;
                 ++triggerField[function];
             } },
             { "constructor", [this](){
@@ -347,10 +348,8 @@ public:
             } },    
             { "name", [this](){
                 ++triggerField[name];
-
-                useExprStmt.second = lhsExprStmt.second = currentCallArgData.second = currentParam.second = currentParamType.second = 
-                currentFunctionBody.second = currentDecl.second =  
-                currentExprStmt.second = currentFunctionDecl.second = currentDeclInit.second = lineNum;
+                functionTmplt.functionLineNumber = useExprStmt.second = lhsExprStmt.second = currentCallArgData.second = currentParam.second = currentParamType.second = 
+                currentFunctionBody.second = currentDecl.second =  currentExprStmt.second = currentFunctionDecl.second = currentDeclInit.second = lineNum;
             } },
             { "macro", [this](){
                 ++triggerField[macro];
@@ -461,6 +460,7 @@ public:
                 //std::cerr<<functionTmplt.functionName<<std::endl;
                 declIndex = 0;
                 inGlobalScope = true;
+                sysDict->fileFunctionTable.insert(std::make_pair(functionTmplt.functionName, functionTmplt));
                 //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;
                 //classIt->second.memberFunctions.insert(functionTmplt);
                 
@@ -537,6 +537,7 @@ public:
                 --triggerField[index];
             } },    
             { "operator", [this](){
+                calledFunctionName.clear();
                 if(currentDeclInit.first == "new"){
                      //separate new operator because we kinda need to know when we see it.
                     sawnew = true;
@@ -737,7 +738,8 @@ public:
                            int num_namespaces, const struct srcsax_namespace * namespaces, int num_attributes,
                            const struct srcsax_attribute * attributes) {
         //fileNumber = functionNameHash(attributes[1].value);
-        FileIt = sysDict->ffvMap.insert(std::make_pair(std::string(attributes[2].value), FunctionVarMap())).first; //insert and keep track of most recent.         
+        fileName = std::string(attributes[2].value);
+        FileIt = sysDict->ffvMap.insert(std::make_pair(fileName, FunctionVarMap())).first; //insert and keep track of most recent.         
         //std::cerr<<"val: "<<attributes[1].value<<std::endl;exit(1);
         //classIt = sysDict->classTable.insert(std::make_pair("GLOBAL", ClassProfile())).first;
         FunctionIt = FileIt->second.insert(std::make_pair("GLOBAL", VarMap())).first; //for globals. Makes a bad assumption about where globals are. Fix.
@@ -899,7 +901,7 @@ public:
 
     }
     virtual void endUnit(const char * localname, const char * prefix, const char * URI) {
-
+        fileName.clear();
     }
     virtual void endElement(const char * localname, const char * prefix, const char * URI) {
         std::string lname(localname);

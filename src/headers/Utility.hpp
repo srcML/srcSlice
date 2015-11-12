@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <set>
+static std::set<std::string> errorset;
 struct SliceDictionary{
     //context can be used to keep track of what function you're searching in. Makes searching faster because I assume you're using that function as the context
     struct Context{
@@ -39,6 +40,7 @@ struct SliceDictionary{
     };
     VarMap globalMap;
     std::unordered_map<std::string, ClassProfile> classTable;
+    std::unordered_map<std::string, FunctionData> fileFunctionTable;
     std::vector<std::pair<unsigned int, unsigned int>> controledges;
     Context currentContext;
     FileFunctionVarMap ffvMap;

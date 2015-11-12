@@ -169,29 +169,121 @@ bool TestPrimitiveTypes(){
     return true;
 }
 bool TestDecl(){
-    std::string srcmlStr = StringToSrcML(FlatSlicePrograms::FlatSliceOne());
+    std::string srcmlStr = StringToSrcML(FlatSlicePrograms::DeclSlice());
     try{
         //Run srcSlice
         srcSlice sslice(srcmlStr, 0);
         /*test sum's slice*/
+        
+        std::cerr<< "TESTING sum's SLICE"<<std::endl;
         {
-            std::cerr<< "TESTING sum's SLICE"<<std::endl;
-            assert(sslice.SetContext("testsrcSlice.cpp", "main",10));
-            auto sumSlice = sslice.Find("sum");
-            
-            std::set<unsigned int> defanswer = {10,17};
-            std::set<unsigned int> useanswer = {1,2,5,6,13,15};
-            std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
-            cfuncanswer.insert(std::make_pair("fun", 1));
-            cfuncanswer.insert(std::make_pair("foo", 1));
-    
-            assert(sumSlice.second.def == defanswer);
-            assert(sumSlice.second.use == useanswer);
-            assert(sumSlice.second.cfunctions == cfuncanswer);
-            assert(sumSlice.second.aliases.empty());
-            assert(sumSlice.second.dvars.empty());
-            std::cerr<< "COMPLETE"<<std::endl;  
-        }
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto xSlice = sslice.Find("x");                
+            const std::unordered_set<std::string> dvarsanswer = {"y"};
+            std::set<unsigned int> defanswer = {2};
+            std::set<unsigned int> useanswer = {4};
+            assert(xSlice.second.def == defanswer);
+            assert(xSlice.second.use == useanswer);
+            assert(xSlice.second.cfunctions.empty());
+            assert(xSlice.second.aliases.empty());
+            assert(xSlice.second.dvars == dvarsanswer);
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto bSlice = sslice.Find("b");                
+            const std::unordered_set<std::string> dvarsanswer = {"y"};
+            std::set<unsigned int> defanswer = {3};
+            std::set<unsigned int> useanswer = {4};
+            assert(bSlice.second.def == defanswer);
+            assert(bSlice.second.use == useanswer);
+            assert(bSlice.second.cfunctions.empty());
+            assert(bSlice.second.aliases.empty());
+            assert(bSlice.second.dvars == dvarsanswer);
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto ySlice = sslice.Find("y");
+            std::set<unsigned int> defanswer = {4};
+            assert(ySlice.second.def == defanswer);
+            assert(ySlice.second.use.empty());
+            assert(ySlice.second.cfunctions.empty());
+            assert(ySlice.second.aliases.empty());
+            assert(ySlice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto str1Slice = sslice.Find("str1");
+            std::set<unsigned int> defanswer = {5};
+            assert(str1Slice.second.def == defanswer);
+            assert(str1Slice.second.use.empty());
+            assert(str1Slice.second.cfunctions.empty());
+            assert(str1Slice.second.aliases.empty());
+            assert(str1Slice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto str2Slice = sslice.Find("str2");
+            std::set<unsigned int> defanswer = {5};
+            assert(str2Slice.second.def == defanswer);
+            assert(str2Slice.second.use.empty());
+            assert(str2Slice.second.cfunctions.empty());
+            assert(str2Slice.second.aliases.empty());
+            assert(str2Slice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto str3Slice = sslice.Find("str3");
+            std::set<unsigned int> defanswer = {5};
+            assert(str3Slice.second.def == defanswer);
+            assert(str3Slice.second.use.empty());
+            assert(str3Slice.second.cfunctions.empty());
+            assert(str3Slice.second.aliases.empty());
+            assert(str3Slice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto str4Slice = sslice.Find("str4");
+            std::set<unsigned int> defanswer = {6};
+            std::set<unsigned int> useanswer = {8};
+            assert(str4Slice.second.def == defanswer);
+            assert(str4Slice.second.use == useanswer);
+            assert(str4Slice.second.cfunctions.empty());
+            assert(str4Slice.second.aliases.empty());
+            assert(str4Slice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto str5Slice = sslice.Find("str5");
+            std::set<unsigned int> defanswer = {8};
+            std::unordered_set<std::string> aliasanswer = {"str4"};
+            assert(str5Slice.second.def == defanswer);
+            assert(str5Slice.second.use.empty());
+            assert(str5Slice.second.cfunctions.empty());
+            assert(str5Slice.second.aliases == aliasanswer);
+            assert(str5Slice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto str6Slice = sslice.Find("str6");
+            std::set<unsigned int> defanswer = {6};
+            assert(str6Slice.second.def == defanswer);
+            assert(str6Slice.second.use.empty());
+            assert(str6Slice.second.cfunctions.empty());
+            assert(str6Slice.second.aliases.empty());
+            assert(str6Slice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto mp1Slice = sslice.Find("mp1");
+            std::set<unsigned int> defanswer = {7};
+            assert(mp1Slice.second.def == defanswer);
+            assert(mp1Slice.second.use.empty());
+            assert(mp1Slice.second.cfunctions.empty());
+            assert(mp1Slice.second.aliases.empty());
+            assert(mp1Slice.second.dvars.empty());
+        }            
+        std::cerr<< "COMPLETE"<<std::endl;
+        
     }catch(SAXError e){
         std::cerr<<"ERROR: "<<e.message;
     }
@@ -199,6 +291,7 @@ bool TestDecl(){
 }
 int main(int argc, char** argv){
     TestPrimitiveTypes();
+    TestDecl();
     //srcTypeNS::srcType typeDict;
     //typeDict.ReadArchiveFile(argv[1]);
     //typeDict.SerializeMap(SerializeToCppUMap);

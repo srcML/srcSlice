@@ -50,7 +50,8 @@ struct FunctionData{
     }
     std::string returnType;
     std::string functionName;
-
+    std::string fileName;
+    
     std::vector<std::string> params; //size of vector is # of arguments. String is type of argument.
 
     unsigned int functionLineNumber;
