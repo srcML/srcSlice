@@ -39,7 +39,7 @@ private:
     enum ParserState {decl, expr, param, decl_stmt, expr_stmt, parameter_list, 
         argument_list, argument_list_template, condition, call, templates, ctrlflow, endflow, 
         name, function, functiondecl, constructor, constructordecl, destructordecl, destructor,
-        argument, index, block, type, init, op, literal, modifier, member_list, classn,
+        argument, return_stmt, control, index, block, type, init, op, literal, modifier, member_list, classn,
         preproc, whileloop, forloop, ifcond, nonterminal, macro, classblock, functionblock,
         specifier, empty, MAXENUMVALUE = empty};
 
@@ -58,17 +58,16 @@ private:
     std::string lhsName;
     unsigned int lhsLine;
 
-    /*Hashing param types*/
-    std::hash<std::string> paramTypeHash;
-
-    /*Holds data for functions as we parse. Useful for going back to figuring out which function we're in*/
+    /*Holds data for functions as we parse.*/
     FunctionData functionTmplt;
 
-    /*keeps track of which functioni has been called. Useful for when argument slice profiles need to be updated*/
+    /*keeps track of which function has been called. Useful for when argument slice profiles need to be updated*/
     std::stack<std::string> nameOfCurrentClldFcn;
+
+    //Not used yet
     std::stack<unsigned int> controlFlowLineNum;
     
-    /*These two iterators keep track of where we are inside of the system dictionary. They're primarily so that
+    /*These three iterators keep track of where we are inside of the system dictionary. They're primarily so that
      *there's no need to do any nasty map.finds on the dictionary (since it's a nested map of maps). These must
      *be updated as the file is parsed*/
     std::unordered_map<std::string, ClassProfile>::iterator classIt;
@@ -76,11 +75,6 @@ private:
     FunctionVarMap::iterator FunctionIt;
     VarMap::iterator varIt;
 
-    /*Their names basically say what they do. Nested calls are an issue so the first one is a flag to figure out
-     *if I need to do special processing on a name in a call. Might be a better way to do it. Investigate later. 
-     *The second bool checks to see if the function that was just seen is a constructor. Do this because
-     *functions and constructors are treated basically the same (and I mark them as the same thing in triggerfield)
-     *but constructors need to be counted so a number can be appended to them to differentiate*/
     bool isConstructor;
 
     /*bool to tell us when we're not in a function*/
@@ -103,13 +97,15 @@ private:
     bool potentialAlias;
 
     bool dereferenced;
-    /*These along with triggerfield make up the meat of this slicer.Check the triggerfield for context (E.g., triggerField[init])
-     *and then once you know the right tags are open, check the correct line/string pair to see what the name is
-     *at that position and its line number to be stored in the slice profile*/ 
-    std::vector<unsigned short int> triggerField;
+
     std::string calledFunctionName;
     std::string currentOperator;
     std::stack<NameLineNumberPair> callArgData;
+
+    /*NameLineNumberPairs and triggerfield make up the meat of this slicer; check the triggerfield for context (E.g., triggerField[init])
+     *and then once you know the right tags are open, check the correct line/string pair to see what the name is
+     *at that position and its line number to be stored in the slice profile*/ 
+    std::vector<unsigned short int> triggerField;
     NameLineNumberPair currentCallArgData;
     NameLineNumberPair currentParam;
     NameLineNumberPair currentParamType;
@@ -131,6 +127,7 @@ private:
     
     NameLineNumberPair currentFunctionBody;
     NameLineNumberPair currentFunctionDecl;
+    
     /*function headers*/
     void GetCallData();
     void GetParamName();
@@ -200,7 +197,6 @@ public:
                 }
                 if(triggerField[functiondecl]){
                     functionTmplt.functionName = currentFunctionDecl.first;
-                    //std::cerr<<currentFunctionDecl.first<<std::endl;
                     currentFunctionDecl.first.clear();
                     if(triggerField[parameter_list] && triggerField[param] && triggerField[decl] && triggerField[type]){
                         GetFunctionDeclData();
@@ -292,6 +288,12 @@ public:
             { "member_list", [this](){
                 ++triggerField[member_list];
             } },
+            { "return", [this](){
+                ++triggerField[return_stmt];
+            } },
+            { "control", [this](){
+                ++triggerField[control];
+            } },
             { "index", [this](){
                 ++triggerField[index];
             } },    
@@ -303,6 +305,10 @@ public:
                 //Don't want the operators. But do make a caveat for ->
                 if(triggerField[call]){
                     currentCallArgData.first.clear();
+                }
+                if(triggerField[return_stmt]){
+                    //ProcessExprStmtPreAssign(); //To catch expressions in return statements that are split by operators
+                    lhsExprStmt.first.clear();
                 }
 
             } },    
@@ -318,7 +324,6 @@ public:
             { "init", [this](){
                 //This one is only called if we see init. If there's no init, it's safely ignored.
                 if(triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
-                    //std::cerr<<"Call from init"<<std::endl;
                     GetDeclStmtData();
                     sawinit = true;
                 }
@@ -384,7 +389,6 @@ public:
                 ProcessExprStmtNoAssign(); //collect data about things that were not in assignment expr_stmts
                 useExprStack.clear(); //clear data
 
-                //uncategorized
                 lhsLine = 0;
                 lhsName.clear();
                 currentExprStmt.first.clear();
@@ -400,20 +404,14 @@ public:
             } },
 
             { "if", [this](){
-                //sysDict->controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-                //controlFlowLineNum.pop();
                 --triggerField[ifcond];
             } },
 
             { "for", [this](){
-                //sysDict->controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-                //controlFlowLineNum.pop();
                 --triggerField[forloop];
             } },
 
             { "while", [this](){
-                //sysDict->controledges.push_back(std::make_pair(controlFlowLineNum.top()+1, lineNum)); //save line number for beginning and end of control structure
-                //controlFlowLineNum.pop();
                 --triggerField[whileloop];
             } },
 
@@ -457,12 +455,9 @@ public:
             } },
 
             { "function", [this](){
-                //std::cerr<<functionTmplt.functionName<<std::endl;
                 declIndex = 0;
                 inGlobalScope = true;
                 sysDict->fileFunctionTable.insert(std::make_pair(functionTmplt.functionName, functionTmplt));
-                //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;
-                //classIt->second.memberFunctions.insert(functionTmplt);
                 
                 functionTmplt.clear();
                 --triggerField[function];
@@ -471,8 +466,6 @@ public:
                 isConstructor = false;
                 declIndex = 0;
 
-                //classIt->second.memberFunctions.insert(functionTmplt);
-                
                 inGlobalScope = true;
                 functionTmplt.clear();
                 --triggerField[function];
@@ -481,46 +474,24 @@ public:
             { "destructor", [this](){
                 declIndex = 0;
 
-                //classIt->second.memberFunctions.insert(functionTmplt);
-
                 inGlobalScope = true;
                 functionTmplt.clear();
                 --triggerField[function];
             } },
             { "function_decl", [this](){
-                if(triggerField[classn]){
-                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
-                    //classIt->second.memberFunctions.insert(functionTmplt);
-                }
                 currentFunctionDecl.first.clear();
                 --triggerField[functiondecl];
             } },
             { "constructor_decl", [this](){
-                if(triggerField[classn]){
-                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
-                    //classIt->second.memberFunctions.insert(functionTmplt);
-                }
                 currentFunctionDecl.first.clear();
                 --triggerField[functiondecl];
             } },
             { "destructor_decl", [this](){
-                if(triggerField[classn]){
-                    //std::cerr<<"inserting: "<<functionTmplt.functionName<<std::endl;;
-                    //classIt->second.memberFunctions.insert(functionTmplt);
-                }
                 currentFunctionDecl.first.clear();
                 --triggerField[functiondecl];
             } },            
             { "class", [this](){
                 currentClassName.first.clear();
-                //classIt = sysDict->classTable.find("GLOBAL");
-                /*
-                std::cerr<<"Class mfs: "<<sysDict->classTable.find("CLASSBRO")->second.memberFunctions.size()<<std::endl;
-                std::cerr<<"Class mvs: "<<sysDict->classTable.find("CLASSBRO")->second.memberVariables.size()<<std::endl;
-
-                std::cerr<<"Class mfs: "<<sysDict->classTable.find("GLOBAL")->second.memberFunctions.size()<<std::endl;
-                std::cerr<<"Class mvs: "<<sysDict->classTable.find("GLOBAL")->second.memberVariables.size()<<std::endl;
-                */
                 --triggerField[classn];
             } },
             { "parameter", [this](){
@@ -532,7 +503,15 @@ public:
             } },    
             { "member_list", [this](){
                 --triggerField[member_list];
-            } },    
+            } },
+            { "return", [this](){
+                ProcessExprStmtNoAssign();
+                useExprStack.clear();//to catch expressions in return statements
+                --triggerField[return_stmt];
+            } },
+            { "control", [this](){
+                --triggerField[control];
+            } },
             { "index", [this](){
                 --triggerField[index];
             } },    
@@ -568,7 +547,7 @@ public:
                 }
                 
 
-                currentDeclInit.first.clear(); //this doesn't need to keep track of operators other than new
+                currentDeclInit.first.clear();
 
                 if(triggerField[function] && !(triggerField[functionblock] || triggerField[templates] || triggerField[parameter_list] || triggerField[type] || triggerField[argument_list])){
                     currentFunctionBody.first.clear();
@@ -618,7 +597,6 @@ public:
             { "decl", [this](){
                 if(!sawinit && triggerField[decl_stmt] && (triggerField[constructor] || triggerField[function])){
                     //only run if we didn't run it during init
-                    //std::cerr<<"Call from decl"<<std::endl;
                     GetDeclStmtData();
                 }
                 currentDecl.first.clear();
@@ -657,9 +635,9 @@ public:
                     while(!callArgData.empty())
                         callArgData.pop();
                 }
-                if(triggerField[expr] && (triggerField[expr_stmt] || triggerField[condition])){
+                if(triggerField[expr] && (triggerField[expr_stmt] || triggerField[condition] || triggerField[return_stmt])){
                     if(exprassign){
-                        ProcessExprStmtPostAssign();//problems with exprs like blotttom->next = expr
+                        ProcessExprStmtPostAssign();
                         useExprStack.clear(); //found an assignment so throw everything off of the other stack TODO: Potential better way?
                         currentExprStmt.first.clear();
                     }else{
@@ -671,7 +649,7 @@ public:
                         }
                     }
                 }
-                if(triggerField[init] && triggerField[decl] && triggerField[decl_stmt] && 
+                if(triggerField[init] && triggerField[decl] && (triggerField[decl_stmt] || triggerField[control]) && 
                 !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
                     ProcessDeclStmt();
                 }
@@ -829,7 +807,7 @@ public:
             currentDeclType.first = std::string(ch,len);
         }
         //this is to handle lhs of decl stmts and rhs of decl stmts
-        if((triggerField[name] || triggerField[op]) && triggerField[decl_stmt] && triggerField[decl] && !(triggerField[argument_list] || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
+        if((triggerField[name] || triggerField[op]) && (triggerField[decl_stmt] || triggerField[control]) && triggerField[decl] && !(triggerField[argument_list] || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
             if(triggerField[init]){
                 if(!triggerField[call]){//if it's not in a call then we can do like normal
                     currentDeclInit.first.append(ch,len);
@@ -852,8 +830,9 @@ public:
             currentOperator.append(ch, len);
         }
         //This only handles expr statments of the form a = b. Anything without = in it is skipped here -- Not entirely true anymore
-        if((triggerField[name] || triggerField[op]) && triggerField[expr] && (triggerField[expr_stmt] || triggerField[condition]) && !(triggerField[index] || triggerField[preproc])){
+        if((triggerField[name] || triggerField[op]) && triggerField[expr] && (triggerField[expr_stmt] || triggerField[condition] || triggerField[return_stmt]) && !(triggerField[index] || triggerField[preproc])){
             std::string str = std::string(ch, len);
+            //std::cerr<<"str: "<<str<<currentExprStmt.second<<std::endl;
             //kind of a hack here; currentOperator basically tells me if the operator was actually assignment
             //or some kinda compare operator like <=. Important to know which one I just saw since I need to assign to use or def.
             if(str.back() == '=' && currentOperator.size() < 2){ 
@@ -876,13 +855,16 @@ public:
                         currentExprStmt.first.append(str);
                     }
                 }
-            }else{
+            }else{   
                 if(!exprop){ //haven't seen any operator (including =)
                     lhsExprStmt.first.append(str);
+                    if(triggerField[return_stmt]){
+                        NameLineNumberPair strLine = std::make_pair(str, currentExprStmt.second);
+                        useExprStack.push_back(strLine); //catch expr_stmts like return temp + temp;
+                    }
                 }
                 useExprStmt.first.append(str); //catch expr_stmts like cout<<identifier;
             }
-            
         }
         if(triggerField[call]){
             calledFunctionName.append(ch, len);

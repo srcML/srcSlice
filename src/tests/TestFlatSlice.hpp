@@ -35,4 +35,22 @@ struct FlatSlicePrograms{
 		"}\n";
 		return dslice;
 	}
+	static std::string ExprSlice(){
+		std::string eslice=
+		"int main(){\n"
+			"int var1, temp, temp2;\n"
+			"var1 = var1 + temp - temp2;\n"
+		"\n"
+			"if(var1 == temp){\n"
+				"foo(temp + temp2, var1 + var1);\n"
+			"}\n"
+			"while(var1 != temp){\n"
+				"for(int var = 0; var < temp; ++var){\n"
+					"std::cout<<var1+temp2+var;\n"
+				"}\n"
+			"}\n"
+			"return temp + temp2;\n"
+		"}\n";
+		return eslice;
+	}
 };

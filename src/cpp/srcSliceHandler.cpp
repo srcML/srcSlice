@@ -68,7 +68,10 @@ void srcSliceHandler::ProcessDeclStmt(){
             sp->dvars.insert(varIt->second.variableName);
             sp->use.insert(currentDeclInit.second);
         }
-    }
+    }else{ //Inits in for loops screw with typical decl statement handling. This will grab decls I miss due to weird init usage
+        varIt = FunctionIt->second.insert(std::make_pair(currentDeclInit.first, std::move(currentSliceProfile))).first;
+        varIt->second.def.insert(currentDeclInit.second);    
+    } 
     currentDeclInit.first.clear();
 }
 
@@ -107,7 +110,6 @@ void srcSliceHandler::GetParamName(){
     currentSliceProfile.potentialAlias = potentialAlias;
     currentSliceProfile.isGlobal = inGlobalScope;
 
-    //std::cerr<<"PARA: "<<currentParam.first<<std::endl;
     varIt = FunctionIt->second.insert(std::make_pair(currentParam.first, std::move(currentSliceProfile))).first;
     varIt->second.def.insert(currentParam.second);
 
@@ -126,7 +128,7 @@ void srcSliceHandler::GetFunctionData(){
         ststrm<<constructorNum;
         currentFunctionBody.first+=ststrm.str(); //number the constructor. Find a better way than stringstreams someday.
     }
-    functionTmplt.functionName = currentFunctionBody.first; //give me the hash num for this name.
+    functionTmplt.functionName = currentFunctionBody.first;
     currentFunctionBody.first.clear();
 }
 
@@ -185,7 +187,6 @@ void srcSliceHandler::GetDeclStmtData(){
  */
 void srcSliceHandler::ProcessExprStmtPreAssign(){
     if(!lhsExprStmt.first.empty()){
-        //std::cerr<<"lhs: "<<lhsExprStmt.first<<" "<<lhsExprStmt.second<<std::endl;
         SliceProfile* lhs = Find(lhsExprStmt.first);
         if(!lhs){
             currentSliceProfile.index = -1;
@@ -237,7 +238,6 @@ void srcSliceHandler::ProcessExprStmtPostAssign(){
 }
 void srcSliceHandler::ProcessExprStmtNoAssign(){
     for(NameLineNumberPair name : useExprStack){
-        //std::cerr<<"Name: "<<name.first<<" "<<name.second<<std::endl;
         SliceProfile* useProfile = Find(name.first);
         if(!useProfile){continue;}
         else{//it's running on the same word as the other two exprstmt functions

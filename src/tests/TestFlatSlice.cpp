@@ -76,7 +76,7 @@ bool TestPrimitiveTypes(){
             auto iSlice = sslice.Find("i");
 
             const std::set<unsigned int> defanswer = {11};
-            const std::set<unsigned int> useanswer = {1,2,5,7,12,13,15,16,17};
+            const std::set<unsigned int> useanswer = {1,2,3,5,7,12,13,15,16,17};
             const std::unordered_set<std::string> dvarsanswer = {"sum"};
             std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
             cfuncanswer.insert(std::make_pair("foo", 2));
@@ -102,11 +102,16 @@ bool TestPrimitiveTypes(){
             auto sumSlice = sslice.Find("sum");
             
             std::set<unsigned int> defanswer = {10,17};
-            std::set<unsigned int> useanswer = {1,2,5,6,13,15};
+            std::set<unsigned int> useanswer = {1,2,3,5,6,13,15};
             std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
             cfuncanswer.insert(std::make_pair("fun", 1));
             cfuncanswer.insert(std::make_pair("foo", 1));
-    
+                for(unsigned int i : sumSlice.second.def){
+                std::cerr<<i<<std::endl;    
+            }
+            for(unsigned int i : sumSlice.second.use){
+                std::cerr<<i<<std::endl;    
+            }
             assert(sumSlice.second.def == defanswer);
             assert(sumSlice.second.use == useanswer);
             assert(sumSlice.second.cfunctions == cfuncanswer);
@@ -120,7 +125,7 @@ bool TestPrimitiveTypes(){
             auto zSlice = sslice.Find("z");
             
             std::set<unsigned int> defanswer = {1};
-            std::set<unsigned int> useanswer = {2};
+            std::set<unsigned int> useanswer = {2,3};
 
             assert(zSlice.second.def == defanswer);
             assert(zSlice.second.use == useanswer);
@@ -150,7 +155,7 @@ bool TestPrimitiveTypes(){
             auto xSlice = sslice.Find("x");
             
             std::set<unsigned int> defanswer = {5};
-            std::set<unsigned int> useanswer = {1,2,6};
+            std::set<unsigned int> useanswer = {1,2,3,6};
             
             std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
             cfuncanswer.insert(std::make_pair("fun", 1));
@@ -173,15 +178,18 @@ bool TestDecl(){
     try{
         //Run srcSlice
         srcSlice sslice(srcmlStr, 0);
-        /*test sum's slice*/
-        
-        std::cerr<< "TESTING sum's SLICE"<<std::endl;
         {
             assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
             auto xSlice = sslice.Find("x");                
             const std::unordered_set<std::string> dvarsanswer = {"y"};
             std::set<unsigned int> defanswer = {2};
             std::set<unsigned int> useanswer = {4};
+            for(unsigned int i : xSlice.second.def){
+                std::cerr<<"def"<<i<<std::endl;    
+            }
+            for(unsigned int i : xSlice.second.use){
+                std::cerr<<"use"<<i<<std::endl;    
+            }
             assert(xSlice.second.def == defanswer);
             assert(xSlice.second.use == useanswer);
             assert(xSlice.second.cfunctions.empty());
@@ -289,9 +297,83 @@ bool TestDecl(){
     }
     return true;
 }
+bool TestExpr(){
+    std::string srcmlStr = StringToSrcML(FlatSlicePrograms::ExprSlice());
+    try{
+        //Run srcSlice
+        srcSlice sslice(srcmlStr, 0);
+        /*test sum's slice*/
+        
+        std::cerr<< "TESTING var's SLICE"<<std::endl;
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto xSlice = sslice.Find("var");                
+            std::set<unsigned int> defanswer = {9};
+            std::set<unsigned int> useanswer = {9,10};
+            for(unsigned int i : xSlice.second.def){
+                std::cerr<<"def"<<i<<std::endl;    
+            }
+            for(unsigned int i : xSlice.second.use){
+                std::cerr<<"use"<<i<<std::endl;    
+            }
+            assert(xSlice.second.def == defanswer);
+            assert(xSlice.second.use == useanswer);
+            assert(xSlice.second.cfunctions.empty());
+            assert(xSlice.second.aliases.empty());
+            assert(xSlice.second.dvars.empty());
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto bSlice = sslice.Find("temp2");                
+            const std::unordered_set<std::string> dvarsanswer = {"var1"};
+            std::set<unsigned int> defanswer = {2};
+            std::set<unsigned int> useanswer = {3,6,10,13};
+            std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
+            cfuncanswer.insert(std::make_pair("foo", 1));
+            assert(bSlice.second.def == defanswer);
+            assert(bSlice.second.use == useanswer);
+            assert(bSlice.second.cfunctions == cfuncanswer);
+            assert(bSlice.second.aliases.empty());
+            assert(bSlice.second.dvars == dvarsanswer);
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto ySlice = sslice.Find("temp");
+            const std::unordered_set<std::string> dvarsanswer = {"var1"};
+            std::set<unsigned int> defanswer = {2};
+            std::set<unsigned int> useanswer = {3,5,6,8,9,13};
+            std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
+            cfuncanswer.insert(std::make_pair("foo", 1));
+            assert(ySlice.second.def == defanswer);
+            assert(ySlice.second.use == useanswer);
+            assert(ySlice.second.cfunctions == cfuncanswer);
+            assert(ySlice.second.aliases.empty());
+            assert(ySlice.second.dvars == dvarsanswer);
+        }            
+        {
+            assert(sslice.SetContext("testsrcSlice.cpp", "main",1));
+            auto str1Slice = sslice.Find("var1");
+            std::set<unsigned int> defanswer = {2,3};
+            std::set<unsigned int> useanswer = {5,6,8,10};
+            std::unordered_set<std::pair<std::string, unsigned int>, NameLineNumberPairHash> cfuncanswer;
+            cfuncanswer.insert(std::make_pair("foo", 2));
+            assert(str1Slice.second.def == defanswer);
+            assert(str1Slice.second.use == useanswer);
+            assert(str1Slice.second.cfunctions == cfuncanswer);
+            assert(str1Slice.second.aliases.empty());
+            assert(str1Slice.second.dvars.empty());
+        }
+        std::cerr<< "COMPLETE"<<std::endl;
+        
+    }catch(SAXError e){
+        std::cerr<<"ERROR: "<<e.message;
+    }
+    return true;
+}
 int main(int argc, char** argv){
     TestPrimitiveTypes();
     TestDecl();
+    TestExpr();
     //srcTypeNS::srcType typeDict;
     //typeDict.ReadArchiveFile(argv[1]);
     //typeDict.SerializeMap(SerializeToCppUMap);
