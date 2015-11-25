@@ -187,8 +187,7 @@ public:
                 if((triggerField[function] || triggerField[functiondecl] || triggerField[constructor]) && !(triggerField[functionblock] || triggerField[parameter_list] || triggerField[macro])){
                     GetFunctionData();
                 }
-                ++triggerField[parameter_list];
-                if(triggerField[function] && (!triggerField[functionblock] || triggerField[type] || triggerField[parameter_list])){
+                if(triggerField[function] && !(triggerField[functionblock] || triggerField[type] || triggerField[parameter_list])){
                     FunctionIt = FileIt->second.insert(std::make_pair(functionTmplt.functionName, VarMap())).first;
                 }
                 if(triggerField[constructordecl]){ //For the case where we need to get a constructor decl
@@ -202,6 +201,7 @@ public:
                         GetFunctionDeclData();
                     }
                 }
+                ++triggerField[parameter_list];
             } },
 
             { "if", [this](){
@@ -457,9 +457,15 @@ public:
             { "function", [this](){
                 declIndex = 0;
                 inGlobalScope = true;
+                
                 sysDict->fileFunctionTable.insert(std::make_pair(functionTmplt.functionName, functionTmplt));
                 
                 functionTmplt.clear();
+                
+                if(triggerField[function] && !(triggerField[functionblock] || triggerField[templates] || triggerField[parameter_list] || triggerField[type] || triggerField[argument_list])){
+                    currentFunctionBody.first.clear();
+                }
+                
                 --triggerField[function];
             } },
             { "constructor", [this](){
@@ -546,13 +552,9 @@ public:
                     currentDeclCtor.first.clear();
                 }
                 
-
                 currentDeclInit.first.clear();
-
-                if(triggerField[function] && !(triggerField[functionblock] || triggerField[templates] || triggerField[parameter_list] || triggerField[type] || triggerField[argument_list])){
-                    currentFunctionBody.first.clear();
-                }
                 currentOperator.clear();
+
                 --triggerField[op];
             } },
             { "block", [this](){ 

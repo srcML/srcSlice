@@ -22,11 +22,11 @@
 #include <Utility.hpp>
 /**
  *Find
- *@param varName - Name of the variable whose slice profile we want
- *@return Pointer to Slice Profile or Null
  *Find function takes a variable name and searches first the local table to the function it was in
  *and if it's not found there, then it searches the global table to see if it's in there.
  *If neither has the variable, it returns null otherwise returns a pointer to the slice profile
+ *@param varName - Name of the variable whose slice profile we want.
+ *@return Pointer to Slice Profile or null.
  */
 SliceProfile* srcSliceHandler::Find(const std::string& varName){    
     auto sp = FunctionIt->second.find(varName);
