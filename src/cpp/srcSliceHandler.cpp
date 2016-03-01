@@ -57,6 +57,7 @@ void srcSliceHandler::ProcessConstructorDecl(){
 *corner case at new operator because new makes an object even if its argument is an alias.
 */
 void srcSliceHandler::ProcessDeclStmt(){
+    if(currentDeclInit.first == ""){return;} //No nameless profiles.
     auto sp = Find(currentDeclInit.first);
     if(sawnew){sawnew = false;}
     if(sp){
@@ -69,6 +70,7 @@ void srcSliceHandler::ProcessDeclStmt(){
             sp->use.insert(currentDeclInit.second);
         }
     }else{ //Inits in for loops screw with typical decl statement handling. This will grab decls I miss due to weird init usage
+        if(!inFor) return; //This really is only for for loop inits. TODO: Possibly, write a separate function for these.
         varIt = FunctionIt->second.insert(std::make_pair(currentDeclInit.first, std::move(currentSliceProfile))).first;
         varIt->second.def.insert(currentDeclInit.second);    
     } 

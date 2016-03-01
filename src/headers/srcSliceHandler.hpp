@@ -86,12 +86,15 @@ private:
     bool sawnew;
     bool sawinit;
     bool sawgeneric;
+    bool memberAccess;
 
     //for expr_stmts    
     bool exprassign;
     bool exprop;
     bool foundexprlhs;
 
+    //For for loop init
+    bool inFor;
     std::list<NameLineNumberPair> useExprStack;
 
     bool potentialAlias;
@@ -165,10 +168,13 @@ public:
         sawnew = false;
         sawinit = false;
         sawgeneric = false;
+        memberAccess = false;
 
         exprassign = false;
         exprop = false;
         foundexprlhs = false;
+
+        inFor = false;
 
         isACallName = false;
         isConstructor = false;
@@ -211,6 +217,7 @@ public:
 
             { "for", [this](){
                 ++triggerField[forloop];
+                inFor = true;
                 //controlFlowLineNum.push(lineNum);
             } },
 
@@ -327,6 +334,7 @@ public:
                     GetDeclStmtData();
                     sawinit = true;
                 }
+                memberAccess = false;
                 currentDecl.first.clear();
                 ++triggerField[init];
             } },    
@@ -371,6 +379,7 @@ public:
                 currentDeclCtor.first.clear();
                 potentialAlias = false;
                 sawinit = false;
+                currentDeclInit.first.clear();
                 --triggerField[decl_stmt];
             } }, 
 
@@ -516,6 +525,7 @@ public:
                 --triggerField[return_stmt];
             } },
             { "control", [this](){
+                inFor = false;
                 --triggerField[control];
             } },
             { "index", [this](){
@@ -523,6 +533,9 @@ public:
             } },    
             { "operator", [this](){
                 calledFunctionName.clear();
+                if(triggerField[decl_stmt] && (currentOperator == "." || currentOperator == "->")){
+                    memberAccess = true;
+                }
                 if(currentDeclInit.first == "new"){
                      //separate new operator because we kinda need to know when we see it.
                     sawnew = true;
@@ -652,9 +665,14 @@ public:
                     }
                 }
                 if(triggerField[init] && triggerField[decl] && (triggerField[decl_stmt] || triggerField[control]) && 
-                !(triggerField[type] || triggerField[argument_list] || triggerField[call])){
-                    ProcessDeclStmt();
+                !(triggerField[type] || triggerField[argument_list])){
+                    if(triggerField[call] && !memberAccess){
+                        ProcessDeclStmt();
+                    }else if(!triggerField[call] && !memberAccess){
+                        ProcessDeclStmt();
+                    }
                 }
+                memberAccess = false;
                 exprop = false; //reset expr after each name so that the next name will be read unless there's another op in front of it
                 --triggerField[name];
             } },
@@ -811,9 +829,12 @@ public:
         //this is to handle lhs of decl stmts and rhs of decl stmts
         if((triggerField[name] || triggerField[op]) && (triggerField[decl_stmt] || triggerField[control]) && triggerField[decl] && !(triggerField[argument_list] || triggerField[index] || triggerField[preproc] || triggerField[type] || triggerField[macro])) {
             if(triggerField[init]){
-                if(!triggerField[call]){//if it's not in a call then we can do like normal
+                if(!triggerField[call] && ! memberAccess){//if it's not in a call then we can do like normal
                     currentDeclInit.first.append(ch,len);
                 }else{
+                    if(!memberAccess){
+                        currentDeclInit.first.append(ch,len);
+                    }
                     if(triggerField[argument]){//if it's in a call, ignore until we hit an argument
                         currentDeclInit.first.append(ch,len);
                     }
