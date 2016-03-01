@@ -853,9 +853,7 @@ public:
                 if(!triggerField[call]){//if it's not in a call then we can do like normal
                     currentExprStmt.first.append(str);
                 }else{
-                    if(triggerField[argument]){//if it's in a call, ignore until we hit an argument
-                        currentExprStmt.first.append(str);
-                    }
+                    currentExprStmt.first.append(str);
                 }
             }else{   
                 if(!exprop){ //haven't seen any operator (including =)

@@ -53,4 +53,19 @@ struct FlatSlicePrograms{
 		"}\n";
 		return eslice;
 	}
+	static std::string DotAndMemberAccess(){
+		std::string dslice = 
+		"int main(){\n"
+			"std::string* x = new string();\n"
+			"int z = 0;\n"
+			"z = x->length();\n"
+			"std::cerr<<x->length();\n"
+			"x->length();\n"
+			"std::string y;\n"
+			"z = y.length();\n"
+			"y.length();\n"
+			"std::cerr<<y.length();\n"
+		"}\n";
+		return dslice;
+	}
 };
