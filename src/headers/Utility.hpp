@@ -19,11 +19,15 @@
  */
 #ifndef UTILITY_HPP
 #define UTILITY_HPP
+
 #include <iostream>
 #include <unordered_set>
 #include <string>
 #include <vector>
 #include <set>
+
+#include <SliceProfile.hpp>
+
 static std::set<std::string> errorset;
 struct SliceDictionary{
     //context can be used to keep track of what function you're searching in. Makes searching faster because I assume you're using that function as the context
