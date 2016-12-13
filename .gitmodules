@@ -4,3 +4,6 @@
 [submodule "srcSAXEventDispatch"]
 	path = srcSAXEventDispatch
 	url = https://github.com/srcML/srcSAXEventDispatch.git
+[submodule "srcSAX"]
+	path = srcSAX
+	url = https://github.com/srcML/srcSAX.git
