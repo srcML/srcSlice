@@ -85,9 +85,11 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
             //Closing EventMap
             closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
                 ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
+                NotifyAll(ctx);
             };
             closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
                 ctx.dispatcher->RemoveListenerDispatch(&declTypePolicy);
+                NotifyAll(ctx);
             };
         }
 
