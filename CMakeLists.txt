@@ -39,7 +39,6 @@ include_directories(${LIBXML2_INCLUDE_DIR}
                     ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/windows 
                     srcSAXEventDispatch/src/dispatcher
                     srcSAXEventDispatch/src/policy_classes
-                    src/headers
-                    src/cpp)
+                    src/headers)
 add_subdirectory(src)
 add_subdirectory(srcSAXEventDispatch)
