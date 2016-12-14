@@ -120,7 +120,6 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
                 ctx.dispatcher->RemoveListenerDispatch(&declTypePolicy);
             };
             closeEventMap[ParserState::function] = [this](srcSAXEventContext& ctx){
-                std::cerr<<"heyt"<<std::endl;
                 NotifyAll(ctx);
             };
         }
