@@ -14,13 +14,11 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
             SrcProfile(std::string name, std::string type, std::set<unsigned int> lines){
                 identifierName = name;
                 identifierType = type;
-                lineNumbers = lines;
             }
 
             void clear(){
                 identifierName.clear();
                 identifierType.clear();
-                lineNumbers.clear();
             }
 
             std::vector<std::string> namespaces;
@@ -32,7 +30,9 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
 
             std::string identifierName;
             std::string identifierType;
-            std::set<unsigned int> lineNumbers;
+
+            std::set<unsigned int> def;
+            std::set<unsigned int> use;
         };
         SrcProfile data;
         ~srcSliceProfilePolicy(){}
@@ -57,7 +57,9 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
                 data.isStatic = declData.isStatic;
             }else if (ctx.IsOpen(ParserState::exprstmt) && ctx.IsClosed(ParserState::declstmt)){
                 std::cerr<<"Call expr"<<std::endl;
-                exprData = *policy->Data<ExprPolicy::ExprDataSet>();
+                exprData = *policy->Data<ExprPolicy::ExprData>();
+                data.def = exprData.def;
+                data.use = exprData.use;
             }
         }
 
@@ -68,7 +70,7 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
         }
     private:
         ExprPolicy exprPolicy;
-        ExprPolicy::ExprDataSet exprData;
+        ExprPolicy::ExprData exprData;
         DeclTypePolicy declTypePolicy;
         DeclTypePolicy::DeclTypeData declData;
 
