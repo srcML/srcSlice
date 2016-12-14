@@ -5,7 +5,8 @@
 #include <srcSAXHandler.hpp>
 #include <srcSliceProfile.hpp>
 #include <cassert>
-
+#include <fstream>
+#include <streambuf>
 class TestSrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEventDispatch::PolicyListener{
     public:
         ~TestSrcSlice(){}
@@ -36,7 +37,17 @@ class TestSrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAX
 
 int main(int argc, char** filename){
 	std::string codestr = "void foo(){int& abc; Object<int> onetwothree; static Object* DoReiMe; const Object* aybeecee;\n nlp::std::vector<std::string> spaces;}";
-	std::string srcmlstr = "<?xml version=\"1.0\" encoding=\"UTF-8\" standalone=\"yes\"?><unit xmlns=\"http://www.srcML.org/srcML/src\" xmlns:cpp=\"http://www.srcML.org/srcML/cpp\" revision=\"0.9.5\" language=\"C++\" filename=\"testFile.hpp\"><function><type><name>void</name></type> <name>foo</name><parameter_list>()</parameter_list><block>{<decl_stmt><decl><type><name>int</name><modifier>&amp;</modifier></type> <name>abc</name></decl>;</decl_stmt> <decl_stmt><decl><type><name><name>Object</name><argument_list type=\"generic\">&lt;<argument><expr><name>int</name></expr></argument>&gt;</argument_list></name></type> <name>onetwothree</name></decl>;</decl_stmt> <decl_stmt><decl><specifier>static</specifier> <type><name>Object</name><modifier>*</modifier></type> <name>DoReiMe</name></decl>;</decl_stmt> <decl_stmt><decl><type><specifier>const</specifier> <name>Object</name><modifier>*</modifier></type> <name>aybeecee</name></decl>;</decl_stmt><decl_stmt><decl><type><name><name>nlp</name><operator>::</operator><name>std</name><operator>::</operator><name><name>vector</name><argument_list type=\"generic\">&lt;<argument><expr><name><name>std</name><operator>::</operator><name>string</name></name></expr></argument>&gt;</argument_list></name></name></type> <name>spaces</name></decl>;</decl_stmt>}</block></function></unit>";
+    
+    std::ifstream codestream(filename[1]);
+    std::string srcmlstr;
+    
+    codestream.seekg(0, std::ios::end);   
+    srcmlstr.reserve(codestream.tellg());
+    codestream.seekg(0, std::ios::beg);
+    
+    srcmlstr.assign((std::istreambuf_iterator<char>(codestream)),
+                std::istreambuf_iterator<char>());
+    
     TestSrcSlice srcslicedata;    
     srcSAXController control(srcmlstr);
     srcSAXEventDispatch::srcSAXEventDispatcher<srcSliceProfilePolicy> handler {&srcslicedata};
