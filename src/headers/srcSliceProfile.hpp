@@ -78,8 +78,16 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
                     profileset.dataset.insert(std::make_pair(declData.nameofidentifier, data));
                 }
             }else if (ctx.IsOpen(ParserState::exprstmt) && ctx.IsClosed(ParserState::declstmt)){
-                std::cerr<<"Call expr"<<policy<<std::endl;
                 exprData = *policy->Data<ExprPolicy::ExprDataSet>();
+                for(auto var : exprData.dataset){
+                    auto it = profileset.dataset.find(var.first);
+                    if(it != profileset.dataset.end()){
+                        it->second.def = var.second.def;
+                        it->second.use = var.second.use;
+                    }else{
+                        std::cerr<<"couldn't find identifier named: "<<var.first<<std::endl;
+                    }
+                }
                 //data = exprData;
             }
         }
