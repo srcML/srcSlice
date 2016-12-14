@@ -34,6 +34,17 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
             std::set<unsigned int> def;
             std::set<unsigned int> use;
         };
+        struct ProfileDataSet{
+           ProfileDataSet() = default;
+           ProfileDataSet(std::map<std::string, SrcProfile> dat){
+            dataset = dat;
+           }
+           void clear(){
+            dataset.clear();
+           }
+           std::map<std::string, SrcProfile> dataset;
+        };
+        ProfileDataSet profileset;
         SrcProfile data;
         ~srcSliceProfilePolicy(){}
         srcSliceProfilePolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}): srcSAXEventDispatch::PolicyDispatcher(listeners){
@@ -49,17 +60,27 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
                 declData = *policy->Data<DeclTypePolicy::DeclTypeData>();
 
                 //Generate profile
-                data.identifierName = declData.nameofidentifier;
-                data.identifierType = declData.nameoftype;
-                data.isConst = declData.isConst;
-                data.isReference = declData.isReference;
-                data.isPointer = declData.isPointer;
-                data.isStatic = declData.isStatic;
+                auto it = profileset.dataset.find(declData.nameofidentifier);
+                if(it != profileset.dataset.end()){
+                    it->second.identifierName = declData.nameofidentifier;
+                    it->second.identifierType = declData.nameoftype;
+                    it->second.isConst = declData.isConst;
+                    it->second.isReference = declData.isReference;
+                    it->second.isPointer = declData.isPointer;
+                    it->second.isStatic = declData.isStatic;
+                }else{
+                    data.identifierName = declData.nameofidentifier;
+                    data.identifierType = declData.nameoftype;
+                    data.isConst = declData.isConst;
+                    data.isReference = declData.isReference;
+                    data.isPointer = declData.isPointer;
+                    data.isStatic = declData.isStatic;
+                    profileset.dataset.insert(std::make_pair(declData.nameofidentifier, data));
+                }
             }else if (ctx.IsOpen(ParserState::exprstmt) && ctx.IsClosed(ParserState::declstmt)){
-                std::cerr<<"Call expr"<<std::endl;
-                exprData = *policy->Data<ExprPolicy::ExprData>();
-                data.def = exprData.def;
-                data.use = exprData.use;
+                std::cerr<<"Call expr"<<policy<<std::endl;
+                exprData = *policy->Data<ExprPolicy::ExprDataSet>();
+                //data = exprData;
             }
         }
 
@@ -70,11 +91,10 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
         }
     private:
         ExprPolicy exprPolicy;
-        ExprPolicy::ExprData exprData;
+        ExprPolicy::ExprDataSet exprData;
         DeclTypePolicy declTypePolicy;
         DeclTypePolicy::DeclTypeData declData;
 
-        //This correct?
         void InitializeEventHandlers(){
             using namespace srcSAXEventDispatch;
 
@@ -92,6 +112,7 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
                 ctx.dispatcher->RemoveListenerDispatch(&declTypePolicy);
             };
             closeEventMap[ParserState::function] = [this](srcSAXEventContext& ctx){
+                std::cerr<<"heyt"<<std::endl;
                 NotifyAll(ctx);
             };
         }

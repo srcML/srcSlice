@@ -48,6 +48,7 @@ int main(int argc, char** filename){
     srcmlstr.assign((std::istreambuf_iterator<char>(codestream)),
                 std::istreambuf_iterator<char>());
     
+    std::cerr<<srcmlstr<<std::endl;
     TestSrcSlice srcslicedata;    
     srcSAXController control(srcmlstr);
     srcSAXEventDispatch::srcSAXEventDispatcher<srcSliceProfilePolicy> handler {&srcslicedata};
