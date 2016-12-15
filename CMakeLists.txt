@@ -23,15 +23,22 @@
 
 cmake_minimum_required(VERSION 2.8)
 project(srcSlice)
-set(CMAKE_CXX_COMPILER "c++")
-set(CMAKE_CXX_FLAGS "-std=c++0x -O3")
-enable_testing()
 
-list(APPEND CMAKE_MODULE_PATH ${CMAKE_SOURCE_DIR}/CMake)
-include(srcslice)
+# find needed libraries
+find_package(LibXml2 REQUIRED)
 
-include_directories(src/headers src/cpp
-	src/srcSAX/src/srcsax src/srcSAX/src/cpp src/srcSAX/src/windows)
+add_definitions("-std=c++11")
 
+set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+include_directories(${LIBXML2_INCLUDE_DIR}
+                    ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/srcsax
+                    ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/cpp
+                    ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/windows 
+                    srcSAXEventDispatch/src/dispatcher
+                    srcSAXEventDispatch/src/policy_classes
+                    src/headers)
 add_subdirectory(src)
-add_subdirectory(src/srcSAX/src)
+add_subdirectory(srcSAXEventDispatch)
