@@ -7,11 +7,11 @@
 //Problem with variables with same name in different scopes (Use a stack, every time change of scope push onto stack)
 //Possibly add line numbers to names
 
-class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEventDispatch::PolicyListener {
+class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEventDispatch::PolicyListener {
     public:
-        struct SrcProfile{
-            SrcProfile(){}
-            SrcProfile(std::string name, std::string type, std::set<unsigned int> lines){
+        struct FunctionSliceProfile{
+            FunctionSliceProfile(){}
+            FunctionSliceProfile(std::string name, std::string type, std::set<unsigned int> lines){
                 identifierName = name;
                 identifierType = type;
             }
@@ -34,20 +34,20 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
             std::set<unsigned int> def;
             std::set<unsigned int> use;
         };
-        struct ProfileDataSet{
-           ProfileDataSet() = default;
-           ProfileDataSet(std::map<std::string, SrcProfile> dat){
+        struct FunctionSliceProfileMap{
+           FunctionSliceProfileMap() = default;
+           FunctionSliceProfileMap(std::map<std::string, FunctionSliceProfile> dat){
             dataset = dat;
            }
            void clear(){
             dataset.clear();
            }
-           std::map<std::string, SrcProfile> dataset;
+           std::map<std::string, FunctionSliceProfile> dataset;
         };
-        ProfileDataSet profileset;
-        SrcProfile data;
-        ~srcSliceProfilePolicy(){}
-        srcSliceProfilePolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}): srcSAXEventDispatch::PolicyDispatcher(listeners){
+        FunctionSliceProfileMap profileset;
+        FunctionSliceProfile data;
+        ~FunctionProfilePolicy(){}
+        FunctionProfilePolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}): srcSAXEventDispatch::PolicyDispatcher(listeners){
             exprPolicy.AddListener(this);
             declTypePolicy.AddListener(this);
             InitializeEventHandlers();
@@ -95,7 +95,7 @@ class srcSliceProfilePolicy : public srcSAXEventDispatch::EventListener, public 
     protected:
         void * DataInner() const override {
             //export profile to listeners
-            return new SrcProfile(data);
+            return new FunctionSliceProfile(data);
         }
     private:
         ExprPolicy exprPolicy;
