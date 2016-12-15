@@ -3,7 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <srcSAXHandler.hpp>
-#include <srcSliceProfile.hpp>
+#include <FunctionSliceProfilePolicy.hpp>
 #include <cassert>
 #include <fstream>
 #include <streambuf>
@@ -12,7 +12,7 @@ class TestSrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAX
         ~TestSrcSlice(){}
         TestSrcSlice(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}) : srcSAXEventDispatch::PolicyDispatcher(listeners){}
         void Notify(const PolicyDispatcher * policy, const srcSAXEventDispatch::srcSAXEventContext & ctx) override {
-            srcslicedata = *policy->Data<srcSliceProfilePolicy::SrcProfile>();
+            srcslicedata = *policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfile>();
             datatotest.push_back(srcslicedata);
         }
 		void RunTest(){
@@ -31,8 +31,8 @@ class TestSrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAX
             return (void*)0; //To silence the warning
         }
     private:
-        srcSliceProfilePolicy::SrcProfile srcslicedata;
-        std::vector<srcSliceProfilePolicy::SrcProfile> datatotest;
+        FunctionSliceProfilePolicy::FunctionSliceProfile srcslicedata;
+        std::vector<FunctionSliceProfilePolicy::FunctionSliceProfile> datatotest;
 };
 
 int main(int argc, char** filename){
@@ -51,7 +51,7 @@ int main(int argc, char** filename){
     std::cerr<<srcmlstr<<std::endl;
     TestSrcSlice srcslicedata;    
     srcSAXController control(srcmlstr);
-    srcSAXEventDispatch::srcSAXEventDispatcher<srcSliceProfilePolicy> handler {&srcslicedata};
+    srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&srcslicedata};
     control.parse(&handler); //Start parsing
     srcslicedata.RunTest();
 }

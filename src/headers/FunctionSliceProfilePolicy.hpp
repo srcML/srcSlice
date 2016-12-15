@@ -46,8 +46,8 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
         };
         FunctionSliceProfileMap profileset;
         FunctionSliceProfile data;
-        ~FunctionProfilePolicy(){}
-        FunctionProfilePolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}): srcSAXEventDispatch::PolicyDispatcher(listeners){
+        ~FunctionSliceProfilePolicy(){}
+        FunctionSliceProfilePolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}): srcSAXEventDispatch::PolicyDispatcher(listeners){
             exprPolicy.AddListener(this);
             declTypePolicy.AddListener(this);
             InitializeEventHandlers();
