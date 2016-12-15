@@ -3,6 +3,7 @@
 #include <unordered_map>
 #include <unordered_set>
 #include <srcSAXHandler.hpp>
+#include <SrcSlicePolicy.hpp>
 #include <FunctionSliceProfilePolicy.hpp>
 #include <cassert>
 #include <fstream>

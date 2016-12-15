@@ -1,3 +1,6 @@
+#ifndef FUNCTIONSLICEPOLICY
+#define FUNCTIONSLICEPOLICY
+
 #include <srcSAXEventDispatcher.hpp>
 #include <srcSAXHandler.hpp>
 #include <exception>
@@ -14,6 +17,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
             FunctionSliceProfile(std::string name, std::string type, std::set<unsigned int> lines){
                 identifierName = name;
                 identifierType = type;
+                scopelevel = -1;
             }
 
             void clear(){
@@ -22,7 +26,10 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
             }
 
             std::vector<std::string> namespaces;
+            
             int linenumber;
+            int scopelevel;
+
             bool isConst;
             bool isReference;
             bool isPointer;
@@ -48,6 +55,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
         FunctionSliceProfile data;
         ~FunctionSliceProfilePolicy(){}
         FunctionSliceProfilePolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}): srcSAXEventDispatch::PolicyDispatcher(listeners){
+            currentscopelevel = 0;
             exprPolicy.AddListener(this);
             declTypePolicy.AddListener(this);
             InitializeEventHandlers();
@@ -88,7 +96,6 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                         std::cerr<<"couldn't find identifier named: "<<var.first<<std::endl;
                     }
                 }
-                //data = exprData;
             }
         }
 
@@ -102,7 +109,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
         ExprPolicy::ExprDataSet exprData;
         DeclTypePolicy declTypePolicy;
         DeclTypePolicy::DeclTypeData declData;
-
+        int currentscopelevel;
         void InitializeEventHandlers(){
             using namespace srcSAXEventDispatch;
 
@@ -112,12 +119,18 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
             openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx) {
                 ctx.dispatcher->AddListenerDispatch(&exprPolicy);
             };
+            openEventMap[ParserState::block] = [this](srcSAXEventContext& ctx) {
+                ++currentscopelevel;
+            };
+            closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
+                ctx.dispatcher->RemoveListenerDispatch(&declTypePolicy);
+            };
             //Closing EventMap
             closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
                 ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
             };
-            closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
-                ctx.dispatcher->RemoveListenerDispatch(&declTypePolicy);
+            closeEventMap[ParserState::block] = [this](srcSAXEventContext& ctx){
+              --currentscopelevel;  
             };
             closeEventMap[ParserState::function] = [this](srcSAXEventContext& ctx){
                 NotifyAll(ctx);
@@ -125,3 +138,4 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
         }
 
 };
+#endif
