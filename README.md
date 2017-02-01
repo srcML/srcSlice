@@ -1,6 +1,8 @@
 # srcSlice
 Lightweight tool for slicing
 
+NOTE: Current version of srcSlice in the master branch is a new version that will take advantage of the event dispatcher framework. If you'd like the working version of srcSlice, switch to the "old" srcslice branch.
+
 To build srcSlice:
 
 1. Clone the repository with 'git clone --recursive' into the desired directory. Make sure you include the --recursive as srcSlice includes a submodule that must also be cloned.
