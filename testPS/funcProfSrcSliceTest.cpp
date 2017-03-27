@@ -40,57 +40,53 @@ public:
 
 	void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override 
     {
-    	decltypedata = *policy->Data<DeclTypePolicy::DeclTypeData>();
-        datatotest.push_back(decltypedata);
+    	FSPpolicyData = *policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfile>();
+        datatotest.push_back(FSPpolicyData);
     }
 
 	void runTests()
 	{
+		std::cout << datatotest.size() << std::endl;
 		assert(datatotest.size() == 5);
-		assert(datatotest[0].nameoftype == "int");
-		assert(datatotest[0].nameofidentifier == "abc");
+		assert(datatotest[0].identifierType == "int");
+		assert(datatotest[0].identifierName == "abc");
 		assert(datatotest[0].linenumber == 1);
 		assert(datatotest[0].isConst == false);
 		assert(datatotest[0].isReference == true);
 		assert(datatotest[0].isPointer == false);
 		assert(datatotest[0].isStatic == false);
-		assert(datatotest[0].namespaces.empty());
 
-		assert(datatotest[1].nameoftype == "Object");
-		assert(datatotest[1].nameofidentifier == "onetwothree");
+		assert(datatotest[1].identifierType == "Object");
+		assert(datatotest[1].identifierName == "onetwothree");
 		assert(datatotest[1].linenumber == 1);
 		assert(datatotest[1].isConst == false);
 		assert(datatotest[1].isReference == false);
 		assert(datatotest[1].isPointer == false);
 		assert(datatotest[1].isStatic == false);
-		assert(datatotest[1].namespaces.empty());
 
-		assert(datatotest[2].nameoftype == "Object");
-		assert(datatotest[2].nameofidentifier == "DoReiMe");
+		assert(datatotest[2].identifierType == "Object");
+		assert(datatotest[2].identifierName == "DoReiMe");
 		assert(datatotest[2].linenumber == 1);
 		assert(datatotest[2].isConst == false);
 		assert(datatotest[2].isReference == false);
 		assert(datatotest[2].isPointer == true);
 		assert(datatotest[2].isStatic == true);
-		assert(datatotest[2].namespaces.empty());
 
-		assert(datatotest[3].nameoftype == "Object");
-		assert(datatotest[3].nameofidentifier == "aybeecee");
+		assert(datatotest[3].identifierType == "Object");
+		assert(datatotest[3].identifierName == "aybeecee");
 		assert(datatotest[3].linenumber == 1);
 		assert(datatotest[3].isConst == true);
 		assert(datatotest[3].isReference == false);
 		assert(datatotest[3].isPointer == true);
 		assert(datatotest[3].isStatic == false);
-		assert(datatotest[3].namespaces.empty());
 
-		assert(datatotest[4].nameoftype == "vector");
-		assert(datatotest[4].nameofidentifier == "spaces");
+		assert(datatotest[4].identifierType == "vector");
+		assert(datatotest[4].identifierName == "spaces");
 		assert(datatotest[4].linenumber == 2);
 		assert(datatotest[4].isConst == false);
 		assert(datatotest[4].isReference == false);
 		assert(datatotest[4].isPointer == false);
 		assert(datatotest[4].isStatic == false);
-		assert(datatotest[4].namespaces.size() == 2);
 	}
 
     protected:
@@ -100,12 +96,9 @@ public:
     }
 
 private:
-	// FunctionSliceProfilePolicy declpolicyP;
-	// SrcSlicePolicy declpolicyS;
+	FunctionSliceProfilePolicy::FunctionSliceProfile FSPpolicyData;
 
-	DeclTypePolicy::DeclTypeData decltypedata;
-
-	std::vector<DeclTypePolicy::DeclTypeData> datatotest;
+	std::vector<FunctionSliceProfilePolicy::FunctionSliceProfile> datatotest;
 };
 
 int main(int argc, char **filename)
@@ -113,13 +106,13 @@ int main(int argc, char **filename)
 	std::string codestr = "void foo(){int& abc; Object<int> onetwothree; static Object* DoReiMe; const Object* aybeecee;\n nlp::std::vector<std::string> spaces;}";
 	std::string srcmlstr = StringToSrcML(codestr);
 
-    funcProfSrcSliceTest decltypedata;
+    funcProfSrcSliceTest fpsstestdata;
     
     srcSAXController control(srcmlstr);
     
-    srcSAXEventDispatch::srcSAXEventDispatcher<SrcSlicePolicy> handler {&decltypedata};
+    srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&fpsstestdata};
 
     control.parse(&handler); 
     
-    decltypedata.runTests();
+    fpsstestdata.runTests();
 }
