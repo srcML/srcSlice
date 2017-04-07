@@ -120,6 +120,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     data.isPointer = declData.isPointer;
                     data.isStatic = declData.isStatic;
                     profileset.dataset.insert(std::make_pair(declData.nameofidentifier, data));
+                    std::cout << profileset.dataset.size();
                 }
             }
             // "declestmt" is closed and "exprestmt" is open
@@ -144,7 +145,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
         void *DataInner() const override 
         {
             // export profile to listeners
-            return new FunctionSliceProfile(data);
+            return new FunctionSliceProfileMap(profileset);
         }
     private:
         ExprPolicy exprPolicy;

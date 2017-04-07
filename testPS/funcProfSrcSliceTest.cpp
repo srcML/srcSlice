@@ -40,8 +40,9 @@ public:
 
 	void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override 
     {
-    	FSPpolicyData = *policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfile>();
-        datatotest.push_back(FSPpolicyData);
+    	FSPpolicyData = *policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfileMap>();
+    	for(int i = 0; i < FSPpolicyData.end(); ++i)
+        	datatotest.push_back(FSPpolicyData);
     }
 
 	void runTests()
@@ -96,11 +97,9 @@ public:
     }
 
 private:
-	FunctionSliceProfilePolicy sliceProfPolicy;
+	FunctionSliceProfilePolicy::FunctionSliceProfileMap FSPpolicyData;
 
-	FunctionSliceProfilePolicy::FunctionSliceProfile FSPpolicyData;
-
-	std::vector<FunctionSliceProfilePolicy::FunctionSliceProfile> datatotest;
+	std::vector<FunctionSliceProfilePolicy::FunctionSliceProfileMap> datatotest;
 };
 
 int main(int argc, char **filename)
@@ -112,7 +111,7 @@ int main(int argc, char **filename)
     
     srcSAXController control(srcmlstr);
     
-    srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&fpsstestdata};
+    srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicyMap> handler {&fpsstestdata};
 
     control.parse(&handler); 
     
