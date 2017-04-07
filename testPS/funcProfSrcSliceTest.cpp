@@ -96,6 +96,8 @@ public:
     }
 
 private:
+	FunctionSliceProfilePolicy sliceProfPolicy;
+
 	FunctionSliceProfilePolicy::FunctionSliceProfile FSPpolicyData;
 
 	std::vector<FunctionSliceProfilePolicy::FunctionSliceProfile> datatotest;
