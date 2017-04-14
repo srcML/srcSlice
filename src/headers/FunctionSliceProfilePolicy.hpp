@@ -101,6 +101,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                 declData = *policy->Data<DeclTypePolicy::DeclTypeData>();
 
                 // generates the profile
+                // TODO: overwrites current profile; should store both/unique key
                 auto it = profileset.dataset.find(declData.nameofidentifier);
                 if(it != profileset.dataset.end())
                 {
@@ -110,6 +111,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     it->second.isReference = declData.isReference;
                     it->second.isPointer = declData.isPointer;
                     it->second.isStatic = declData.isStatic;
+                    it->second.linenumber = declData.linenumber;
                 }
                 else // inserts into map if it's not there
                 {
@@ -119,8 +121,9 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     data.isReference = declData.isReference;
                     data.isPointer = declData.isPointer;
                     data.isStatic = declData.isStatic;
+                    data.linenumber = declData.linenumber;
                     profileset.dataset.insert(std::make_pair(declData.nameofidentifier, data));
-                    std::cout << profileset.dataset.size();
+                    // std::cout << profileset.dataset.size();
                 }
             }
             // "declestmt" is closed and "exprestmt" is open

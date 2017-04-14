@@ -47,47 +47,72 @@ public:
 
 	void runTests()
 	{
-		std::cout << datatotest.size() << std::endl;
 		assert(datatotest.size() == 5);
-		assert(datatotest[0].identifierType == "int");
-		assert(datatotest[0].identifierName == "abc");
-		assert(datatotest[0].linenumber == 1);
-		assert(datatotest[0].isConst == false);
-		assert(datatotest[0].isReference == true);
-		assert(datatotest[0].isPointer == false);
-		assert(datatotest[0].isStatic == false);
 
-		assert(datatotest[1].identifierType == "Object");
-		assert(datatotest[1].identifierName == "onetwothree");
-		assert(datatotest[1].linenumber == 1);
-		assert(datatotest[1].isConst == false);
-		assert(datatotest[1].isReference == false);
-		assert(datatotest[1].isPointer == false);
-		assert(datatotest[1].isStatic == false);
+		auto it0 = FSPpolicyData.dataset.find("abc");
+		if(it0 != FSPpolicyData.dataset.end())
+		{
+			assert((*it0).second.identifierType == "int");
+			assert((*it0).second.linenumber == 1);
+			assert((*it0).second.isConst == false);
+			assert((*it0).second.isReference == true);
+			assert((*it0).second.isPointer == false);
+			assert((*it0).second.isStatic == false);
+		}
+		else
+			assert(false);
 
-		assert(datatotest[2].identifierType == "Object");
-		assert(datatotest[2].identifierName == "DoReiMe");
-		assert(datatotest[2].linenumber == 1);
-		assert(datatotest[2].isConst == false);
-		assert(datatotest[2].isReference == false);
-		assert(datatotest[2].isPointer == true);
-		assert(datatotest[2].isStatic == true);
+		auto it1 = FSPpolicyData.dataset.find("onetwothree");
+		if(it1 != FSPpolicyData.dataset.end())
+		{
+			assert((*it1).second.identifierType == "Object");
+			assert((*it1).second.linenumber == 1);
+			assert((*it1).second.isConst == false);
+			assert((*it1).second.isReference == false);
+			assert((*it1).second.isPointer == false);
+			assert((*it1).second.isStatic == false);
+		}
+		else
+			assert(false);
 
-		assert(datatotest[3].identifierType == "Object");
-		assert(datatotest[3].identifierName == "aybeecee");
-		assert(datatotest[3].linenumber == 1);
-		assert(datatotest[3].isConst == true);
-		assert(datatotest[3].isReference == false);
-		assert(datatotest[3].isPointer == true);
-		assert(datatotest[3].isStatic == false);
+		auto it2 = FSPpolicyData.dataset.find("DoReiMe");
+		if(it2 != FSPpolicyData.dataset.end())
+		{
+			assert((*it2).second.identifierType == "Object");
+			assert((*it2).second.linenumber == 1);
+			assert((*it2).second.isConst == false);
+			assert((*it2).second.isReference == false);
+			assert((*it2).second.isPointer == true);
+			assert((*it2).second.isStatic == true);
+		}
+		else
+			assert(false);
 
-		assert(datatotest[4].identifierType == "vector");
-		assert(datatotest[4].identifierName == "spaces");
-		assert(datatotest[4].linenumber == 2);
-		assert(datatotest[4].isConst == false);
-		assert(datatotest[4].isReference == false);
-		assert(datatotest[4].isPointer == false);
-		assert(datatotest[4].isStatic == false);
+		auto it3 = FSPpolicyData.dataset.find("aybeecee");
+		if(it3 != FSPpolicyData.dataset.end())
+		{
+			assert((*it3).second.identifierType == "Object");
+			assert((*it3).second.linenumber == 1);
+			assert((*it3).second.isConst == true);
+			assert((*it3).second.isReference == false);
+			assert((*it3).second.isPointer == true);
+			assert((*it3).second.isStatic == false);
+		}
+		else
+			assert(false);
+
+		auto it4 = FSPpolicyData.dataset.find("spaces");
+		if(it4 != FSPpolicyData.dataset.end())
+		{
+			assert((*it4).second.identifierType == "vector");
+			assert((*it4).second.linenumber == 2);
+			assert((*it4).second.isConst == false);
+			assert((*it4).second.isReference == false);
+			assert((*it4).second.isPointer == false);
+			assert((*it4).second.isStatic == false);
+		}
+		else
+			assert(false);
 	}
 
     protected:
