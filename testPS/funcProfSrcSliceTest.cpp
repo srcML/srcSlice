@@ -1,6 +1,5 @@
 #include <srcSAXEventDispatcher.hpp>
 #include <srcSAXHandler.hpp>
-#include <SrcSlicePolicy.hpp>
 #include <FunctionSliceProfilePolicy.hpp>
 #include <cassert>
 #include <srcml.h>
