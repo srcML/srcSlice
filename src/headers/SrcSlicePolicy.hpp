@@ -6,34 +6,32 @@
 #include <exception>
 #include <FunctionSliceProfilePolicy.hpp>
 #include <unordered_map>
+#include <FunctionSignaturePolicy.hpp>
 
 class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEventDispatch::PolicyListener 
 {
     public:
+        ~SrcSlicePolicy(){};
+
         SrcSlicePolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener*> listeners = {}) : srcSAXEventDispatch::PolicyDispatcher(listeners)
         {
             // making SSP a listener for FSPP
             funcSliceProfilePolicy.AddListener(this);
+            funcSigPol.AddListener(this);
+
             InitializeEventHandlers();
         }
 
-        /*This will contain the full map*/
         struct SliceProfileSet
         {
-            SliceProfileSet(){}
-
-            // map containing unique variable name key (possibly var name, line numb, func, file); tiers; return all and user can choose
-            // and profile data (small maps from FuctionSliceProfilePolicy)
-            std::unordered_map<std::string, FunctionSliceProfilePolicy::FunctionSliceProfileMap> varNameProf;
+            SliceProfileSet(){};
 
             void clear()
             {
                 varNameProf.clear();
-
-                /*
-                for(auto it = varNameProf.begin(); it != varNameProf.end(); ++it)
-                */
             }
+
+            std::unordered_map<std::string, FunctionSliceProfilePolicy::FunctionSliceProfile> varNameProf;
         };
 
         // other policies notify that finished
@@ -41,34 +39,68 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override 
         {
             using namespace srcSAXEventDispatch;
-            functionSliceData = policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfileMap>();
+
+            if(ctx.IsOpen(ParserState::functionblock))
+            {
+                funcSigDat = policy->Data<FunctionSignaturePolicy::SignatureData>();
+
+                keyName = "";
+
+                for(auto f : funcSigDat->parameters) // loop through vector of parameters
+                {
+                    keyName = keyName + f.nameofidentifier; // HOW TO MAKE SEPARATE ELEMENTS FOR EACH PARAMETER? 
+                    // THIS ADDS THE NAMES OF ALL THE PARAMETERS ONTO THE END
+                }
+                keyName = funcSigDat->functionName + keyName; // function name then parameter names
+            }
+            else
+            {
+                functionSliceData = policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfileMap>();
+                for(auto e : functionSliceData->dataset)
+                {
+                    keyName = keyName + funcSliceProfilePolicy.data.identifierName; // function names, parameter names, then identifier name
+
+                    // keyName = FILENAME + keyName
+
+                    data.varNameProf.insert(std::make_pair(keyName, e.second));
+                }
+            }
         }
 
+        SliceProfileSet data;
+
+        FunctionSliceProfilePolicy funcSliceProfilePolicy;
+        FunctionSliceProfilePolicy::FunctionSliceProfileMap *functionSliceData;
+
+        FunctionSignaturePolicy funcSigPol;
+        FunctionSignaturePolicy::SignatureData *funcSigDat;
+
+        std::string keyName;
+ 
     protected:
         void *DataInner() const override 
         {
-            // export profile to listeners
-            return new SliceProfileSet(data);
+            return new SliceProfileSet(data); // export profile to listeners
         }
         
     private:
-        SliceProfileSet data;
-        FunctionSliceProfilePolicy funcSliceProfilePolicy;
-        FunctionSliceProfilePolicy::FunctionSliceProfileMap *functionSliceData;
-        int currentscopelevel;
+       int currentscopelevel;
 
         void InitializeEventHandlers()
         {
             using namespace srcSAXEventDispatch;
+
             // add policy to listener
             openEventMap[ParserState::function] = [this](srcSAXEventContext& ctx)
             {
                 ctx.dispatcher->AddListenerDispatch(&funcSliceProfilePolicy);
+                ctx.dispatcher->AddListenerDispatch(&funcSigPol);
             };
 
             closeEventMap[ParserState::function] = [this](srcSAXEventContext& ctx)
             {
                 ctx.dispatcher->RemoveListenerDispatch(&funcSliceProfilePolicy);
+                ctx.dispatcher->RemoveListenerDispatch(&funcSigPol);
             };
         }
 };
