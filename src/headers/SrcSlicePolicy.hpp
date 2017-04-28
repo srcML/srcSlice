@@ -43,24 +43,38 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             if(ctx.IsOpen(ParserState::functionblock))
             {
                 funcSigDat = policy->Data<FunctionSignaturePolicy::SignatureData>();
-
-                keyName = "";
+                FunctionSliceProfilePolicy::FunctionSliceProfile funcSliceDat;
 
                 for(auto f : funcSigDat->parameters) // loop through vector of parameters
                 {
-                    keyName = keyName + f.nameofidentifier; // HOW TO MAKE SEPARATE ELEMENTS FOR EACH PARAMETER? 
-                    // THIS ADDS THE NAMES OF ALL THE PARAMETERS ONTO THE END
+                    funcSliceDat.linenumber = f.linenumber;
+                    funcSliceDat.scopelevel = 1; // PROBABLY NOT RIGHT
+                    funcSliceDat.isConst = f.isConst;
+                    funcSliceDat.isReference = f.isReference;
+                    funcSliceDat.isPointer = f.isPointer;
+                    funcSliceDat.isStatic = f.isStatic;
+                    funcSliceDat.identifierName = f.nameofidentifier;
+                    funcSliceDat.identifierType = f.nameoftype;
+                
+                    funcName = funcSigDat->functionName;
+
+                    keyName = keyName + f.nameofidentifier; 
+                    keyName = funcName + keyName; // function name then parameter name
+
+                    keyName = ctx.currentFileName + keyName;
+
+                    data.varNameProf.insert(std::make_pair(keyName, funcSliceDat));
                 }
-                keyName = funcSigDat->functionName + keyName; // function name then parameter names
             }
             else
             {
                 functionSliceData = policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfileMap>();
+
                 for(auto e : functionSliceData->dataset)
                 {
-                    keyName = keyName + funcSliceProfilePolicy.data.identifierName; // function names, parameter names, then identifier name
+                    keyName = keyName + funcName + funcSliceProfilePolicy.data.identifierName; // function name then identifier name
 
-                    // keyName = FILENAME + keyName
+                    keyName = ctx.currentFileName + keyName;
 
                     data.varNameProf.insert(std::make_pair(keyName, e.second));
                 }
@@ -75,7 +89,8 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         FunctionSignaturePolicy funcSigPol;
         FunctionSignaturePolicy::SignatureData *funcSigDat;
 
-        std::string keyName;
+        std::string keyName = "";
+        std::string funcName = "";
  
     protected:
         void *DataInner() const override 
