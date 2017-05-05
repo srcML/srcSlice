@@ -1,1 +1,0 @@
-/usr/bin/c++       CMakeFiles/srcslicetest.dir/srcSliceTest.cpp.o  -o ../bin/srcslicetest -rdynamic ../bin/libsrcsax.a -lsrcml -lxml2 
