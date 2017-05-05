@@ -18,7 +18,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             // making SSP a listener for FSPP
             funcSliceProfilePolicy.AddListener(this);
             funcSigPol.AddListener(this);
-
+ 
             InitializeEventHandlers();
         }
 
@@ -61,9 +61,13 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     keyName = keyName + f.nameofidentifier; 
                     keyName = funcName + keyName; // function name then parameter name
 
-                    keyName = ctx.currentFileName + keyName;
+                    keyName = ctx.currentFilePath + keyName;
 
                     data.varNameProf.insert(std::make_pair(keyName, funcSliceDat));
+
+                    std::cout << ctx.currentFilePath << std::endl;
+
+                    keyName.clear();
                 }
             }
             else
@@ -72,11 +76,15 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
 
                 for(auto e : functionSliceData->dataset)
                 {
-                    keyName = keyName + funcName + funcSliceProfilePolicy.data.identifierName; // function name then identifier name
+                    keyName = keyName + funcName + e.second.identifierName; // function name then identifier name
 
-                    keyName = ctx.currentFileName + keyName;
+                    keyName = ctx.currentFilePath + keyName;
 
                     data.varNameProf.insert(std::make_pair(keyName, e.second));
+
+                    std::cout << ctx.currentFilePath << std::endl;
+
+                    keyName.clear();
                 }
             }
         }
@@ -116,6 +124,11 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             {
                 ctx.dispatcher->RemoveListenerDispatch(&funcSliceProfilePolicy);
                 ctx.dispatcher->RemoveListenerDispatch(&funcSigPol);
+            };
+
+            closeEventMap[ParserState::archive] = [this](srcSAXEventContext& ctx)
+            {
+                NotifyAll(ctx);
             };
         }
 };
