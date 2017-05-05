@@ -1,0 +1,1 @@
+/usr/bin/c++       CMakeFiles/funcproftest.dir/funcProfSrcSliceTest.cpp.o  -o ../bin/funcproftest -rdynamic ../bin/libsrcsax.a -lsrcml -lxml2 
