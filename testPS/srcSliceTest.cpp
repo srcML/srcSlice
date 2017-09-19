@@ -1,6 +1,6 @@
 #include <srcSAXEventDispatcher.hpp>
 #include <srcSAXHandler.hpp>
-#include <SrcSlicePolicy.hpp>
+#include "../src/headers/SrcSlicePolicy.hpp"
 #include <cassert>
 #include <srcml.h>
 
