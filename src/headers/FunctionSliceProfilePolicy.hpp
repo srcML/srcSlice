@@ -133,8 +133,10 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                 for(auto var : exprData.dataset)
                 {
                     auto it = profileset.dataset.find(var.first);
+                    std::cout << profileset.dataset.size() << "\n";
                     if(it != profileset.dataset.end()) // if "it" hadn't reached the end, meaning the string was found
                     {
+                        std::cout << "profileset dataset end\n";
                         it->second.def = var.second.def;
                         it->second.use = var.second.use;
                     }
