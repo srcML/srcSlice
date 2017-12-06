@@ -56,6 +56,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
 
             std::set<unsigned int> def;
             std::set<unsigned int> use;
+
         };
 
         struct FunctionSliceProfileMap // the mapping of var name string and the profile
@@ -97,7 +98,8 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
             // "declestmt" is open and "exprestmt" is closed
             if(ctx.IsOpen(ParserState::declstmt) && ctx.IsClosed(ParserState::exprstmt))
             {
-                std::cerr<<"Call decl"<<std::endl;
+                std::cerr << "declstmt is open && exprstmt is close\n";
+                //std::cerr<<"Call decl"<<std::endl;
                 declData = *policy->Data<DeclTypePolicy::DeclTypeData>();
 
                 // generates the profile
@@ -105,6 +107,8 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                 auto it = profileset.dataset.find(declData.nameofidentifier);
                 if(it != profileset.dataset.end())
                 {
+                    std::cerr << "found " << it->second.identifierName << "\n";
+                    std::cerr << "overwriting with " << declData.nameofidentifier << "\n";
                     it->second.identifierName = declData.nameofidentifier;
                     it->second.identifierType = declData.nameoftype;
                     it->second.isConst = declData.isConst;
@@ -112,9 +116,13 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     it->second.isPointer = declData.isPointer;
                     it->second.isStatic = declData.isStatic;
                     it->second.linenumber = declData.linenumber;
+                    it->second.def.insert(declData.linenumber);
                 }
                 else // inserts into map if it's not there
                 {
+                    //need to clear out def if new var
+                    data.def.clear();
+                    std::cerr << "inserting into map " << declData.nameofidentifier << "\n";
                     data.identifierName = declData.nameofidentifier;
                     data.identifierType = declData.nameoftype;
                     data.isConst = declData.isConst;
@@ -122,13 +130,15 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     data.isPointer = declData.isPointer;
                     data.isStatic = declData.isStatic;
                     data.linenumber = declData.linenumber;
+                    data.def.insert(declData.linenumber);
                     profileset.dataset.insert(std::make_pair(declData.nameofidentifier, data));
                     // std::cout << profileset.dataset.size();
                 }
             }
             // "declestmt" is closed and "exprestmt" is open
-            else if(ctx.IsOpen(ParserState::exprstmt) && ctx.IsClosed(ParserState::declstmt))
+            else if (ctx.IsOpen(ParserState::exprstmt) && ctx.IsClosed(ParserState::declstmt))
             {
+                std::cerr << "declstmt is closed && exprstmt is open\n";
                 exprData = *policy->Data<ExprPolicy::ExprDataSet>();
                 for(auto var : exprData.dataset)
                 {
@@ -136,9 +146,12 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     std::cout << profileset.dataset.size() << "\n";
                     if(it != profileset.dataset.end()) // if "it" hadn't reached the end, meaning the string was found
                     {
+                        //need to insert into def/use, not overwrite it
                         std::cout << "profileset dataset end\n";
-                        it->second.def = var.second.def;
-                        it->second.use = var.second.use;
+                        for(auto i : var.second.def)
+                            it->second.def.insert(i);
+                        for(auto i : var.second.use)
+                            it->second.use.insert(i);
                     }
                     else // if the string for the var name wasn't found
                         std::cerr<<"Couldn't find identifier named: "<<var.first<<std::endl;
