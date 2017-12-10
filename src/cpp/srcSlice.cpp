@@ -82,6 +82,35 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
         return (void*)0; 
     }
 
+  void getSlice(std::string s) {
+    for(auto p : sliceprofiles) {
+      for(auto fp : p.varNameProf) { 
+        if(fp.second.identifierName == s ) {
+          auto fslice = fp.second;
+
+          std::cerr << "var: " << fslice.identifierName << " defined on lines: ";
+          for(auto ln : fslice.def) {
+            std::cerr << ln << ", ";
+          }
+          std::cerr << "\n";
+
+          std::cerr << "var: " << fslice.identifierName << " used on lines: ";
+          for(auto ln : fslice.use) {
+            std::cerr << ln << ", ";
+          }
+          std::cerr << "\n";
+      
+          std::cerr << "var: " << fslice.identifierName << " has some effect on: ";
+          for(auto dvar : fslice.dvars) {
+            std::cerr << dvar << ", ";
+          }
+          std::cerr << "\n\n";
+        }
+
+      }
+    }
+  }
+
   void display() {
 
     // for(auto f : signaturedata) {
@@ -215,7 +244,7 @@ int main(int argc, char** argv){
   //srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&srcslicedata};
   srcSAXEventDispatch::srcSAXEventDispatcher<SrcSlicePolicy> handler {&srcslicedata};
   control.parse(&handler); //Start parsing
-  srcslicedata.display();
+  srcslicedata.getSlice("a");
 
   // for(auto i : srcslicedata.data.varNameProf) {
   //   std::cout << i.second.identifierName << "\n";
