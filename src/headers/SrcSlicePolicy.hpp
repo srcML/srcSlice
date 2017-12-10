@@ -55,6 +55,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     funcSliceDat.isStatic = f.isStatic;
                     funcSliceDat.identifierName = f.nameofidentifier;
                     funcSliceDat.identifierType = f.nameoftype;
+                    funcSliceDat.def.insert(f.linenumber);
                 
                     funcName = funcSigDat->functionName;
 
@@ -68,6 +69,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     std::cout << ctx.currentFilePath << std::endl;
 
                     keyName.clear();
+
                 }
             }
             else

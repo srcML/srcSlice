@@ -54,6 +54,8 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
 
   SrcSlice(std::initializer_list<srcSAXEventDispatch::PolicyListener*> listeners = {}) : srcSAXEventDispatch::PolicyDispatcher(listeners)
   {
+    // FuncSigPolicy.AddListener(this);
+    // InitializeEventHandlers();
 
   };
 
@@ -61,13 +63,17 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
 
   void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override 
     {
-      // SSPolicyData = *policy->Data<SrcSlicePolicy::SliceProfileSet>();
-      // for(auto e : SSPolicyData.varNameProf) {
-      //   FSprofiles.push_back(e.second);
-      // }
+
+      sliceprofile = *policy->Data<SrcSlicePolicy::SliceProfileSet>();
+      sliceprofiles.push_back(sliceprofile);
+
+      /*
       FSPpolicyData = *policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfileMap>();
       for(auto e : FSPpolicyData.dataset)
           FSprofiles.push_back(e.second);
+      */
+      // sigdata = *policy->Data<FunctionSignaturePolicy::SignatureData>();
+      // signaturedata.push_back(sigdata);
 
     }
 
@@ -77,6 +83,36 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
     }
 
   void display() {
+
+    // for(auto f : signaturedata) {
+    //   std::cerr << f.returnType << " " << f.functionName << "()\n";
+    // }
+    
+    for(auto p : sliceprofiles) {
+      for(auto s : p.varNameProf) {
+        std::cerr << s.first << "\n";
+        std::cerr << "var: " << s.second.identifierName << " defined on lines: ";
+        for(auto ln : s.second.def) {
+          std::cerr << ln << ", ";
+        }
+        std::cerr << "\n";
+
+        std::cerr << "var: " << s.second.identifierName << " used on lines: ";
+        for(auto ln : s.second.use) {
+          std::cerr << ln << ", ";
+        }
+        std::cerr << "\n";
+      
+        std::cerr << "var: " << s.second.identifierName << " has some effect on: ";
+        for(auto dvar : s.second.dvars) {
+          std::cerr << dvar << ", ";
+        } 
+        std::cerr << "\n\n\n\n";
+      }
+    }
+
+    /*
+
 
     for(auto profile : FSprofiles) {
       std::cerr << "var: " << profile.identifierName << " defined on lines: ";
@@ -97,6 +133,7 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
       } 
       std::cerr << "\n\n";
     }
+    */
 
 
 
@@ -145,15 +182,17 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
   }
 
 private:
-  //SrcSlicePolicy::SliceProfileSet srcData;
 
-  // SrcSlicePolicy::SliceProfileSet SSPolicyData;
+  //FunctionSignaturePolicy::SignatureData sigdata;
+  //std::vector<FunctionSignaturePolicy::SignatureData> signaturedata;
 
+  SrcSlicePolicy::SliceProfileSet sliceprofile;
+  std::vector<SrcSlicePolicy::SliceProfileSet> sliceprofiles;
+
+  /*
   FunctionSliceProfilePolicy::FunctionSliceProfileMap FSPpolicyData;
-
   std::vector<FunctionSliceProfilePolicy::FunctionSliceProfile> FSprofiles;
-
-
+  */
 };
 
 int main(int argc, char** argv){
@@ -169,14 +208,14 @@ int main(int argc, char** argv){
   // std::string codestr = "int main() {\n int a = 0;\nint b = a + 1;\n int c = a + b + 1;\n }\n";
   // std::string srcmlstr = StringToSrcML(codestr);
   std::string srcmlstr = filetostring(argv[1]);
-  std::cerr << srcmlstr << std::endl;
+  //std::cerr << srcmlstr << std::endl;
 
   SrcSlice srcslicedata;
   srcSAXController control(srcmlstr);
-  srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&srcslicedata};
+  //srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&srcslicedata};
+  srcSAXEventDispatch::srcSAXEventDispatcher<SrcSlicePolicy> handler {&srcslicedata};
   control.parse(&handler); //Start parsing
   srcslicedata.display();
-
 
   // for(auto i : srcslicedata.data.varNameProf) {
   //   std::cout << i.second.identifierName << "\n";
