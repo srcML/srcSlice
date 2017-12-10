@@ -61,11 +61,14 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
 
   void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override 
     {
-      //srcData = *policy->Data<SrcSlicePolicy::SliceProfileSet>();
-
+      // SSPolicyData = *policy->Data<SrcSlicePolicy::SliceProfileSet>();
+      // for(auto e : SSPolicyData.varNameProf) {
+      //   FSprofiles.push_back(e.second);
+      // }
       FSPpolicyData = *policy->Data<FunctionSliceProfilePolicy::FunctionSliceProfileMap>();
       for(auto e : FSPpolicyData.dataset)
           FSprofiles.push_back(e.second);
+
     }
 
   void *DataInner() const override 
@@ -81,13 +84,24 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
         std::cerr << ln << ", ";
       }
       std::cerr << "\n";
+
       std::cerr << "var: " << profile.identifierName << " used on lines: ";
       for(auto ln : profile.use) {
         std::cerr << ln << ", ";
       }
+      std::cerr << "\n";
+      
+      std::cerr << "var: " << profile.identifierName << " has some effect on: ";
+      for(auto dvar : profile.dvars) {
+        std::cerr << dvar << ", ";
+      } 
       std::cerr << "\n\n";
-      //std::cerr << profile.def[0] << "\n";
     }
+
+
+
+
+
     // for(auto e : srcData.varNameProf) {
 
     //   // std::string msg = "";
@@ -133,9 +147,12 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
 private:
   //SrcSlicePolicy::SliceProfileSet srcData;
 
+  // SrcSlicePolicy::SliceProfileSet SSPolicyData;
+
   FunctionSliceProfilePolicy::FunctionSliceProfileMap FSPpolicyData;
 
   std::vector<FunctionSliceProfilePolicy::FunctionSliceProfile> FSprofiles;
+
 
 };
 
