@@ -56,6 +56,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
 
             std::set<unsigned int> def;
             std::set<unsigned int> use;
+            std::set<std::string> dvars;
 
         };
 
@@ -94,7 +95,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
         void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override 
         {
             using namespace srcSAXEventDispatch;
-            
+
             // "declestmt" is open and "exprestmt" is closed
             if(ctx.IsOpen(ParserState::declstmt) && ctx.IsClosed(ParserState::exprstmt))
             {
@@ -133,7 +134,17 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     data.def.insert(declData.linenumber);
                     profileset.dataset.insert(std::make_pair(declData.nameofidentifier, data));
                     // std::cout << profileset.dataset.size();
+                    // uses of other variables
+                    for (auto varname : declData.exprvars) {
+                      auto it = profileset.dataset.find(varname);
+                      if (it != profileset.dataset.end()) {
+                        // varname was used at linenumber, varname has impact on nameofidentifier
+                        it->second.use.insert(declData.linenumber);
+                        it->second.dvars.insert(declData.nameofidentifier);
+                      }
+                    }
                 }
+            
             }
             // "declestmt" is closed and "exprestmt" is open
             else if (ctx.IsOpen(ParserState::exprstmt) && ctx.IsClosed(ParserState::declstmt))
