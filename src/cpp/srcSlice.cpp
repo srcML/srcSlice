@@ -111,32 +111,82 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
     }
   }
 
-  void display() {
+  void display_csv() {
 
-    // for(auto f : signaturedata) {
-    //   std::cerr << f.returnType << " " << f.functionName << "()\n";
-    // }
-    
     for(auto p : sliceprofiles) {
       for(auto s : p.varNameProf) {
-        std::cerr << s.first << "\n";
-        std::cerr << "var: " << s.second.identifierName << " defined on lines: ";
-        for(auto ln : s.second.def) {
-          std::cerr << ln << ", ";
+
+        std::string info = s.first;
+        std::string delimiter = "|";
+
+        size_t pos = 0;
+        std::vector<std::string> tokens;
+
+        while ((pos = info.find(delimiter)) != std::string::npos) {
+          std::string token = info.substr(0, pos);
+          tokens.push_back(token);
+          info.erase(0, pos + delimiter.length());
         }
+        // only variable name is left
+        tokens.push_back(info);
+
+        std::string filename = tokens[0];
+        std::string funcname = tokens[1];
+        std::string varname  = tokens[2];
+
+        std::cerr << filename + ',' + funcname + ',' + varname + ',';
+
+        std::cerr << "def{";
+        int def_count = 0;
+        for(auto def : s.second.def) {
+          std::cerr << def;
+          def_count++;
+          if(def_count != s.second.def.size())
+            std::cerr << ',';
+        }
+        std::cerr << "},";
+
+        std::cerr << "use{";
+        int use_count = 0;
+        for(auto use : s.second.use) {
+          std::cerr << use;
+          use_count++;
+          if(use_count != s.second.use.size())
+            std::cerr << ',';
+        }
+        std::cerr << "},";
+
+        std::cerr << "dvars{";
+        int dvar_count = 0;
+        for(auto dvar : s.second.dvars) {
+          std::cerr << dvar;
+          dvar_count++;
+          if(dvar_count != s.second.dvars.size())
+            std::cerr << ',';
+        }
+        std::cerr << "},";
+
         std::cerr << "\n";
 
-        std::cerr << "var: " << s.second.identifierName << " used on lines: ";
-        for(auto ln : s.second.use) {
-          std::cerr << ln << ", ";
-        }
-        std::cerr << "\n";
+
+
+        // std::cerr << "var: " << s.second.identifierName << " defined on lines: ";
+        // for(auto ln : s.second.def) {
+        //   std::cerr << ln << ", ";
+        // }
+        // std::cerr << "\n";
+
+        // std::cerr << "var: " << s.second.identifierName << " used on lines: ";
+        // for(auto ln : s.second.use) {
+        //   std::cerr << ln << ", ";
+        // }
+        // std::cerr << "\n";
       
-        std::cerr << "var: " << s.second.identifierName << " has some effect on: ";
-        for(auto dvar : s.second.dvars) {
-          std::cerr << dvar << ", ";
-        } 
-        std::cerr << "\n\n\n\n";
+        // std::cerr << "var: " << s.second.identifierName << " has some effect on: ";
+        // for(auto dvar : s.second.dvars) {
+        //   std::cerr << dvar << ", ";
+        // } 
+        // std::cerr << "\n\n\n\n";
       }
     }
 
@@ -244,7 +294,7 @@ int main(int argc, char** argv){
   //srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&srcslicedata};
   srcSAXEventDispatch::srcSAXEventDispatcher<SrcSlicePolicy> handler {&srcslicedata};
   control.parse(&handler); //Start parsing
-  srcslicedata.getSlice("a");
+  srcslicedata.display_csv();
 
   // for(auto i : srcslicedata.data.varNameProf) {
   //   std::cout << i.second.identifierName << "\n";

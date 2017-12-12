@@ -99,7 +99,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
             // "declestmt" is open and "exprestmt" is closed
             if(ctx.IsOpen(ParserState::declstmt) && ctx.IsClosed(ParserState::exprstmt))
             {
-                std::cerr << "declstmt is open && exprstmt is close\n";
+                //std::cerr << "declstmt is open && exprstmt is close\n";
                 //std::cerr<<"Call decl"<<std::endl;
                 declData = *policy->Data<DeclTypePolicy::DeclTypeData>();
 
@@ -108,8 +108,8 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                 auto it = profileset.dataset.find(declData.nameofidentifier);
                 if(it != profileset.dataset.end())
                 {
-                    std::cerr << "found " << it->second.identifierName << "\n";
-                    std::cerr << "overwriting with " << declData.nameofidentifier << "\n";
+                    //std::cerr << "found " << it->second.identifierName << "\n";
+                    //std::cerr << "overwriting with " << declData.nameofidentifier << "\n";
                     it->second.identifierName = declData.nameofidentifier;
                     it->second.identifierType = declData.nameoftype;
                     it->second.isConst = declData.isConst;
@@ -123,7 +123,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                 {
                     //need to clear out def if new var
                     data.def.clear();
-                    std::cerr << "inserting into map " << declData.nameofidentifier << "\n";
+                    //std::cerr << "inserting into map " << declData.nameofidentifier << "\n";
                     data.identifierName = declData.nameofidentifier;
                     data.identifierType = declData.nameoftype;
                     data.isConst = declData.isConst;
@@ -149,23 +149,23 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
             // "declestmt" is closed and "exprestmt" is open
             else if (ctx.IsOpen(ParserState::exprstmt) && ctx.IsClosed(ParserState::declstmt))
             {
-                std::cerr << "declstmt is closed && exprstmt is open\n";
+                //std::cerr << "declstmt is closed && exprstmt is open\n";
                 exprData = *policy->Data<ExprPolicy::ExprDataSet>();
                 for(auto var : exprData.dataset)
                 {
                     auto it = profileset.dataset.find(var.first);
-                    std::cout << profileset.dataset.size() << "\n";
+                    //std::cout << profileset.dataset.size() << "\n";
                     if(it != profileset.dataset.end()) // if "it" hadn't reached the end, meaning the string was found
                     {
                         //need to insert into def/use, not overwrite it
-                        std::cout << "profileset dataset end\n";
+                       // std::cout << "profileset dataset end\n";
                         for(auto i : var.second.def)
                             it->second.def.insert(i);
                         for(auto i : var.second.use)
                             it->second.use.insert(i);
                     }
-                    else // if the string for the var name wasn't found
-                        std::cerr<<"Couldn't find identifier named: "<<var.first<<std::endl;
+                    //else // if the string for the var name wasn't found
+                        //std::cerr<<"Couldn't find identifier named: "<<var.first<<std::endl;
                 }
             }
         }

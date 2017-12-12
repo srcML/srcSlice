@@ -60,13 +60,13 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     funcName = funcSigDat->functionName;
 
                     keyName = keyName + f.nameofidentifier; 
-                    keyName = funcName + keyName; // function name then parameter name
+                    keyName = funcName + '|' + keyName; // function name then parameter name
 
-                    keyName = ctx.currentFilePath + keyName;
+                    keyName = ctx.currentFilePath + '|' + keyName;
 
                     data.varNameProf.insert(std::make_pair(keyName, funcSliceDat));
 
-                    std::cout << ctx.currentFilePath << std::endl;
+                    //std::cout << ctx.currentFilePath << std::endl;
 
                     keyName.clear();
 
@@ -78,13 +78,13 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
 
                 for(auto e : functionSliceData->dataset)
                 {
-                    keyName = keyName + funcName + e.second.identifierName; // function name then identifier name
+                    keyName = keyName + funcName + '|' + e.second.identifierName; // function name then identifier name
 
-                    keyName = ctx.currentFilePath + keyName;
+                    keyName = ctx.currentFilePath + '|' + keyName;
 
                     data.varNameProf.insert(std::make_pair(keyName, e.second));
 
-                    std::cout << ctx.currentFilePath << std::endl;
+                    //std::cout << ctx.currentFilePath << std::endl;
 
                     keyName.clear();
                 }
