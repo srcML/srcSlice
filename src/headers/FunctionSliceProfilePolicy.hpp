@@ -57,6 +57,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
             std::set<unsigned int> def;
             std::set<unsigned int> use;
             std::set<std::string> dvars;
+            std::set<std::string> pointers;
 
         };
 
@@ -123,7 +124,7 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                 {
                     //need to clear out def if new var
                     data.def.clear();
-                    //std::cerr << "inserting into map " << declData.nameofidentifier << "\n";
+
                     data.identifierName = declData.nameofidentifier;
                     data.identifierType = declData.nameoftype;
                     data.isConst = declData.isConst;
@@ -132,9 +133,18 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                     data.isStatic = declData.isStatic;
                     data.linenumber = declData.linenumber;
                     data.def.insert(declData.linenumber);
+
+                    // need to clear out pointers if new var
+                    data.pointers.clear();
+                    for(auto pnt : declData.pointers) {
+                        data.pointers.insert(pnt);
+                    }
+
                     profileset.dataset.insert(std::make_pair(declData.nameofidentifier, data));
+
                     // std::cout << profileset.dataset.size();
                     // uses of other variables
+
                     for (auto varname : declData.exprvars) {
                       auto it = profileset.dataset.find(varname);
                       if (it != profileset.dataset.end()) {
@@ -143,6 +153,10 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                         it->second.dvars.insert(declData.nameofidentifier);
                       }
                     }
+
+
+
+
                 }
             
             }
@@ -161,12 +175,30 @@ class FunctionSliceProfilePolicy : public srcSAXEventDispatch::EventListener, pu
                        // std::cout << "profileset dataset end\n";
                         for(auto i : var.second.def)
                             it->second.def.insert(i);
-                        for(auto i : var.second.use)
+                        for(auto i : var.second.use) {
                             it->second.use.insert(i);
+                        }
+
                     }
-                    //else // if the string for the var name wasn't found
-                        //std::cerr<<"Couldn't find identifier named: "<<var.first<<std::endl;
                 }
+
+                /* */
+                for(auto var : exprData.dataset) {
+                    auto it = profileset.dataset.find(var.first);
+                    if(it != profileset.dataset.end()) {
+                        if(it->second.isPointer) {
+                            for(auto s : profileset.dataset) {
+                                for(auto def : it->second.def) {
+                                    auto it2 = s.second.use.find(def);
+                                    if(it2 != s.second.use.end()) {
+                                        it->second.pointers.insert(s.second.identifierName);
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
             }
         }
 
