@@ -10,6 +10,7 @@
 #include <fstream>
 #include <streambuf>
 #include <iostream>
+#include <time.h>
 
 std::string filetostring (const std::string file){
   std::ifstream t(file);
@@ -133,7 +134,7 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
         std::string filename = tokens[0];
         std::string funcname = tokens[1];
         std::string varname  = tokens[2];
-
+        
         std::cerr << filename + ',' + funcname + ',' + varname + ',';
 
         std::cerr << "def{";
@@ -162,6 +163,16 @@ struct SrcSlice : public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEve
           std::cerr << dvar;
           dvar_count++;
           if(dvar_count != s.second.dvars.size())
+            std::cerr << ',';
+        }
+        std::cerr << "},";
+
+        std::cerr << "pointers{";
+        int pointer_count = 0;
+        for(auto pointer : s.second.pointers) {
+          std::cerr << pointer;
+          pointer_count++;
+          if(pointer_count != s.second.pointers.size())
             std::cerr << ',';
         }
         std::cerr << "},";
@@ -286,7 +297,11 @@ int main(int argc, char** argv){
   // srcmlstr.assign((std::istreambuf_iterator<char>(codestream)), std::istreambuf_iterator<char>());
   // std::string codestr = "int main() {\n int a = 0;\nint b = a + 1;\n int c = a + b + 1;\n }\n";
   // std::string srcmlstr = StringToSrcML(codestr);
+  clock_t t;
+  t = clock();
+  
   std::string srcmlstr = filetostring(argv[1]);
+
   //std::cerr << srcmlstr << std::endl;
 
   SrcSlice srcslicedata;
@@ -294,6 +309,10 @@ int main(int argc, char** argv){
   //srcSAXEventDispatch::srcSAXEventDispatcher<FunctionSliceProfilePolicy> handler {&srcslicedata};
   srcSAXEventDispatch::srcSAXEventDispatcher<SrcSlicePolicy> handler {&srcslicedata};
   control.parse(&handler); //Start parsing
+
+  t = clock() - t;
+  std::cerr<<"Time is: "<<((float)t)/CLOCKS_PER_SEC<<std::endl;
+
   srcslicedata.display_csv();
 
   // for(auto i : srcslicedata.data.varNameProf) {
