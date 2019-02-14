@@ -44,4 +44,3 @@ include_directories(${LIBXML2_INCLUDE_DIR}
                     testPS)
 add_subdirectory(src)
 add_subdirectory(srcSAXEventDispatch)
-add_subdirectory(testPS)
