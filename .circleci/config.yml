@@ -1,0 +1,14 @@
+version: 2
+jobs:
+  build:
+    docker:
+      - image: cnewman/swum_srcml_integration_v2:latest
+    steps:
+      - checkout
+      - run: git clone --recursive https://github.com/cnewman/srcSlice.git
+      - run: cd srcSlice
+      - run: git submodule update --init --remote --recursive
+      - run: mkdir build
+      - run: cd build && cmake ..
+      - run: cd build && make -j3
+      - run: cd build && ./bin/tagsettest
