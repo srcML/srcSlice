@@ -4,6 +4,7 @@
 #include <libxml/parser.h>
 #include <libxml/xpath.h>
 #include <libxml/xpathInternals.h>
+#include <srcslicepolicy.hpp>
 
 std::string StringToSrcML(std::string str){
     struct srcml_archive* archive;
@@ -26,10 +27,33 @@ std::string StringToSrcML(std::string str){
     srcml_unit_free(unit);
     srcml_archive_close(archive);
     srcml_archive_free(archive);
-    ch[size-1] = 0;
+
     return std::string(ch);
 }
-TEST(DummyTest, TestDummy) {
-    //Test for expected count
-    EXPECT_EQ(5, 5);
+TEST(TestsrcSliceDeclPolicy, TesstDetectCommonDeclarations) {
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    std::string str = "int main(){Object coo = 5; const Object ke_e4e = 5; static const Object caa34 = 5;}";
+    std::string srcmlStr = StringToSrcML(str);
+
+    SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+    srcSAXController control(srcmlStr);
+    srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+    control.parse(&handler);
+    
+    const int NUM_DECLARATIONS = 3;
+    EXPECT_EQ(profileMap.size(), NUM_DECLARATIONS);
+}
+
+TEST(TestsrcSliceDeclPolicy, TesstDetectCommonDeclarationsWithClone) {
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    std::string str = "int main(){Object coo = 5; const Object ke_e4e = 5; static const Object caa34 = 5; Object coo = 5; Object coo = 5;}";
+    std::string srcmlStr = StringToSrcML(str);
+
+    SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+    srcSAXController control(srcmlStr);
+    srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+    control.parse(&handler);
+    
+    const int NUM_CLONES = 3;
+    EXPECT_EQ(profileMap.find("coo")->second.size(), NUM_CLONES);
 }
