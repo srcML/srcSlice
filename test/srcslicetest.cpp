@@ -28,6 +28,8 @@ std::string StringToSrcML(std::string str){
     srcml_archive_close(archive);
     srcml_archive_free(archive);
 
+    ch[size-1] = 0;
+    
     return std::string(ch);
 }
 
