@@ -30,30 +30,38 @@ std::string StringToSrcML(std::string str){
 
     return std::string(ch);
 }
-TEST(TestsrcSliceDeclPolicy, TesstDetectCommonDeclarations) {
-    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-    std::string str = "int main(){Object coo = 5; const Object ke_e4e = 5; static const Object caa34 = 5;}";
-    std::string srcmlStr = StringToSrcML(str);
 
-    SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
-    srcSAXController control(srcmlStr);
-    srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
-    control.parse(&handler);
-    
+namespace {
+  class TestsrcSliceDeclPolicy : public ::testing::Test{
+  public:
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    TestsrcSliceDeclPolicy(){
+
+    }
+    void SetUp(){
+      std::string str = "int main(){Object coo = 5; const Object ke_e4e = 5; static const Object caa34 = 5; Object coo = 5; Object coo = 5;}";
+      std::string srcmlStr = StringToSrcML(str);
+  
+      SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+      srcSAXController control(srcmlStr);
+      srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+      control.parse(&handler);
+    }
+    void TearDown(){
+
+    }
+    ~TestsrcSliceDeclPolicy(){
+
+    }
+  };
+}
+
+TEST_F(TestsrcSliceDeclPolicy, TesstDetectCommonDeclarations) {
     const int NUM_DECLARATIONS = 3;
     EXPECT_EQ(profileMap.size(), NUM_DECLARATIONS);
 }
 
-TEST(TestsrcSliceDeclPolicy, TesstDetectCommonDeclarationsWithClone) {
-    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-    std::string str = "int main(){Object coo = 5; const Object ke_e4e = 5; static const Object caa34 = 5; Object coo = 5; Object coo = 5;}";
-    std::string srcmlStr = StringToSrcML(str);
-
-    SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
-    srcSAXController control(srcmlStr);
-    srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
-    control.parse(&handler);
-    
+TEST_F(TestsrcSliceDeclPolicy, TesstDetectCommonDeclarationsWithClone) {
     const int NUM_CLONES = 3;
     EXPECT_EQ(profileMap.find("coo")->second.size(), NUM_CLONES);
 }
