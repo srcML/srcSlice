@@ -67,3 +67,38 @@ TEST_F(TestsrcSliceDeclPolicy, TesstDetectCommonDeclarationsWithClone) {
     const int NUM_CLONES = 3;
     EXPECT_EQ(profileMap.find("coo")->second.size(), NUM_CLONES);
 }
+
+namespace {
+  class TestsrcSliceExprPolicy : public ::testing::Test{
+  public:
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    TestsrcSliceExprPolicy(){
+
+    }
+    void SetUp(){
+      std::string str = "void foo(){j = 0; k = 1; doreme = 5; abc = abc + 0; i = j + k;}";
+      std::string srcmlStr = StringToSrcML(str);
+  
+      SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+      srcSAXController control(srcmlStr);
+      srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+      control.parse(&handler);
+    }
+    void TearDown(){
+
+    }
+    ~TestsrcSliceExprPolicy(){
+
+    }
+  };
+}
+
+TEST_F(TestsrcSliceExprPolicy, TesstDetectCommonExpr) {
+    const int NUM_EXPR = 5;
+    EXPECT_EQ(profileMap.size(), NUM_EXPR);
+}
+
+TEST_F(TestsrcSliceExprPolicy, TesstDetectCommonExprWithClone) {
+    const int NUM_CLONES_SHOULD_NOT_INCREASE = 1;
+    EXPECT_EQ(profileMap.find("j")->second.size(), NUM_CLONES_SHOULD_NOT_INCREASE);
+}
