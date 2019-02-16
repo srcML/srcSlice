@@ -68,9 +68,12 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 decldata = *policy->Data<DeclData>();
                 auto sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
                 if(sliceProfileItr != profileMap->end()){
-                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true));
+                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true, std::set<unsigned int>{decldata.linenumber}));
                 }else{
-                    profileMap->insert(std::make_pair(decldata.nameOfIdentifier, std::vector<SliceProfile>{SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true)}));
+                    profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
+                        std::vector<SliceProfile>{
+                            SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true, std::set<unsigned int>{decldata.linenumber})
+                        }));
                 }
             }else if(typeid(ExprPolicy) == typeid(*policy)){
                 exprdataset = *policy->Data<ExprPolicy::ExprDataSet>();
@@ -80,7 +83,10 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         sliceProfileItr->second.back().use.insert(exprdata.second.use.begin(), exprdata.second.use.end());
                         sliceProfileItr->second.back().def.insert(exprdata.second.def.begin(), exprdata.second.def.end());
                     }else{
-                        profileMap->insert(std::make_pair(exprdata.second.nameofidentifier, std::vector<SliceProfile>{SliceProfile(exprdata.second.nameofidentifier, true, true)}));
+                        profileMap->insert(std::make_pair(exprdata.second.nameofidentifier, 
+                            std::vector<SliceProfile>{
+                                SliceProfile(exprdata.second.nameofidentifier, ctx.currentLineNumber, true, true, exprdata.second.def, exprdata.second.use)
+                            }));
                     }   
                 }
 

@@ -116,7 +116,7 @@ namespace {
       "Object coo = 5;\n"
       "const Object ke_e4e = 5;\n"
       "ke_e4e = coo;\n"
-      "static const Object caa34 = 5;\n"
+      "caa34 = caa34 + 5;\n"
       "coo = ke_e4e + caa34;\n"
       "}\n";
       std::string srcmlStr = StringToSrcML(str);
@@ -140,7 +140,7 @@ TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonExpr) {
     EXPECT_EQ(profileMap.size(), NUM_DECL_AND_EXPR);
 }
 
-TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDef) {
+TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDefke_e4e) {
     const int LINE_NUM_USE_OF_KE_E4E = 6;
     const int LINE_NUM_EXPR_DEF_OF_KE_E4E = 4;
     const int LINE_NUM_DECL_DEFS_OF_KE_E4E = 3;
@@ -148,6 +148,19 @@ TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDef) {
     auto exprIt = profileMap.find("ke_e4e");
     
     EXPECT_TRUE(exprIt->second.back().use.find(LINE_NUM_USE_OF_KE_E4E) != exprIt->second.back().use.end());
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_EXPR_DEF_OF_KE_E4E) != exprIt->second.back().use.end());
-    EXPECT_EQ(exprIt->second.back().linenumber, LINE_NUM_DECL_DEFS_OF_KE_E4E);
+    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_EXPR_DEF_OF_KE_E4E) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DECL_DEFS_OF_KE_E4E) != exprIt->second.back().def.end());
+}
+
+TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDefcaa34) {
+    const int FIRST_LINE_NUM_USE_OF_CAA34 = 5;
+    const int SECOND_LINE_NUM_USE_OF_CAA34 = 6;
+    
+    auto exprIt = profileMap.find("caa34");
+    for(auto b : exprIt->second.back().def){
+      std::cerr<<b<<std::endl;
+    }
+    EXPECT_TRUE(exprIt->second.back().def.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().use.find(SECOND_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().use.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().use.end());
 }
