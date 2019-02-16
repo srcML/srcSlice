@@ -18,13 +18,14 @@ class SliceProfile{
             dereferenced = false;
             visited = false;
         }
-        SliceProfile(std::string name, bool alias = 0, bool global = 0, std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}):
-         variableName(name), isGlobal(global), def(aDef), use(aUse) {
+        SliceProfile(std::string name, int line, bool alias = 0, bool global = 0, std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}):
+         variableName(name), linenumber(line), isGlobal(global), def(aDef), use(aUse) {
             dereferenced = false;
             visited = false;
         }
 
         unsigned int index;
+        int linenumber;
         std::string file;
         std::string function;
         
@@ -53,30 +54,31 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         SrcSlicePolicy(std::unordered_map<std::string, std::vector<SliceProfile>>* pm, std::initializer_list<srcSAXEventDispatch::PolicyListener*> listeners = {}) : srcSAXEventDispatch::PolicyDispatcher(listeners){
             // making SSP a listener for FSPP
             InitializeEventHandlers();
+            
             declpolicy.AddListener(this);
             exprpolicy.AddListener(this);
+            functionpolicy.AddListener(this);
 
             profileMap = pm;
         }
         void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
             using namespace srcSAXEventDispatch;
-            if(typeid(FunctionSignaturePolicy) == typeid(*policy)){
-                std::cerr<<"Yin"<<std::endl;
-            }else if(typeid(DeclTypePolicy) == typeid(*policy)){
+            if(typeid(DeclTypePolicy) == typeid(*policy)){
+                //ctx.currentFunctionName
                 decldata = *policy->Data<DeclData>();
                 auto sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
                 if(sliceProfileItr != profileMap->end()){
-                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier, true, true));
+                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true));
                 }else{
-                    profileMap->insert(std::make_pair(decldata.nameOfIdentifier, std::vector<SliceProfile>{SliceProfile(decldata.nameOfIdentifier, true, true)}));
+                    profileMap->insert(std::make_pair(decldata.nameOfIdentifier, std::vector<SliceProfile>{SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true)}));
                 }
             }else if(typeid(ExprPolicy) == typeid(*policy)){
                 exprdataset = *policy->Data<ExprPolicy::ExprDataSet>();
                 for(auto exprdata : exprdataset.dataset){
                     auto sliceProfileItr = profileMap->find(exprdata.second.nameofidentifier);
                     if(sliceProfileItr != profileMap->end()){
-                        sliceProfileItr->second.back().use = exprdata.second.use;
-                        sliceProfileItr->second.back().def = exprdata.second.def;
+                        sliceProfileItr->second.back().use.insert(exprdata.second.use.begin(), exprdata.second.use.end());
+                        sliceProfileItr->second.back().def.insert(exprdata.second.def.begin(), exprdata.second.def.end());
                     }else{
                         profileMap->insert(std::make_pair(exprdata.second.nameofidentifier, std::vector<SliceProfile>{SliceProfile(exprdata.second.nameofidentifier, true, true)}));
                     }   
