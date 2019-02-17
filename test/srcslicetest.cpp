@@ -157,10 +157,46 @@ TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDefcaa34) {
     const int SECOND_LINE_NUM_USE_OF_CAA34 = 6;
     
     auto exprIt = profileMap.find("caa34");
-    for(auto b : exprIt->second.back().def){
-      std::cerr<<b<<std::endl;
-    }
+
     EXPECT_TRUE(exprIt->second.back().def.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().def.end());
     EXPECT_TRUE(exprIt->second.back().use.find(SECOND_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().use.end());
     EXPECT_TRUE(exprIt->second.back().use.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().use.end());
+}
+
+namespace {
+  class TestsrcSliceCallPolicy : public ::testing::Test{
+  public:
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    TestsrcSliceCallPolicy(){
+
+    }
+    void SetUp(){
+      std::string str = 
+      "int main(){\n"
+      "Foo(a,b);\n"
+      "Bar(Foo(c,d));\n"
+      "}\n";
+      std::string srcmlStr = StringToSrcML(str);
+    
+      SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+      srcSAXController control(srcmlStr);
+      srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+      control.parse(&handler);
+    }
+    void TearDown(){
+
+    }
+    ~TestsrcSliceCallPolicy(){
+
+    }
+  };
+}
+
+TEST_F(TestsrcSliceCallPolicy, TestDetectCallArguments) {
+    const int CALL_USAGE_LINE = 2;
+    const int NUM_ARGUMENTS_DETECTED = 4;
+    auto callIt = profileMap.find("b");
+
+    EXPECT_TRUE(callIt->second.back().def.find(CALL_USAGE_LINE) != callIt->second.back().use.end());
+    EXPECT_EQ(profileMap.size(), NUM_ARGUMENTS_DETECTED);
 }

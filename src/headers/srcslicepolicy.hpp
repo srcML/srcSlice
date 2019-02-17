@@ -9,6 +9,7 @@
 #include <ExprPolicy.hpp>
 #include <srcSAXEventDispatcher.hpp>
 #include <FunctionSignaturePolicy.hpp>
+#include <FunctionCallPolicy.hpp>
 
 class SliceProfile{
     public:
@@ -18,8 +19,9 @@ class SliceProfile{
             dereferenced = false;
             visited = false;
         }
-        SliceProfile(std::string name, int line, bool alias = 0, bool global = 0, std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}):
-         variableName(name), linenumber(line), isGlobal(global), def(aDef), use(aUse) {
+        SliceProfile(std::string name, int line, bool alias = 0, bool global = 0, 
+            std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}, std::vector<std::pair<std::string, std::string>> cFunc = {}):
+         variableName(name), linenumber(line), isGlobal(global), def(aDef), use(aUse), cfunctions(cFunc) {
             dereferenced = false;
             visited = false;
         }
@@ -44,6 +46,8 @@ class SliceProfile{
         
         std::unordered_set<std::string> dvars;
         std::unordered_set<std::string> aliases;
+
+        std::vector<std::pair<std::string, std::string>> cfunctions;
 };
 
 class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXEventDispatch::PolicyDispatcher, public srcSAXEventDispatch::PolicyListener 
@@ -57,7 +61,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             
             declpolicy.AddListener(this);
             exprpolicy.AddListener(this);
-            functionpolicy.AddListener(this);
+            callpolicy.AddListener(this);
 
             profileMap = pm;
         }
@@ -85,11 +89,58 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     }else{
                         profileMap->insert(std::make_pair(exprdata.second.nameofidentifier, 
                             std::vector<SliceProfile>{
-                                SliceProfile(exprdata.second.nameofidentifier, ctx.currentLineNumber, true, true, exprdata.second.def, exprdata.second.use)
+                                SliceProfile(exprdata.second.nameofidentifier, ctx.currentLineNumber, true, true, 
+                                    exprdata.second.def, exprdata.second.use)
                             }));
                     }   
                 }
+            }else if(typeid(CallPolicy) == typeid(*policy)){
+                calldata = *policy->Data<CallPolicy::CallData>();
+                int depthCounter = 0, iterationCounter = 0;
+                bool funcNameIsNext = false;
+                std::vector<std::pair<std::string, unsigned int>> funcName;
+                for(auto functString : calldata.callargumentlist){
+                    switch(functString[0]){
+                        case '(':{ 
+                            ++depthCounter;
+                            funcNameIsNext = true;
+                            continue;
+                        }
+                        case ')':{
+                            --depthCounter;
+                            funcName.pop_back();
+                            continue;
+                        }
+                    }
+                    if(funcNameIsNext){
+                        funcName.push_back(std::make_pair(functString, 1));
+                        funcNameIsNext = false;
+                    }else{
+                        auto sliceProfileItr = profileMap->find(functString);
+                        
+                        std::string callOrder, argumentOrder;
+                        for(auto name : funcName){
+                            callOrder+=name.first+'-';
+                            argumentOrder+=std::to_string(name.second)+'-';
+                        }
+                        callOrder.erase(callOrder.size()-1); ///need to implement join
+                        argumentOrder.erase(argumentOrder.size()-1); ///need to implement join
+                        
+                        if(sliceProfileItr != profileMap->end()){
+                            sliceProfileItr->second.back().cfunctions.push_back(std::make_pair(callOrder, argumentOrder));
+                        }else{  
+                            profileMap->insert(std::make_pair(functString, 
+                                std::vector<SliceProfile>{
+                                    SliceProfile(functString, ctx.currentLineNumber, true, true, 
+                                        std::set<unsigned int>{}, std::set<unsigned int>{ctx.currentLineNumber}, 
+                                        std::vector<std::pair<std::string, std::string>>{std::make_pair(callOrder, argumentOrder)})
+                                }));
+                        }
 
+                        ++funcName.back().second;
+                    }
+                    ++iterationCounter;
+                }
             }
         }
         void NotifyWrite(const PolicyDispatcher *policy, srcSAXEventDispatch::srcSAXEventContext &ctx){
@@ -102,33 +153,44 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         }
         
     private:
+        DeclTypePolicy declpolicy;
         DeclData decldata;
+        
         ExprPolicy::ExprDataSet exprdataset;
         ExprPolicy exprpolicy;
-        DeclTypePolicy declpolicy;
+        
+        
+        CallPolicy callpolicy;
+        CallPolicy::CallData calldata;
+
         FunctionSignaturePolicy functionpolicy;
 
         void InitializeEventHandlers(){
             using namespace srcSAXEventDispatch;
                 openEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
-                    //std::cerr<<"enter3"<<std::endl;
                     ctx.dispatcher->AddListenerDispatch(&declpolicy);
-                    //std::cerr<<"exit"<<std::endl;
                 };
                 openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
-                    //std::cerr<<"enter3"<<std::endl;
                     ctx.dispatcher->AddListenerDispatch(&exprpolicy);
-                    //std::cerr<<"exit"<<std::endl;
+                };
+                openEventMap[ParserState::call] = [this](srcSAXEventContext& ctx){
+                    //don't want multiple callpolicy parsers running
+                    if(ctx.NumCurrentlyOpen(ParserState::call) < 2) {
+                        ctx.dispatcher->AddListenerDispatch(&callpolicy);
+                        ctx.dispatcher->RemoveListenerDispatch(&exprpolicy); //remove expr policy so it doesn't interfere
+                    }
+                };
+                closeEventMap[ParserState::call] = [this](srcSAXEventContext& ctx){
+                    if(ctx.NumCurrentlyOpen(ParserState::call) < 2) {
+                        ctx.dispatcher->RemoveListenerDispatch(&callpolicy);
+                        ctx.dispatcher->AddListenerDispatch(&exprpolicy); //re-add expr policy once done with call.
+                    }
                 };
                 closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
-                    //std::cerr<<"enter4"<<std::endl;
                     ctx.dispatcher->RemoveListenerDispatch(&declpolicy);
-                    //std::cerr<<"exit"<<std::endl;
                 };
                 closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
-                    //std::cerr<<"enter4"<<std::endl;
                     ctx.dispatcher->RemoveListenerDispatch(&exprpolicy);
-                    //std::cerr<<"exit"<<std::endl;
                 };
         }
 };
