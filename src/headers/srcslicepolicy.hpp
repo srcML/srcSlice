@@ -7,6 +7,7 @@
 #include <srcSAXHandler.hpp>
 #include <DeclTypePolicy.hpp>
 #include <ExprPolicy.hpp>
+#include <InitPolicy.hpp>
 #include <srcSAXEventDispatcher.hpp>
 #include <FunctionSignaturePolicy.hpp>
 #include <FunctionCallPolicy.hpp>
@@ -62,6 +63,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             declpolicy.AddListener(this);
             exprpolicy.AddListener(this);
             callpolicy.AddListener(this);
+            initpolicy.AddListener(this);
 
             profileMap = pm;
         }
@@ -85,7 +87,6 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 exprdataset = *policy->Data<ExprPolicy::ExprDataSet>();
                 for(auto exprdata : exprdataset.dataset){
                     auto sliceProfileItr = profileMap->find(exprdata.second.nameofidentifier);
-
                     //Just update def and use if name already exists. Otherwise, add new name.
                     if(sliceProfileItr != profileMap->end()){
                         sliceProfileItr->second.back().use.insert(exprdata.second.use.begin(), exprdata.second.use.end());
@@ -95,6 +96,21 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             std::vector<SliceProfile>{
                                 SliceProfile(exprdata.second.nameofidentifier, ctx.currentLineNumber, true, true, 
                                     exprdata.second.def, exprdata.second.use)
+                            }));
+                    }   
+                }
+            }else if(typeid(InitPolicy) == typeid(*policy)){
+                initdataset = *policy->Data<InitPolicy::InitDataSet>();
+                for(auto initdata : initdataset.dataset){
+                    auto sliceProfileItr = profileMap->find(initdata.second.nameofidentifier);
+                    //Just update def and use if name already exists. Otherwise, add new name.
+                    if(sliceProfileItr != profileMap->end()){
+                        sliceProfileItr->second.back().use.insert(initdata.second.use.begin(), initdata.second.use.end());
+                    }else{
+                        profileMap->insert(std::make_pair(initdata.second.nameofidentifier, 
+                            std::vector<SliceProfile>{
+                                SliceProfile(initdata.second.nameofidentifier, ctx.currentLineNumber, true, true, 
+                                    std::set<unsigned int>{}, initdata.second.use)
                             }));
                     }   
                 }
@@ -153,6 +169,9 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
     private:
         DeclTypePolicy declpolicy;
         DeclData decldata;
+
+        InitPolicy initpolicy;
+        InitPolicy::InitDataSet initdataset;
         
         ExprPolicy::ExprDataSet exprdataset;
         ExprPolicy exprpolicy;
@@ -177,6 +196,9 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         ctx.dispatcher->AddListenerDispatch(&callpolicy);
                     }
                 };
+                openEventMap[ParserState::init] = [this](srcSAXEventContext& ctx){
+                    ctx.dispatcher->AddListenerDispatch(&initpolicy);
+                };
                 closeEventMap[ParserState::call] = [this](srcSAXEventContext& ctx){
                     if(ctx.NumCurrentlyOpen(ParserState::call) < 2) {
                         ctx.dispatcher->RemoveListenerDispatch(&callpolicy);
@@ -187,6 +209,9 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 };
                 closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
                     ctx.dispatcher->RemoveListenerDispatch(&exprpolicy);
+                };
+                closeEventMap[ParserState::init] = [this](srcSAXEventContext& ctx){
+                    ctx.dispatcher->RemoveListenerDispatch(&initpolicy);
                 };
         }
 };

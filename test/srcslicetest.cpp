@@ -235,6 +235,7 @@ namespace {
       "ke_e4e = coo + Bar(Foo(b));\n"
       "caa34 = caa34 + Foo(ke_e4e, b);\n"
       "coo = ke_e4e + caa34;\n"
+      "const Object test = i-Bam(b,a);\n"
       "}\n";
       std::string srcmlStr = StringToSrcML(str);
     
@@ -272,18 +273,23 @@ TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionb) {
     const int SECOND_LINE_NUM_USE_OF_b = 5;
     const int THIRD_LINE_NUM_USE_OF_b = 3;
     const int FIRST_LINE_NUM_DEF_OF_b = 2;
+    const int FOURTH_LINE_NUM_DEF_OF_b = 7;
     
     auto exprIt = profileMap.find("b");
     
     EXPECT_TRUE(exprIt->second.back().use.find(FIRST_LINE_NUM_USE_OF_b) != exprIt->second.back().use.end());
     EXPECT_TRUE(exprIt->second.back().use.find(SECOND_LINE_NUM_USE_OF_b) != exprIt->second.back().use.end());
-   // EXPECT_TRUE(exprIt->second.back().use.find(THIRD_LINE_NUM_USE_OF_b) != exprIt->second.back().use.end());
-    
+    EXPECT_TRUE(exprIt->second.back().use.find(THIRD_LINE_NUM_USE_OF_b) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().use.find(FOURTH_LINE_NUM_DEF_OF_b) != exprIt->second.back().use.end());
+
     EXPECT_TRUE(exprIt->second.back().cfunctions.front().first == "Bar-Foo");
     EXPECT_TRUE(exprIt->second.back().cfunctions.front().second == "1-1");
 
-    EXPECT_TRUE(exprIt->second.back().cfunctions.back().first == "Foo");
-    EXPECT_TRUE(exprIt->second.back().cfunctions.back().second == "2");
+    EXPECT_TRUE(exprIt->second.back().cfunctions.at(1).first == "Foo");
+    EXPECT_TRUE(exprIt->second.back().cfunctions.at(1).second == "2");
+
+    EXPECT_TRUE(exprIt->second.back().cfunctions.back().first == "Bam");
+    EXPECT_TRUE(exprIt->second.back().cfunctions.back().second == "1");
 
     EXPECT_TRUE(exprIt->second.back().def.find(FIRST_LINE_NUM_DEF_OF_b) != exprIt->second.back().use.end());
 }
