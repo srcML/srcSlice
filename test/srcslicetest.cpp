@@ -192,11 +192,30 @@ namespace {
   };
 }
 
-TEST_F(TestsrcSliceCallPolicy, TestDetectCallArguments) {
+
+TEST_F(TestsrcSliceCallPolicy, TestDetectCallArgumentsb) {
     const int CALL_USAGE_LINE = 2;
     const int NUM_ARGUMENTS_DETECTED = 4;
     auto callIt = profileMap.find("b");
 
     EXPECT_TRUE(callIt->second.back().def.find(CALL_USAGE_LINE) != callIt->second.back().use.end());
     EXPECT_EQ(profileMap.size(), NUM_ARGUMENTS_DETECTED);
+}
+TEST_F(TestsrcSliceCallPolicy, TestDetectCallCFunctionsb) {
+    auto callIt = profileMap.find("b");
+
+    EXPECT_TRUE(callIt->second.back().cfunctions.back().first == "Foo");
+    EXPECT_TRUE(callIt->second.back().cfunctions.back().second == "2");
+}
+TEST_F(TestsrcSliceCallPolicy, TestDetectCallArgumentsc) {
+    const int CALL_USAGE_LINE = 3;
+    auto callIt = profileMap.find("c");
+
+    EXPECT_TRUE(callIt->second.back().def.find(CALL_USAGE_LINE) != callIt->second.back().use.end());
+}
+TEST_F(TestsrcSliceCallPolicy, TestDetectCallCFunctionsc) {
+    auto callIt = profileMap.find("c");
+
+    EXPECT_TRUE(callIt->second.back().cfunctions.back().first == "Bar-Foo");
+    EXPECT_TRUE(callIt->second.back().cfunctions.back().second == "1-1");
 }
