@@ -77,40 +77,26 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 //Just update def if name already exists. Otherwise, add new name.
                 if(sliceProfileItr != profileMap->end()){
                     sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true, std::set<unsigned int>{decldata.linenumber}));
-                    //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
-                    for(std::string dvar : declDvars){
-                        auto updateDvarAtThisLocation = profileMap->find(dvar);
-                        if(updateDvarAtThisLocation != profileMap->end()){
-                            updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
-                        }else{
-                            auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
-                                std::vector<SliceProfile>{
-                                    SliceProfile(dvar, decldata.linenumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.linenumber})
-                                }));
-                            newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
-                        }
-                    }
-                    declDvars.clear();
                 }else{
                     profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
                         std::vector<SliceProfile>{
                             SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true, std::set<unsigned int>{decldata.linenumber})
                         }));
-                    //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
-                    for(std::string dvar : declDvars){
-                        auto updateDvarAtThisLocation = profileMap->find(dvar);
-                        if(updateDvarAtThisLocation != profileMap->end()){
-                            updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
-                        }else{
-                            auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
-                                std::vector<SliceProfile>{
-                                    SliceProfile(dvar, decldata.linenumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.linenumber})
-                                }));
-                            newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
-                        }
-                    }
-                    declDvars.clear();
                 }
+                //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
+                for(std::string dvar : declDvars){
+                    auto updateDvarAtThisLocation = profileMap->find(dvar);
+                    if(updateDvarAtThisLocation != profileMap->end()){
+                        updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
+                    }else{
+                        auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
+                            std::vector<SliceProfile>{
+                                SliceProfile(dvar, decldata.linenumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.linenumber})
+                            }));
+                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
+                    }
+                }
+                declDvars.clear();
             }else if(typeid(ExprPolicy) == typeid(*policy)){
                 exprdataset = *policy->Data<ExprPolicy::ExprDataSet>();
                 for(auto exprdata : exprdataset.dataset){
@@ -126,7 +112,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                                 SliceProfile(exprdata.second.nameofidentifier, ctx.currentLineNumber, true, true, 
                                     exprdata.second.def, exprdata.second.use)
                             }));
-                        //std::cerr<<"Find: "<<currentName<<" "<<(dvarname==profileMap->end())<<std::endl;
+                        //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                         if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameofidentifier)) sliceProfileItr2.first->second.back().dvars.insert(currentName);
                     }
                 }
