@@ -22,7 +22,7 @@ class SliceProfile{
         }
         SliceProfile(std::string name, int line, bool alias = 0, bool global = 0, 
             std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}, std::vector<std::pair<std::string, std::string>> cFunc = {}, std::set<std::string> dv = {}):
-         variableName(name), linenumber(line), isGlobal(global), def(aDef), use(aUse), cfunctions(cFunc), dvars(dv) {
+         variableName(name), linenumber(line), potentialAlias(alias), isGlobal(global), def(aDef), use(aUse), cfunctions(cFunc), dvars(dv) {
             dereferenced = false;
             visited = false;
         }
@@ -74,13 +74,13 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 decldata = *policy->Data<DeclData>();
                 auto sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
                 
-                //Just update def if name already exists. Otherwise, add new name.
+                //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
-                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true, std::set<unsigned int>{decldata.linenumber}));
+                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.linenumber}));
                 }else{
                     profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
                         std::vector<SliceProfile>{
-                            SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, true, true, std::set<unsigned int>{decldata.linenumber})
+                            SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.linenumber})
                         }));
                 }
                 //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
