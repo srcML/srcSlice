@@ -293,3 +293,25 @@ TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionb) {
 
     EXPECT_TRUE(exprIt->second.back().def.find(FIRST_LINE_NUM_DEF_OF_b) != exprIt->second.back().use.end());
 }
+
+TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionDvarske_e4e) {   
+    auto exprIt = profileMap.find("ke_e4e");
+    
+    EXPECT_TRUE(exprIt->second.back().dvars.find("coo") != exprIt->second.back().dvars.end());
+    EXPECT_TRUE(exprIt->second.back().dvars.find("caa34") != exprIt->second.back().dvars.end());
+}
+
+TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionDvarscaa34) {   
+    auto exprIt = profileMap.find("caa34");
+    
+    EXPECT_TRUE(exprIt->second.back().dvars.find("caa34") != exprIt->second.back().dvars.end());
+    EXPECT_TRUE(exprIt->second.back().dvars.find("coo") != exprIt->second.back().dvars.end());
+}
+
+TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionDvarsb) {   
+    auto exprIt = profileMap.find("b");
+    
+    EXPECT_TRUE(exprIt->second.back().dvars.find("ke_e4e") != exprIt->second.back().dvars.end());
+    EXPECT_TRUE(exprIt->second.back().dvars.find("caa34") != exprIt->second.back().dvars.end());
+    EXPECT_TRUE(exprIt->second.back().dvars.find("test") != exprIt->second.back().dvars.end());
+}
