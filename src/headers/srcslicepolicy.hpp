@@ -153,7 +153,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             continue;
                         }
                         case ')':{
-                            funcNameAndCurrArgumentPos.pop_back();
+                            if(!funcNameAndCurrArgumentPos.empty()) funcNameAndCurrArgumentPos.pop_back();
                             continue;
                         }
                     }
@@ -168,8 +168,8 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             callOrder+=name.first+'-';
                             argumentOrder+=std::to_string(name.second)+'-';
                         }
-                        callOrder.erase(callOrder.size()-1); ///need to implement join
-                        argumentOrder.erase(argumentOrder.size()-1); ///need to implement join
+                        if(!callOrder.empty())callOrder.erase(callOrder.size()-1); ///need to implement join
+                        if(!argumentOrder.empty()) argumentOrder.erase(argumentOrder.size()-1); ///need to implement join
                         
                         //Just update cfunctions if name already exists. Otherwise, add new name.
                         if(sliceProfileItr != profileMap->end()){
@@ -182,7 +182,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                                         std::vector<std::pair<std::string, std::string>>{std::make_pair(callOrder, argumentOrder)})
                                 }));
                         }
-                        ++funcNameAndCurrArgumentPos.back().second;
+                        if(!funcNameAndCurrArgumentPos.empty()) ++funcNameAndCurrArgumentPos.back().second;
                     }
                 }
             }
