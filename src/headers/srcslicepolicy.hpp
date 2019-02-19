@@ -83,37 +83,47 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.linenumber})
                         }));
                 }
+                sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
                 //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
                 for(std::string dvar : declDvars){
                     auto updateDvarAtThisLocation = profileMap->find(dvar);
                     if(updateDvarAtThisLocation != profileMap->end()){
                         updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
+                        if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
+                            updateDvarAtThisLocation->second.back().aliases.insert(decldata.nameOfIdentifier);
+                        }
                     }else{
                         auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
                             std::vector<SliceProfile>{
                                 SliceProfile(dvar, decldata.linenumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.linenumber})
                             }));
                         newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
+                        if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
+                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(decldata.nameOfIdentifier);
+                        }
                     }
                 }
                 declDvars.clear();
             }else if(typeid(ExprPolicy) == typeid(*policy)){
                 exprdataset = *policy->Data<ExprPolicy::ExprDataSet>();
                 for(auto exprdata : exprdataset.dataset){
-                    auto sliceProfileItr = profileMap->find(exprdata.second.nameofidentifier);
+                    auto sliceProfileExprItr = profileMap->find(exprdata.second.nameofidentifier);
+                    auto sliceProfileLHSItr = profileMap->find(exprdataset.lhsName);
                     //Just update def and use if name already exists. Otherwise, add new name.
-                    if(sliceProfileItr != profileMap->end()){
-                        sliceProfileItr->second.back().use.insert(exprdata.second.use.begin(), exprdata.second.use.end());
-                        sliceProfileItr->second.back().def.insert(exprdata.second.def.begin(), exprdata.second.def.end());
-                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameofidentifier)) sliceProfileItr->second.back().dvars.insert(currentName);
+                    if(sliceProfileExprItr != profileMap->end()){
+                        sliceProfileExprItr->second.back().use.insert(exprdata.second.use.begin(), exprdata.second.use.end());
+                        sliceProfileExprItr->second.back().def.insert(exprdata.second.def.begin(), exprdata.second.def.end());
+                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameofidentifier)) sliceProfileExprItr->second.back().dvars.insert(currentName);
+                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr->second.back().aliases.insert(exprdataset.lhsName);
                     }else{
-                        auto sliceProfileItr2 = profileMap->insert(std::make_pair(exprdata.second.nameofidentifier, 
+                        auto sliceProfileExprItr2 = profileMap->insert(std::make_pair(exprdata.second.nameofidentifier, 
                             std::vector<SliceProfile>{
                                 SliceProfile(exprdata.second.nameofidentifier, ctx.currentLineNumber, true, true, 
                                     exprdata.second.def, exprdata.second.use)
                             }));
+                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr2.first->second.back().aliases.insert(exprdataset.lhsName);
                         //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
-                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameofidentifier)) sliceProfileItr2.first->second.back().dvars.insert(currentName);
+                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameofidentifier)) sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
                     }
                 }
             }else if(typeid(InitPolicy) == typeid(*policy)){

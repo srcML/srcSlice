@@ -310,8 +310,47 @@ TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionDvarscaa34) {
 
 TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionDvarsb) {   
     auto exprIt = profileMap.find("b");
-    
+
     EXPECT_TRUE(exprIt->second.back().dvars.find("ke_e4e") != exprIt->second.back().dvars.end());
     EXPECT_TRUE(exprIt->second.back().dvars.find("caa34") != exprIt->second.back().dvars.end());
     EXPECT_TRUE(exprIt->second.back().dvars.find("test") != exprIt->second.back().dvars.end());
+}
+namespace {
+  class TestsrcSliceAliasDetection : public ::testing::Test{
+  public:
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    TestsrcSliceAliasDetection(){
+
+    }
+    void SetUp(){
+      std::string str = 
+      "int main(){\n"
+      "Object* b = 0;\n"
+      "b = ke_e4e;\n"
+      "Object* a = &ke_e4e;\n"
+      "b = ke_e4e;\n"
+      "float* e = b;\n"
+      "}\n";
+      std::string srcmlStr = StringToSrcML(str);
+    
+      SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+      srcSAXController control(srcmlStr);
+      srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+      control.parse(&handler);
+    }
+    void TearDown(){
+
+    }
+    ~TestsrcSliceAliasDetection(){
+
+    }
+  };
+}
+
+TEST_F(TestsrcSliceAliasDetection, TestAliases) {
+    
+    auto exprIt = profileMap.find("ke_e4e");
+    
+    EXPECT_TRUE(exprIt->second.back().aliases.find("b") != exprIt->second.back().aliases.end());
+    EXPECT_TRUE(exprIt->second.back().aliases.find("a") != exprIt->second.back().aliases.end());
 }
