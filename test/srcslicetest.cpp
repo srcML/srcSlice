@@ -391,6 +391,7 @@ TEST_F(TestParamSliceDetection, TestParamsK) {
     
     EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_K) != exprIt->second.back().def.end());
     EXPECT_TRUE(exprIt->second.back().use.find(LINE_NUM_USE_OF_K) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().aliases.find("j") != exprIt->second.back().aliases.end());
 }
 TEST_F(TestParamSliceDetection, TestParamsJ) {
     const int LINE_NUM_DEF_OF_J = 1;
@@ -399,6 +400,7 @@ TEST_F(TestParamSliceDetection, TestParamsJ) {
     
     EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_J) != exprIt->second.back().def.end());
     EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_SECOND_DEF_OF_J) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().potentialAlias);
 }
 TEST_F(TestParamSliceDetection, TestParamsL) {
     const int LINE_NUM_DEF_OF_L = 1;
