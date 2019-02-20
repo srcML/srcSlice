@@ -354,3 +354,57 @@ TEST_F(TestsrcSliceAliasDetection, TestAliases) {
     EXPECT_TRUE(exprIt->second.back().aliases.find("b") != exprIt->second.back().aliases.end());
     EXPECT_TRUE(exprIt->second.back().aliases.find("a") != exprIt->second.back().aliases.end());
 }
+
+namespace {
+  class TestParamSliceDetection : public ::testing::Test{
+  public:
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    TestParamSliceDetection(){
+
+    }
+    void SetUp(){
+      std::string str = 
+      "int main(int k, double* j, float l[]){\n"
+      "j = k;\n"
+      "l = 0;\n"
+      "}\n";
+      std::string srcmlStr = StringToSrcML(str);
+    
+      SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+      srcSAXController control(srcmlStr);
+      srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+      control.parse(&handler);
+    }
+    void TearDown(){
+
+    }
+    ~TestParamSliceDetection(){
+
+    }
+  };
+}
+
+TEST_F(TestParamSliceDetection, TestParamsK) {
+    const int LINE_NUM_DEF_OF_K = 1;
+    const int LINE_NUM_USE_OF_K = 2;
+    auto exprIt = profileMap.find("k");
+    
+    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_K) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().use.find(LINE_NUM_USE_OF_K) != exprIt->second.back().use.end());
+}
+TEST_F(TestParamSliceDetection, TestParamsJ) {
+    const int LINE_NUM_DEF_OF_J = 1;
+    const int LINE_NUM_SECOND_DEF_OF_J = 2;
+    auto exprIt = profileMap.find("j");
+    
+    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_J) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_SECOND_DEF_OF_J) != exprIt->second.back().def.end());
+}
+TEST_F(TestParamSliceDetection, TestParamsL) {
+    const int LINE_NUM_DEF_OF_L = 1;
+    const int LINE_NUM_SECOND_DEF_OF_L = 3;
+    auto exprIt = profileMap.find("l");
+    
+    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_L) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_SECOND_DEF_OF_L) != exprIt->second.back().def.end());
+}

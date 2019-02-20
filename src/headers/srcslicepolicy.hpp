@@ -8,6 +8,7 @@
 #include <DeclTypePolicy.hpp>
 #include <ExprPolicy.hpp>
 #include <InitPolicy.hpp>
+#include <ParamTypePolicy.hpp>
 #include <srcSAXEventDispatcher.hpp>
 #include <FunctionSignaturePolicy.hpp>
 #include <FunctionCallPolicy.hpp>
@@ -64,6 +65,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             exprpolicy.AddListener(this);
             callpolicy.AddListener(this);
             initpolicy.AddListener(this);
+            parampolicy.AddListener(this);
 
             profileMap = pm;
         }
@@ -185,6 +187,19 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         if(!funcNameAndCurrArgumentPos.empty()) ++funcNameAndCurrArgumentPos.back().second;
                     }
                 }
+            }else if(typeid(ParamTypePolicy) == typeid(*policy)){
+                //ctx.currentFunctionName
+                paramdata = *policy->Data<DeclData>();
+                auto sliceProfileItr = profileMap->find(paramdata.nameOfIdentifier);
+                //Just add new slice profile if name already exists. Otherwise, add new entry in map.
+                if(sliceProfileItr != profileMap->end()){
+                    sliceProfileItr->second.push_back(SliceProfile(paramdata.nameOfIdentifier,paramdata.linenumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.linenumber}));
+                }else{
+                    profileMap->insert(std::make_pair(paramdata.nameOfIdentifier, 
+                        std::vector<SliceProfile>{
+                            SliceProfile(paramdata.nameOfIdentifier,paramdata.linenumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.linenumber})
+                        }));
+                }
             }
         }
         void NotifyWrite(const PolicyDispatcher *policy, srcSAXEventDispatch::srcSAXEventContext &ctx){}
@@ -197,6 +212,9 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
     private:
         DeclTypePolicy declpolicy;
         DeclData decldata;
+
+        ParamTypePolicy parampolicy;
+        DeclData paramdata;
 
         InitPolicy initpolicy;
         InitPolicy::InitDataSet initdataset;
@@ -222,6 +240,9 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             };
             openEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
                 ctx.dispatcher->AddListenerDispatch(&declpolicy);
+            };
+            openEventMap[ParserState::parameterlist] = [this](srcSAXEventContext& ctx) {
+                ctx.dispatcher->AddListenerDispatch(&parampolicy);
             };
             openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
                 ctx.dispatcher->AddListenerDispatch(&exprpolicy);
@@ -250,6 +271,9 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             };
             closeEventMap[ParserState::init] = [this](srcSAXEventContext& ctx){
                 ctx.dispatcher->RemoveListenerDispatch(&initpolicy);
+            };
+            closeEventMap[ParserState::parameterlist] = [this](srcSAXEventContext& ctx) {
+                ctx.dispatcher->RemoveListenerDispatch(&parampolicy);
             };
             closeEventMap[ParserState::tokenstring] = [this](srcSAXEventContext& ctx){
                 //TODO: possibly, this if-statement is suppressing more than just unmarked whitespace. Investigate.
