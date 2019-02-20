@@ -15,17 +15,17 @@
 
 class SliceProfile{
     public:
-        SliceProfile():index(0),visited(false),potentialAlias(false),dereferenced(false),isGlobal(false){}
-        SliceProfile(unsigned int idx, std::string fle, std::string fcn, unsigned int sline, std::string name, bool alias = 0, bool global = 0):
-        index(idx), file(fle), function(fcn), potentialAlias(alias), variableName(name),isGlobal(global) {
+        SliceProfile():index(0),containsDeclaration(false),potentialAlias(false),dereferenced(false),isGlobal(false){}
+        SliceProfile(
+            std::string name, int line, bool alias = 0, bool global = 0, 
+            std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}, 
+            std::vector<std::pair<std::string, std::string>> cFunc = {}, 
+            std::set<std::string> dv = {}, bool containsDecl = false):
+                variableName(name), lineNumber(line), potentialAlias(alias), 
+                isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc), 
+                dvars(dv), containsDeclaration(containsDecl){
+            
             dereferenced = false;
-            visited = false;
-        }
-        SliceProfile(std::string name, int line, bool alias = 0, bool global = 0, 
-            std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}, std::vector<std::pair<std::string, std::string>> cFunc = {}, std::set<std::string> dv = {}):
-         variableName(name), lineNumber(line), potentialAlias(alias), isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc), dvars(dv) {
-            dereferenced = false;
-            visited = false;
         }
 
         void PrintProfile(){
@@ -68,7 +68,7 @@ class SliceProfile{
         bool dereferenced;
 
         bool isGlobal;
-        bool visited;
+        bool containsDeclaration;
 
         std::string variableName;
         std::string variableType;
@@ -100,20 +100,31 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
 
             profileMap = pm;
         }
+        void MergeProfiles(SliceProfile currentSliceProfile, std::vector<SliceProfile>* sliceProfiles){
+            for(std::vector<SliceProfile>::iterator it = sliceProfiles->begin(); it != sliceProfiles->end(); ++it){
+                //if current profile and another profile have the same containing class and/or function name
+                //and if of one them is the actual declaration
+                //marge the profiles. Otherwise, just add the new profile
+            }
+
+        }
         void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
             using namespace srcSAXEventDispatch;
             if(typeid(DeclTypePolicy) == typeid(*policy)){
-                //ctx.currentFunctionName
                 decldata = *policy->Data<DeclData>();
                 auto sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
                 
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
                     sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber}));
+                    sliceProfileItr->second.back().containsDeclaration = true;
                 }else{
+                    auto sliceProf = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber,
+                     (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
+                    sliceProf.containsDeclaration = true;
                     profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
                         std::vector<SliceProfile>{
-                            SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber})
+                           std::move(sliceProf)
                         }));
                 }
                 sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
@@ -126,9 +137,10 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             updateDvarAtThisLocation->second.back().aliases.insert(decldata.nameOfIdentifier);
                         }
                     }else{
+                        auto sliceProf = SliceProfile(dvar, decldata.lineNumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.lineNumber});
                         auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
                             std::vector<SliceProfile>{
-                                SliceProfile(dvar, decldata.lineNumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.lineNumber})
+                                std::move(sliceProf)
                             }));
                         newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
                         if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
@@ -139,6 +151,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 declDvars.clear();
             }else if(typeid(ExprPolicy) == typeid(*policy)){
                 exprDataSet = *policy->Data<ExprPolicy::ExprDataSet>();
+                //iterate through every token found in the expression statement
                 for(auto exprdata : exprDataSet.dataSet){
                     auto sliceProfileExprItr = profileMap->find(exprdata.second.nameOfIdentifier);
                     auto sliceProfileLHSItr = profileMap->find(exprDataSet.lhsName);
@@ -161,6 +174,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 }
             }else if(typeid(InitPolicy) == typeid(*policy)){
                 initDataSet = *policy->Data<InitPolicy::InitDataSet>();
+                //iterate through every token found in the initialization of a decl_stmt
                 for(auto initdata : initDataSet.dataSet){
                     declDvars.push_back(initdata.second.nameOfIdentifier);
                     auto sliceProfileItr = profileMap->find(initdata.second.nameOfIdentifier);
@@ -179,7 +193,11 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 calldata = *policy->Data<CallPolicy::CallData>();
                 bool isFuncNameNext = false;
                 std::vector<std::pair<std::string, unsigned int>> funcNameAndCurrArgumentPos;
+                //Go through each token found in a function call
                 for(auto currentCallToken : calldata.callargumentlist){
+                    //Check to see if we are entering a function call or exiting-- 
+                    //if entering, we know the next token is the name of the call
+                    //otherwise, we're exiting and need to pop the current function call off the stack
                     switch(currentCallToken[0]){
                         case '(':{ 
                             isFuncNameNext = true;
@@ -190,6 +208,8 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             continue;
                         }
                     }
+                    //If we noted that a function name was coming in that switch above, record it here.
+                    //Otherwise, the next token is an argument in the function call
                     if(isFuncNameNext){
                         funcNameAndCurrArgumentPos.push_back(std::make_pair(currentCallToken, 1));
                         isFuncNameNext = false;
@@ -220,6 +240,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 }
             }else if(typeid(ParamTypePolicy) == typeid(*policy)){
                 paramdata = *policy->Data<DeclData>();
+                //record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
                 auto sliceProfileItr = profileMap->find(paramdata.nameOfIdentifier);
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
