@@ -23,7 +23,7 @@ class SliceProfile{
         }
         SliceProfile(std::string name, int line, bool alias = 0, bool global = 0, 
             std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {}, std::vector<std::pair<std::string, std::string>> cFunc = {}, std::set<std::string> dv = {}):
-         variableName(name), linenumber(line), potentialAlias(alias), isGlobal(global), def(aDef), use(aUse), cfunctions(cFunc), dvars(dv) {
+         variableName(name), lineNumber(line), potentialAlias(alias), isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc), dvars(dv) {
             dereferenced = false;
             visited = false;
         }
@@ -47,20 +47,20 @@ class SliceProfile{
             }
             std::cout<<"}"<<std::endl;
             std::cout<<"Use: {";
-            for(auto usea : use){
-                std::cout<<usea<<",";
+            for(auto use : uses){
+                std::cout<<use<<",";
             }
             std::cout<<"}"<<std::endl;
             std::cout<<"Def: {";
-            for(auto defa : def){
-                std::cout<<defa<<",";
+            for(auto def : definitions){
+                std::cout<<def<<",";
             }
             std::cout<<"}"<<std::endl;
             std::cout<<"=========================================================================="<<std::endl;
         }
 
         unsigned int index;
-        int linenumber;
+        int lineNumber;
         std::string file;
         std::string function;
         
@@ -74,8 +74,8 @@ class SliceProfile{
         std::string variableType;
         std::unordered_set<std::string> memberVariables;
 
-        std::set<unsigned int> def;
-        std::set<unsigned int> use;
+        std::set<unsigned int> definitions;
+        std::set<unsigned int> uses;
         
         std::set<std::string> dvars;
         std::set<std::string> aliases;
@@ -92,11 +92,11 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             // making SSP a listener for FSPP
             InitializeEventHandlers();
         
-            declpolicy.AddListener(this);
-            exprpolicy.AddListener(this);
-            callpolicy.AddListener(this);
-            initpolicy.AddListener(this);
-            parampolicy.AddListener(this);
+            declPolicy.AddListener(this);
+            exprPolicy.AddListener(this);
+            callPolicy.AddListener(this);
+            initPolicy.AddListener(this);
+            paramPolicy.AddListener(this);
 
             profileMap = pm;
         }
@@ -109,11 +109,11 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
-                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.linenumber}));
+                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber}));
                 }else{
                     profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
                         std::vector<SliceProfile>{
-                            SliceProfile(decldata.nameOfIdentifier,decldata.linenumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.linenumber})
+                            SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber})
                         }));
                 }
                 sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
@@ -128,7 +128,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     }else{
                         auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
                             std::vector<SliceProfile>{
-                                SliceProfile(dvar, decldata.linenumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.linenumber})
+                                SliceProfile(dvar, decldata.lineNumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.lineNumber})
                             }));
                         newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
                         if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
@@ -138,40 +138,40 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 }
                 declDvars.clear();
             }else if(typeid(ExprPolicy) == typeid(*policy)){
-                exprdataset = *policy->Data<ExprPolicy::ExprDataSet>();
-                for(auto exprdata : exprdataset.dataset){
-                    auto sliceProfileExprItr = profileMap->find(exprdata.second.nameofidentifier);
-                    auto sliceProfileLHSItr = profileMap->find(exprdataset.lhsName);
-                    //Just update def and use if name already exists. Otherwise, add new name.
+                exprDataSet = *policy->Data<ExprPolicy::ExprDataSet>();
+                for(auto exprdata : exprDataSet.dataSet){
+                    auto sliceProfileExprItr = profileMap->find(exprdata.second.nameOfIdentifier);
+                    auto sliceProfileLHSItr = profileMap->find(exprDataSet.lhsName);
+                    //Just update definitions and uses if name already exists. Otherwise, add new name.
                     if(sliceProfileExprItr != profileMap->end()){
-                        sliceProfileExprItr->second.back().use.insert(exprdata.second.use.begin(), exprdata.second.use.end());
-                        sliceProfileExprItr->second.back().def.insert(exprdata.second.def.begin(), exprdata.second.def.end());
-                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameofidentifier)) sliceProfileExprItr->second.back().dvars.insert(currentName);
-                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr->second.back().aliases.insert(exprdataset.lhsName);
+                        sliceProfileExprItr->second.back().uses.insert(exprdata.second.uses.begin(), exprdata.second.uses.end());
+                        sliceProfileExprItr->second.back().definitions.insert(exprdata.second.definitions.begin(), exprdata.second.definitions.end());
+                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr->second.back().dvars.insert(currentName);
+                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr->second.back().aliases.insert(exprDataSet.lhsName);
                     }else{
-                        auto sliceProfileExprItr2 = profileMap->insert(std::make_pair(exprdata.second.nameofidentifier, 
+                        auto sliceProfileExprItr2 = profileMap->insert(std::make_pair(exprdata.second.nameOfIdentifier, 
                             std::vector<SliceProfile>{
-                                SliceProfile(exprdata.second.nameofidentifier, ctx.currentLineNumber, true, true, 
-                                    exprdata.second.def, exprdata.second.use)
+                                SliceProfile(exprdata.second.nameOfIdentifier, ctx.currentLineNumber, true, true, 
+                                    exprdata.second.definitions, exprdata.second.uses)
                             }));
-                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr2.first->second.back().aliases.insert(exprdataset.lhsName);
+                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
                         //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
-                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameofidentifier)) sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
+                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
                     }
                 }
             }else if(typeid(InitPolicy) == typeid(*policy)){
-                initdataset = *policy->Data<InitPolicy::InitDataSet>();
-                for(auto initdata : initdataset.dataset){
-                    declDvars.push_back(initdata.second.nameofidentifier);
-                    auto sliceProfileItr = profileMap->find(initdata.second.nameofidentifier);
-                    //Just update def and use if name already exists. Otherwise, add new name.
+                initDataSet = *policy->Data<InitPolicy::InitDataSet>();
+                for(auto initdata : initDataSet.dataSet){
+                    declDvars.push_back(initdata.second.nameOfIdentifier);
+                    auto sliceProfileItr = profileMap->find(initdata.second.nameOfIdentifier);
+                    //Just update definitions and uses if name already exists. Otherwise, add new name.
                     if(sliceProfileItr != profileMap->end()){
-                        sliceProfileItr->second.back().use.insert(initdata.second.use.begin(), initdata.second.use.end());
+                        sliceProfileItr->second.back().uses.insert(initdata.second.uses.begin(), initdata.second.uses.end());
                     }else{
-                        profileMap->insert(std::make_pair(initdata.second.nameofidentifier, 
+                        profileMap->insert(std::make_pair(initdata.second.nameOfIdentifier, 
                             std::vector<SliceProfile>{
-                                SliceProfile(initdata.second.nameofidentifier, ctx.currentLineNumber, true, true, 
-                                    std::set<unsigned int>{}, initdata.second.use)
+                                SliceProfile(initdata.second.nameOfIdentifier, ctx.currentLineNumber, true, true, 
+                                    std::set<unsigned int>{}, initdata.second.uses)
                             }));
                     }   
                 }
@@ -219,16 +219,15 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     }
                 }
             }else if(typeid(ParamTypePolicy) == typeid(*policy)){
-                //ctx.currentFunctionName
                 paramdata = *policy->Data<DeclData>();
                 auto sliceProfileItr = profileMap->find(paramdata.nameOfIdentifier);
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
-                    sliceProfileItr->second.push_back(SliceProfile(paramdata.nameOfIdentifier,paramdata.linenumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.linenumber}));
+                    sliceProfileItr->second.push_back(SliceProfile(paramdata.nameOfIdentifier,paramdata.lineNumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.lineNumber}));
                 }else{
                     profileMap->insert(std::make_pair(paramdata.nameOfIdentifier, 
                         std::vector<SliceProfile>{
-                            SliceProfile(paramdata.nameOfIdentifier,paramdata.linenumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.linenumber})
+                            SliceProfile(paramdata.nameOfIdentifier,paramdata.lineNumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.lineNumber})
                         }));
                 }
             }
@@ -241,19 +240,19 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         }
         
     private:
-        DeclTypePolicy declpolicy;
+        DeclTypePolicy declPolicy;
         DeclData decldata;
 
-        ParamTypePolicy parampolicy;
+        ParamTypePolicy paramPolicy;
         DeclData paramdata;
 
-        InitPolicy initpolicy;
-        InitPolicy::InitDataSet initdataset;
+        InitPolicy initPolicy;
+        InitPolicy::InitDataSet initDataSet;
         
-        ExprPolicy::ExprDataSet exprdataset;
-        ExprPolicy exprpolicy;  
+        ExprPolicy::ExprDataSet exprDataSet;
+        ExprPolicy exprPolicy;  
         
-        CallPolicy callpolicy;
+        CallPolicy callPolicy;
         CallPolicy::CallData calldata;
 
         FunctionSignaturePolicy functionpolicy;
@@ -269,41 +268,41 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 }
             };
             openEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
-                ctx.dispatcher->AddListenerDispatch(&declpolicy);
+                ctx.dispatcher->AddListenerDispatch(&declPolicy);
             };
             openEventMap[ParserState::parameterlist] = [this](srcSAXEventContext& ctx) {
-                ctx.dispatcher->AddListenerDispatch(&parampolicy);
+                ctx.dispatcher->AddListenerDispatch(&paramPolicy);
             };
             openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
-                ctx.dispatcher->AddListenerDispatch(&exprpolicy);
+                ctx.dispatcher->AddListenerDispatch(&exprPolicy);
             };
             openEventMap[ParserState::call] = [this](srcSAXEventContext& ctx){
-                //don't want multiple callpolicy parsers running
+                //don't want multiple callPolicy parsers running
                 if(ctx.NumCurrentlyOpen(ParserState::call) < 2) {
-                    ctx.dispatcher->AddListenerDispatch(&callpolicy);
+                    ctx.dispatcher->AddListenerDispatch(&callPolicy);
                 }
             };
             openEventMap[ParserState::init] = [this](srcSAXEventContext& ctx){
-                ctx.dispatcher->AddListenerDispatch(&initpolicy);
+                ctx.dispatcher->AddListenerDispatch(&initPolicy);
             };
             closeEventMap[ParserState::call] = [this](srcSAXEventContext& ctx){
                 if(ctx.NumCurrentlyOpen(ParserState::call) < 2) {
-                    ctx.dispatcher->RemoveListenerDispatch(&callpolicy);
+                    ctx.dispatcher->RemoveListenerDispatch(&callPolicy);
                 }
             };
             closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext& ctx){
-                ctx.dispatcher->RemoveListenerDispatch(&declpolicy);
+                ctx.dispatcher->RemoveListenerDispatch(&declPolicy);
                 currentName.clear();
             };
             closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext& ctx){
-                ctx.dispatcher->RemoveListenerDispatch(&exprpolicy);
+                ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
                 currentName.clear();
             };
             closeEventMap[ParserState::init] = [this](srcSAXEventContext& ctx){
-                ctx.dispatcher->RemoveListenerDispatch(&initpolicy);
+                ctx.dispatcher->RemoveListenerDispatch(&initPolicy);
             };
             closeEventMap[ParserState::parameterlist] = [this](srcSAXEventContext& ctx) {
-                ctx.dispatcher->RemoveListenerDispatch(&parampolicy);
+                ctx.dispatcher->RemoveListenerDispatch(&paramPolicy);
             };
             closeEventMap[ParserState::tokenstring] = [this](srcSAXEventContext& ctx){
                 //TODO: possibly, this if-statement is suppressing more than just unmarked whitespace. Investigate.

@@ -147,9 +147,9 @@ TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDefke_e4e) {
     
     auto exprIt = profileMap.find("ke_e4e");
     
-    EXPECT_TRUE(exprIt->second.back().use.find(LINE_NUM_USE_OF_KE_E4E) != exprIt->second.back().use.end());
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_EXPR_DEF_OF_KE_E4E) != exprIt->second.back().def.end());
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DECL_DEFS_OF_KE_E4E) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(LINE_NUM_USE_OF_KE_E4E) != exprIt->second.back().uses.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_EXPR_DEF_OF_KE_E4E) != exprIt->second.back().definitions.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_DECL_DEFS_OF_KE_E4E) != exprIt->second.back().definitions.end());
 }
 
 TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDefcaa34) {
@@ -158,9 +158,9 @@ TEST_F(TestsrcSliceDeclExprUnion, TestDetectCommonUseDefcaa34) {
     
     auto exprIt = profileMap.find("caa34");
 
-    EXPECT_TRUE(exprIt->second.back().def.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().def.end());
-    EXPECT_TRUE(exprIt->second.back().use.find(SECOND_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().use.end());
-    EXPECT_TRUE(exprIt->second.back().use.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().definitions.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(SECOND_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().uses.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(FIRST_LINE_NUM_USE_OF_CAA34) != exprIt->second.back().uses.end());
 }
 
 namespace {
@@ -198,7 +198,7 @@ TEST_F(TestsrcSliceCallPolicy, TestDetectCallArgumentsb) {
     const int NUM_ARGUMENTS_DETECTED = 6; //fix -- should be 4 but expr runs at same time as call
     auto callIt = profileMap.find("b");
 
-    EXPECT_TRUE(callIt->second.back().def.find(CALL_USAGE_LINE) != callIt->second.back().use.end());
+    EXPECT_TRUE(callIt->second.back().definitions.find(CALL_USAGE_LINE) != callIt->second.back().uses.end());
     EXPECT_EQ(profileMap.size(), NUM_ARGUMENTS_DETECTED);
 }
 TEST_F(TestsrcSliceCallPolicy, TestDetectCallCFunctionsb) {
@@ -211,7 +211,7 @@ TEST_F(TestsrcSliceCallPolicy, TestDetectCallArgumentsc) {
     const int CALL_USAGE_LINE = 3;
     auto callIt = profileMap.find("c");
 
-    EXPECT_TRUE(callIt->second.back().def.find(CALL_USAGE_LINE) != callIt->second.back().use.end());
+    EXPECT_TRUE(callIt->second.back().definitions.find(CALL_USAGE_LINE) != callIt->second.back().uses.end());
 }
 TEST_F(TestsrcSliceCallPolicy, TestDetectCallCFunctionsc) {
     auto callIt = profileMap.find("c");
@@ -261,11 +261,11 @@ TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionke_e4e) {
     
     auto exprIt = profileMap.find("ke_e4e");
     
-    EXPECT_TRUE(exprIt->second.back().use.find(FIRST_LINE_NUM_USE_OF_KE_E4E) != exprIt->second.back().use.end());
-    EXPECT_TRUE(exprIt->second.back().use.find(SECOND_LINE_NUM_USE_OF_KE_E4E) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(FIRST_LINE_NUM_USE_OF_KE_E4E) != exprIt->second.back().uses.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(SECOND_LINE_NUM_USE_OF_KE_E4E) != exprIt->second.back().uses.end());
 
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_EXPR_DEF_OF_KE_E4E) != exprIt->second.back().def.end());
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DECL_DEFS_OF_KE_E4E) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_EXPR_DEF_OF_KE_E4E) != exprIt->second.back().definitions.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_DECL_DEFS_OF_KE_E4E) != exprIt->second.back().definitions.end());
 }
 
 TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionb) {
@@ -277,10 +277,10 @@ TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionb) {
     
     auto exprIt = profileMap.find("b");
     
-    EXPECT_TRUE(exprIt->second.back().use.find(FIRST_LINE_NUM_USE_OF_b) != exprIt->second.back().use.end());
-    EXPECT_TRUE(exprIt->second.back().use.find(SECOND_LINE_NUM_USE_OF_b) != exprIt->second.back().use.end());
-    EXPECT_TRUE(exprIt->second.back().use.find(THIRD_LINE_NUM_USE_OF_b) != exprIt->second.back().use.end());
-    EXPECT_TRUE(exprIt->second.back().use.find(FOURTH_LINE_NUM_DEF_OF_b) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(FIRST_LINE_NUM_USE_OF_b) != exprIt->second.back().uses.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(SECOND_LINE_NUM_USE_OF_b) != exprIt->second.back().uses.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(THIRD_LINE_NUM_USE_OF_b) != exprIt->second.back().uses.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(FOURTH_LINE_NUM_DEF_OF_b) != exprIt->second.back().uses.end());
 
     EXPECT_TRUE(exprIt->second.back().cfunctions.front().first == "Bar-Foo");
     EXPECT_TRUE(exprIt->second.back().cfunctions.front().second == "1-1");
@@ -291,7 +291,7 @@ TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionb) {
     EXPECT_TRUE(exprIt->second.back().cfunctions.back().first == "Bam");
     EXPECT_TRUE(exprIt->second.back().cfunctions.back().second == "1");
 
-    EXPECT_TRUE(exprIt->second.back().def.find(FIRST_LINE_NUM_DEF_OF_b) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(FIRST_LINE_NUM_DEF_OF_b) != exprIt->second.back().uses.end());
 }
 
 TEST_F(TestsrcSliceDeclExprCallUnion, TestDetectCallDeclExprUnionDvarske_e4e) {   
@@ -389,8 +389,8 @@ TEST_F(TestParamSliceDetection, TestParamsK) {
     const int LINE_NUM_USE_OF_K = 2;
     auto exprIt = profileMap.find("k");
     
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_K) != exprIt->second.back().def.end());
-    EXPECT_TRUE(exprIt->second.back().use.find(LINE_NUM_USE_OF_K) != exprIt->second.back().use.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_DEF_OF_K) != exprIt->second.back().definitions.end());
+    EXPECT_TRUE(exprIt->second.back().uses.find(LINE_NUM_USE_OF_K) != exprIt->second.back().uses.end());
     EXPECT_TRUE(exprIt->second.back().aliases.find("j") != exprIt->second.back().aliases.end());
 }
 TEST_F(TestParamSliceDetection, TestParamsJ) {
@@ -398,8 +398,8 @@ TEST_F(TestParamSliceDetection, TestParamsJ) {
     const int LINE_NUM_SECOND_DEF_OF_J = 2;
     auto exprIt = profileMap.find("j");
     
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_J) != exprIt->second.back().def.end());
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_SECOND_DEF_OF_J) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_DEF_OF_J) != exprIt->second.back().definitions.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_SECOND_DEF_OF_J) != exprIt->second.back().definitions.end());
     EXPECT_TRUE(exprIt->second.back().potentialAlias);
 }
 TEST_F(TestParamSliceDetection, TestParamsL) {
@@ -407,6 +407,6 @@ TEST_F(TestParamSliceDetection, TestParamsL) {
     const int LINE_NUM_SECOND_DEF_OF_L = 3;
     auto exprIt = profileMap.find("l");
     
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_DEF_OF_L) != exprIt->second.back().def.end());
-    EXPECT_TRUE(exprIt->second.back().def.find(LINE_NUM_SECOND_DEF_OF_L) != exprIt->second.back().def.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_DEF_OF_L) != exprIt->second.back().definitions.end());
+    EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_SECOND_DEF_OF_L) != exprIt->second.back().definitions.end());
 }

@@ -29,22 +29,22 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
         struct InitData{
             InitData() {}
             void clear(){
-               use.clear();
+               uses.clear();
             }
-            std::string nameofidentifier;
-            std::set<unsigned int> use; //could be used multiple times in same init
+            std::string nameOfIdentifier;
+            std::set<unsigned int> uses; //could be used multiple times in same init
         };
         struct InitDataSet{
            InitDataSet() = default;
            InitDataSet(std::map<std::string, InitData> dat){
-            dataset = dat;
+            dataSet = dat;
            }
            void clear(){
-            dataset.clear();
+            dataSet.clear();
            }
-           std::map<std::string, InitData> dataset;
+           std::map<std::string, InitData> dataSet;
         };
-        std::map<std::string, InitData> dataset;
+        std::map<std::string, InitData> dataSet;
         ~InitPolicy(){}
         InitPolicy(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {}): srcSAXEventDispatch::PolicyDispatcher(listeners){
             seenAssignment = false;
@@ -54,7 +54,7 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
         void NotifyWrite(const PolicyDispatcher * policy, srcSAXEventDispatch::srcSAXEventContext & ctx) override {} //doesn't use other parsers
     protected:
         void * DataInner() const override {
-            return new InitDataSet(dataset);
+            return new InitDataSet(dataSet);
         }
     private:
         InitData data;
@@ -72,13 +72,13 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
                     currentLine.push_back(ctx.currentLineNumber);
                 }
                 if(ctx.IsOpen({ParserState::declstmt})){
-                    auto it = dataset.find(currentInitName);
-                    if(it != dataset.end()){
-                        it->second.use.insert(currentLine.back()); //assume it's a use
+                    auto it = dataSet.find(currentInitName);
+                    if(it != dataSet.end()){
+                        it->second.uses.insert(currentLine.back()); //assume it's a use
                     }else{
-                        data.nameofidentifier = currentInitName;
-                        data.use.insert(currentLine.back());
-                        dataset.insert(std::make_pair(currentInitName, data));
+                        data.nameOfIdentifier = currentInitName;
+                        data.uses.insert(currentLine.back());
+                        dataSet.insert(std::make_pair(currentInitName, data));
                     }
                 }
             };
@@ -102,7 +102,7 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
                 currentLine.pop_back();
                 seenAssignment = false;
                 currentLine.clear();
-                dataset.clear();
+                dataSet.clear();
                 data.clear();
             };
 
