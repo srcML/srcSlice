@@ -28,6 +28,37 @@ class SliceProfile{
             visited = false;
         }
 
+        void PrintProfile(){
+            std::cout<<"=========================================================================="<<std::endl;
+            std::cout<<"Name and type: "<<variableName<<" "<<variableType<<std::endl;
+            std::cout<<"Dvars: {";
+            for(auto dvar : dvars){
+                std::cout<<dvar<<",";
+            }
+            std::cout<<"}"<<std::endl;
+            std::cout<<"Aliases: {";
+            for(auto alias : aliases){
+                std::cout<<alias<<",";
+            }
+            std::cout<<"}"<<std::endl;
+            std::cout<<"Cfunctions: {";
+            for(auto cfunc : cfunctions){
+                std::cout<<cfunc.first<<" "<<cfunc.second<<",";
+            }
+            std::cout<<"}"<<std::endl;
+            std::cout<<"Use: {";
+            for(auto usea : use){
+                std::cout<<usea<<",";
+            }
+            std::cout<<"}"<<std::endl;
+            std::cout<<"Def: {";
+            for(auto defa : def){
+                std::cout<<defa<<",";
+            }
+            std::cout<<"}"<<std::endl;
+            std::cout<<"=========================================================================="<<std::endl;
+        }
+
         unsigned int index;
         int linenumber;
         std::string file;
@@ -220,8 +251,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         InitPolicy::InitDataSet initdataset;
         
         ExprPolicy::ExprDataSet exprdataset;
-        ExprPolicy exprpolicy;
-        
+        ExprPolicy exprpolicy;  
         
         CallPolicy callpolicy;
         CallPolicy::CallData calldata;
