@@ -63,7 +63,7 @@ class SliceProfile{
         int lineNumber;
         std::string file;
         std::string function;
-        
+        std::string nameOfContainingClass;
         bool potentialAlias;
         bool dereferenced;
 
@@ -102,6 +102,14 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         }
         void MergeProfiles(SliceProfile currentSliceProfile, std::vector<SliceProfile>* sliceProfiles){
             for(std::vector<SliceProfile>::iterator it = sliceProfiles->begin(); it != sliceProfiles->end(); ++it){
+                if(it->containsDeclaration || currentSliceProfile.containsDeclaration){
+                    if(it->nameOfContainingClass == currentSliceProfile.nameOfContainingClass){   
+                        it->uses.insert(currentSliceProfile.uses.begin(), currentSliceProfile.uses.end());
+                        it->definitions.insert(currentSliceProfile.definitions.begin(), currentSliceProfile.definitions.end());
+                        it->dvars.insert(currentSliceProfile.dvars.begin(), currentSliceProfile.dvars.end());
+                        it->aliases.insert(currentSliceProfile.aliases.begin(), currentSliceProfile.aliases.end());
+                    }
+                }
                 //if current profile and another profile have the same containing class and/or function name
                 //and if of one them is the actual declaration
                 //marge the profiles. Otherwise, just add the new profile
