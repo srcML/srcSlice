@@ -31,6 +31,7 @@ class SliceProfile{
         void PrintProfile(){
             std::cout<<"=========================================================================="<<std::endl;
             std::cout<<"Name and type: "<<variableName<<" "<<variableType<<std::endl;
+            std::cout<<"Contains Declaration: "<<containsDeclaration<<" "<<"Containing class: "<<nameOfContainingClass<<std::endl;
             std::cout<<"Dvars: {";
             for(auto dvar : dvars){
                 std::cout<<dvar<<",";
@@ -100,21 +101,22 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
 
             profileMap = pm;
         }
-        void MergeProfiles(SliceProfile currentSliceProfile, std::vector<SliceProfile>* sliceProfiles){
+        bool MergeProfiles(SliceProfile currentSliceProfile, std::vector<SliceProfile>* sliceProfiles){
+            std::vector<SliceProfile>::iterator it = sliceProfiles->begin();
+            bool found = false;
             for(std::vector<SliceProfile>::iterator it = sliceProfiles->begin(); it != sliceProfiles->end(); ++it){
                 if(it->containsDeclaration || currentSliceProfile.containsDeclaration){
-                    if(it->nameOfContainingClass == currentSliceProfile.nameOfContainingClass){   
+                        found = true;
                         it->uses.insert(currentSliceProfile.uses.begin(), currentSliceProfile.uses.end());
                         it->definitions.insert(currentSliceProfile.definitions.begin(), currentSliceProfile.definitions.end());
                         it->dvars.insert(currentSliceProfile.dvars.begin(), currentSliceProfile.dvars.end());
                         it->aliases.insert(currentSliceProfile.aliases.begin(), currentSliceProfile.aliases.end());
-                    }
                 }
                 //if current profile and another profile have the same containing class and/or function name
                 //and if of one them is the actual declaration
                 //marge the profiles. Otherwise, just add the new profile
             }
-
+            return found;
         }
         void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
             using namespace srcSAXEventDispatch;
@@ -124,11 +126,14 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
-                    sliceProfileItr->second.push_back(SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber}));
-                    sliceProfileItr->second.back().containsDeclaration = true;
+                    auto sliceProfile = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
+                        sliceProfile.nameOfContainingClass = ctx.currentClassName;
+                        sliceProfileItr->second.push_back(sliceProfile);
+                        sliceProfileItr->second.back().containsDeclaration = true;
                 }else{
                     auto sliceProf = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber,
                      (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
+                    sliceProf.nameOfContainingClass = ctx.currentClassName;
                     sliceProf.containsDeclaration = true;
                     profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
                         std::vector<SliceProfile>{
@@ -165,6 +170,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     auto sliceProfileLHSItr = profileMap->find(exprDataSet.lhsName);
                     //Just update definitions and uses if name already exists. Otherwise, add new name.
                     if(sliceProfileExprItr != profileMap->end()){
+                        sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
                         sliceProfileExprItr->second.back().uses.insert(exprdata.second.uses.begin(), exprdata.second.uses.end());
                         sliceProfileExprItr->second.back().definitions.insert(exprdata.second.definitions.begin(), exprdata.second.definitions.end());
                         if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr->second.back().dvars.insert(currentName);
@@ -175,6 +181,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                                 SliceProfile(exprdata.second.nameOfIdentifier, ctx.currentLineNumber, true, true, 
                                     exprdata.second.definitions, exprdata.second.uses)
                             }));
+                        sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
                         if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
                         //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                         if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
