@@ -109,10 +109,10 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
-                        auto sliceProfile = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
-                        sliceProfile.nameOfContainingClass = ctx.currentClassName;
-                        sliceProfileItr->second.push_back(sliceProfile);
-                        sliceProfileItr->second.back().containsDeclaration = true;
+                    auto sliceProfile = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
+                    sliceProfile.nameOfContainingClass = ctx.currentClassName;
+                    sliceProfileItr->second.push_back(sliceProfile);
+                    sliceProfileItr->second.back().containsDeclaration = true;
                 }else{
                     auto sliceProf = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber,
                                     (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
@@ -243,12 +243,16 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 auto sliceProfileItr = profileMap->find(paramdata.nameOfIdentifier);
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
-                    sliceProfileItr->second.push_back(SliceProfile(paramdata.nameOfIdentifier,paramdata.lineNumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.lineNumber}));
+                    auto sliceProf = SliceProfile(paramdata.nameOfIdentifier,paramdata.lineNumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.lineNumber});
+                    sliceProf.containsDeclaration = true;
+                    sliceProf.nameOfContainingClass = ctx.currentClassName;
+                    sliceProfileItr->second.push_back(std::move(sliceProf));
                 }else{
+                    auto sliceProf = SliceProfile(paramdata.nameOfIdentifier,paramdata.lineNumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.lineNumber});
+                    sliceProf.containsDeclaration = true;
+                    sliceProf.nameOfContainingClass = ctx.currentClassName;
                     profileMap->insert(std::make_pair(paramdata.nameOfIdentifier, 
-                        std::vector<SliceProfile>{
-                            SliceProfile(paramdata.nameOfIdentifier,paramdata.lineNumber, (paramdata.isPointer || paramdata.isReference), true, std::set<unsigned int>{paramdata.lineNumber})
-                        }));
+                        std::vector<SliceProfile>{std::move(sliceProf)}));
                 }
             }
         }
@@ -338,7 +342,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         if(sIt->containsDeclaration){
                             std::vector<SliceProfile>::iterator sIt2 = it->second.begin();
                             while(sIt2!=it->second.end()){
-                                if(sIt->nameOfContainingClass == sIt2->nameOfContainingClass && !sIt2->containsDeclaration){
+                                if(!sIt2->containsDeclaration){
                                     std::cout<<"NAME: "<<sIt2->variableName<<std::endl;
                                     sIt->uses.insert(sIt2->uses.begin(), sIt2->uses.end());
                                     sIt->definitions.insert(sIt2->definitions.begin(), sIt2->definitions.end());

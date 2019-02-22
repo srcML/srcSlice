@@ -11,7 +11,8 @@ int main(int argc, char** argv){
         control.parse(&handler); //Start parsing
         for(auto it : profileMap){
             for(auto profile : it.second){
-                profile.PrintProfile();
+            	if(profile.containsDeclaration)
+                	profile.PrintProfile();
             }
         }
 }
