@@ -101,23 +101,6 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
 
             profileMap = pm;
         }
-        bool MergeProfiles(SliceProfile currentSliceProfile, std::vector<SliceProfile>* sliceProfiles){
-            std::vector<SliceProfile>::iterator it = sliceProfiles->begin();
-            bool found = false;
-            for(std::vector<SliceProfile>::iterator it = sliceProfiles->begin(); it != sliceProfiles->end(); ++it){
-                if(it->containsDeclaration || currentSliceProfile.containsDeclaration){
-                        found = true;
-                        it->uses.insert(currentSliceProfile.uses.begin(), currentSliceProfile.uses.end());
-                        it->definitions.insert(currentSliceProfile.definitions.begin(), currentSliceProfile.definitions.end());
-                        it->dvars.insert(currentSliceProfile.dvars.begin(), currentSliceProfile.dvars.end());
-                        it->aliases.insert(currentSliceProfile.aliases.begin(), currentSliceProfile.aliases.end());
-                }
-                //if current profile and another profile have the same containing class and/or function name
-                //and if of one them is the actual declaration
-                //marge the profiles. Otherwise, just add the new profile
-            }
-            return found;
-        }
         void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
             using namespace srcSAXEventDispatch;
             if(typeid(DeclTypePolicy) == typeid(*policy)){
@@ -126,13 +109,13 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 
                 //Just add new slice profile if name already exists. Otherwise, add new entry in map.
                 if(sliceProfileItr != profileMap->end()){
-                    auto sliceProfile = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
+                        auto sliceProfile = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber, (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
                         sliceProfile.nameOfContainingClass = ctx.currentClassName;
                         sliceProfileItr->second.push_back(sliceProfile);
                         sliceProfileItr->second.back().containsDeclaration = true;
                 }else{
                     auto sliceProf = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber,
-                     (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
+                                    (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
                     sliceProf.nameOfContainingClass = ctx.currentClassName;
                     sliceProf.containsDeclaration = true;
                     profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
@@ -151,6 +134,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         }
                     }else{
                         auto sliceProf = SliceProfile(dvar, decldata.lineNumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.lineNumber});
+                        sliceProf.nameOfContainingClass = ctx.currentClassName;
                         auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
                             std::vector<SliceProfile>{
                                 std::move(sliceProf)
@@ -197,11 +181,11 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     if(sliceProfileItr != profileMap->end()){
                         sliceProfileItr->second.back().uses.insert(initdata.second.uses.begin(), initdata.second.uses.end());
                     }else{
+                        auto sliceProf = SliceProfile(initdata.second.nameOfIdentifier, ctx.currentLineNumber, true, true, 
+                                    std::set<unsigned int>{}, initdata.second.uses);
+                        sliceProf.nameOfContainingClass = ctx.currentClassName;
                         profileMap->insert(std::make_pair(initdata.second.nameOfIdentifier, 
-                            std::vector<SliceProfile>{
-                                SliceProfile(initdata.second.nameOfIdentifier, ctx.currentLineNumber, true, true, 
-                                    std::set<unsigned int>{}, initdata.second.uses)
-                            }));
+                            std::vector<SliceProfile>{sliceProf}));
                     }   
                 }
             }else if(typeid(CallPolicy) == typeid(*policy)){
@@ -243,12 +227,12 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         if(sliceProfileItr != profileMap->end()){
                             sliceProfileItr->second.back().cfunctions.push_back(std::make_pair(callOrder, argumentOrder));
                         }else{  
-                            profileMap->insert(std::make_pair(currentCallToken, 
-                                std::vector<SliceProfile>{
-                                    SliceProfile(currentCallToken, ctx.currentLineNumber, true, true, 
+                            auto sliceProf = SliceProfile(currentCallToken, ctx.currentLineNumber, true, true, 
                                         std::set<unsigned int>{}, std::set<unsigned int>{ctx.currentLineNumber}, 
-                                        std::vector<std::pair<std::string, std::string>>{std::make_pair(callOrder, argumentOrder)})
-                                }));
+                                        std::vector<std::pair<std::string, std::string>>{std::make_pair(callOrder, argumentOrder)});
+                            sliceProf.nameOfContainingClass = ctx.currentClassName;
+                            profileMap->insert(std::make_pair(currentCallToken, 
+                                std::vector<SliceProfile>{sliceProf}));
                         }
                         if(!funcNameAndCurrArgumentPos.empty()) ++funcNameAndCurrArgumentPos.back().second;
                     }
@@ -345,6 +329,30 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 if(!(ctx.currentToken.empty() || ctx.currentToken == " ")){
                     if(ctx.And({ParserState::name, ParserState::expr, ParserState::exprstmt}) && ctx.Nor({ParserState::specifier, ParserState::modifier, ParserState::op})){
                         currentExprName = ctx.currentToken;
+                    }
+                }
+            };
+            closeEventMap[ParserState::archive] = [this](srcSAXEventContext& ctx){
+                for(std::unordered_map<std::string, std::vector<SliceProfile>>::iterator it = profileMap->begin(); it != profileMap->end(); ++it){
+                    for(std::vector<SliceProfile>::iterator sIt = it->second.begin(); sIt!=it->second.end(); ++sIt){
+                        if(sIt->containsDeclaration){
+                            std::vector<SliceProfile>::iterator sIt2 = it->second.begin();
+                            while(sIt2!=it->second.end()){
+                                if(sIt->nameOfContainingClass == sIt2->nameOfContainingClass && !sIt2->containsDeclaration){
+                                    std::cout<<"NAME: "<<sIt2->variableName<<std::endl;
+                                    sIt->uses.insert(sIt2->uses.begin(), sIt2->uses.end());
+                                    sIt->definitions.insert(sIt2->definitions.begin(), sIt2->definitions.end());
+                                    sIt->dvars.insert(sIt2->dvars.begin(), sIt2->dvars.end());
+                                    sIt->aliases.insert(sIt2->aliases.begin(), sIt2->aliases.end());
+                                    sIt->cfunctions.reserve(sIt->cfunctions.size() + sIt2->cfunctions.size());
+                                    sIt->cfunctions.insert(sIt->cfunctions.end(), sIt2->cfunctions.begin(), sIt2->cfunctions.end());
+                                    sIt2 = it->second.erase(sIt2);
+                                    sIt = sIt2;
+                                }else{
+                                    ++sIt2;
+                                }
+                            }
+                        }
                     }
                 }
             };
