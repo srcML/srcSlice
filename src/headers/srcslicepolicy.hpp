@@ -13,6 +13,15 @@
 #include <FunctionSignaturePolicy.hpp>
 #include <FunctionCallPolicy.hpp>
 
+bool StringContainsCharacters(const std::string& str){
+    for(char ch : str){
+        if(std::isalpha(ch)){
+            return true;
+        }
+    }
+    return false;
+}
+
 class SliceProfile{
     public:
         SliceProfile():index(0),containsDeclaration(false),potentialAlias(false),dereferenced(false),isGlobal(false){}
@@ -128,6 +137,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                 for(std::string dvar : declDvars){
                     auto updateDvarAtThisLocation = profileMap->find(dvar);
                     if(updateDvarAtThisLocation != profileMap->end()){
+                        if(!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                         updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
                         if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
                             updateDvarAtThisLocation->second.back().aliases.insert(decldata.nameOfIdentifier);
@@ -139,6 +149,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             std::vector<SliceProfile>{
                                 std::move(sliceProf)
                             }));
+                        if(!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                         newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
                         if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
                             newSliceProfileFromDeclDvars.first->second.back().aliases.insert(decldata.nameOfIdentifier);
@@ -146,6 +157,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     }
                 }
                 declDvars.clear();
+                decldata.clear();
             }else if(typeid(ExprPolicy) == typeid(*policy)){
                 exprDataSet = *policy->Data<ExprPolicy::ExprDataSet>();
                 //iterate through every token found in the expression statement
@@ -157,7 +169,11 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
                         sliceProfileExprItr->second.back().uses.insert(exprdata.second.uses.begin(), exprdata.second.uses.end());
                         sliceProfileExprItr->second.back().definitions.insert(exprdata.second.definitions.begin(), exprdata.second.definitions.end());
+                        
+                        if(!StringContainsCharacters(currentName)) continue;
                         if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr->second.back().dvars.insert(currentName);
+                        
+                        if(!StringContainsCharacters(exprDataSet.lhsName)) continue;
                         if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr->second.back().aliases.insert(exprDataSet.lhsName);
                     }else{
                         auto sliceProfileExprItr2 = profileMap->insert(std::make_pair(exprdata.second.nameOfIdentifier, 
@@ -166,11 +182,15 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                                     exprdata.second.definitions, exprdata.second.uses)
                             }));
                         sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
+                        
+                        if(!StringContainsCharacters(exprDataSet.lhsName)) continue;
                         if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
                         //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                        if(!StringContainsCharacters(currentName)) continue;
                         if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
                     }
                 }
+                exprDataSet.clear();
             }else if(typeid(InitPolicy) == typeid(*policy)){
                 initDataSet = *policy->Data<InitPolicy::InitDataSet>();
                 //iterate through every token found in the initialization of a decl_stmt
@@ -188,6 +208,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                             std::vector<SliceProfile>{sliceProf}));
                     }   
                 }
+                initDataSet.clear();
             }else if(typeid(CallPolicy) == typeid(*policy)){
                 calldata = *policy->Data<CallPolicy::CallData>();
                 bool isFuncNameNext = false;
@@ -217,6 +238,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         
                         std::string callOrder, argumentOrder;
                         for(auto name : funcNameAndCurrArgumentPos){
+                            if(!StringContainsCharacters(name.first)) continue;
                             callOrder+=name.first+'-';
                             argumentOrder+=std::to_string(name.second)+'-';
                         }
@@ -254,6 +276,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     profileMap->insert(std::make_pair(paramdata.nameOfIdentifier, 
                         std::vector<SliceProfile>{std::move(sliceProf)}));
                 }
+                paramdata.clear();
             }
         }
         void NotifyWrite(const PolicyDispatcher *policy, srcSAXEventDispatch::srcSAXEventContext &ctx){}
