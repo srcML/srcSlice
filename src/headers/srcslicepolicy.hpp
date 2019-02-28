@@ -124,7 +124,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     sliceProfileItr->second.back().containsDeclaration = true;
                 }else{
                     auto sliceProf = SliceProfile(decldata.nameOfIdentifier,decldata.lineNumber,
-                                    (decldata.isPointer || decldata.isReference), true, std::set<unsigned int>{decldata.lineNumber});
+                                    (decldata.isPointer || decldata.isReference), false, std::set<unsigned int>{decldata.lineNumber});
                     sliceProf.nameOfContainingClass = ctx.currentClassName;
                     sliceProf.containsDeclaration = true;
                     profileMap->insert(std::make_pair(decldata.nameOfIdentifier, 
@@ -138,22 +138,24 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     auto updateDvarAtThisLocation = profileMap->find(dvar);
                     if(updateDvarAtThisLocation != profileMap->end()){
                         if(!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
-                        updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
                         if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
                             updateDvarAtThisLocation->second.back().aliases.insert(decldata.nameOfIdentifier);
+                            continue;
                         }
+                        updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
                     }else{
-                        auto sliceProf = SliceProfile(dvar, decldata.lineNumber, true, true, std::set<unsigned int>{}, std::set<unsigned int>{decldata.lineNumber});
+                        auto sliceProf = SliceProfile(dvar, decldata.lineNumber, false, false, std::set<unsigned int>{}, std::set<unsigned int>{decldata.lineNumber});
                         sliceProf.nameOfContainingClass = ctx.currentClassName;
                         auto newSliceProfileFromDeclDvars = profileMap->insert(std::make_pair(dvar, 
                             std::vector<SliceProfile>{
                                 std::move(sliceProf)
                             }));
                         if(!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
-                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
                         if(sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias){
                             newSliceProfileFromDeclDvars.first->second.back().aliases.insert(decldata.nameOfIdentifier);
+                            continue;
                         }
+                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
                     }
                 }
                 declDvars.clear();
@@ -170,24 +172,36 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         sliceProfileExprItr->second.back().uses.insert(exprdata.second.uses.begin(), exprdata.second.uses.end());
                         sliceProfileExprItr->second.back().definitions.insert(exprdata.second.definitions.begin(), exprdata.second.definitions.end());
                         
-                        if(!StringContainsCharacters(currentName)) continue;
-                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr->second.back().dvars.insert(currentName);
-                        
                         if(!StringContainsCharacters(exprDataSet.lhsName)) continue;
-                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr->second.back().aliases.insert(exprDataSet.lhsName);
+                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias){ 
+                            sliceProfileExprItr->second.back().aliases.insert(exprDataSet.lhsName);
+                            continue;
+                        }
+                        if(!StringContainsCharacters(currentName)) continue;
+                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)){
+                            sliceProfileExprItr->second.back().dvars.insert(currentName);
+                            continue;
+                        }
+                        
                     }else{
                         auto sliceProfileExprItr2 = profileMap->insert(std::make_pair(exprdata.second.nameOfIdentifier, 
                             std::vector<SliceProfile>{
-                                SliceProfile(exprdata.second.nameOfIdentifier, ctx.currentLineNumber, true, true, 
+                                SliceProfile(exprdata.second.nameOfIdentifier, ctx.currentLineNumber, false, false, 
                                     exprdata.second.definitions, exprdata.second.uses)
                             }));
                         sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
                         
                         if(!StringContainsCharacters(exprDataSet.lhsName)) continue;
-                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
+                        if(sliceProfileLHSItr!= profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias){
+                            sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
+                            continue;
+                        }
                         //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                         if(!StringContainsCharacters(currentName)) continue;
-                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)) sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
+                        if(!currentName.empty() && (exprdata.second.lhs || currentName!=exprdata.second.nameOfIdentifier)){
+                            sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
+                            continue;
+                        }
                     }
                 }
                 exprDataSet.clear();
@@ -201,7 +215,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     if(sliceProfileItr != profileMap->end()){
                         sliceProfileItr->second.back().uses.insert(initdata.second.uses.begin(), initdata.second.uses.end());
                     }else{
-                        auto sliceProf = SliceProfile(initdata.second.nameOfIdentifier, ctx.currentLineNumber, true, true, 
+                        auto sliceProf = SliceProfile(initdata.second.nameOfIdentifier, ctx.currentLineNumber, false, false, 
                                     std::set<unsigned int>{}, initdata.second.uses);
                         sliceProf.nameOfContainingClass = ctx.currentClassName;
                         profileMap->insert(std::make_pair(initdata.second.nameOfIdentifier, 
