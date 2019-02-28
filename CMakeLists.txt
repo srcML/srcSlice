@@ -26,8 +26,10 @@ project(srcSlice)
 
 # find needed libraries
 find_package(LibXml2 REQUIRED)
+find_package(GTest REQUIRED)
 
-add_definitions("-std=c++11")
+set(CMAKE_CXX_STANDARD 14)
+set(CMAKE_CXX_FLAGS "-O3 -Wno-reorder -Wunused-variable -Wunused-parameter")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -37,10 +39,9 @@ include_directories(${LIBXML2_INCLUDE_DIR}
                     ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/srcsax
                     ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/cpp
                     ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/windows 
-                    ${CMAKE_SOURCE_DIR}/testPS
                     srcSAXEventDispatch/src/dispatcher
                     srcSAXEventDispatch/src/policy_classes
-                    src/headers
-                    testPS)
+                    src/headers)
 add_subdirectory(src)
+add_subdirectory(test)
 add_subdirectory(srcSAXEventDispatch)
