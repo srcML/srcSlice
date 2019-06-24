@@ -107,6 +107,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             callPolicy.AddListener(this);
             initPolicy.AddListener(this);
             paramPolicy.AddListener(this);
+            functionPolicy.AddListener(this);
 
             profileMap = pm;
         }
@@ -273,6 +274,22 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         if(!funcNameAndCurrArgumentPos.empty()) ++funcNameAndCurrArgumentPos.back().second;
                     }
                 }
+
+                for(std::pair<std::string, std::vector<SliceProfile>> var : *profileMap){
+                    if(!var.second.back().cfunctions.empty()){
+                        for(auto cfunc : var.second.back().cfunctions){
+                            if(cfunc.first.compare(calldata.fnName) == 0){ //TODO fix for case: Overload
+                                std::string new_name; //TODO get calldata.callarguementlist.at(cfunc.second-1)
+                                if(interprocedural.find(var.first) == interprocedural.end()){
+                                    interprocedural.insert(std::make_pair(var.first, std::vector<std::string> {new_name}));
+                                } else {
+                                    interprocedural.find(var.first)->second.push_back(new_name);
+                                }
+                            }
+                        }
+                    }
+                }
+
             }else if(typeid(ParamTypePolicy) == typeid(*policy)){
                 paramdata = *policy->Data<DeclData>();
                 //record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
@@ -291,9 +308,21 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                         std::vector<SliceProfile>{std::move(sliceProf)}));
                 }
                 paramdata.clear();
+            }else if(typeid(FunctionSignaturePolicy) == typeid(*policy)){
+                functionsigdata = *policy->Data<SignatureData>();
+                functionSigMap.insert(std::make_pair(functionsigdata.name + std::to_string(functionsigdata.parameters.size()), functionsigdata));
             }
         }
         void NotifyWrite(const PolicyDispatcher *policy, srcSAXEventDispatch::srcSAXEventContext &ctx){}
+
+        void ComputeInterprocedural(){
+            for(auto var : interprocedural){
+                for(std::string new_name : var.second){
+
+                    //TODO update var's Slice Profile
+                }
+            }
+        }
     
     protected:
         void *DataInner() const override {
@@ -316,9 +345,13 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
         CallPolicy callPolicy;
         CallPolicy::CallData calldata;
 
-        FunctionSignaturePolicy functionpolicy;
+        FunctionSignaturePolicy functionPolicy;
+        SignatureData functionsigdata;
+        std::map<std::string, SignatureData> functionSigMap;
         std::string currentExprName;
         std::vector<std::string> declDvars;
+
+        std::map<std::string, std::vector<std::string>> interprocedural;
 
         std::string currentName;
         void InitializeEventHandlers(){
@@ -365,6 +398,12 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
             closeEventMap[ParserState::parameterlist] = [this](srcSAXEventContext& ctx) {
                 ctx.dispatcher->RemoveListenerDispatch(&paramPolicy);
             };
+            openEventMap[ParserState::function] = [this](srcSAXEventContext& ctx) {
+                ctx.dispatcher->AddListenerDispatch(&functionPolicy);
+            };
+            openEventMap[ParserState::functionblock] = [this](srcSAXEventContext& ctx) {
+                ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
+            };
             closeEventMap[ParserState::tokenstring] = [this](srcSAXEventContext& ctx){
                 //TODO: possibly, this if-statement is suppressing more than just unmarked whitespace. Investigate.
                 if(!(ctx.currentToken.empty() || ctx.currentToken == " ")){
@@ -397,6 +436,7 @@ class SrcSlicePolicy : public srcSAXEventDispatch::EventListener, public srcSAXE
                     }
                 }
             };
+            ComputeInterprocedural();
         }
 };
 #endif
