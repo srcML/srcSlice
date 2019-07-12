@@ -410,3 +410,51 @@ TEST_F(TestParamSliceDetection, TestParamsL) {
     EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_DEF_OF_L) != exprIt->second.back().definitions.end());
     EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_SECOND_DEF_OF_L) != exprIt->second.back().definitions.end());
 }
+
+namespace {
+    class TestComputeInterprocedural : public ::testing::Test{
+    public:
+        std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+        TestComputeInterprocedural(){
+
+        }
+        void SetUp(){
+            std::string str =
+                    "void fun(int z){\n"
+                    "z++;\n"
+                    "}\n"
+                    "void foo(int &x, int &y){\n"
+                    "fun(x);\n"
+                    "y++;\n"
+                    "}\n"
+                    "int main() {\n"
+                    "int sum = 0;\n"
+                    "int i = 1;\n"
+                    "while(i<=10){\n"
+                    "foo(sum, i);\n"
+                    "}\n"
+                    "std::cout<<sum;\n"
+                    "}\n";
+        std::string srcmlStr = StringToSrcML(str);
+
+            SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+            srcSAXController control(srcmlStr);
+            srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+            control.parse(&handler);
+        }
+        void TearDown(){
+
+        }
+        ~TestComputeInterprocedural(){
+
+        }
+    };
+}
+
+TEST_F(TestComputeInterprocedural, TestSLines) {
+    //EXPECT_THAT(profileMap.find("i")->second.back().cfunctions, ::testing::ContainerEq(profileMap.find("y")->second.back().cfunctions));
+
+    for(auto use : profileMap.find("x")->second.back().uses){
+        EXPECT_TRUE(profileMap.find("sum")->second.back().uses.find(use) != profileMap.find("sum")->second.back().uses.end());
+    }
+}
