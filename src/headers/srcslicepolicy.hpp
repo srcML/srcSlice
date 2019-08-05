@@ -32,10 +32,11 @@ public:
             std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {},
             std::vector<std::pair<std::string, std::string>> cFunc = {},
             std::set<std::string> dv = {}, bool containsDecl = false,
-            std::vector<std::pair<int, int>> edges = {}) :
+            std::set<std::pair<int, int>> edges = {}, bool visit = false) :
             variableName(name), lineNumber(line), potentialAlias(alias),
             isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
-            dvars(dv), containsDeclaration(containsDecl), controlEdges(edges) {
+            dvars(dv), containsDeclaration(containsDecl), controlEdges(edges),
+            visited(visit) {
 
         dereferenced = false;
     }
@@ -101,7 +102,9 @@ public:
 
     std::vector<std::pair<std::string, std::string>> cfunctions;
 
-    std::vector<std::pair<int, int>> controlEdges;
+    std::set<std::pair<int, int>> controlEdges;
+
+    bool visited;
 };
 
 class SrcSlicePolicy
@@ -338,40 +341,171 @@ public:
 
     void NotifyWrite(const PolicyDispatcher *policy, srcSAXEventDispatch::srcSAXEventContext &ctx) {}
 
-    auto ArgumentProfile(SignatureData func, int index) {
-        std::string argName = func.parameters.at(index).nameOfIdentifier;
-        if (profileMap->find(argName) != profileMap->end()) {
-            return profileMap->find(argName);
+    auto ArgumentProfile(std::pair<std::string, SignatureData> func, int paramIndex) {
+        auto Spi = profileMap->find(func.second.parameters.at(paramIndex).nameOfIdentifier);
+        for (auto param : func.second.parameters) {
+            if (profileMap->find(param.nameOfIdentifier)->second.back().visited) {
+                return Spi;
+            } else {
+                for (auto cfunc : profileMap->find(param.nameOfIdentifier)->second.back().cfunctions) {
+                    if (cfunc.first.compare(func.first) != 0) {
+                        for (auto function : functionSigMap) {
+                            if (cfunc.first.compare(function.first) == 0) {
+                                auto recursiveSpi = ArgumentProfile(function, std::atoi(cfunc.second.c_str()) - 1);
+                                if (profileMap->find(param.nameOfIdentifier) != profileMap->end() &&
+                                    profileMap->find(recursiveSpi->first) != profileMap->end()) {
+                                    profileMap->find(param.nameOfIdentifier)->second.back().definitions.insert(
+                                            recursiveSpi->second.back().definitions.begin(),
+                                            recursiveSpi->second.back().definitions.end());
+                                    profileMap->find(param.nameOfIdentifier)->second.back().uses.insert(
+                                            recursiveSpi->second.back().uses.begin(),
+                                            recursiveSpi->second.back().uses.end());
+                                    profileMap->find(param.nameOfIdentifier)->second.back().cfunctions.insert(
+                                            profileMap->find(
+                                                    param.nameOfIdentifier)->second.back().cfunctions.begin(),
+                                            recursiveSpi->second.back().cfunctions.begin(),
+                                            recursiveSpi->second.back().cfunctions.end());
+                                    profileMap->find(param.nameOfIdentifier)->second.back().aliases.insert(
+                                            recursiveSpi->second.back().aliases.begin(),
+                                            recursiveSpi->second.back().aliases.end());
+                                    profileMap->find(param.nameOfIdentifier)->second.back().dvars.insert(
+                                            recursiveSpi->second.back().dvars.begin(),
+                                            recursiveSpi->second.back().dvars.end());
+                                }
+                            }
+                        }
+                    }
+                }
+                profileMap->find(param.nameOfIdentifier)->second.back().visited = true;
+            }
         }
+        return Spi;
     }
 
     void ComputeInterprocedural() {
         for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
-            if (!var.second.back().cfunctions.empty()) {
-                for (auto cfunc : var.second.back().cfunctions) {
-                    for (auto func : functionSigMap) {
-                        if (cfunc.first.compare(func.first) == 0) { //TODO fix for case: Overload
-                            auto Spi = ArgumentProfile(func.second, std::atoi(cfunc.second.c_str()) - 1);
-                            if (profileMap->find(var.first) != profileMap->end() &&
-                                profileMap->find(Spi->first) != profileMap->end()) {
-                                profileMap->find(var.first)->second.back().definitions.insert(
-                                        Spi->second.back().definitions.begin(),
-                                        Spi->second.back().definitions.end());
-                                profileMap->find(var.first)->second.back().uses.insert(
-                                        Spi->second.back().uses.begin(),
-                                        Spi->second.back().uses.end());
-                                profileMap->find(var.first)->second.back().cfunctions.insert(
-                                        profileMap->find(var.first)->second.back().cfunctions.begin(),
-                                        Spi->second.back().cfunctions.begin(),
-                                        Spi->second.back().cfunctions.end());
-                                profileMap->find(var.first)->second.back().aliases.insert(
-                                        Spi->second.back().aliases.begin(),
-                                        Spi->second.back().aliases.end());
-                                profileMap->find(var.first)->second.back().dvars.insert(
-                                        Spi->second.back().dvars.begin(),
-                                        Spi->second.back().dvars.end());
+            if (!profileMap->find(var.first)->second.back().visited) {
+                if (!var.second.back().cfunctions.empty()) {
+                    for (auto cfunc : var.second.back().cfunctions) {
+                        for (auto func : functionSigMap) {
+                            if (cfunc.first.compare(func.first) == 0) { //TODO fix for case: Overload
+                                auto Spi = ArgumentProfile(func, std::atoi(cfunc.second.c_str()) - 1);
+                                if (profileMap->find(var.first) != profileMap->end() &&
+                                    profileMap->find(Spi->first) != profileMap->end()) {
+                                    profileMap->find(var.first)->second.back().definitions.insert(
+                                            Spi->second.back().definitions.begin(),
+                                            Spi->second.back().definitions.end());
+                                    profileMap->find(var.first)->second.back().uses.insert(
+                                            Spi->second.back().uses.begin(),
+                                            Spi->second.back().uses.end());
+                                    profileMap->find(var.first)->second.back().cfunctions.insert(
+                                            profileMap->find(var.first)->second.back().cfunctions.begin(),
+                                            Spi->second.back().cfunctions.begin(),
+                                            Spi->second.back().cfunctions.end());
+                                    profileMap->find(var.first)->second.back().aliases.insert(
+                                            Spi->second.back().aliases.begin(),
+                                            Spi->second.back().aliases.end());
+                                    profileMap->find(var.first)->second.back().dvars.insert(
+                                            Spi->second.back().dvars.begin(),
+                                            Spi->second.back().dvars.end());
+                                }
                             }
                         }
+                    }
+                }
+                profileMap->find(var.first)->second.back().visited = true;
+            }
+        }
+    }
+
+    void ComputeControlPaths() {
+        for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
+            std::vector<int> sLines;
+            std::merge(var.second.back().definitions.begin(), var.second.back().definitions.end(),
+                       var.second.back().uses.begin(), var.second.back().uses.end(),
+                       std::inserter(sLines, sLines.begin()));
+            for (auto loop : loopdata) {
+                int predecessor = 0;
+                int falseSuccessor = 0;
+                int trueSuccessor = loop.second;
+                bool trueSuccessorExists = false;
+                for (auto sl : sLines) {
+                    if (sl <= loop.first) {
+                        predecessor = sl;
+                    }
+                    if (sl >= loop.first) {
+                        falseSuccessor = sl;
+                    }
+                    for (auto firstLine : sLines) {
+                        if (firstLine >= loop.first && firstLine <= loop.second && firstLine <= trueSuccessor) {
+                            trueSuccessor = firstLine;
+                            trueSuccessorExists = true;
+                        }
+                    }
+                }
+                if (predecessor < falseSuccessor) {
+                    if (trueSuccessorExists) {
+                        profileMap->find(var.first)->second.back().controlEdges.insert(
+                                std::make_pair(predecessor, trueSuccessor));
+                    }
+                    profileMap->find(var.first)->second.back().controlEdges.insert(
+                            std::make_pair(predecessor, falseSuccessor));
+                }
+            }
+            int prevSL = 0;
+            for (int i = 0; i < sLines.size(); i++) {
+                if (i + 1 < sLines.size()) {
+                    bool outIf = true;
+                    bool outElse = true;
+                    for (auto ifblock : ifdata) {
+                        if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
+                            outIf = false;
+                            break;
+                        }
+                    }
+                    if (!outIf) {
+                        for (auto elseblock : elsedata) {
+                            if (sLines[i + 1] >= elseblock.first && sLines[i + 1] <= elseblock.second) {
+                                outElse = false;
+                                break;
+                            }
+                        }
+                    }
+                    if ((outIf || outElse) && sLines[i] != sLines[i + 1]) {
+                        profileMap->find(var.first)->second.back().controlEdges.insert(
+                                std::make_pair(sLines[i], sLines[i + 1]));
+                    }
+                }
+                bool outControlBlock = true;
+                for (auto loop : loopdata) {
+                    if (sLines[i] >= loop.first && sLines[i] <= loop.second) {
+                        outControlBlock = false;
+                        break;
+                    }
+                }
+                if (outControlBlock) {
+                    for (auto ifblock : ifdata) {
+                        if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
+                            outControlBlock = false;
+                            break;
+                        }
+                    }
+                }
+                if (outControlBlock) {
+                    for (auto elseblock : elsedata) {
+                        if (sLines[i] >= elseblock.first && sLines[i] <= elseblock.second) {
+                            outControlBlock = false;
+                            break;
+                        }
+                    }
+                }
+                if (outControlBlock) {
+                    if (prevSL == 0) {
+                        prevSL = sLines[i];
+                    } else {
+                        profileMap->find(var.first)->second.back().controlEdges.insert(
+                                std::make_pair(prevSL, sLines[i]));
+                        prevSL = 0;
                     }
                 }
             }
@@ -404,6 +538,12 @@ private:
     std::map<std::string, SignatureData> functionSigMap;
     std::string currentExprName;
     std::vector<std::string> declDvars;
+
+    std::vector<std::pair<int, int>> loopdata;
+    std::vector<std::pair<int, int>> ifdata;
+    std::vector<std::pair<int, int>> elsedata;
+    int startLine;
+    int endLine;
 
     std::string currentName;
 
@@ -457,6 +597,41 @@ private:
         openEventMap[ParserState::functionblock] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
         };
+        openEventMap[ParserState::forstmt] = [this](srcSAXEventContext &ctx) {
+            startLine = ctx.currentLineNumber;
+        };
+        closeEventMap[ParserState::forstmt] = [this](srcSAXEventContext &ctx) {
+            endLine = ctx.currentLineNumber;
+            loopdata.push_back(std::make_pair(startLine, endLine));
+        };
+        openEventMap[ParserState::whilestmt] = [this](srcSAXEventContext &ctx) {
+            startLine = ctx.currentLineNumber;
+        };
+        closeEventMap[ParserState::whilestmt] = [this](srcSAXEventContext &ctx) {
+            endLine = ctx.currentLineNumber;
+            loopdata.push_back(std::make_pair(startLine, endLine));
+        };
+        openEventMap[ParserState::ifstmt] = [this](srcSAXEventContext &ctx) {
+            startLine = ctx.currentLineNumber;
+        };
+        closeEventMap[ParserState::ifstmt] = [this](srcSAXEventContext &ctx) {
+            endLine = ctx.currentLineNumber;
+            ifdata.push_back(std::make_pair(startLine, endLine));
+        };
+        openEventMap[ParserState::elseif] = [this](srcSAXEventContext &ctx) {
+            startLine = ctx.currentLineNumber;
+        };
+        closeEventMap[ParserState::elseif] = [this](srcSAXEventContext &ctx) {
+            endLine = ctx.currentLineNumber;
+            elsedata.push_back(std::make_pair(startLine, endLine));
+        };
+        openEventMap[ParserState::elsestmt] = [this](srcSAXEventContext &ctx) {
+            startLine = ctx.currentLineNumber;
+        };
+        closeEventMap[ParserState::elsestmt] = [this](srcSAXEventContext &ctx) {
+            endLine = ctx.currentLineNumber;
+            elsedata.push_back(std::make_pair(startLine, endLine));
+        };
         closeEventMap[ParserState::tokenstring] = [this](srcSAXEventContext &ctx) {
             //TODO: possibly, this if-statement is suppressing more than just unmarked whitespace. Investigate.
             if (!(ctx.currentToken.empty() || ctx.currentToken == " ")) {
@@ -491,9 +666,11 @@ private:
                     }
                 }
             }
+            ComputeControlPaths();
             ComputeInterprocedural();
         };
     }
 };
+
 
 #endif
