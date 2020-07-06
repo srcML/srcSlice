@@ -410,3 +410,160 @@ TEST_F(TestParamSliceDetection, TestParamsL) {
     EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_DEF_OF_L) != exprIt->second.back().definitions.end());
     EXPECT_TRUE(exprIt->second.back().definitions.find(LINE_NUM_SECOND_DEF_OF_L) != exprIt->second.back().definitions.end());
 }
+
+namespace {
+    class TestComputeInterprocedural : public ::testing::Test{
+    public:
+        std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+        TestComputeInterprocedural(){
+
+        }
+        void SetUp(){
+            std::string str =
+                    "void fun(int z){\n"
+                    "z++;\n"
+                    "}\n"
+                    "void foo(int &x, int &y){\n"
+                    "fun(x);\n"
+                    "y++;\n"
+                    "}\n"
+                    "int main() {\n"
+                    "int sum = 0;\n"
+                    "int i = sum;\n"
+                    "while(i<=10){\n"
+                    "foo(sum, i);\n"
+                    "}\n"
+                    "std::cout<<sum;\n"
+                    "}\n";
+        std::string srcmlStr = StringToSrcML(str);
+
+            SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+            srcSAXController control(srcmlStr);
+            srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+            control.parse(&handler);
+        }
+        void TearDown(){
+
+        }
+        ~TestComputeInterprocedural(){
+
+        }
+    };
+}
+
+TEST_F(TestComputeInterprocedural, TestSLines) {
+    for(auto use : profileMap.find("x")->second.back().uses){
+        EXPECT_TRUE(profileMap.find("sum")->second.back().uses.find(use) != profileMap.find("sum")->second.back().uses.end());
+    }
+    for(auto def : profileMap.find("x")->second.back().definitions){
+        EXPECT_TRUE(profileMap.find("sum")->second.back().definitions.find(def) != profileMap.find("sum")->second.back().definitions.end());
+    }
+}
+
+namespace {
+    class TestComputeInterproceduralMultipleNestings : public ::testing::Test{
+    public:
+        std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+        TestComputeInterproceduralMultipleNestings(){
+
+        }
+        void SetUp(){
+            std::string str =
+                    "void fun(int z);\n"
+                    "\n"
+                    "void loop(int a) {\n"
+                    "    a++;\n"
+                    "    fun(a);\n"
+                    "}\n"
+                    "\n"
+                    "void fun(int z) {\n"
+                    "    if(z < 10) {\n"
+                    "        loop(z);\n"
+                    "    }\n"
+                    "}\n"
+                    "\n"
+                    "void bar(int y) {\n"
+                    "    fun(y);\n"
+                    "}\n"
+                    "\n"
+                    "void foo(int &x) {\n"
+                    "    bar(x);\n"
+                    "}\n"
+                    "\n"
+                    "int main() {\n"
+                    "    int sum = 0;\n"
+                    "    foo(sum);\n"
+                    "}";
+            std::string srcmlStr = StringToSrcML(str);
+
+            SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+            srcSAXController control(srcmlStr);
+            srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+            control.parse(&handler);
+        }
+        void TearDown(){
+
+        }
+        ~TestComputeInterproceduralMultipleNestings(){
+
+        }
+    };
+}
+
+TEST_F(TestComputeInterproceduralMultipleNestings, TestSLines) {
+    for(auto use : profileMap.find("x")->second.back().uses){
+        EXPECT_TRUE(profileMap.find("sum")->second.back().uses.find(use) != profileMap.find("sum")->second.back().uses.end());
+    }
+    for(auto def : profileMap.find("x")->second.back().definitions){
+        EXPECT_TRUE(profileMap.find("sum")->second.back().definitions.find(def) != profileMap.find("sum")->second.back().definitions.end());
+    }
+}
+
+namespace {
+    class TestComputeControlPaths : public ::testing::Test{
+    public:
+        std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+        TestComputeControlPaths(){
+
+        }
+        void SetUp(){
+            std::string str =
+                    "int main() {\n"
+                    "    int sum = 0;\n"
+                    "    int i = 1;\n"
+                    "    while(i<=10){\n"
+                    "        sum = sum + i;\n"
+                    "        i++;\n"
+                    "    }\n"
+                    "    std::cout<<sum;\n"
+                    "    std::cout<<i;\n"
+                    "}";
+            std::string srcmlStr = StringToSrcML(str);
+
+            SrcSlicePolicy* cat = new SrcSlicePolicy(&profileMap);
+            srcSAXController control(srcmlStr);
+            srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+            control.parse(&handler);
+        }
+        void TearDown(){
+
+        }
+        ~TestComputeControlPaths(){
+
+        }
+    };
+}
+
+TEST_F(TestComputeControlPaths, TestSLines) {
+    EXPECT_TRUE(profileMap.find("sum")->second.back().controlEdges.find(std::make_pair(2, 5)) != profileMap.find("sum")->second.back().controlEdges.end());
+    EXPECT_TRUE(profileMap.find("sum")->second.back().controlEdges.find(std::make_pair(2, 8)) != profileMap.find("sum")->second.back().controlEdges.end());
+    EXPECT_TRUE(profileMap.find("sum")->second.back().controlEdges.find(std::make_pair(5, 8)) != profileMap.find("sum")->second.back().controlEdges.end());
+
+    //EXPECT_TRUE(profileMap.find("i")->second.back().controlEdges.find(std::make_pair(3, 4)) != profileMap.find("i")->second.back().controlEdges.end());
+    //EXPECT_TRUE(profileMap.find("i")->second.back().controlEdges.find(std::make_pair(4, 5)) != profileMap.find("i")->second.back().controlEdges.end());
+    //EXPECT_TRUE(profileMap.find("i")->second.back().controlEdges.find(std::make_pair(4, 9)) != profileMap.find("i")->second.back().controlEdges.end());
+    EXPECT_TRUE(profileMap.find("i")->second.back().controlEdges.find(std::make_pair(5, 6)) != profileMap.find("i")->second.back().controlEdges.end());
+    EXPECT_TRUE(profileMap.find("i")->second.back().controlEdges.find(std::make_pair(6, 9)) != profileMap.find("i")->second.back().controlEdges.end());
+
+
+}
