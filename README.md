@@ -1,7 +1,9 @@
 # srcSlice
 Lightweight tool for slicing
 
-NOTE: Current version of srcSlice in the master branch is a new version that will take advantage of the event dispatcher framework. If you'd like the working version of srcSlice, switch to the "old" srcslice branch.
+NOTE: Current version of srcSlice in the master branch is a new version that will take advantage of the event dispatcher framework. It is under construction, but it should work. Give it a try!
+
+If you'd like the old version of srcSlice, switch to the "old" srcslice branch. This is the version we presented at ICSE 16.
 
 To build srcSlice:
 
