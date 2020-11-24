@@ -652,7 +652,6 @@ private:
                         std::vector<SliceProfile>::iterator sIt2 = it->second.begin();
                         while (sIt2 != it->second.end()) {
                             if (!sIt2->containsDeclaration) {
-                                std::cout << "NAME: " << sIt2->variableName << std::endl;
                                 sIt->uses.insert(sIt2->uses.begin(), sIt2->uses.end());
                                 sIt->definitions.insert(sIt2->definitions.begin(), sIt2->definitions.end());
                                 sIt->dvars.insert(sIt2->dvars.begin(), sIt2->dvars.end());
