@@ -349,11 +349,11 @@ public:
             } else {
                 for (auto cfunc : profileMap->find(param.nameOfIdentifier)->second.back().cfunctions) {
                     if (cfunc.first.compare(func.first) != 0) {
-                        for (auto function : functionSigMap) {
-                            if (cfunc.first.compare(function.first) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
-				//int pindex = paramIndex;
-				visit_func.insert(cfunc.first);
-                                auto recursiveSpi = ArgumentProfile(function, std::atoi(cfunc.second.c_str()) - 1, visit_func);
+                        auto function = functionSigMap.find(cfunc.first);
+                        if (function != functionSigMap.end()) {
+                            if (cfunc.first.compare(function->first) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
+				                visit_func.insert(cfunc.first);
+                                auto recursiveSpi = ArgumentProfile(*function, std::atoi(cfunc.second.c_str()) - 1, visit_func);
                                 if (profileMap->find(param.nameOfIdentifier) != profileMap->end() &&
                                     profileMap->find(recursiveSpi->first) != profileMap->end()) {
                                     profileMap->find(param.nameOfIdentifier)->second.back().definitions.insert(
@@ -390,9 +390,10 @@ public:
             if (!profileMap->find(var.first)->second.back().visited) {
                 if (!var.second.back().cfunctions.empty()) {
                     for (auto cfunc : var.second.back().cfunctions) {
-                        for (auto func : functionSigMap) {
-                            if (cfunc.first.compare(func.first) == 0) { //TODO fix for case: Overload
-                                auto Spi = ArgumentProfile(func, std::atoi(cfunc.second.c_str()) - 1, visited_func);
+                        auto funcIt = functionSigMap.find(cfunc.first);
+                        if(funcIt != functionSigMap.end()) {
+                            if (cfunc.first.compare(funcIt->first) == 0) { //TODO fix for case: Overload
+                                auto Spi = ArgumentProfile(*funcIt, std::atoi(cfunc.second.c_str()) - 1, visited_func);
                                 if (profileMap->find(var.first) != profileMap->end() &&
                                     profileMap->find(Spi->first) != profileMap->end()) {
                                     profileMap->find(var.first)->second.back().definitions.insert(

@@ -509,7 +509,7 @@ namespace {
         }
     };
 }
-/*
+
 TEST_F(TestComputeInterproceduralMultipleNestings, TestSLines) {
     for(auto use : profileMap.find("x")->second.back().uses){
         EXPECT_TRUE(profileMap.find("sum")->second.back().uses.find(use) != profileMap.find("sum")->second.back().uses.end());
@@ -518,7 +518,7 @@ TEST_F(TestComputeInterproceduralMultipleNestings, TestSLines) {
         EXPECT_TRUE(profileMap.find("sum")->second.back().definitions.find(def) != profileMap.find("sum")->second.back().definitions.end());
     }
 }
-*/
+
 namespace {
     class TestComputeControlPaths : public ::testing::Test{
     public:
