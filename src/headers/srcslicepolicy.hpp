@@ -12,6 +12,116 @@
 #include <srcSAXEventDispatcher.hpp>
 #include <FunctionSignaturePolicy.hpp>
 #include <FunctionCallPolicy.hpp>
+#include <fstream> // Added this to allow my save to file implementation to work in srcslice.cpp
+
+// Made my own class responsible for storing/accessing the various function parameters
+// so I could attempt to link profile variable names to cfunctions list
+
+class FunctionDetails
+{
+public:
+    FunctionDetails(){};
+    FunctionDetails(std::string type, std::string name, std::string index)
+    {
+        paramType = type;
+        paramName = name;
+        paramIndex = index;
+    };
+    ~FunctionDetails(){};
+
+    std::string paramType;
+    std::string paramName;
+    std::string paramIndex;
+};
+
+class FunctionProfiles
+{
+public:
+    FunctionProfiles(){};
+    ~FunctionProfiles(){};
+
+    void AddFunction(std::string functName)
+    {
+        // Try to add the function name in the map
+        // if it isnt already added
+        func[functName];
+    }
+
+    void AddParameter(std::string functName, std::string paramName, std::string paramType, std::string paramIndex)
+    {
+        // attempt to insert function param details
+
+        // check if we are adding an already existing entry
+        for (size_t i = 0; i < func.at(functName).size(); ++i)
+        {
+            // if we already marked an index entry we will just exit and not
+            // further attempt to add items into the vector
+
+            if ( func.at(functName)[i].paramIndex == paramIndex ) return;
+        }
+
+        // add in a new function parameter entry
+        func.at(functName).push_back(FunctionDetails(paramType, paramName, paramIndex));
+    }
+
+    std::string ResolveVariableName(std::string functName, std::string ind)
+    {
+        for (auto it = func.begin(); it != func.end(); ++it)
+        {
+            // it->first    --> functName
+            // it->second   --> paramDetails vector
+
+            if (it->first != functName) continue;
+
+            for (size_t i = 0; i < it->second.size(); ++i)
+            {
+                if (it->second[i].paramIndex == ind) return it->second[i].paramName;
+            }
+        }
+
+        return "";
+    }
+
+    std::string ResolveDataType(std::string functName, std::string varName)
+    {
+
+        for (auto it = func.begin(); it != func.end(); ++it)
+        {
+            // it->first    --> functName
+            // it->second   --> paramDetails
+
+            if (it->first != functName) continue;
+            for (size_t i = 0; i < it->second.size(); ++i)
+            {
+                if (it->second[i].paramName == varName) return it->second[i].paramType;
+            }
+        }
+
+        return "";
+    }
+
+    // For debugging whats being inserted/collected in the func map
+    void PrintProfiles()
+    {
+        for (auto it = func.begin(); it != func.end(); ++it)
+        {
+            std::cout << "---------------------------------" << std::endl;
+            std::cout << it->first << " {\n";
+            for (size_t i = 0; i < it->second.size(); ++i)
+            {
+                std::cout << it->second[i].paramIndex << " ";
+                std::cout << it->second[i].paramType << " ";
+                std::cout << it->second[i].paramName << " " << std::endl;
+            }
+            std::cout << "}\n" << std::endl;
+            std::cout << "---------------------------------" << std::endl << std::endl;
+        }
+    }
+
+private:
+    //       function Name   Param Details 
+    std::map< std::string, std::vector<FunctionDetails> > func;
+};
 
 bool StringContainsCharacters(const std::string &str) {
     for (char ch : str) {
@@ -25,7 +135,7 @@ bool StringContainsCharacters(const std::string &str) {
 class SliceProfile {
 public:
     SliceProfile() : index(0), containsDeclaration(false), potentialAlias(false), dereferenced(false),
-                     isGlobal(false) {}
+                     isGlobal(false) { jsonOut = false; }
 
     SliceProfile(
             std::string name, int line, bool alias = 0, bool global = 0,
@@ -37,46 +147,8 @@ public:
             isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
             dvars(dv), containsDeclaration(containsDecl), controlEdges(edges),
             visited(visit) {
-
+        jsonOut = false;
         dereferenced = false;
-    }
-
-    void PrintProfile() {
-        std::cout << "==========================================================================" << std::endl;
-        std::cout << "Name and type: " << variableName << " " << variableType << std::endl;
-        std::cout << "Contains Declaration: " << containsDeclaration << " " << "Containing class: "
-                  << nameOfContainingClass << std::endl;
-        std::cout << "Dvars: {";
-        for (auto dvar : dvars) {
-            std::cout << dvar << ",";
-        }
-        std::cout << "}" << std::endl;
-        std::cout << "Aliases: {";
-        for (auto alias : aliases) {
-            std::cout << alias << ",";
-        }
-        std::cout << "}" << std::endl;
-        std::cout << "Cfunctions: {";
-        for (auto cfunc : cfunctions) {
-            std::cout << cfunc.first << " " << cfunc.second << ",";
-        }
-        std::cout << "}" << std::endl;
-        std::cout << "Use: {";
-        for (auto use : uses) {
-            std::cout << use << ",";
-        }
-        std::cout << "}" << std::endl;
-        std::cout << "Def: {";
-        for (auto def : definitions) {
-            std::cout << def << ",";
-        }
-        std::cout << "}" << std::endl;
-        std::cout << "Control Edges: {";
-        for (auto edge : controlEdges) {
-            std::cout << "(" << edge.first << ", " << edge.second << ")" << ",";
-        }
-        std::cout << "}" << std::endl;
-        std::cout << "==========================================================================" << std::endl;
     }
 
     unsigned int index;
@@ -105,6 +177,123 @@ public:
     std::set<std::pair<int, int>> controlEdges;
 
     bool visited;
+    bool jsonOut;
+
+    // simple switch allowing to output operator overload to know
+    // when we need to output json rather than plain-text
+    void SetJsonOut(bool b) { jsonOut = b; }
+
+    // Added ostream operator overload to control where the output goes
+    // whether to screen or a file.
+    
+    // THIS OUTPUT is not meant for human eyes!!!
+    friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
+        if (!profile.jsonOut)
+        {
+            out << "==========================================================================" << std::endl;
+            out << "Name and type: " << profile.variableName << " " << profile.variableType << std::endl;
+            out << "Contains Declaration: " << profile.containsDeclaration << " " << "Containing class: "
+                    << profile.nameOfContainingClass << std::endl;
+            out << "Dvars: {";
+            for (auto dvar : profile.dvars) {
+                out << dvar << ",";
+            }
+            out << "}" << std::endl;
+            out << "Aliases: {";
+            for (auto alias : profile.aliases) {
+                out << alias << ",";
+            }
+            out << "}" << std::endl;
+            out << "Cfunctions: {";
+            for (auto cfunc : profile.cfunctions) {
+                out << cfunc.first << " " << cfunc.second << ",";
+            }
+            out << "}" << std::endl;
+            out << "Use: {";
+            for (auto use : profile.uses) {
+                out << use << ",";
+            }
+            out << "}" << std::endl;
+            out << "Def: {";
+            for (auto def : profile.definitions) {
+                out << def << ",";
+            }
+            out << "}" << std::endl;
+            out << "Control Edges: {";
+            for (auto edge : profile.controlEdges) {
+                out << "(" << edge.first << ", " << edge.second << ")" << ",";
+            }
+            out << "}" << std::endl;
+            out << "==========================================================================" << std::endl;
+        } else
+            {
+                out << "{" << std::endl;
+                out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
+                out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
+
+                out << "    \"contains\":{" << std::endl;
+                out << "        \"decl\":\"" << profile.containsDeclaration << "\"," << std::endl;
+                out << "        \"class\":\"" << profile.nameOfContainingClass << "\"" << std::endl;
+                out << "    }," << std::endl;
+
+                out << "    \"dependantvariables\": [ ";
+                for (auto dvar : profile.dvars) {
+                    if (dvar != *(--profile.dvars.end()))
+                        out << "\"" << dvar << "\", ";
+                    else
+                        out << "\"" << dvar << "\"";
+                }
+                out << " ]," << std::endl;
+
+                out << "    \"aliases\": [ ";
+                for (auto alias : profile.aliases) {
+                    if (alias != *(--profile.aliases.end()))
+                        out << "\"" << alias << "\", ";
+                    else
+                        out << "\"" << alias << "\"";
+                }
+                out << " ]," << std::endl;
+
+                out << "    \"calledfunctions\": [ ";
+                for (auto cfunc : profile.cfunctions) {
+                    if (cfunc != *(--profile.cfunctions.end()))
+                        out << "{\"fname\": \"" << cfunc.first << "\", \"paramnum\": \"" << cfunc.second << "\"}, ";
+                    else
+                        out << "{\"fname\": \"" << cfunc.first << "\", \"paramnum\": \"" << cfunc.second << "\"}";
+                }
+                out << " ]," << std::endl;
+
+                out << "    \"use\": [ ";
+                for (auto use : profile.uses) {
+                    if (use != *(--profile.uses.end()))
+                        out << use << ", ";
+                    else
+                        out << use;
+                }
+                out << " ]," << std::endl;
+
+                out << "    \"defined\": [ ";
+                for (auto def : profile.definitions) {
+                    if (def != *(--profile.definitions.end()))
+                        out << def << ", ";
+                    else
+                        out << def;
+                }
+                out << " ]," << std::endl;
+
+                out << "    \"controledges\": [ ";
+                for (auto edge : profile.controlEdges) {
+                    if (edge != *(--profile.controlEdges.end()))
+                        out << "[" << edge.first << ", " << edge.second << "], ";
+                    else
+                        out << "[" << edge.first << ", " << edge.second << "]";
+                }
+                out << " ]" << std::endl;
+                out << "}" << std::endl << std::endl;
+            }
+
+        return out;
+    }
 };
 
 class SrcSlicePolicy
@@ -136,6 +325,9 @@ public:
         if (typeid(DeclTypePolicy) == typeid(*policy)) {
             decldata = *policy->Data<DeclData>();
             auto sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
+
+            // Dumps out the variable names of variables
+            // declared in a function body :: main(), ...
 
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap->end()) {
@@ -183,6 +375,19 @@ public:
                     newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
                 }
             }
+
+            // This allows me to set the data type of the variable in its slice
+            // after its been set up from the logic above here
+
+            for (size_t i = 0; i < declPolicy.variableName.size(); ++i)
+            {
+                if (declPolicy.variableName[i] == profileMap->find(decldata.nameOfIdentifier)->second.back().variableName)
+                {
+                    sliceProfileItr->second.back().variableType = declPolicy.variableDataType[i];
+                    break;
+                }
+            }
+
             declDvars.clear();
             decldata.clear();
         } else if (typeid(ExprPolicy) == typeid(*policy)) {
@@ -344,6 +549,20 @@ public:
     auto ArgumentProfile(std::pair<std::string, SignatureData> func, int paramIndex, std::unordered_set<std::string> visit_func) {
 	auto Spi = profileMap->find(func.second.parameters.at(paramIndex).nameOfIdentifier);
         for (auto param : func.second.parameters) {
+            
+            // As the XML is being parsed and function names and their associated
+            // parameters are being discovered, I want to pass these to my functionProfiles
+            // object so I can later evaluate variable profile names based off the
+            // functionName and Parameter Index value starting from 1-maxint
+
+            functProfiles.AddFunction( func.first );
+            functProfiles.AddParameter( func.first,
+                func.second.parameters.at(paramIndex).nameOfIdentifier,
+                func.second.parameters.at(paramIndex).nameOfType, std::to_string(paramIndex + 1));
+
+            // Attempt to insert parameter data type into the sliceprofile
+            profileMap->find(param.nameOfIdentifier)->second.back().variableType = functProfiles.ResolveDataType(func.first, param.nameOfIdentifier);
+
             if (profileMap->find(param.nameOfIdentifier)->second.back().visited) {
                 return Spi;
             } else {
@@ -516,12 +735,17 @@ public:
         }
     }
 
+    // getter function to read the function profiles
+    FunctionProfiles GetFunctProfiles() { return functProfiles; }
+
 protected:
     void *DataInner() const override {
         return (void *) 0; // export profile to listeners
     }
 
 private:
+    FunctionProfiles functProfiles; // my custom function data storage
+
     DeclTypePolicy declPolicy;
     DeclData decldata;
 
