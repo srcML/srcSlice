@@ -185,7 +185,7 @@ public:
 
     // Added ostream operator overload to control where the output goes
     // whether to screen or a file.
-    
+
     // THIS OUTPUT is not meant for human eyes!!!
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!profile.jsonOut)
@@ -379,14 +379,14 @@ public:
             // This allows me to set the data type of the variable in its slice
             // after its been set up from the logic above here
 
-            for (size_t i = 0; i < declPolicy.variableName.size(); ++i)
-            {
-                if (declPolicy.variableName[i] == profileMap->find(decldata.nameOfIdentifier)->second.back().variableName)
-                {
-                    sliceProfileItr->second.back().variableType = declPolicy.variableDataType[i];
-                    break;
-                }
-            }
+            // for (size_t i = 0; i < declPolicy.variableName.size(); ++i)
+            // {
+            //     if (declPolicy.variableName[i] == profileMap->find(decldata.nameOfIdentifier)->second.back().variableName)
+            //     {
+            //         sliceProfileItr->second.back().variableType = declPolicy.variableDataType[i];
+            //         break;
+            //     }
+            // }
 
             declDvars.clear();
             decldata.clear();
