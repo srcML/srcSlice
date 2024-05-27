@@ -14,115 +14,6 @@
 #include <FunctionCallPolicy.hpp>
 #include <fstream> // Added this to allow my save to file implementation to work in srcslice.cpp
 
-// Made my own class responsible for storing/accessing the various function parameters
-// so I could attempt to link profile variable names to cfunctions list
-
-class FunctionDetails
-{
-public:
-    FunctionDetails(){};
-    FunctionDetails(std::string type, std::string name, std::string index)
-    {
-        paramType = type;
-        paramName = name;
-        paramIndex = index;
-    };
-    ~FunctionDetails(){};
-
-    std::string paramType;
-    std::string paramName;
-    std::string paramIndex;
-};
-
-class FunctionProfiles
-{
-public:
-    FunctionProfiles(){};
-    ~FunctionProfiles(){};
-
-    void AddFunction(std::string functName)
-    {
-        // Try to add the function name in the map
-        // if it isnt already added
-        func[functName];
-    }
-
-    void AddParameter(std::string functName, std::string paramName, std::string paramType, std::string paramIndex)
-    {
-        // attempt to insert function param details
-
-        // check if we are adding an already existing entry
-        for (size_t i = 0; i < func.at(functName).size(); ++i)
-        {
-            // if we already marked an index entry we will just exit and not
-            // further attempt to add items into the vector
-
-            if ( func.at(functName)[i].paramIndex == paramIndex ) return;
-        }
-
-        // add in a new function parameter entry
-        func.at(functName).push_back(FunctionDetails(paramType, paramName, paramIndex));
-    }
-
-    std::string ResolveVariableName(std::string functName, std::string ind)
-    {
-        for (auto it = func.begin(); it != func.end(); ++it)
-        {
-            // it->first    --> functName
-            // it->second   --> paramDetails vector
-
-            if (it->first != functName) continue;
-
-            for (size_t i = 0; i < it->second.size(); ++i)
-            {
-                if (it->second[i].paramIndex == ind) return it->second[i].paramName;
-            }
-        }
-
-        return "";
-    }
-
-    std::string ResolveDataType(std::string functName, std::string varName)
-    {
-
-        for (auto it = func.begin(); it != func.end(); ++it)
-        {
-            // it->first    --> functName
-            // it->second   --> paramDetails
-
-            if (it->first != functName) continue;
-            for (size_t i = 0; i < it->second.size(); ++i)
-            {
-                if (it->second[i].paramName == varName) return it->second[i].paramType;
-            }
-        }
-
-        return "";
-    }
-
-    // For debugging whats being inserted/collected in the func map
-    void PrintProfiles()
-    {
-        for (auto it = func.begin(); it != func.end(); ++it)
-        {
-            std::cout << "---------------------------------" << std::endl;
-            std::cout << it->first << " {\n";
-            for (size_t i = 0; i < it->second.size(); ++i)
-            {
-                std::cout << it->second[i].paramIndex << " ";
-                std::cout << it->second[i].paramType << " ";
-                std::cout << it->second[i].paramName << " " << std::endl;
-            }
-            std::cout << "}\n" << std::endl;
-            std::cout << "---------------------------------" << std::endl << std::endl;
-        }
-    }
-
-private:
-    //       function Name   Param Details 
-    std::map< std::string, std::vector<FunctionDetails> > func;
-};
-
 bool StringContainsCharacters(const std::string &str) {
     for (char ch : str) {
         if (std::isalpha(ch)) {
@@ -378,15 +269,9 @@ public:
 
             // This allows me to set the data type of the variable in its slice
             // after its been set up from the logic above here
+            // Set the data-type of sliceprofile for decl vars inside of function bodies
 
-            // for (size_t i = 0; i < declPolicy.variableName.size(); ++i)
-            // {
-            //     if (declPolicy.variableName[i] == profileMap->find(decldata.nameOfIdentifier)->second.back().variableName)
-            //     {
-            //         sliceProfileItr->second.back().variableType = declPolicy.variableDataType[i];
-            //         break;
-            //     }
-            // }
+            sliceProfileItr->second.back().variableType = declPolicy.data.nameOfType;
 
             declDvars.clear();
             decldata.clear();
@@ -516,6 +401,7 @@ public:
             }
         } else if (typeid(ParamTypePolicy) == typeid(*policy)) {
             paramdata = *policy->Data<DeclData>();
+            
             //record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
             auto sliceProfileItr = profileMap->find(paramdata.nameOfIdentifier);
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
@@ -535,6 +421,10 @@ public:
                 profileMap->insert(std::make_pair(paramdata.nameOfIdentifier,
                                                   std::vector<SliceProfile>{std::move(sliceProf)}));
             }
+            
+            // Attempt to insert data-types for sliceprofiles found in function/ctor parameters
+            profileMap->find(paramdata.nameOfIdentifier)->second.back().variableType = paramdata.nameOfType;
+
             paramdata.clear();
         } else if (typeid(FunctionSignaturePolicy) == typeid(*policy)) {
             functionsigdata = *policy->Data<SignatureData>();
@@ -550,19 +440,7 @@ public:
 	auto Spi = profileMap->find(func.second.parameters.at(paramIndex).nameOfIdentifier);
         for (auto param : func.second.parameters) {
             
-            // As the XML is being parsed and function names and their associated
-            // parameters are being discovered, I want to pass these to my functionProfiles
-            // object so I can later evaluate variable profile names based off the
-            // functionName and Parameter Index value starting from 1-maxint
-
-            functProfiles.AddFunction( func.first );
-            functProfiles.AddParameter( func.first,
-                func.second.parameters.at(paramIndex).nameOfIdentifier,
-                func.second.parameters.at(paramIndex).nameOfType, std::to_string(paramIndex + 1));
-
-            // Attempt to insert parameter data type into the sliceprofile
-            profileMap->find(param.nameOfIdentifier)->second.back().variableType = functProfiles.ResolveDataType(func.first, param.nameOfIdentifier);
-
+            
             if (profileMap->find(param.nameOfIdentifier)->second.back().visited) {
                 return Spi;
             } else {
@@ -735,17 +613,12 @@ public:
         }
     }
 
-    // getter function to read the function profiles
-    FunctionProfiles GetFunctProfiles() { return functProfiles; }
-
 protected:
     void *DataInner() const override {
         return (void *) 0; // export profile to listeners
     }
 
 private:
-    FunctionProfiles functProfiles; // my custom function data storage
-
     DeclTypePolicy declPolicy;
     DeclData decldata;
 
