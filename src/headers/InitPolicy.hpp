@@ -63,14 +63,14 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
         bool seenAssignment;
         void InitializeEventHandlers(){
             using namespace srcSAXEventDispatch;
-            closeEventMap[ParserState::modifier] = [this](srcSAXEventContext& ctx){
-                
-            };
+
+            closeEventMap[ParserState::modifier] = [this](srcSAXEventContext& ctx){ };
 
             closeEventMap[ParserState::name] = [this](srcSAXEventContext& ctx){
                 if(currentLine.empty() || currentLine.back() != ctx.currentLineNumber){
                     currentLine.push_back(ctx.currentLineNumber);
                 }
+
                 if(ctx.IsOpen({ParserState::declstmt})){
                     auto it = dataSet.find(currentInitName);
                     if(it != dataSet.end()){
@@ -97,6 +97,7 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
                     }
                 }
             };
+
             closeEventMap[ParserState::init] = [this](srcSAXEventContext& ctx){
                 NotifyAll(ctx);
                 currentLine.pop_back();

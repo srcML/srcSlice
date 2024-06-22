@@ -6,7 +6,6 @@ bool validFlag(const char *arg)
     if (arg[0] != '-')
         return true;
 
-    // strcmp all possible flags
     if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
         return true;
     if (strcmp(arg, "-j") == 0 || strcmp(arg, "--json") == 0)
@@ -34,26 +33,11 @@ int main(int argc, char **argv)
     bool hasOutFile = false, jsonOutput = false;
 
     {
-        // ensure the argv[1] is a possible filename
-
-        if (argc > 1)
-        {
-            // File check before creating the SrcSlicePolicy against
-            // something that does not exist
-
-            std::ifstream inFile(argv[1]);
-
-            if (!inFile.is_open())
-            {
-                std::cerr << "Bad File: " << "\033[31m" << argv[1] << "\033[0m" << " - Does not Exist!" << std::endl;
-                return 3;
-            }
-        } else
-            {
-                std::cerr << "\033[31m" << "Not Enough Parameters!" << "\033[0m" << std::endl;
-                Usage();
-                return -1;
-            }
+        if (argc < 2) {
+            std::cerr << "\033[31m" << "Not Enough Parameters!" << "\033[0m" << std::endl;
+            Usage();
+            return -1;
+        }
     }
 
     {
@@ -62,6 +46,7 @@ int main(int argc, char **argv)
         {
             if (!validFlag(argv[i]))
             {
+                // Quit when bad flags are present
                 std::cerr << "Bad Argument :: " << "\033[31m" << argv[i] << "\033[0m" << std::endl;
                 Usage();
                 return 1;
@@ -69,6 +54,7 @@ int main(int argc, char **argv)
                 {
                     // Check for Duplicate Parameters/Flags
 
+                    // Detect output file flag
                     if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) && !hasOutFile)
                     {
                         if (!hasOutFile)
@@ -82,6 +68,7 @@ int main(int argc, char **argv)
                             }
                     }
 
+                    // Detect JSON output flag
                     if ((strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--json") == 0))
                     {
                         if (!jsonOutput)
@@ -96,10 +83,6 @@ int main(int argc, char **argv)
                     }
                 }
 
-            // For some reason I couldnt get `argv[i] == "-h"` to return true
-            // usage of strcmp (string compare) is working nicely though!
-            // When both strings are equal strcmp will return a 0
-
             // Display help when requested in the command at any position
             if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
             {
@@ -109,7 +92,8 @@ int main(int argc, char **argv)
         }
     }
 
-    if (argc < 2 || argc > 5)
+    // Quit when too many parameters exist in the command
+    if (argc > 5)
     {
         std::cerr << "\033[31m" << "Too Many Parameters!" << "\033[0m" << std::endl;
         Usage();
@@ -135,7 +119,6 @@ int main(int argc, char **argv)
                     return 5;
                 }
 
-                std::cout << "Output Saved to :: " << argv[i + 1] << std::endl;
                 argi = i + 1;
                 break;
             } else
@@ -148,39 +131,77 @@ int main(int argc, char **argv)
         }
     }
 
-    // Set up output save file if needed
-    if (argi != -1)
-        outFile = std::ofstream(argv[argi]);
-    else
-        outFile.close();
+    try {
+        std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+        SrcSlicePolicy *cat = new SrcSlicePolicy(&profileMap);
+        srcSAXController control(argv[1]);
+        srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+        control.parse(&handler); // Start parsing
 
-    // Main Operations
-    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-    SrcSlicePolicy *cat = new SrcSlicePolicy(&profileMap);
-    srcSAXController control(argv[1]);
-    srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
-    control.parse(&handler); // Start parsing
+        // Set up output save file if needed
+        if (argi != -1)
+            outFile = std::ofstream(argv[argi]);
+        else
+            outFile.close();
 
-    for (auto it : profileMap)
-    {
-        for (auto profile : it.second)
+        
+        if (jsonOutput)
         {
-            if (profile.containsDeclaration)
-            {
-                profile.SetJsonOut(jsonOutput);
+            if (argi != -1)
+                outFile << "{" << std::endl;
+            else
+                std::cout << "{" << std::endl;
+        }
 
-                // added the ostream overload to srcslicepolicy.hpp
-                if (!hasOutFile)
+        size_t totalElements = profileMap.size();
+        size_t currIndex = 0, sliceIndex = 0;
+
+        for (auto it : profileMap)
+        {
+            ++currIndex;
+            
+            for (auto profile : it.second)
+            {
+                if (profile.containsDeclaration)
                 {
-                    std::cout << profile;
-                } else
+                    ++sliceIndex;
+                    profile.SetJsonOut(jsonOutput);
+                    profile.SetSliceIndex(sliceIndex - 1);
+
+                    if (!hasOutFile)
                     {
-                        outFile << profile;
-                    }
+                        std::cout << profile;
+                        if ( jsonOutput && (currIndex != totalElements))
+                            std::cout << "," << std::endl;
+                        else
+                            std::cout << std::endl;
+                    } else
+                        {
+                            outFile << profile;
+                            if ( jsonOutput && (currIndex != totalElements))
+                                outFile << "," << std::endl;
+                            else
+                                outFile << std::endl;
+                        }
+                }
             }
         }
+
+        if (jsonOutput)
+        {
+            if (argi != -1)
+                outFile << "}" << std::endl;
+            else
+                std::cout << "}" << std::endl;
+        }
+    } catch (std::string errormsg) {
+        std::cout << "\033[31m" << errormsg << "\033[0m" << std::endl;
+        return 3;
     }
 
     // ensure if we do have an output file we close it
-    if (argi != -1) outFile.close();
+    if (argi != -1) {
+        std::cout << "Output Saved to :: " << argv[argi] << std::endl;
+        outFile.close();
+    }
 }

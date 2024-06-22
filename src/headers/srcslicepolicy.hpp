@@ -70,9 +70,13 @@ public:
     bool visited;
     bool jsonOut;
 
+    size_t sliceIndex;
+
     // simple switch allowing to output operator overload to know
     // when we need to output json rather than plain-text
     void SetJsonOut(bool b) { jsonOut = b; }
+
+    void SetSliceIndex(size_t ind) { sliceIndex = ind; }
 
     // Added ostream operator overload to control where the output goes
     // whether to screen or a file.
@@ -82,9 +86,9 @@ public:
         if (!profile.jsonOut)
         {
             out << "==========================================================================" << std::endl;
+            out << "File: " << profile.file << std::endl << "Function Location: " << profile.function << std::endl;
             out << "Name and type: " << profile.variableName << " " << profile.variableType << std::endl;
-            out << "Contains Declaration: " << profile.containsDeclaration << " " << "Containing class: "
-                    << profile.nameOfContainingClass << std::endl;
+            out << "Containing class: " << profile.nameOfContainingClass << std::endl;
             out << "Dvars: {";
             for (auto dvar : profile.dvars) {
                 out << dvar << ",";
@@ -118,16 +122,15 @@ public:
             out << "==========================================================================" << std::endl;
         } else
             {
-                out << "{" << std::endl;
-                out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
+                out << "\"slice_" << profile.sliceIndex << "\" : {" << std::endl;
+                
+                out << "    \"file\":\"" << profile.file << "\"," << std::endl;
+                out << "    \"class\":\"" << profile.nameOfContainingClass << "\"," << std::endl;
+                out << "    \"function\":\"" << profile.function << "\"," << std::endl;
                 out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
+                out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
 
-                out << "    \"contains\":{" << std::endl;
-                out << "        \"decl\":\"" << profile.containsDeclaration << "\"," << std::endl;
-                out << "        \"class\":\"" << profile.nameOfContainingClass << "\"" << std::endl;
-                out << "    }," << std::endl;
-
-                out << "    \"dependantvariables\": [ ";
+                out << "    \"dependentVariables\": [ ";
                 for (auto dvar : profile.dvars) {
                     if (dvar != *(--profile.dvars.end()))
                         out << "\"" << dvar << "\", ";
@@ -145,12 +148,12 @@ public:
                 }
                 out << " ]," << std::endl;
 
-                out << "    \"calledfunctions\": [ ";
+                out << "    \"calledFunctions\": [ ";
                 for (auto cfunc : profile.cfunctions) {
                     if (cfunc != *(--profile.cfunctions.end()))
-                        out << "{\"fname\": \"" << cfunc.first << "\", \"paramnum\": \"" << cfunc.second << "\"}, ";
+                        out << "{\"functionName\": \"" << cfunc.first << "\", \"parameterNumber\": \"" << cfunc.second << "\"}, ";
                     else
-                        out << "{\"fname\": \"" << cfunc.first << "\", \"paramnum\": \"" << cfunc.second << "\"}";
+                        out << "{\"functionName\": \"" << cfunc.first << "\", \"parameterNumber\": \"" << cfunc.second << "\"}";
                 }
                 out << " ]," << std::endl;
 
@@ -163,7 +166,7 @@ public:
                 }
                 out << " ]," << std::endl;
 
-                out << "    \"defined\": [ ";
+                out << "    \"definition\": [ ";
                 for (auto def : profile.definitions) {
                     if (def != *(--profile.definitions.end()))
                         out << def << ", ";
@@ -172,7 +175,7 @@ public:
                 }
                 out << " ]," << std::endl;
 
-                out << "    \"controledges\": [ ";
+                out << "    \"controlEdges\": [ ";
                 for (auto edge : profile.controlEdges) {
                     if (edge != *(--profile.controlEdges.end()))
                         out << "[" << edge.first << ", " << edge.second << "], ";
@@ -180,7 +183,7 @@ public:
                         out << "[" << edge.first << ", " << edge.second << "]";
                 }
                 out << " ]" << std::endl;
-                out << "}" << std::endl << std::endl;
+                out << "}";
             }
 
         return out;
@@ -272,6 +275,12 @@ public:
             // Set the data-type of sliceprofile for decl vars inside of function bodies
 
             sliceProfileItr->second.back().variableType = declPolicy.data.nameOfType;
+
+            // Link the filepath the XML Originates
+            sliceProfileItr->second.back().file = ctx.currentFilePath;
+            
+            // Link the function this slice is located in
+            sliceProfileItr->second.back().function = ctx.currentFunctionName;
 
             declDvars.clear();
             decldata.clear();
@@ -424,6 +433,12 @@ public:
             
             // Attempt to insert data-types for sliceprofiles found in function/ctor parameters
             profileMap->find(paramdata.nameOfIdentifier)->second.back().variableType = paramdata.nameOfType;
+
+            // Link the filepath this slice is located in
+            profileMap->find(paramdata.nameOfIdentifier)->second.back().file = ctx.currentFilePath;
+
+            // Link the function the XML Originates from
+            profileMap->find(paramdata.nameOfIdentifier)->second.back().function = ctx.currentFunctionName;
 
             paramdata.clear();
         } else if (typeid(FunctionSignaturePolicy) == typeid(*policy)) {
@@ -650,54 +665,48 @@ private:
 
     void InitializeEventHandlers() {
         using namespace srcSAXEventDispatch;
-        closeEventMap[ParserState::op] = [this](srcSAXEventContext &ctx) {
-            if (ctx.currentToken == "=") {
-                currentName = currentExprName;
-            }
-        };
         openEventMap[ParserState::declstmt] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->AddListenerDispatch(&declPolicy);
         };
+        closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&declPolicy);
+            currentName.clear();
+        };
+
         openEventMap[ParserState::parameterlist] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->AddListenerDispatch(&paramPolicy);
         };
+        closeEventMap[ParserState::parameterlist] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&paramPolicy);
+        };
+
         openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->AddListenerDispatch(&exprPolicy);
         };
+        closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
+            currentName.clear();
+        };
+
         openEventMap[ParserState::call] = [this](srcSAXEventContext &ctx) {
             //don't want multiple callPolicy parsers running
             if (ctx.NumCurrentlyOpen(ParserState::call) < 2) {
                 ctx.dispatcher->AddListenerDispatch(&callPolicy);
             }
         };
-        openEventMap[ParserState::init] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&initPolicy);
-        };
         closeEventMap[ParserState::call] = [this](srcSAXEventContext &ctx) {
             if (ctx.NumCurrentlyOpen(ParserState::call) < 2) {
                 ctx.dispatcher->RemoveListenerDispatch(&callPolicy);
             }
         };
-        closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&declPolicy);
-            currentName.clear();
-        };
-        closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
-            currentName.clear();
+
+        openEventMap[ParserState::init] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->AddListenerDispatch(&initPolicy);
         };
         closeEventMap[ParserState::init] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&initPolicy);
         };
-        closeEventMap[ParserState::parameterlist] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&paramPolicy);
-        };
-        openEventMap[ParserState::function] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&functionPolicy);
-        };
-        openEventMap[ParserState::functionblock] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
-        };
+
         openEventMap[ParserState::forstmt] = [this](srcSAXEventContext &ctx) {
             startLine = ctx.currentLineNumber;
         };
@@ -705,6 +714,7 @@ private:
             endLine = ctx.currentLineNumber;
             loopdata.push_back(std::make_pair(startLine, endLine));
         };
+
         openEventMap[ParserState::whilestmt] = [this](srcSAXEventContext &ctx) {
             startLine = ctx.currentLineNumber;
         };
@@ -712,6 +722,7 @@ private:
             endLine = ctx.currentLineNumber;
             loopdata.push_back(std::make_pair(startLine, endLine));
         };
+
         openEventMap[ParserState::ifstmt] = [this](srcSAXEventContext &ctx) {
             startLine = ctx.currentLineNumber;
         };
@@ -719,6 +730,7 @@ private:
             endLine = ctx.currentLineNumber;
             ifdata.push_back(std::make_pair(startLine, endLine));
         };
+
         openEventMap[ParserState::elseif] = [this](srcSAXEventContext &ctx) {
             startLine = ctx.currentLineNumber;
         };
@@ -726,6 +738,7 @@ private:
             endLine = ctx.currentLineNumber;
             elsedata.push_back(std::make_pair(startLine, endLine));
         };
+
         openEventMap[ParserState::elsestmt] = [this](srcSAXEventContext &ctx) {
             startLine = ctx.currentLineNumber;
         };
@@ -733,6 +746,21 @@ private:
             endLine = ctx.currentLineNumber;
             elsedata.push_back(std::make_pair(startLine, endLine));
         };
+
+        closeEventMap[ParserState::op] = [this](srcSAXEventContext &ctx) {
+            if (ctx.currentToken == "=") {
+                currentName = currentExprName;
+            }
+        };
+
+        openEventMap[ParserState::function] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->AddListenerDispatch(&functionPolicy);
+        };
+
+        openEventMap[ParserState::functionblock] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
+        };
+
         closeEventMap[ParserState::tokenstring] = [this](srcSAXEventContext &ctx) {
             //TODO: possibly, this if-statement is suppressing more than just unmarked whitespace. Investigate.
             if (!(ctx.currentToken.empty() || ctx.currentToken == " ")) {
@@ -742,6 +770,7 @@ private:
                 }
             }
         };
+
         closeEventMap[ParserState::archive] = [this](srcSAXEventContext &ctx) {
             for (std::unordered_map<std::string, std::vector<SliceProfile>>::iterator it = profileMap->begin();
                  it != profileMap->end(); ++it) {
