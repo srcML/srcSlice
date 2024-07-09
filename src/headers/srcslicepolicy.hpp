@@ -247,11 +247,8 @@ public:
 
     void InsertSwitchData(SliceProfile& sliceProfile) {
         for (auto initDeclItem : initDeclData) {
-            // std::cout << "[*] COMPARING :: " << sliceProfile.variableName << " -> " << initDeclItem.first << std::endl;
-    
             if (sliceProfile.variableName == initDeclItem.first) {
                 if (sliceProfile.definitions.find(initDeclItem.second) != sliceProfile.definitions.end()) {
-                    // std::cout << "[+] EDITING :: " << sliceProfile.variableName << " | " << sliceProfile.function << std::endl;
                 } else {
                     continue;
                 }
@@ -263,56 +260,40 @@ public:
                 auto nextFunc = std::next(func);
                 if (nextFunc != functionSigMap.end()) {
                     if (initDeclItem.second >= func->second.lineNumber && initDeclItem.second <= nextFunc->second.lineNumber - 1) {
-                        // std::cout << initDeclItem.first << ":" << initDeclItem.second << " | " << func->second.lineNumber << " -- ";
-
                         for (auto data : *conditionalPolicy.GetSwitchUses()) {
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
                                 if (nums > nextFunc->second.lineNumber - 1) continue;
                                 if (nums < initDeclItem.second) continue;
-                                // std::cout << nums << " ";
                                 sliceProfile.uses.insert(nums);
                             }
                         }
 
-                        // std::cout << " :: ";
-
                         for (auto data : *conditionalPolicy.GetSwitchDefs()) {
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
                                 if (nums > nextFunc->second.lineNumber - 1) continue;
                                 if (nums < initDeclItem.second) continue;
-                                // std::cout << nums << " ";
                                 sliceProfile.definitions.insert(nums);
                             }
                         }
-
-                        // std::cout << std::endl;
                     }
                 } else {
                     if (initDeclItem.second >= func->second.lineNumber) {
-                        // std::cout << initDeclItem.first << ":" << initDeclItem.second << " | " << func->second.lineNumber << " -- ";
-
                         for (auto data : *conditionalPolicy.GetSwitchUses()) {
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
                                 if (nums < initDeclItem.second) continue;
-                                // std::cout << nums << " ";
                             }
                         }
-
-                        // std::cout << " :: ";
 
                         for (auto data : *conditionalPolicy.GetSwitchDefs()) {
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
                                 if (nums > nextFunc->second.lineNumber - 1) continue;
                                 if (nums < initDeclItem.second) continue;
-                                // std::cout << nums << " ";
                             }
                         }
-
-                        // std::cout << std::endl;
                     }
                 }
             }   
@@ -363,7 +344,6 @@ public:
             // Dumps out the variable names of variables
             // declared in a function body :: main(), ...
 
-            // std::cout << "---- " << decldata.nameOfIdentifier << " =+=+==+=+==+=+==+=+= " << decldata.lineNumber << std::endl;
             initDeclData.push_back(std::make_pair(decldata.nameOfIdentifier, decldata.lineNumber));
 
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
@@ -385,6 +365,8 @@ public:
                                                           std::move(sliceProf)
                                                   }));
             }
+
+            // Do not remove, it will cause a segmentation fault
             sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
 
             //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
@@ -597,19 +579,6 @@ public:
     
     auto ArgumentProfile(std::pair<std::string, SignatureData> func, int paramIndex, std::unordered_set<std::string> visit_func) {
 	    auto Spi = profileMap->find(func.second.parameters.at(paramIndex).nameOfIdentifier);
-        // bool foundCorrectSlice = false;
-
-        // for (Spi; Spi != profileMap->end() && !foundCorrectSlice; ++Spi) {
-        //     for (auto sliceItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
-        //         if (sliceItr->containsDeclaration) {
-        //             // std::cout << sliceItr->variableName << std::endl;
-        //             if (sliceItr->function == func.first) {
-        //                 foundCorrectSlice = true;
-        //                 break;
-        //             }
-        //         }
-        //     }
-        // }
 
         // Ensure the key exists in the map
         std::string functionName = func.first.substr(0, func.first.size());
@@ -672,9 +641,7 @@ public:
 	    for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
             if (!profileMap->find(var.first)->second.back().visited) {
                 if (!var.second.back().cfunctions.empty()) {
-                    // std::cout << "[*] " << var.first << " | " << var.second.back().cfunctions.at(0).first << " " << var.second.back().cfunctions.at(0).second << std::endl;
                     for (auto cfunc : var.second.back().cfunctions) {
-                        // std::cout << "[*] " << cfunc.first << std::endl;
                         auto funcIt = functionSigMap.find(cfunc.first);
                         if(funcIt != functionSigMap.end()) {
                             if (cfunc.first.compare(funcIt->first) == 0) { //TODO fix for case: Overload
@@ -688,12 +655,8 @@ public:
                                         }
                                     }
                                 }
-                                
-                                // std::cout << sliceItr->variableName << " -> " << sliceItr->function << std::endl;
 
                                 if (profileMap->find(var.first) != profileMap->end() && profileMap->find(Spi->first) != profileMap->end()) {
-                                    // std::cout << "[*] " << profileMap->find(var.first)->second.back().variableName << " | " << profileMap->find(var.first)->second.back().function << std::endl;
-                                    // std::cout << "[*] " << Spi->second.back().variableName << " | " << Spi->second.back().function << std::endl;
                                     profileMap->find(var.first)->second.back().definitions.insert(
                                             sliceItr->definitions.begin(),
                                             sliceItr->definitions.end());
