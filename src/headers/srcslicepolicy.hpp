@@ -12,7 +12,9 @@
 #include <srcSAXEventDispatcher.hpp>
 #include <FunctionSignaturePolicy.hpp>
 #include <FunctionCallPolicy.hpp>
-#include <fstream> // Added this to allow my save to file implementation to work in srcslice.cpp
+#include <fstream>
+#include <ReturnPolicy.hpp>
+#include <ConditionalPolicy.hpp>
 
 bool StringContainsCharacters(const std::string &str) {
     for (char ch : str) {
@@ -72,51 +74,63 @@ public:
 
     size_t sliceIndex;
 
-    // simple switch allowing to output operator overload to know
-    // when we need to output json rather than plain-text
     void SetJsonOut(bool b) { jsonOut = b; }
 
     void SetSliceIndex(size_t ind) { sliceIndex = ind; }
 
-    // Added ostream operator overload to control where the output goes
-    // whether to screen or a file.
-
-    // THIS OUTPUT is not meant for human eyes!!!
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!profile.jsonOut)
         {
             out << "==========================================================================" << std::endl;
-            out << "File: " << profile.file << std::endl << "Function Location: " << profile.function << std::endl;
-            out << "Name and type: " << profile.variableName << " " << profile.variableType << std::endl;
-            out << "Containing class: " << profile.nameOfContainingClass << std::endl;
-            out << "Dvars: {";
+            out << "File: " << profile.file << std::endl << "Function: " << profile.function << std::endl;
+            out << "Name: " << profile.variableName << "\nType: " << profile.variableType << std::endl;
+            out << "Class: " << profile.nameOfContainingClass << std::endl;
+            out << "Dependent Variables: {";
             for (auto dvar : profile.dvars) {
-                out << dvar << ",";
+                if (dvar != *(--profile.dvars.end()))
+                    out << dvar << ",";
+                else
+                    out << dvar;
             }
             out << "}" << std::endl;
             out << "Aliases: {";
             for (auto alias : profile.aliases) {
-                out << alias << ",";
+                if (alias != *(--profile.aliases.end()))
+                    out << alias << ",";
+                else
+                    out << alias;
             }
             out << "}" << std::endl;
-            out << "Cfunctions: {";
+            out << "Called Functions: {";
             for (auto cfunc : profile.cfunctions) {
-                out << cfunc.first << " " << cfunc.second << ",";
+                if (cfunc != *(--profile.cfunctions.end()))
+                    out << cfunc.first << " " << cfunc.second << ",";
+                else
+                    out << cfunc.first << " " << cfunc.second;
             }
             out << "}" << std::endl;
             out << "Use: {";
             for (auto use : profile.uses) {
-                out << use << ",";
+                if (use != *(--profile.uses.end()))
+                    out << use << ",";
+                else
+                    out << use;
             }
             out << "}" << std::endl;
-            out << "Def: {";
+            out << "Definition: {";
             for (auto def : profile.definitions) {
-                out << def << ",";
+                if (def != *(--profile.definitions.end()))
+                    out << def << ",";
+                else
+                    out << def;
             }
             out << "}" << std::endl;
             out << "Control Edges: {";
             for (auto edge : profile.controlEdges) {
-                out << "(" << edge.first << ", " << edge.second << ")" << ",";
+                if (edge != *(--profile.controlEdges.end()))
+                    out << "(" << edge.first << ", " << edge.second << ")" << ",";
+                else
+                    out << "(" << edge.first << ", " << edge.second << ")";
             }
             out << "}" << std::endl;
             out << "==========================================================================" << std::endl;
@@ -208,10 +222,136 @@ public:
         exprPolicy.AddListener(this);
         callPolicy.AddListener(this);
         initPolicy.AddListener(this);
-        paramPolicy.AddListener(this);
         functionPolicy.AddListener(this);
 
         profileMap = pm;
+    }
+
+    void InsertUses(const std::string& varName, std::vector<unsigned int>& lines) {
+        auto sliceProfileItr = profileMap->find(varName);
+        if (sliceProfileItr != profileMap->end()) {
+            for (size_t i = 0; i < lines.size(); ++i) {
+                sliceProfileItr->second.back().uses.insert(lines[i]);
+            }
+        }
+    }
+
+    void InsertDefs(const std::string& varName, std::vector<unsigned int>& lines) {
+        auto sliceProfileItr = profileMap->find(varName);
+        if (sliceProfileItr != profileMap->end()) {
+            for (size_t i = 0; i < lines.size(); ++i) {
+                sliceProfileItr->second.back().definitions.insert(lines[i]);
+            }
+        }
+    }
+
+    void InsertSwitchData(SliceProfile& sliceProfile) {
+        for (auto initDeclItem : initDeclData) {
+            // std::cout << "[*] COMPARING :: " << sliceProfile.variableName << " -> " << initDeclItem.first << std::endl;
+    
+            if (sliceProfile.variableName == initDeclItem.first) {
+                if (sliceProfile.definitions.find(initDeclItem.second) != sliceProfile.definitions.end()) {
+                    // std::cout << "[+] EDITING :: " << sliceProfile.variableName << " | " << sliceProfile.function << std::endl;
+                } else {
+                    continue;
+                }
+            } else {
+                continue;
+            }
+
+            for (auto func = functionSigMap.begin(); func != functionSigMap.end(); ++func) {
+                auto nextFunc = std::next(func);
+                if (nextFunc != functionSigMap.end()) {
+                    if (initDeclItem.second >= func->second.lineNumber && initDeclItem.second <= nextFunc->second.lineNumber - 1) {
+                        // std::cout << initDeclItem.first << ":" << initDeclItem.second << " | " << func->second.lineNumber << " -- ";
+
+                        for (auto data : *conditionalPolicy.GetSwitchUses()) {
+                            if (data.first != initDeclItem.first) continue;
+                            for (auto nums : data.second) {
+                                if (nums > nextFunc->second.lineNumber - 1) continue;
+                                if (nums < initDeclItem.second) continue;
+                                // std::cout << nums << " ";
+                                sliceProfile.uses.insert(nums);
+                            }
+                        }
+
+                        // std::cout << " :: ";
+
+                        for (auto data : *conditionalPolicy.GetSwitchDefs()) {
+                            if (data.first != initDeclItem.first) continue;
+                            for (auto nums : data.second) {
+                                if (nums > nextFunc->second.lineNumber - 1) continue;
+                                if (nums < initDeclItem.second) continue;
+                                // std::cout << nums << " ";
+                                sliceProfile.definitions.insert(nums);
+                            }
+                        }
+
+                        // std::cout << std::endl;
+                    }
+                } else {
+                    if (initDeclItem.second >= func->second.lineNumber) {
+                        // std::cout << initDeclItem.first << ":" << initDeclItem.second << " | " << func->second.lineNumber << " -- ";
+
+                        for (auto data : *conditionalPolicy.GetSwitchUses()) {
+                            if (data.first != initDeclItem.first) continue;
+                            for (auto nums : data.second) {
+                                if (nums < initDeclItem.second) continue;
+                                // std::cout << nums << " ";
+                            }
+                        }
+
+                        // std::cout << " :: ";
+
+                        for (auto data : *conditionalPolicy.GetSwitchDefs()) {
+                            if (data.first != initDeclItem.first) continue;
+                            for (auto nums : data.second) {
+                                if (nums > nextFunc->second.lineNumber - 1) continue;
+                                if (nums < initDeclItem.second) continue;
+                                // std::cout << nums << " ";
+                            }
+                        }
+
+                        // std::cout << std::endl;
+                    }
+                }
+            }   
+        }
+    }
+
+    void PassOver() {
+        // Pass Over to Update any errors from slices first run
+        for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
+            for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
+                if (sliceItr->containsDeclaration) {
+                    // Pushing Switch Data Collection to the appropriate slice
+                    InsertSwitchData(*sliceItr);
+
+                    // Remove def lines concerning lines where params are
+                    // declared and moving those lines to use
+                    for (auto line : *declPolicy.GetPossibleDefs()) {
+                        // within the slice does the line exist within the def set
+                        if ( sliceItr->definitions.find(line) != sliceItr->definitions.end() ) {
+                            // Check the cfunctions to see if defs need switched
+                            for (auto cfunctData : sliceItr->cfunctions) {
+                                std::string name = cfunctData.first;
+                                auto funct = paramLineMap.find(name.substr(0, name.size()));
+
+                                if (funct != paramLineMap.end()) {
+                                    for (auto lineNum : funct->second) {
+                                        // ensure the defs contains the line number before swapping
+                                        if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
+                                            sliceItr->definitions.erase(lineNum);
+                                            sliceItr->uses.insert(lineNum);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
@@ -222,6 +362,9 @@ public:
 
             // Dumps out the variable names of variables
             // declared in a function body :: main(), ...
+
+            // std::cout << "---- " << decldata.nameOfIdentifier << " =+=+==+=+==+=+==+=+= " << decldata.lineNumber << std::endl;
+            initDeclData.push_back(std::make_pair(decldata.nameOfIdentifier, decldata.lineNumber));
 
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap->end()) {
@@ -243,6 +386,7 @@ public:
                                                   }));
             }
             sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
+
             //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
             for (std::string dvar : declDvars) {
                 auto updateDvarAtThisLocation = profileMap->find(dvar);
@@ -430,7 +574,7 @@ public:
                 profileMap->insert(std::make_pair(paramdata.nameOfIdentifier,
                                                   std::vector<SliceProfile>{std::move(sliceProf)}));
             }
-            
+
             // Attempt to insert data-types for sliceprofiles found in function/ctor parameters
             profileMap->find(paramdata.nameOfIdentifier)->second.back().variableType = paramdata.nameOfType;
 
@@ -452,10 +596,37 @@ public:
     void NotifyWrite(const PolicyDispatcher *policy, srcSAXEventDispatch::srcSAXEventContext &ctx) {}
     
     auto ArgumentProfile(std::pair<std::string, SignatureData> func, int paramIndex, std::unordered_set<std::string> visit_func) {
-	auto Spi = profileMap->find(func.second.parameters.at(paramIndex).nameOfIdentifier);
+	    auto Spi = profileMap->find(func.second.parameters.at(paramIndex).nameOfIdentifier);
+        // bool foundCorrectSlice = false;
+
+        // for (Spi; Spi != profileMap->end() && !foundCorrectSlice; ++Spi) {
+        //     for (auto sliceItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
+        //         if (sliceItr->containsDeclaration) {
+        //             // std::cout << sliceItr->variableName << std::endl;
+        //             if (sliceItr->function == func.first) {
+        //                 foundCorrectSlice = true;
+        //                 break;
+        //             }
+        //         }
+        //     }
+        // }
+
+        // Ensure the key exists in the map
+        std::string functionName = func.first.substr(0, func.first.size());
+        if (paramLineMap.find(functionName) == paramLineMap.end()) {
+            paramLineMap[functionName] = std::vector<unsigned int>();
+        }
+
+        // Check for Duplicates before pushing a line number
+        auto& lineVector = paramLineMap[functionName];
+        if (std::find(lineVector.begin(), lineVector.end(), func.second.lineNumber) == lineVector.end()) {
+            lineVector.push_back(func.second.lineNumber);
+        }
+
+        // We can check a profiles cfunctions and eval the cfunction data to a line in the file
+        // and erase the line number from a slices defs set and insert it into its uses set.
+
         for (auto param : func.second.parameters) {
-            
-            
             if (profileMap->find(param.nameOfIdentifier)->second.back().visited) {
                 return Spi;
             } else {
@@ -498,32 +669,47 @@ public:
 
     void ComputeInterprocedural() {
 	    std::unordered_set <std::string> visited_func;
-	for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
+	    for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
             if (!profileMap->find(var.first)->second.back().visited) {
                 if (!var.second.back().cfunctions.empty()) {
+                    // std::cout << "[*] " << var.first << " | " << var.second.back().cfunctions.at(0).first << " " << var.second.back().cfunctions.at(0).second << std::endl;
                     for (auto cfunc : var.second.back().cfunctions) {
+                        // std::cout << "[*] " << cfunc.first << std::endl;
                         auto funcIt = functionSigMap.find(cfunc.first);
                         if(funcIt != functionSigMap.end()) {
                             if (cfunc.first.compare(funcIt->first) == 0) { //TODO fix for case: Overload
                                 auto Spi = ArgumentProfile(*funcIt, std::atoi(cfunc.second.c_str()) - 1, visited_func);
-                                if (profileMap->find(var.first) != profileMap->end() &&
-                                    profileMap->find(Spi->first) != profileMap->end()) {
+                                auto sliceItr = Spi->second.begin();
+
+                                for (auto sliceItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
+                                    if (sliceItr->containsDeclaration) {
+                                        if (sliceItr->function == cfunc.first) {
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                // std::cout << sliceItr->variableName << " -> " << sliceItr->function << std::endl;
+
+                                if (profileMap->find(var.first) != profileMap->end() && profileMap->find(Spi->first) != profileMap->end()) {
+                                    // std::cout << "[*] " << profileMap->find(var.first)->second.back().variableName << " | " << profileMap->find(var.first)->second.back().function << std::endl;
+                                    // std::cout << "[*] " << Spi->second.back().variableName << " | " << Spi->second.back().function << std::endl;
                                     profileMap->find(var.first)->second.back().definitions.insert(
-                                            Spi->second.back().definitions.begin(),
-                                            Spi->second.back().definitions.end());
+                                            sliceItr->definitions.begin(),
+                                            sliceItr->definitions.end());
                                     profileMap->find(var.first)->second.back().uses.insert(
-                                            Spi->second.back().uses.begin(),
-                                            Spi->second.back().uses.end());
+                                            sliceItr->uses.begin(),
+                                            sliceItr->uses.end());
                                     profileMap->find(var.first)->second.back().cfunctions.insert(
                                             profileMap->find(var.first)->second.back().cfunctions.begin(),
-                                            Spi->second.back().cfunctions.begin(),
-                                            Spi->second.back().cfunctions.end());
+                                            sliceItr->cfunctions.begin(),
+                                            sliceItr->cfunctions.end());
                                     profileMap->find(var.first)->second.back().aliases.insert(
-                                            Spi->second.back().aliases.begin(),
-                                            Spi->second.back().aliases.end());
+                                            sliceItr->aliases.begin(),
+                                            sliceItr->aliases.end());
                                     profileMap->find(var.first)->second.back().dvars.insert(
-                                            Spi->second.back().dvars.begin(),
-                                            Spi->second.back().dvars.end());
+                                            sliceItr->dvars.begin(),
+                                            sliceItr->dvars.end());
                                 }
                             }
                         }
@@ -561,11 +747,16 @@ public:
                 }
                 if (predecessor < falseSuccessor) {
                     if (trueSuccessorExists) {
-                        profileMap->find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(predecessor, trueSuccessor));
+                        if (predecessor != trueSuccessor) {
+                            profileMap->find(var.first)->second.back().controlEdges.insert(
+                                    std::make_pair(predecessor, trueSuccessor));
+                        }
                     }
-                    profileMap->find(var.first)->second.back().controlEdges.insert(
-                            std::make_pair(predecessor, falseSuccessor));
+
+                    if (predecessor != falseSuccessor) {
+                        profileMap->find(var.first)->second.back().controlEdges.insert(
+                                std::make_pair(predecessor, falseSuccessor));
+                    }
                 }
             }
             int prevSL = 0;
@@ -588,8 +779,10 @@ public:
                         }
                     }
                     if ((outIf || outElse) && sLines[i] != sLines[i + 1]) {
-                        profileMap->find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(sLines[i], sLines[i + 1]));
+                        if (sLines[i] != sLines[i + 1]) {
+                            profileMap->find(var.first)->second.back().controlEdges.insert(
+                                    std::make_pair(sLines[i], sLines[i + 1]));
+                        }
                     }
                 }
                 bool outControlBlock = true;
@@ -619,8 +812,11 @@ public:
                     if (prevSL == 0) {
                         prevSL = sLines[i];
                     } else {
-                        profileMap->find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(prevSL, sLines[i]));
+                        if (prevSL != sLines[i]) {
+                            profileMap->find(var.first)->second.back().controlEdges.insert(
+                                    std::make_pair(prevSL, sLines[i]));
+                        }
+
                         prevSL = 0;
                     }
                 }
@@ -637,7 +833,6 @@ private:
     DeclTypePolicy declPolicy;
     DeclData decldata;
 
-    ParamTypePolicy paramPolicy;
     DeclData paramdata;
 
     InitPolicy initPolicy;
@@ -648,6 +843,11 @@ private:
 
     CallPolicy callPolicy;
     CallPolicy::CallData calldata;
+    
+    ReturnPolicy returnPolicy;
+    std::unordered_map<std::string, std::vector<unsigned int>> paramLineMap;
+    
+    ConditionalPolicy conditionalPolicy;
 
     FunctionSignaturePolicy functionPolicy;
     SignatureData functionsigdata;
@@ -658,6 +858,7 @@ private:
     std::vector<std::pair<int, int>> loopdata;
     std::vector<std::pair<int, int>> ifdata;
     std::vector<std::pair<int, int>> elsedata;
+    std::vector<std::pair<std::string, unsigned int>> initDeclData;
     int startLine;
     int endLine;
 
@@ -665,19 +866,25 @@ private:
 
     void InitializeEventHandlers() {
         using namespace srcSAXEventDispatch;
-        openEventMap[ParserState::declstmt] = [this](srcSAXEventContext &ctx) {
+
+        openEventMap[ParserState::decl] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->AddListenerDispatch(&declPolicy);
         };
-        closeEventMap[ParserState::declstmt] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&declPolicy);
+        closeEventMap[ParserState::decl] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListener(&declPolicy);
+            declPolicy.Finalize(ctx);
             currentName.clear();
         };
 
-        openEventMap[ParserState::parameterlist] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&paramPolicy);
+        openEventMap[ParserState::name] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->AddListenerDispatch(&returnPolicy);
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
-        closeEventMap[ParserState::parameterlist] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&paramPolicy);
+        closeEventMap[ParserState::name] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&returnPolicy);
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
+
+            currentName.clear();
         };
 
         openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
@@ -685,6 +892,33 @@ private:
         };
         closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
+
+            currentName.clear();
+        };
+        
+        openEventMap[ParserState::expr] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
+        };
+        closeEventMap[ParserState::expr] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
+            currentName.clear();
+        };
+        
+        openEventMap[ParserState::switchstmt] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
+            conditionalPolicy.EditDepth(1);
+        };
+        closeEventMap[ParserState::switchstmt] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
+            conditionalPolicy.EditDepth(-1);
+            currentName.clear();
+        };
+        
+        openEventMap[ParserState::switchcase] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
+        };
+        closeEventMap[ParserState::switchcase] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
             currentName.clear();
         };
 
@@ -773,7 +1007,7 @@ private:
 
         closeEventMap[ParserState::archive] = [this](srcSAXEventContext &ctx) {
             for (std::unordered_map<std::string, std::vector<SliceProfile>>::iterator it = profileMap->begin();
-                 it != profileMap->end(); ++it) {
+                it != profileMap->end(); ++it) {
                 for (std::vector<SliceProfile>::iterator sIt = it->second.begin(); sIt != it->second.end(); ++sIt) {
                     if (sIt->containsDeclaration) {
                         std::vector<SliceProfile>::iterator sIt2 = it->second.begin();
@@ -796,8 +1030,35 @@ private:
                     }
                 }
             }
+
+            // Attempt to insert the uses found
+            for (auto vars : *returnPolicy.GetReturnUses()) {
+                InsertUses(vars.first, vars.second);
+            }
+            for (auto vars : *conditionalPolicy.GetConditionalUses()) {
+                InsertUses(vars.first, vars.second);
+            }
+
+            // Attempt to insert the defs found
+            for (auto vars : *conditionalPolicy.GetConditionalDefs()) {
+                InsertDefs(vars.first, vars.second);
+            }
+
+            // Attempt to insert the Switch_Stmt data collected to the appropriate slice
+            for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
+                for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
+                    if (sliceItr->containsDeclaration) {
+                        InsertSwitchData(*sliceItr);
+                    }
+                }
+            }
+
             ComputeControlPaths();
             ComputeInterprocedural();
+
+            // Performs a pass over the data to fix any discrepancies
+            // possibly produce by the original output
+            PassOver();
         };
     }
 };

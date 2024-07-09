@@ -19,7 +19,7 @@ bool validFlag(const char *arg)
 void Usage()
 {
     std::cout << "Src-Slice (srcml Slicing Tool)\n"
-                 "./srcslice [srcML file name] [-t target] [-M Manual] [-h help] [-o output file name]\n"
+                 "./srcslice [srcML file name] [-j json] [-h help] [-o output file name]\n"
                  "  \033[31m NOTE - srcML input file should be built using the --position flag! \033[0m \n"
                  "        Command Summary:\n"
                  "            -h / --help              Shows this Page\n"

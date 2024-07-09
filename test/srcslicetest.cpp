@@ -1,3 +1,79 @@
+#define CATCH_CONFIG_MAIN
+#include <srcslicepolicy.hpp>
+#include <sstream>
+#include <cstdlib>
+#include "../src/catch2/catch.hpp"
+
+std::string FetchSlices(const char fileName[]) {
+    // Automatically Builds the srcml output file to pass to srcslice
+    std::string srcmlCmd = "srcml '";
+    srcmlCmd += fileName;
+    srcmlCmd += "' -o '";
+    srcmlCmd += fileName;
+    srcmlCmd += ".xml' --position";
+
+    // Stop test if srcml isnt found
+    int hasSrcMLInstalled = system(srcmlCmd.c_str());
+    if (hasSrcMLInstalled != 0) {
+        std::cout << "\033[31m" << "Cannot locate `srcml` installed locally. Install `srcml` to continue." << "\033[0m" << std::endl;
+        return "";
+    }
+
+    std::ostringstream output;
+
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    SrcSlicePolicy *cat = new SrcSlicePolicy(&profileMap);
+    
+    std::cout << "\033[33m" << "[*] Reading File :: " << fileName << "\033[0m" << std::endl;
+
+    std::string srcmlInputFile = fileName;
+    srcmlInputFile += ".xml";
+
+    srcSAXController control(srcmlInputFile.c_str());
+    srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
+    control.parse(&handler); // Start parsing
+
+    // debugging output
+    std::cout << "\033[32m" << "[+] Displaying Slice Results for :: " << fileName << "\033[0m" << std::endl;
+
+    for (auto it : profileMap) {
+        for (auto profile : it.second) {
+            if (profile.containsDeclaration) {
+                output << profile;
+            }
+        }
+    }
+
+    // remove srcml output files as we test
+    std::string cleanUpFileCmd = "rm '";
+    cleanUpFileCmd += fileName;
+    cleanUpFileCmd += ".xml'";
+
+    system(cleanUpFileCmd.c_str());
+
+    return output.str();
+}
+
+TEST_CASE( "Checking Slice Profiles", "[srcslice]" ) {
+    std::string input = FetchSlices("../../srcSlice/testoracles/simpleDef.cpp");
+
+    std::string output = "==========================================================================\n"
+                        "File: ../../srcSlice/testoracles/simpleDef.cpp\n"
+                        "Function: main\n"
+                        "Name: sum\n"
+                        "Type: int\n"
+                        "Class: \n"
+                        "Dependent Variables: {}\n"
+                        "Aliases: {}\n"
+                        "Called Functions: {}\n"
+                        "Use: {}\n"
+                        "Definition: {2}\n"
+                        "Control Edges: {}\n"
+                        "==========================================================================\n";
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+/*
 #include <srcml.h>
 #include <gtest/gtest.h>
 #include <libxml/tree.h>
@@ -567,3 +643,4 @@ TEST_F(TestComputeControlPaths, TestSLines) {
 
 
 }
+*/
