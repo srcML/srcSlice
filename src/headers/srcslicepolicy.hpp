@@ -285,14 +285,16 @@ public:
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
                                 if (nums < initDeclItem.second) continue;
+                                sliceProfile.uses.insert(nums);
                             }
                         }
 
                         for (auto data : *conditionalPolicy.GetSwitchDefs()) {
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
-                                if (nums > nextFunc->second.lineNumber - 1) continue;
+                                if (nums > func->second.lineNumber - 1) continue;
                                 if (nums < initDeclItem.second) continue;
+                                sliceProfile.definitions.insert(nums);
                             }
                         }
                     }
