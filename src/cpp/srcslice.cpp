@@ -155,6 +155,7 @@ int main(int argc, char **argv)
 
         size_t totalElements = profileMap.size();
         size_t currIndex = 0, sliceIndex = 0;
+        std::ostringstream sliceOutput;
 
         for (auto it : profileMap)
         {
@@ -168,32 +169,35 @@ int main(int argc, char **argv)
                     profile.SetJsonOut(jsonOutput);
                     profile.SetSliceIndex(sliceIndex - 1);
 
-                    if (!hasOutFile)
-                    {
-                        std::cout << profile;
-                        if ( jsonOutput && (currIndex != totalElements))
-                            std::cout << "," << std::endl;
-                        else
-                            std::cout << std::endl;
-                    } else
-                        {
-                            outFile << profile;
-                            if ( jsonOutput && (currIndex != totalElements))
-                                outFile << "," << std::endl;
-                            else
-                                outFile << std::endl;
-                        }
+                    sliceOutput << profile;
+                    if ( jsonOutput && (currIndex != totalElements))
+                        sliceOutput << "," << std::endl;
+                    else
+                        sliceOutput << std::endl;
                 }
             }
         }
 
         if (jsonOutput)
         {
-            if (argi != -1)
-                outFile << "}" << std::endl;
-            else
-                std::cout << "}" << std::endl;
+            sliceOutput << "}" << std::endl;
         }
+
+        // Check for leading comma and remove it
+        std::string stream2string = sliceOutput.str();
+
+        if (stream2string[stream2string.size() - 4] == ',')
+        {
+            stream2string.erase(stream2string.size() - 4, 1);
+        }
+
+        if (hasOutFile)
+        {
+            outFile << stream2string;
+        } else
+            {
+                std::cout << stream2string;
+            }
     } catch (std::string errormsg) {
         std::cout << "\033[31m" << errormsg << "\033[0m" << std::endl;
         return 3;

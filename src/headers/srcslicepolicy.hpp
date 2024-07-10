@@ -15,6 +15,7 @@
 #include <fstream>
 #include <ReturnPolicy.hpp>
 #include <ConditionalPolicy.hpp>
+#include <sstream>
 
 bool StringContainsCharacters(const std::string &str) {
     for (char ch : str) {
