@@ -119,14 +119,14 @@ public:
                     out << def;
             }
             out << "}" << std::endl;
-            out << "Control Edges: {";
-            for (auto edge : profile.controlEdges) {
-                if (edge != *(--profile.controlEdges.end()))
-                    out << "(" << edge.first << ", " << edge.second << ")" << ",";
-                else
-                    out << "(" << edge.first << ", " << edge.second << ")";
-            }
-            out << "}" << std::endl;
+            // out << "Control Edges: {";
+            // for (auto edge : profile.controlEdges) {
+            //     if (edge != *(--profile.controlEdges.end()))
+            //         out << "(" << edge.first << ", " << edge.second << ")" << ",";
+            //     else
+            //         out << "(" << edge.first << ", " << edge.second << ")";
+            // }
+            // out << "}" << std::endl;
             out << "==========================================================================" << std::endl;
         } else
             {
@@ -181,16 +181,16 @@ public:
                     else
                         out << def;
                 }
-                out << " ]," << std::endl;
-
-                out << "    \"controlEdges\": [ ";
-                for (auto edge : profile.controlEdges) {
-                    if (edge != *(--profile.controlEdges.end()))
-                        out << "[" << edge.first << ", " << edge.second << "], ";
-                    else
-                        out << "[" << edge.first << ", " << edge.second << "]";
-                }
                 out << " ]" << std::endl;
+
+                // out << "    \"controlEdges\": [ ";
+                // for (auto edge : profile.controlEdges) {
+                //     if (edge != *(--profile.controlEdges.end()))
+                //         out << "[" << edge.first << ", " << edge.second << "], ";
+                //     else
+                //         out << "[" << edge.first << ", " << edge.second << "]";
+                // }
+                // out << " ]" << std::endl;
                 out << "}";
             }
 
