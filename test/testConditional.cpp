@@ -1,5 +1,7 @@
 #define CATCH_CONFIG_MAIN
-#include "./srcslicetest.hpp"
+#include "./srcSliceTest.hpp"
+
+std::string sourceCode = "", input = "", output = "";
 
 TEST_CASE( "Conditional Test 1", "[srcslice]" ) {
     sourceCode = "int main() {\n"

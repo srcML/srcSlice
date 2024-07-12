@@ -17,14 +17,7 @@
 #include <ConditionalPolicy.hpp>
 #include <sstream>
 
-bool StringContainsCharacters(const std::string &str) {
-    for (char ch : str) {
-        if (std::isalpha(ch)) {
-            return true;
-        }
-    }
-    return false;
-}
+bool StringContainsCharacters(const std::string &str);
 
 class SliceProfile {
 public:

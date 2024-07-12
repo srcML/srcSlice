@@ -1,13 +1,4 @@
-#ifndef SRCSLICETEST
-#define SRCSLICETEST
-
-#include <iostream>
-#include <srcslicepolicy.hpp>
-#include <sstream>
-#include <srcml.h>
-#include "../src/catch2/catch.hpp"
-
-std::string sourceCode = "", input = "", output = "";
+#include "srcSliceTest.hpp"
 
 std::string StringToSrcML(std::string str, const char* fileName){ // Function by Cnewman
     struct srcml_archive* archive;
@@ -84,5 +75,3 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
 
     return stream2string;
 }
-
-#endif

@@ -1,14 +1,16 @@
 #define CATCH_CONFIG_MAIN
-#include "./srcslicetest.hpp"
+#include "./srcSliceTest.hpp"
+
+std::string sourceCode = "", input = "", output = "";
 
 TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
-    std::string sourceCode = "int main() {\n"
+    sourceCode = "int main() {\n"
                             "    std::string* strPtr;\n"
                             "}";
 
-    std::string input = FetchSlices(sourceCode, "simplePointer.cpp");
+    input = FetchSlices(sourceCode, "simplePointer.cpp");
 
-    std::string output = "{\n"
+    output = "{\n"
                          "\"slice_0\" : {\n"
                          "    \"file\":\"simplePointer.cpp\",\n"
                          "    \"class\":\"\",\n"
@@ -27,15 +29,15 @@ TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
 }
 
 TEST_CASE( "Pointer Test 2", "[srcslice]" ) {
-    std::string sourceCode = "int main() {\n"
+    sourceCode = "int main() {\n"
                             "    std::string* strPtr;\n"
-                            "    std::string key = \"abc1234!\";\n"
+                            "    key = \"abc1234!\";\n"
                             "    strPtr = &key;\n"
                             "}";
 
-    std::string input = FetchSlices(sourceCode, "simplePointerDef.cpp");
+    input = FetchSlices(sourceCode, "simplePointerDef.cpp");
 
-    std::string output = "{\n"
+    output = "{\n"
                          "\"slice_0\" : {\n"
                          "    \"file\":\"simplePointerDef.cpp\",\n"
                          "    \"class\":\"\",\n"
@@ -67,16 +69,16 @@ TEST_CASE( "Pointer Test 2", "[srcslice]" ) {
 }
 
 TEST_CASE( "Pointer Test 3", "[srcslice]" ) {
-    std::string sourceCode = "int main() {\n"
+    sourceCode = "int main() {\n"
                             "    std::string* strPtr;\n"
-                            "    std::string key = \"abc1234!\";\n"
+                            "    key = \"abc1234!\";\n"
                             "    strPtr = &key;\n"
                             "    std::cout << *strPtr << std::endl;\n"
                             "}";
 
-    std::string input = FetchSlices(sourceCode, "simplePointerDef.cpp");
+    input = FetchSlices(sourceCode, "simplePointerDef.cpp");
 
-    std::string output = "{\n"
+    output = "{\n"
                          "\"slice_0\" : {\n"
                          "    \"file\":\"simplePointerDef.cpp\",\n"
                          "    \"class\":\"\",\n"
