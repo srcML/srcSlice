@@ -221,116 +221,6 @@ public:
         profileMap = pm;
     }
 
-    void InsertUses(const std::string& varName, std::vector<unsigned int>& lines) {
-        auto sliceProfileItr = profileMap->find(varName);
-        if (sliceProfileItr != profileMap->end()) {
-            for (size_t i = 0; i < lines.size(); ++i) {
-                sliceProfileItr->second.back().uses.insert(lines[i]);
-            }
-        }
-    }
-
-    void InsertDefs(const std::string& varName, std::vector<unsigned int>& lines) {
-        auto sliceProfileItr = profileMap->find(varName);
-        if (sliceProfileItr != profileMap->end()) {
-            for (size_t i = 0; i < lines.size(); ++i) {
-                sliceProfileItr->second.back().definitions.insert(lines[i]);
-            }
-        }
-    }
-
-    void InsertSwitchData(SliceProfile& sliceProfile) {
-        for (auto initDeclItem : initDeclData) {
-            if (sliceProfile.variableName == initDeclItem.first) {
-                if (sliceProfile.definitions.find(initDeclItem.second) != sliceProfile.definitions.end()) {
-                } else {
-                    continue;
-                }
-            } else {
-                continue;
-            }
-
-            for (auto func = functionSigMap.begin(); func != functionSigMap.end(); ++func) {
-                auto nextFunc = std::next(func);
-                if (nextFunc != functionSigMap.end()) {
-                    if (initDeclItem.second >= func->second.lineNumber && initDeclItem.second <= nextFunc->second.lineNumber - 1) {
-                        for (auto data : *conditionalPolicy.GetSwitchUses()) {
-                            if (data.first != initDeclItem.first) continue;
-                            for (auto nums : data.second) {
-                                if (nums > nextFunc->second.lineNumber - 1) continue;
-                                if (nums < initDeclItem.second) continue;
-                                sliceProfile.uses.insert(nums);
-                            }
-                        }
-
-                        for (auto data : *conditionalPolicy.GetSwitchDefs()) {
-                            if (data.first != initDeclItem.first) continue;
-                            for (auto nums : data.second) {
-                                if (nums > nextFunc->second.lineNumber - 1) continue;
-                                if (nums < initDeclItem.second) continue;
-                                sliceProfile.definitions.insert(nums);
-                            }
-                        }
-                    }
-                } else {
-                    if (initDeclItem.second >= func->second.lineNumber) {
-                        for (auto data : *conditionalPolicy.GetSwitchUses()) {
-                            if (data.first != initDeclItem.first) continue;
-                            for (auto nums : data.second) {
-                                if (nums < initDeclItem.second) continue;
-                                sliceProfile.uses.insert(nums);
-                            }
-                        }
-
-                        for (auto data : *conditionalPolicy.GetSwitchDefs()) {
-                            if (data.first != initDeclItem.first) continue;
-                            for (auto nums : data.second) {
-                                if (nums > func->second.lineNumber - 1) continue;
-                                if (nums < initDeclItem.second) continue;
-                                sliceProfile.definitions.insert(nums);
-                            }
-                        }
-                    }
-                }
-            }   
-        }
-    }
-
-    void PassOver() {
-        // Pass Over to Update any errors from slices first run
-        for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
-            for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
-                if (sliceItr->containsDeclaration) {
-                    // Pushing Switch Data Collection to the appropriate slice
-                    InsertSwitchData(*sliceItr);
-
-                    // Remove def lines concerning lines where params are
-                    // declared and moving those lines to use
-                    for (auto line : *declPolicy.GetPossibleDefs()) {
-                        // within the slice does the line exist within the def set
-                        if ( sliceItr->definitions.find(line) != sliceItr->definitions.end() ) {
-                            // Check the cfunctions to see if defs need switched
-                            for (auto cfunctData : sliceItr->cfunctions) {
-                                std::string name = cfunctData.first;
-                                auto funct = paramLineMap.find(name.substr(0, name.size()));
-
-                                if (funct != paramLineMap.end()) {
-                                    for (auto lineNum : funct->second) {
-                                        // ensure the defs contains the line number before swapping
-                                        if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
-                                            sliceItr->definitions.erase(lineNum);
-                                            sliceItr->uses.insert(lineNum);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-        }
-    }
-
     void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
         using namespace srcSAXEventDispatch;
         if (typeid(DeclTypePolicy) == typeid(*policy)) {
@@ -630,6 +520,185 @@ public:
             }
         }
         return Spi;
+    }
+
+    void InsertUses(const std::string& varName, std::vector<unsigned int>& lines) {
+        auto sliceProfileItr = profileMap->find(varName);
+        if (sliceProfileItr != profileMap->end()) {
+            for (size_t i = 0; i < lines.size(); ++i) {
+                if (lines[i] >= *(sliceProfileItr->second.back().definitions).begin()) sliceProfileItr->second.back().uses.insert(lines[i]);
+            }
+        }
+    }
+
+    void InsertDefs(const std::string& varName, std::vector<unsigned int>& lines) {
+        auto sliceProfileItr = profileMap->find(varName);
+        if (sliceProfileItr != profileMap->end()) {
+            for (size_t i = 0; i < lines.size(); ++i) {
+                if (lines[i] > *(sliceProfileItr->second.back().definitions).begin()) sliceProfileItr->second.back().definitions.insert(lines[i]);
+            }
+        }
+    }
+
+    void InsertSwitchData(SliceProfile& sliceProfile) {
+        for (auto initDeclItem : initDeclData) {
+            // With a collection of data concerning where all variables are initially declared
+            // check if the sliceProfile passed matches with a variable name within the collection
+            if (sliceProfile.variableName != initDeclItem.first) continue;
+
+            // Verify the correct slice by checking if the slice definition contains
+            // the initial decl line number for the slice with the matching name
+            if (sliceProfile.definitions.find(initDeclItem.second) == sliceProfile.definitions.end()) continue;
+
+            // Iterate through a collection of functions
+            for (auto func = functionSigMap.begin(); func != functionSigMap.end(); ++func) {
+                // Check if there is a function after where we currently are
+                auto nextFunc = std::next(func);
+                
+                // There is a function after the current
+                if (nextFunc != functionSigMap.end()) {
+                    // Using the initial variable decl line, check if it is within the scope of a function
+                    // to prevent using variables with the same names in different functions, this works as
+                    // another verify check
+                    if (initDeclItem.second >= func->second.lineNumber && initDeclItem.second <= nextFunc->second.lineNumber - 1) {
+                        for (auto data : *conditionalPolicy.GetSwitchUses()) {
+                            // When iterating through the collection of collected Switch Uses
+                            // check if the name of the the variable the use list goes to
+                            // matches with the slice profile variable name
+                            if (data.first != initDeclItem.first) continue;
+
+                            // While iterating the collection of use line numbers
+                            // we want to verify that the uses are after the initial decl line
+                            // and we want to check if the use number is not contained inside
+                            // an outside function
+                            for (auto nums : data.second) {
+                                if (nums < initDeclItem.second) continue;
+                                if (nums > nextFunc->second.lineNumber - 1) continue;
+                                sliceProfile.uses.insert(nums);
+                            }
+                        }
+
+                        for (auto data : *conditionalPolicy.GetSwitchDefs()) {
+                            // When iterating through the collection of collected Switch Defs
+                            // check if the name of the the variable the def list goes to
+                            // matches with the slice profile variable name
+                            if (data.first != initDeclItem.first) continue;
+
+                            // While iterating the collection of def line numbers
+                            // we want to verify that the defs are after the initial decl line
+                            // and we want to check if the def number is not contained inside
+                            // an outside function
+                            for (auto nums : data.second) {
+                                if (nums < initDeclItem.second) continue;
+                                sliceProfile.definitions.insert(nums);
+                            }
+                        }
+                    }
+                } else { // We're on the last/only function
+                    // Check if the variables initial declaration is within the final functions scope
+                    if (initDeclItem.second >= func->second.lineNumber) {
+                        // Uses the same logic as up above
+                        for (auto data : *conditionalPolicy.GetSwitchUses()) {
+                            if (data.first != initDeclItem.first) continue;
+                            for (auto nums : data.second) {
+                                if (nums < initDeclItem.second) continue;
+                                sliceProfile.uses.insert(nums);
+                            }
+                        }
+
+                        for (auto data : *conditionalPolicy.GetSwitchDefs()) {
+                            if (data.first != initDeclItem.first) continue;
+                            for (auto nums : data.second) {
+                                if (nums < initDeclItem.second) continue;
+                                sliceProfile.definitions.insert(nums);
+                            }
+                        }
+                    }
+                }
+            }   
+        }
+    }
+
+    void PassOver() {
+        // Pass Over to Update any errors from slices first run
+        for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
+            for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
+                if (sliceItr->containsDeclaration) {
+                    // Pushing Switch Data Collection to the appropriate slice
+                    // InsertSwitchData(*sliceItr);
+
+                    // Remove def lines concerning lines where params are
+                    // declared and moving those lines to use
+
+                    /*
+                    --------------------------------------
+                    1    int bar (int x) {
+                    2        return ++x;
+                    3    }
+                    4    int main () {
+                    5        int y = 0;
+                    6        bar(y);
+                    7        std::cout << y << std::endl;
+                    8        return 0;
+                    9    }
+                    --------------------------------------
+                    For the following, profile y should place
+                    lines 1 and 2 as a use and not a def.
+                    */
+
+                    for (auto line : *declPolicy.GetPossibleDefs()) {
+                        // within the slice does the line exist within the def set
+                        if ( sliceItr->definitions.find(line) != sliceItr->definitions.end() ) {
+                            // Check the cfunctions to see if defs need switched
+                            for (auto cfunctData : sliceItr->cfunctions) {
+                                std::string name = cfunctData.first;
+                                auto funct = paramLineMap.find(name);
+                                if (funct != paramLineMap.end()) {
+                                    for (auto lineNum : funct->second) {
+                                        // ensure the defs contains the line number before swapping
+                                        if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
+                                            sliceItr->definitions.erase(lineNum);
+                                            sliceItr->uses.insert(lineNum);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    std::unordered_set <std::string> junkMap; // Need this to use the ArgumentProfile function
+
+                    // Iterate through called function data if the slice has any data
+                    for (auto cfunctData : sliceItr->cfunctions) {
+                        std::string name = cfunctData.first;
+                        auto funct = functionSigMap.find(name);
+                        if (funct != functionSigMap.end()) {
+                            // If we get a valid find on a function shown in a profiles called functions
+                            // we want to extract the slice profile associated in the function params
+                            auto Spi = ArgumentProfile(*funct, std::atoi(cfunctData.second.c_str()) - 1, junkMap);
+                            auto sliceParamItr = Spi->second.begin();
+
+                            for (auto sliceParamItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
+                                if (sliceParamItr->containsDeclaration) {
+                                    if (sliceParamItr->function == name) {
+                                        // Once we have the correct slice we want to look back into sliceItrs defs and
+                                        // move sliceParamItrs defs in sliceItrs into sliceItrs uses list
+                                        for (auto defLines : sliceParamItr->definitions) {
+                                            // Ensure the defLine exists in the sliceItrs definitons list
+                                            if (sliceItr->definitions.find(defLines) != sliceItr->definitions.end()) {
+                                                sliceItr->definitions.erase(defLines);
+                                                sliceItr->uses.insert(defLines);
+                                            }
+                                        }
+                                        break;
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
     }
 
     void ComputeInterprocedural() {
