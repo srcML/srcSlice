@@ -1,5 +1,15 @@
 #include "srcSliceTest.hpp"
 
+bool PromptVerbose() {
+    char resp = 0;
+    std::cout << "Do you want to run tests with Verbose Output? [N/y] : ";
+    while (resp != 'n' && resp != 'N' && resp != 'y' && resp != 'Y') {
+        std::cin >> resp;
+    }
+    
+    return (resp == 'Y' || resp == 'y');
+}
+
 std::string StringToSrcML(std::string str, const char* fileName){ // Function by Cnewman
     struct srcml_archive* archive;
     struct srcml_unit* unit;
@@ -51,7 +61,6 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
 
                 output << profile;
                 if (currIndex != totalElements) {
-                    std::cout << currIndex << "|" << totalElements << std::endl;
                     output << "," << std::endl;
                 } else {
                     output << std::endl;
@@ -70,8 +79,8 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
     }
 
     // debugging output
-    std::cout << "\033[32m" << "[+] Displaying Slice Results for :: " << fileName << "\033[0m" << std::endl;
-    std::cout << stream2string << std::endl;
+    // std::cout << "\033[32m" << "[+] Displaying Slice Results for :: " << fileName << "\033[0m" << std::endl;
+    // std::cout << stream2string << std::endl;
 
     return stream2string;
 }
