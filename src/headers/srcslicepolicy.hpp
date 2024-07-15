@@ -669,22 +669,12 @@ public:
                                     auto Spi = ArgumentProfile(*functionSigMap.find(name), std::atoi(cfunctData.second.c_str()) - 1, junkMap);
                                     auto sliceParamItr = Spi->second.begin();
 
-                                    // Ensure if we're dealing with recursion we dont
-                                    // remove valid numbers
-                                    if (sliceParamItr == sliceItr) {
-                                        for (auto lineNum : funct->second) {
-                                            if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
-                                                sliceItr->uses.insert(lineNum);
-                                            }
-                                        }
-
-                                        break;
-                                    }
-
                                     for (auto lineNum : funct->second) {
                                         // ensure the defs contains the line number before swapping
                                         if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
-                                            sliceItr->definitions.erase(lineNum);
+                                            // Ensure if we're dealing with recursion we dont
+                                            // remove valid numbers
+                                            if (sliceParamItr != sliceItr) sliceItr->definitions.erase(lineNum);
                                             sliceItr->uses.insert(lineNum);
                                         }
                                     }
