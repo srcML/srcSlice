@@ -406,7 +406,19 @@ public:
 
                     //Just update cfunctions if name already exists. Otherwise, add new name.
                     if (sliceProfileItr != profileMap->end()) {
-                        sliceProfileItr->second.back().cfunctions.push_back(std::make_pair(callOrder, argumentOrder));
+                        if (sliceProfileItr->second.back().cfunctions.size() > 0) {
+                            // Dont insert the same set multiple times into the vector
+                            auto newCalledFunctItr = std::find(sliceProfileItr->second.back().cfunctions.begin(),
+                                                            sliceProfileItr->second.back().cfunctions.end(),
+                                                            std::make_pair(callOrder, argumentOrder));
+
+                            if ( newCalledFunctItr == sliceProfileItr->second.back().cfunctions.end() ) {
+                                sliceProfileItr->second.back().cfunctions.push_back(std::make_pair(callOrder, argumentOrder));
+                            }
+                        } else
+                        {
+                            sliceProfileItr->second.back().cfunctions.push_back(std::make_pair(callOrder, argumentOrder));
+                        }
                     } else {
                         auto sliceProf = SliceProfile(currentCallToken, ctx.currentLineNumber, true, true,
                                                       std::set<unsigned int>{},
@@ -624,9 +636,6 @@ public:
         for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
             for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
                 if (sliceItr->containsDeclaration) {
-                    // Pushing Switch Data Collection to the appropriate slice
-                    // InsertSwitchData(*sliceItr);
-
                     // Remove def lines concerning lines where params are
                     // declared and moving those lines to use
 
@@ -646,14 +655,32 @@ public:
                     lines 1 and 2 as a use and not a def.
                     */
 
+                    std::unordered_set <std::string> junkMap; // Need this to use the ArgumentProfile function
+
                     for (auto line : *declPolicy.GetPossibleDefs()) {
                         // within the slice does the line exist within the def set
                         if ( sliceItr->definitions.find(line) != sliceItr->definitions.end() ) {
                             // Check the cfunctions to see if defs need switched
                             for (auto cfunctData : sliceItr->cfunctions) {
                                 std::string name = cfunctData.first;
+                                
                                 auto funct = paramLineMap.find(name);
                                 if (funct != paramLineMap.end()) {
+                                    auto Spi = ArgumentProfile(*functionSigMap.find(name), std::atoi(cfunctData.second.c_str()) - 1, junkMap);
+                                    auto sliceParamItr = Spi->second.begin();
+
+                                    // Ensure if we're dealing with recursion we dont
+                                    // remove valid numbers
+                                    if (sliceParamItr == sliceItr) {
+                                        for (auto lineNum : funct->second) {
+                                            if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
+                                                sliceItr->uses.insert(lineNum);
+                                            }
+                                        }
+
+                                        break;
+                                    }
+
                                     for (auto lineNum : funct->second) {
                                         // ensure the defs contains the line number before swapping
                                         if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
@@ -666,7 +693,6 @@ public:
                         }
                     }
 
-                    std::unordered_set <std::string> junkMap; // Need this to use the ArgumentProfile function
 
                     // Iterate through called function data if the slice has any data
                     for (auto cfunctData : sliceItr->cfunctions) {
@@ -677,6 +703,11 @@ public:
                             // we want to extract the slice profile associated in the function params
                             auto Spi = ArgumentProfile(*funct, std::atoi(cfunctData.second.c_str()) - 1, junkMap);
                             auto sliceParamItr = Spi->second.begin();
+
+                            // If we run into recursive algorithms we want to ensure
+                            // we dont hit an infinite loop due to the sliceItr pointing
+                            // to the same object as sliceParamItr
+                            if (sliceParamItr == sliceItr) break;
 
                             for (auto sliceParamItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
                                 if (sliceParamItr->containsDeclaration) {
@@ -704,7 +735,8 @@ public:
     void ComputeInterprocedural() {
 	    std::unordered_set <std::string> visited_func;
 	    for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
-            if (!profileMap->find(var.first)->second.back().visited) {
+            // Need to watch the Slices we attempt to dig into because we are collecting slices we have no interest in
+            if (!profileMap->find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {
                     for (auto cfunc : var.second.back().cfunctions) {
                         auto funcIt = functionSigMap.find(cfunc.first);
@@ -728,10 +760,18 @@ public:
                                     profileMap->find(var.first)->second.back().uses.insert(
                                             sliceItr->uses.begin(),
                                             sliceItr->uses.end());
+
+                                    // By converting the cfunctions vector to a set, allows us to remove
+                                    // duplicate entries, once those are removed we can convert this cleaned
+                                    // set back into its vector form
                                     profileMap->find(var.first)->second.back().cfunctions.insert(
                                             profileMap->find(var.first)->second.back().cfunctions.begin(),
                                             sliceItr->cfunctions.begin(),
                                             sliceItr->cfunctions.end());
+                                    auto oldCalledFunctions = profileMap->find(var.first)->second.back().cfunctions;
+                                    std::set<std::pair<std::string, std::string>> calledFunctionSet(oldCalledFunctions.begin(), oldCalledFunctions.end());
+                                    profileMap->find(var.first)->second.back().cfunctions = std::vector<std::pair<std::string, std::string>>(calledFunctionSet.begin(), calledFunctionSet.end());
+
                                     profileMap->find(var.first)->second.back().aliases.insert(
                                             sliceItr->aliases.begin(),
                                             sliceItr->aliases.end());
@@ -1081,7 +1121,9 @@ private:
                 }
             }
 
-            ComputeControlPaths();
+            // Handles Collecting Control-Edges
+            // ComputeControlPaths();
+
             ComputeInterprocedural();
 
             // Performs a pass over the data to fix any discrepancies
