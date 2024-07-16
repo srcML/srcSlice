@@ -699,7 +699,7 @@ public:
                             // to the same object as sliceParamItr
                             if (sliceParamItr == sliceItr) break;
 
-                            for (auto sliceParamItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
+                            for (auto sliceParamItr = Spi->second.begin(); sliceParamItr != Spi->second.end(); ++sliceParamItr) {
                                 if (sliceParamItr->containsDeclaration) {
                                     if (sliceParamItr->function == name) {
                                         // Once we have the correct slice we want to look back into sliceItrs defs and
