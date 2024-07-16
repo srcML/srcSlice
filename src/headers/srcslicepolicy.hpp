@@ -22,7 +22,7 @@ bool StringContainsCharacters(const std::string &str);
 class SliceProfile {
 public:
     SliceProfile() : index(0), containsDeclaration(false), potentialAlias(false), dereferenced(false),
-                     isGlobal(false) { jsonOut = false; }
+                     isGlobal(false) { jsonOut = false; isPointer = false; isReference = false; }
 
     SliceProfile(
             std::string name, int line, bool alias = 0, bool global = 0,
@@ -36,6 +36,8 @@ public:
             visited(visit) {
         jsonOut = false;
         dereferenced = false;
+        isPointer = false;
+        isReference = false;
     }
 
     unsigned int index;
@@ -48,6 +50,8 @@ public:
 
     bool isGlobal;
     bool containsDeclaration;
+
+    bool isPointer, isReference;
 
     std::string variableName;
     std::string variableType;
@@ -254,6 +258,9 @@ public:
 
             // Do not remove, it will cause a segmentation fault
             sliceProfileItr = profileMap->find(decldata.nameOfIdentifier);
+
+            sliceProfileItr->second.back().isReference = decldata.isReference;
+            sliceProfileItr->second.back().isPointer = decldata.isPointer;
 
             //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
             for (std::string dvar : declDvars) {
@@ -642,7 +649,7 @@ public:
                     /*
                     --------------------------------------
                     1    int bar (int x) {
-                    2        return ++x;
+                    2        return ++x; // def use
                     3    }
                     4    int main () {
                     5        int y = 0;
@@ -653,6 +660,23 @@ public:
                     --------------------------------------
                     For the following, profile y should place
                     lines 1 and 2 as a use and not a def.
+
+                    
+                    --------------------------------------
+                    1    int bar (int x) {
+                    2        x = 5; // def
+                    3        return x; // use
+                    4    }
+                    5    int main () {
+                    6        int y = 0;
+                    7        bar(y);
+                    8        std::cout << y << std::endl;
+                    9        return 0;
+                    10   }
+                    --------------------------------------
+                    For the following, profile y should place
+                    lines 1, 3. Should be uses but 2 concerning
+                    redefining x we dont want to add this as a use
                     */
 
                     std::unordered_set <std::string> junkMap; // Need this to use the ArgumentProfile function
@@ -702,13 +726,15 @@ public:
                             for (auto sliceParamItr = Spi->second.begin(); sliceParamItr != Spi->second.end(); ++sliceParamItr) {
                                 if (sliceParamItr->containsDeclaration) {
                                     if (sliceParamItr->function == name) {
-                                        // Once we have the correct slice we want to look back into sliceItrs defs and
-                                        // move sliceParamItrs defs in sliceItrs into sliceItrs uses list
+                                        // Once we have the correct parameter slice, we need to compare its
+                                        // uses and defs to whats present in sliceItr and remove some non-initial defs
+                                        // from the slices as the use of sliceItr concerning params should only have the
+                                        // line where the param was initially declared, we dont want to store pure redefinitons
+                                        // at this point in time
                                         for (auto defLines : sliceParamItr->definitions) {
                                             // Ensure the defLine exists in the sliceItrs definitons list
                                             if (sliceItr->definitions.find(defLines) != sliceItr->definitions.end()) {
                                                 sliceItr->definitions.erase(defLines);
-                                                sliceItr->uses.insert(defLines);
                                             }
                                         }
                                         break;
