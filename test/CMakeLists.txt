@@ -11,3 +11,6 @@ target_link_libraries(testPointer gtest_main gtest srcsax_static srcml srcsaxeve
 
 add_executable(testConditional ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testConditional.cpp)
 target_link_libraries(testConditional gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+
+add_executable(testPassByReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testPassByReference.cpp)
+target_link_libraries(testPassByReference gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
