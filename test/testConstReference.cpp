@@ -25,7 +25,7 @@ TEST_CASE( "Const-Reference Test 1", "[srcslice]" ) {
             "    \"use\": [  ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 1", input, output);
@@ -33,7 +33,7 @@ TEST_CASE( "Const-Reference Test 1", "[srcslice]" ) {
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
-TEST_CASE( "Const Items Test 2", "[srcslice]" ) {
+TEST_CASE( "Const-Reference Test 2", "[srcslice]" ) {
     sourceCode = "int AddFive(const int& num) {\n"
                 "    return num + 5;"
                 "}\n";
@@ -53,7 +53,7 @@ TEST_CASE( "Const Items Test 2", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 2", input, output);
@@ -61,7 +61,7 @@ TEST_CASE( "Const Items Test 2", "[srcslice]" ) {
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
-TEST_CASE( "Const Items Test 3", "[srcslice]" ) {
+TEST_CASE( "Const-Reference Test 3", "[srcslice]" ) {
     sourceCode = "std::string Concat(const std::string& left, const std::string& right) {\n"
                 "}";
 
@@ -100,7 +100,7 @@ TEST_CASE( "Const Items Test 3", "[srcslice]" ) {
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
-TEST_CASE( "Const Items Test 4", "[srcslice]" ) {
+TEST_CASE( "Const-Reference Test 4", "[srcslice]" ) {
     sourceCode = "std::string Concat(const std::string& left, const std::string& right) {\n"
                 "    return left + right;\n"
                 "}";
