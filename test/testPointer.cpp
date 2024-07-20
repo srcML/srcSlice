@@ -2,7 +2,7 @@
 #include "./srcSliceTest.hpp"
 
 std::string sourceCode = "", input = "", output = "";
-bool verbose = false;
+bool verbose = false, testStatus = false;
 
 TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
     verbose = PromptVerbose();
@@ -28,14 +28,8 @@ TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
             "}\n"
             "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pointer Test 1 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pointer Test 1 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pointer Test 1", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -76,14 +70,8 @@ TEST_CASE( "Pointer Test 2", "[srcslice]" ) {
             "}\n"
             "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pointer Test 2 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pointer Test 2 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pointer Test 2", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -125,14 +113,8 @@ TEST_CASE( "Pointer Test 3", "[srcslice]" ) {
             "}\n"
             "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pointer Test 3 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pointer Test 3 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pointer Test 3", input, output);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
