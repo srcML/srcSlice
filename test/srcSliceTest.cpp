@@ -84,3 +84,24 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
 
     return stream2string;
 }
+
+void DebugOutput(bool verboseMode, bool testFailed, const char* testName, const std::string& inputStr, const std::string& outputStr) {
+    if (verboseMode) {
+        std::cout << "======================================================" << std::endl;
+        std::cout << "\033[33m" << testName << " :: Input" << "\033[0m" << std::endl;
+        if (!testFailed) {
+            std::cout << inputStr << std::endl << std::endl;
+        } else
+        {
+            std::cout << "\033[31m" << inputStr << "\033[0m" << std::endl << std::endl;
+        }
+        std::cout << "\033[33m" << testName << " :: Output" << "\033[0m" << std::endl;
+        if (!testFailed) {
+            std::cout << outputStr << std::endl << std::endl;
+        } else
+        {
+            std::cout << "\033[31m" << outputStr << "\033[0m" << std::endl << std::endl;
+        }
+        std::cout << "======================================================" << std::endl;
+    }
+}
