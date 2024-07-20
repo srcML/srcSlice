@@ -2,9 +2,9 @@
 #include "./srcSliceTest.hpp"
 
 std::string sourceCode = "", input = "", output = "";
-bool verbose = false;
+bool verbose = false, testStatus = false;
 
-TEST_CASE( "Const Items Test 1", "[srcslice]" ) {
+TEST_CASE( "Const-Reference Test 1", "[srcslice]" ) {
     verbose = PromptVerbose();
 
     sourceCode = "int AddFive(const int& num) {\n"
@@ -27,21 +27,13 @@ TEST_CASE( "Const Items Test 1", "[srcslice]" ) {
             "}\n"
             "}";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 1 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 1 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 1", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Const Items Test 2", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
     sourceCode = "int AddFive(const int& num) {\n"
                 "    return num + 5;"
                 "}\n";
@@ -63,21 +55,13 @@ TEST_CASE( "Const Items Test 2", "[srcslice]" ) {
             "}\n"
             "}";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 2 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 2 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 2", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Const Items Test 3", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
     sourceCode = "std::string Concat(const std::string& left, const std::string& right) {\n"
                 "}";
 
@@ -110,21 +94,13 @@ TEST_CASE( "Const Items Test 3", "[srcslice]" ) {
             "}\n"
             "}";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 3 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 3 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 3", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Const Items Test 4", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
     sourceCode = "std::string Concat(const std::string& left, const std::string& right) {\n"
                 "    return left + right;\n"
                 "}";
@@ -158,14 +134,8 @@ TEST_CASE( "Const Items Test 4", "[srcslice]" ) {
             "}\n"
             "}";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 4 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Const Items Test 4 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 4", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
