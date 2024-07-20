@@ -2,13 +2,13 @@
 #include "./srcSliceTest.hpp"
 
 std::string sourceCode = "", input = "", output = "";
-bool verbose = false;
+bool verbose = false, testStatus = false;
 
 TEST_CASE( "Pass-By-Reference Test 1", "[srcslice]" ) {
     verbose = PromptVerbose();
 
-    sourceCode = "void Square(int& n) {\n"
-                "}\n";
+    sourceCode = "void foo(int& a) {\n"
+                "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
 
@@ -16,35 +16,27 @@ TEST_CASE( "Pass-By-Reference Test 1", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
+            "    \"function\":\"foo\",\n"
             "    \"type\":\"int\",\n"
-            "    \"name\":\"n\",\n"
+            "    \"name\":\"a\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [  ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 1 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 1 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 1", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Pass-By-Reference Test 2", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
-    sourceCode = "void Square(int& n) {\n"
-                "    n *= n;\n"
-                "}\n";
+    sourceCode = "void foo(int& a) {\n"
+                "    std::cout << a << std::endl;\n"
+                "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
 
@@ -52,33 +44,27 @@ TEST_CASE( "Pass-By-Reference Test 2", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
+            "    \"function\":\"foo\",\n"
             "    \"type\":\"int\",\n"
-            "    \"name\":\"n\",\n"
+            "    \"name\":\"a\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 2 ],\n"
-            "    \"definition\": [ 1, 2 ]\n"
+            "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 2 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 2 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 2", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Pass-By-Reference Test 3", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
-    sourceCode = "std::string Concat(std::string& left, std::string& right) {\n"
+    sourceCode = "void foo(int& a) {\n"
+                "    std::cout << a << std::endl;\n"
+                "    a = 8;\n"
                 "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
@@ -87,46 +73,25 @@ TEST_CASE( "Pass-By-Reference Test 3", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"right\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [  ],\n"
-            "    \"definition\": [ 1 ]\n"
-            "},\n"
-            "\"slice_1\" : {\n"
-            "    \"file\":\"file.cpp\",\n"
-            "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"left\",\n"
-            "    \"dependentVariables\": [  ],\n"
-            "    \"aliases\": [  ],\n"
-            "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [  ],\n"
-            "    \"definition\": [ 1 ]\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 3 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 3 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 3", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Pass-By-Reference Test 4", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
-    sourceCode = "std::string Concat(std::string& left, std::string& right) {\n"
-                "    std::string result;\n"
+    sourceCode = "void foo(int& a, int& b) {\n"
                 "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
@@ -135,58 +100,38 @@ TEST_CASE( "Pass-By-Reference Test 4", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"result\",\n"
-            "    \"dependentVariables\": [  ],\n"
-            "    \"aliases\": [  ],\n"
-            "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [  ],\n"
-            "    \"definition\": [ 2 ]\n"
-            "},\n"
-            "\"slice_1\" : {\n"
-            "    \"file\":\"file.cpp\",\n"
-            "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"right\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [  ],\n"
             "    \"definition\": [ 1 ]\n"
             "},\n"
-            "\"slice_2\" : {\n"
+            "\"slice_1\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"left\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [  ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 4 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 4 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 4", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Pass-By-Reference Test 5", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
-    sourceCode = "std::string Concat(std::string& left, std::string& right) {\n"
-                "    std::string result = left + right;\n"
+    sourceCode = "void foo(int& a, int& b) {\n"
+                "    b = 24;\n"
                 "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
@@ -195,59 +140,39 @@ TEST_CASE( "Pass-By-Reference Test 5", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"result\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [  ],\n"
-            "    \"definition\": [ 2 ]\n"
+            "    \"definition\": [ 1, 2 ]\n"
             "},\n"
             "\"slice_1\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"right\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [ 2 ],\n"
-            "    \"definition\": [ 1 ]\n"
-            "},\n"
-            "\"slice_2\" : {\n"
-            "    \"file\":\"file.cpp\",\n"
-            "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"left\",\n"
-            "    \"dependentVariables\": [  ],\n"
-            "    \"aliases\": [  ],\n"
-            "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [ 2 ],\n"
+            "    \"use\": [  ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 5 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 5 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 5", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
 TEST_CASE( "Pass-By-Reference Test 6", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
-    sourceCode = "std::string Concat(std::string& left, std::string& right) {\n"
-                "    std::string result = left + right;\n"
-                "    return result;\n"
+    sourceCode = "void foo(int& a, int& b) {\n"
+                "    b = 24;\n"
+                "    std::cout << b << std::endl;\n"
                 "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
@@ -256,49 +181,288 @@ TEST_CASE( "Pass-By-Reference Test 6", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"result\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 3 ],\n"
-            "    \"definition\": [ 2 ]\n"
+            "    \"definition\": [ 1, 2 ]\n"
             "},\n"
             "\"slice_1\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"right\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [ 2 ],\n"
+            "    \"use\": [  ],\n"
             "    \"definition\": [ 1 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 6", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 7", "[srcslice]" ) {
+    sourceCode = "void foo(int& a, int& b) {\n"
+                "    a = 4;\n"
+                "    b = 24;\n"
+                "    std::cout << b << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 1, 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 7", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 8", "[srcslice]" ) {
+    sourceCode = "void foo(int& a, int& b) {\n"
+                "    a = 4;\n"
+                "    std::cout << a << std::endl;\n"
+                "    b = 24;\n"
+                "    std::cout << b << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1, 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 8", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 9", "[srcslice]" ) { // Check Aliases
+    sourceCode = "void foo(int& a, int& b) {\n"
+                "    a = 4;\n"
+                "    std::cout << a << std::endl;\n"
+                "    b = 24;\n"
+                "    std::cout << b << std::endl;\n"
+                "\n"
+                "    int r = a;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"r\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 7 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
             "},\n"
             "\"slice_2\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"Square\",\n"
-            "    \"type\":\"string\",\n"
-            "    \"name\":\"left\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"r\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 7 ],\n"
+            "    \"definition\": [ 1, 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 9", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 10", "[srcslice]" ) { // Check Aliases
+    sourceCode = "void foo(int& a, int& b) {\n"
+                "    a = 4;\n"
+                "    std::cout << a << std::endl;\n"
+                "    b = 24;\n"
+                "    std::cout << b << std::endl;\n"
+                "\n"
+                "    int r = a + b;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"r\",\n"
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [ 2 ],\n"
-            "    \"definition\": [ 1 ]\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 7 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [ \"r\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5, 7 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"r\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 7 ],\n"
+            "    \"definition\": [ 1, 2 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
-    if (verbose) {
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 6 :: Input" << "\033[0m" << std::endl;
-        std::cout << input.c_str() << std::endl << std::endl;
-        std::cout << "\033[33m" << "Pass-By-Reference Test 6 :: Output" << "\033[0m" << std::endl;
-        std::cout << output.c_str() << std::endl;
-        std::cout << "======================================================" << std::endl;
-    }
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 10", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 11", "[srcslice]" ) { // Check Aliases
+    sourceCode = "void foo(int& a, int& b) {\n"
+                "    a = 4;\n"
+                "    std::cout << a << std::endl;\n"
+                "    b = 24;\n"
+                "    std::cout << b << std::endl;\n"
+                "\n"
+                "    int r = a + b;\n"
+                "    std::cout << r << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"r\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 8 ],\n"
+            "    \"definition\": [ 7 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [ \"r\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5, 7 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"r\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 7 ],\n"
+            "    \"definition\": [ 1, 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 11", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
