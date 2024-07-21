@@ -295,7 +295,12 @@ TEST_CASE( "Pass-By-Reference Test 8", "[srcslice]" ) {
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
-TEST_CASE( "Pass-By-Reference Test 9", "[srcslice]" ) { // Check Aliases
+/*
+    Aliases and Dependent Variables need to be reviewed from this point
+    to the end of file
+*/
+
+TEST_CASE( "Pass-By-Reference Test 9", "[srcslice]" ) {
     sourceCode = "void foo(int& a, int& b) {\n"
                 "    a = 4;\n"
                 "    std::cout << a << std::endl;\n"
@@ -352,7 +357,7 @@ TEST_CASE( "Pass-By-Reference Test 9", "[srcslice]" ) { // Check Aliases
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
-TEST_CASE( "Pass-By-Reference Test 10", "[srcslice]" ) { // Check Aliases
+TEST_CASE( "Pass-By-Reference Test 10", "[srcslice]" ) {
     sourceCode = "void foo(int& a, int& b) {\n"
                 "    a = 4;\n"
                 "    std::cout << a << std::endl;\n"
@@ -409,7 +414,7 @@ TEST_CASE( "Pass-By-Reference Test 10", "[srcslice]" ) { // Check Aliases
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
 
-TEST_CASE( "Pass-By-Reference Test 11", "[srcslice]" ) { // Check Aliases
+TEST_CASE( "Pass-By-Reference Test 11", "[srcslice]" ) {
     sourceCode = "void foo(int& a, int& b) {\n"
                 "    a = 4;\n"
                 "    std::cout << a << std::endl;\n"
@@ -463,6 +468,840 @@ TEST_CASE( "Pass-By-Reference Test 11", "[srcslice]" ) { // Check Aliases
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 11", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 12", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"foo\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 12", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 13", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 13", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 14", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 14", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 15", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 15", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 16", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 16", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 17", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "}\n"
+                "int main() {\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 17", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 18", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "}\n"
+                "int main() {\n"
+                "    int bsd = 24;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bsd\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 7 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_3\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 18", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 19", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "}\n"
+                "int main() {\n"
+                "    int bsd = 24;\n"
+                "    int ssd = 7;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bsd\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 9 ],\n"
+            "    \"definition\": [ 7 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"ssd\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 9 ],\n"
+            "    \"definition\": [ 8 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_3\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_4\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 19", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 20", "[srcslice]" ) {
+    sourceCode = "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "}\n"
+                "int main() {\n"
+                "    int bsd = 24;\n"
+                "    int ssd = 7;\n"
+                "    swap(bsd, ssd);\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bsd\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"1\"} ],\n"
+            "    \"use\": [ 1, 2, 9 ],\n"
+            "    \"definition\": [ 3, 7 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"ssd\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"2\"} ],\n"
+            "    \"use\": [ 1, 3, 9 ],\n"
+            "    \"definition\": [ 4, 8 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "},\n"
+            "\"slice_3\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 1, 4 ]\n"
+            "},\n"
+            "\"slice_4\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1, 3 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 20", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 21", "[srcslice]" ) {
+    sourceCode = "void bar(int& num) {\n"
+                "}\n"
+                "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "}\n"
+                "int main() {\n"
+                "    int bsd = 24;\n"
+                "    int ssd = 7;\n"
+                "    swap(bsd, ssd);\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bsd\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"1\"} ],\n"
+            "    \"use\": [ 3, 4, 11 ],\n"
+            "    \"definition\": [ 5, 9 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"ssd\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"2\"} ],\n"
+            "    \"use\": [ 3, 5, 11 ],\n"
+            "    \"definition\": [ 6, 10 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 6 ],\n"
+            "    \"definition\": [ 4 ]\n"
+            "},\n"
+            "\"slice_3\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 3, 5 ]\n"
+            "},\n"
+            "\"slice_4\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5 ],\n"
+            "    \"definition\": [ 3, 6 ]\n"
+            "},\n"
+            "\"slice_5\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"num\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [  ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 21", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 22", "[srcslice]" ) {
+    sourceCode = "void bar(int& num) {\n"
+                "    std::cout << num << std::endl;\n"
+                "}\n"
+                "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "}\n"
+                "int main() {\n"
+                "    int bsd = 24;\n"
+                "    int ssd = 7;\n"
+                "    swap(bsd, ssd);\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bsd\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"1\"} ],\n"
+            "    \"use\": [ 4, 5, 12 ],\n"
+            "    \"definition\": [ 6, 10 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"ssd\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"2\"} ],\n"
+            "    \"use\": [ 4, 6, 12 ],\n"
+            "    \"definition\": [ 7, 11 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 7 ],\n"
+            "    \"definition\": [ 5 ]\n"
+            "},\n"
+            "\"slice_3\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5 ],\n"
+            "    \"definition\": [ 4, 6 ]\n"
+            "},\n"
+            "\"slice_4\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 6 ],\n"
+            "    \"definition\": [ 4, 7 ]\n"
+            "},\n"
+            "\"slice_5\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"num\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 22", input, output);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pass-By-Reference Test 23", "[srcslice]" ) {
+    sourceCode = "void bar(int& num) {\n"
+                "    std::cout << num << std::endl;\n"
+                "}\n"
+                "void swap(int& a, int& b) {\n"
+                "    int temp = a;\n"
+                "    a = b;\n"
+                "    b = temp;\n"
+                "    bar(temp);\n"
+                "}\n"
+                "int main() {\n"
+                "    int bsd = 24;\n"
+                "    int ssd = 7;\n"
+                "    swap(bsd, ssd);\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bsd\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"1\"} ],\n"
+            "    \"use\": [ 4, 5, 13 ],\n"
+            "    \"definition\": [ 6, 11 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"ssd\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"swap\", \"parameterNumber\": \"2\"} ],\n"
+            "    \"use\": [ 4, 6, 13 ],\n"
+            "    \"definition\": [ 7, 12 ]\n"
+            "},\n"
+            "\"slice_2\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"temp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [ {\"functionName\": \"bar\", \"parameterNumber\": \"1\"} ],\n"
+            "    \"use\": [ 1, 2, 7, 8 ],\n"
+            "    \"definition\": [ 5 ]\n"
+            "},\n"
+            "\"slice_3\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [ \"temp\" ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5 ],\n"
+            "    \"definition\": [ 4, 6 ]\n"
+            "},\n"
+            "\"slice_4\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"swap\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 6 ],\n"
+            "    \"definition\": [ 4, 7 ]\n"
+            "},\n"
+            "\"slice_5\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"num\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 2 ],\n"
+            "    \"definition\": [ 1 ]\n"
+            "}\n"
+            "}";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 23", input, output);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
