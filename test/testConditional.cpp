@@ -643,7 +643,7 @@ TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
                 "            std::cout << bmi << std::endl;\n"
                 "        break;\n"
                 "    }\n"
-                "}"
+                "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
 
@@ -693,7 +693,7 @@ TEST_CASE( "Conditional Test 19", "[srcslice]" ) {
                 "    }\n"
                 "    bmi -= 12;\n"
                 "    std::cout << bmi << std::endl;\n"
-                "}"
+                "}";
 
     input = FetchSlices(sourceCode, "file.cpp");
 
