@@ -555,7 +555,7 @@ TEST_CASE( "Pass-By-Reference Test 13", "[srcslice]" ) {
             "    \"use\": [  ],\n"
             "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 13", input, output);
@@ -607,7 +607,7 @@ TEST_CASE( "Pass-By-Reference Test 14", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 14", input, output);
@@ -660,7 +660,7 @@ TEST_CASE( "Pass-By-Reference Test 15", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 15", input, output);
@@ -714,7 +714,7 @@ TEST_CASE( "Pass-By-Reference Test 16", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 16", input, output);
@@ -770,7 +770,7 @@ TEST_CASE( "Pass-By-Reference Test 17", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 17", input, output);
@@ -839,7 +839,7 @@ TEST_CASE( "Pass-By-Reference Test 18", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 18", input, output);
@@ -921,7 +921,7 @@ TEST_CASE( "Pass-By-Reference Test 19", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 19", input, output);
@@ -1004,7 +1004,7 @@ TEST_CASE( "Pass-By-Reference Test 20", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1, 3 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 20", input, output);
@@ -1101,7 +1101,7 @@ TEST_CASE( "Pass-By-Reference Test 21", "[srcslice]" ) {
             "    \"use\": [  ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 21", input, output);
@@ -1199,7 +1199,7 @@ TEST_CASE( "Pass-By-Reference Test 22", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 22", input, output);
@@ -1298,7 +1298,7 @@ TEST_CASE( "Pass-By-Reference Test 23", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}";
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Pass-By-Reference Test 23", input, output);
