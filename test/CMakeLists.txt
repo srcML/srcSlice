@@ -17,3 +17,6 @@ target_link_libraries(testPassByReference gtest_main gtest srcsax_static srcml s
 
 add_executable(testPassByValue ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testPassByValue.cpp)
 target_link_libraries(testPassByValue gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+
+add_executable(testConstReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testConstReference.cpp)
+target_link_libraries(testConstReference gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
