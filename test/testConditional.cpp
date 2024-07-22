@@ -1,6 +1,12 @@
 #define CATCH_CONFIG_MAIN
 #include "./srcSliceTest.hpp"
 
+/*
+    Only if, for, switch statements support
+    declaring variables inside their control/condition
+    block
+*/
+
 std::string sourceCode = "", input = "", output = "";
 bool verbose = false, testStatus = false;
 
@@ -203,6 +209,523 @@ TEST_CASE( "Conditional Test 6", "[srcslice]" ) {
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Conditional Test 6", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 7", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int mode = 0;\n"
+                "    if (mode > 0) {\n"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"mode\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 7", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 8", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int mode = 0;\n"
+                "    if (mode > 0) {\n"
+                "        std::cout << mode << std::endl;\n"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"mode\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 4 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 8", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 9", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int mode = 0;\n"
+                "    if (mode > 0) {\n"
+                "        std::cout << mode << std::endl;\n"
+                "    } else\n"
+                "    {\n"
+                "        mode = -1;"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"mode\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 4 ],\n"
+            "    \"definition\": [ 2, 7 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 9", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 10", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int mode = 0;\n"
+                "    std::cout << mode << std::endl;\n"
+                "    if (int k = 3; mode > 0) {\n"
+                "        mode = k;\n"
+                "    } else\n"
+                "    {\n"
+                "        mode = -1;"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"k\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 5 ],\n"
+            "    \"definition\": [ 4 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"mode\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 4 ],\n"
+            "    \"definition\": [ 2, 5, 8 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 10", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 11", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int mode = 0;\n"
+                "    if (int k = 3; mode > k) {\n"
+                "        mode = k;\n"
+                "    } else\n"
+                "    {\n"
+                "        mode = -1;"
+                "    }\n"
+                "    std::cout << mode << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"k\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 4 ],\n"
+            "    \"definition\": [ 3 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"mode\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 9 ],\n"
+            "    \"definition\": [ 2, 4, 7 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 11", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 12", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int a = 2;\n"
+                "    if (a < 0) {\n"
+                "        std::cout << \"bad number\" << std::endl;\n"
+                "    }\n"
+                "    a = 5;\n"
+                "    std::cout << a << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 7 ],\n"
+            "    \"definition\": [ 2, 6 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 12", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 13", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int k = 5;\n"
+                "    for (int i = k; i < 10; ++i) {\n"
+                "        std::cout << i << std::endl;\n"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"i\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 4 ],\n"
+            "    \"definition\": [ 3 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"k\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 13", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 14", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int k = 5;\n"
+                "    for (int i = k; i < 10; ++i) {\n"
+                "        std::cout << i << std::endl;\n"
+                "    }\n"
+                "    std::cout << k << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"i\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 4 ],\n"
+            "    \"definition\": [ 3 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"k\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 6 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 14", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int k = 5;\n"
+                "    for (int i = k; i < 10; ++i) {\n"
+                "        std::cout << i << std::endl;\n"
+                "        k += i;\n"
+                "    }\n"
+                "    std::cout << k << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"i\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 4 ],\n"
+            "    \"definition\": [ 3 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"k\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 5, 7 ],\n"
+            "    \"definition\": [ 2, 5 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 15", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 16", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int tmp = 0;\n"
+                "    do {\n"
+                "        tmp++;\n"
+                "    } while (tmp < 10);\n"
+                "    std::cout << tmp << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"tmp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4, 5, 6 ],\n"
+            "    \"definition\": [ 2, 4 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 16", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 17", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int tmp = 0;\n"
+                "    do {\n"
+                "        std::cout << tmp << std::endl;\n"
+                "        tmp++;\n"
+                "    } while (tmp < 10);\n"
+                "    std::cout << tmp << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"tmp\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4, 5, 6, 7 ],\n"
+            "    \"definition\": [ 2, 5 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 17", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int bmi = 74;\n"
+                "    switch(int i = bmi) {\n"
+                "        case 10:\n"
+                "            std::cout << \"you win\" << std::endl;\n"
+                "        break;\n"
+                "        default:\n"
+                "            std::cout << bmi << std::endl;\n"
+                "        break;\n"
+                "    }\n"
+                "}"
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"i\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 3 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bmi\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 8 ],\n"
+            "    \"definition\": [ 2 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 18", input, output);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 19", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int bmi = 74;\n"
+                "    switch(int i = bmi) {\n"
+                "        case 10:\n"
+                "            std::cout << \"you win\" << std::endl;\n"
+                "        break;\n"
+                "        default:\n"
+                "            std::cout << bmi << std::endl;\n"
+                "        break;\n"
+                "    }\n"
+                "    bmi -= 12;\n"
+                "    std::cout << bmi << std::endl;\n"
+                "}"
+
+    input = FetchSlices(sourceCode, "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"i\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 4 ],\n"
+            "    \"definition\": [ 3 ]\n"
+            "},\n"
+            "\"slice_1\" : {\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"bmi\",\n"
+            "    \"dependentVariables\": [  ],\n"
+            "    \"aliases\": [  ],\n"
+            "    \"calledFunctions\": [  ],\n"
+            "    \"use\": [ 3, 8, 11, 12 ],\n"
+            "    \"definition\": [ 2, 11 ]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(verbose, testStatus, "Conditional Test 19", input, output);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
