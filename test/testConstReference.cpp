@@ -71,7 +71,7 @@ TEST_CASE( "Const-Reference Test 3", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"AddFive\",\n"
+            "    \"function\":\"Concat\",\n"
             "    \"type\":\"string\",\n"
             "    \"name\":\"right\",\n"
             "    \"dependentVariables\": [  ],\n"
@@ -83,7 +83,7 @@ TEST_CASE( "Const-Reference Test 3", "[srcslice]" ) {
             "\"slice_1\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"AddFive\",\n"
+            "    \"function\":\"Concat\",\n"
             "    \"type\":\"string\",\n"
             "    \"name\":\"left\",\n"
             "    \"dependentVariables\": [  ],\n"
@@ -111,7 +111,7 @@ TEST_CASE( "Const-Reference Test 4", "[srcslice]" ) {
             "\"slice_0\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"AddFive\",\n"
+            "    \"function\":\"Concat\",\n"
             "    \"type\":\"string\",\n"
             "    \"name\":\"right\",\n"
             "    \"dependentVariables\": [  ],\n"
@@ -123,7 +123,7 @@ TEST_CASE( "Const-Reference Test 4", "[srcslice]" ) {
             "\"slice_1\" : {\n"
             "    \"file\":\"file.cpp\",\n"
             "    \"class\":\"\",\n"
-            "    \"function\":\"AddFive\",\n"
+            "    \"function\":\"Concat\",\n"
             "    \"type\":\"string\",\n"
             "    \"name\":\"left\",\n"
             "    \"dependentVariables\": [  ],\n"
@@ -173,7 +173,7 @@ TEST_CASE( "Const-Reference Test 5", "[srcslice]" ) {
             "    \"use\": [ 2 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}\n"
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 5", input, output);
@@ -215,7 +215,7 @@ TEST_CASE( "Const-Reference Test 6", "[srcslice]" ) {
             "    \"use\": [ 2, 3 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}\n"
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 6", input, output);
@@ -257,7 +257,7 @@ TEST_CASE( "Const-Reference Test 7", "[srcslice]" ) {
             "    \"use\": [ 3 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}\n"
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 7", input, output);
@@ -300,7 +300,7 @@ TEST_CASE( "Const-Reference Test 8", "[srcslice]" ) {
             "    \"use\": [ 3, 5 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}\n"
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 8", input, output);
@@ -371,7 +371,7 @@ TEST_CASE( "Const-Reference Test 9", "[srcslice]" ) {
             "    \"use\": [ 3, 5 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}\n"
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 9", input, output);
@@ -443,7 +443,7 @@ TEST_CASE( "Const-Reference Test 10", "[srcslice]" ) {
             "    \"use\": [ 3, 5 ],\n"
             "    \"definition\": [ 1 ]\n"
             "}\n"
-            "}\n"
+            "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(verbose, testStatus, "Const-Reference Test 10", input, output);
