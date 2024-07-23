@@ -8,7 +8,8 @@
 */
 
 std::string sourceCode = "", input = "", output = "";
-bool verbose = false, testStatus = false;
+int verbose = -1;
+bool testStatus = false;
 
 TEST_CASE( "Conditional Test 1", "[srcslice]" ) {
     verbose = PromptVerbose();
@@ -39,7 +40,7 @@ TEST_CASE( "Conditional Test 1", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 1", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 1", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -71,7 +72,7 @@ TEST_CASE( "Conditional Test 2", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 2", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 2", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -103,7 +104,7 @@ TEST_CASE( "Conditional Test 3", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 3", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 3", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -135,7 +136,7 @@ TEST_CASE( "Conditional Test 4", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 4", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 4", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -166,7 +167,7 @@ TEST_CASE( "Conditional Test 5", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 5", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 5", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -208,7 +209,7 @@ TEST_CASE( "Conditional Test 6", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 6", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 6", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -238,7 +239,7 @@ TEST_CASE( "Conditional Test 7", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 7", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 7", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -269,7 +270,7 @@ TEST_CASE( "Conditional Test 8", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 8", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 8", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -303,7 +304,7 @@ TEST_CASE( "Conditional Test 9", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 9", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 9", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -329,7 +330,7 @@ TEST_CASE( "Conditional Test 10", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"k\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"mode\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 5 ],\n"
@@ -350,7 +351,7 @@ TEST_CASE( "Conditional Test 10", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 10", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 10", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -376,7 +377,7 @@ TEST_CASE( "Conditional Test 11", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"k\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"mode\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 3, 4 ],\n"
@@ -397,7 +398,7 @@ TEST_CASE( "Conditional Test 11", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 11", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 11", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -430,7 +431,7 @@ TEST_CASE( "Conditional Test 12", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 12", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 12", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -464,7 +465,7 @@ TEST_CASE( "Conditional Test 13", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"k\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"i\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 3 ],\n"
@@ -473,7 +474,7 @@ TEST_CASE( "Conditional Test 13", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 13", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 13", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -508,7 +509,7 @@ TEST_CASE( "Conditional Test 14", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"k\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"i\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 3, 6 ],\n"
@@ -517,7 +518,7 @@ TEST_CASE( "Conditional Test 14", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 14", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 14", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -544,7 +545,7 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
             "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [ 3, 4 ],\n"
+            "    \"use\": [ 3, 4, 5 ],\n"
             "    \"definition\": [ 3 ]\n"
             "},\n"
             "\"slice_1\" : {\n"
@@ -553,7 +554,7 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"k\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"i\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 3, 5, 7 ],\n"
@@ -562,7 +563,7 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 15", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 15", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -594,7 +595,7 @@ TEST_CASE( "Conditional Test 16", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 16", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 16", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -627,7 +628,7 @@ TEST_CASE( "Conditional Test 17", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 17", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 17", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -654,10 +655,10 @@ TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"i\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"bmi\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [ 4 ],\n"
+            "    \"use\": [ 3, 4 ],\n"
             "    \"definition\": [ 3 ]\n"
             "},\n"
             "\"slice_1\" : {\n"
@@ -675,7 +676,7 @@ TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 18", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 18", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -704,10 +705,10 @@ TEST_CASE( "Conditional Test 19", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"i\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"bmi\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
-            "    \"use\": [ 4 ],\n"
+            "    \"use\": [ 3, 4 ],\n"
             "    \"definition\": [ 3 ]\n"
             "},\n"
             "\"slice_1\" : {\n"
@@ -725,7 +726,7 @@ TEST_CASE( "Conditional Test 19", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 19", input, output);
+    DebugOutput(verbose, testStatus, "Conditional Test 19", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
