@@ -1,15 +1,5 @@
 #include "srcSliceTest.hpp"
 
-bool PromptVerbose() {
-    char resp = 0;
-    std::cout << "Do you want to run tests with Verbose Output? [N/y] : ";
-    while (resp != 'n' && resp != 'N' && resp != 'y' && resp != 'Y') {
-        std::cin >> resp;
-    }
-    
-    return (resp == 'Y' || resp == 'y');
-}
-
 std::string StringToSrcML(std::string str, const char* fileName){ // Function by Cnewman
     struct srcml_archive* archive;
     struct srcml_unit* unit;
@@ -85,17 +75,91 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
     return stream2string;
 }
 
-void DebugOutput(bool verboseMode, bool testStatus, const char* testName, const std::string& inputStr, const std::string& outputStr) {
-    if (verboseMode) {
+int PromptVerbose() {
+    int mode = 0;
+    std::cout << ":::: Select Verbose Mode ::::" << std::endl;
+    std::cout << "    0 - None" << std::endl;
+    std::cout << "    1 - Display Only Failed Cases" << std::endl;
+    std::cout << "    2 - Full Verbose" << std::endl << std::endl;
+
+    std::cout << "Enter Mode > ";
+    std::cin >> mode;
+
+    while (mode < 0 || mode > 2) {
+        std::cout << "Enter Mode > ";
+        std::cin >> mode;
+    }
+    std::cout << ":::::::::::::::::::::::::::::" << std::endl << std::endl;
+    
+    return mode;
+}
+
+void DebugOutput(int verboseMode, bool testStatus, const char* testName, const std::string& inputStr, const std::string& outputStr, std::string srcCode) {
+    // Format srcCode to include line number for readability on verbose
+    int startOfLine = 0;
+    int endOfLine = srcCode.find('\n', startOfLine);
+    int lineNumber = 0;
+    int whiteSpaceLength = 5;
+    
+    // prepends line numbers before the final line
+    while (endOfLine != -1) {
+        ++lineNumber;
+        
+        std::string prependStr = std::to_string(lineNumber);
+        
+        for (int i = (lineNumber / 10); i < whiteSpaceLength; ++i) {
+            prependStr += " ";
+        }
+        
+        srcCode.insert(startOfLine, prependStr);
+        endOfLine += prependStr.size();
+
+        startOfLine = ++endOfLine;
+        endOfLine = srcCode.find('\n', startOfLine);
+    }
+
+    // prepends the final line
+    startOfLine = srcCode.rfind('\n', startOfLine) + 1;
+    std::string prependStr = std::to_string(++lineNumber);
+        
+    for (int i = (lineNumber / 10); i < whiteSpaceLength; ++i) {
+        prependStr += " ";
+    }
+    
+    srcCode.insert(startOfLine, prependStr);
+
+    if (verboseMode == 1) { // only show fails
+        if (!testStatus) {
+            std::cout << "======================================================" << std::endl;
+            std::cout << "\033[33m" << testName << " :: Test Source Code" << "\033[0m" << std::endl;
+            std::cout << "\033[0m" << srcCode << std::endl << std::endl;
+
+            std::cout << "\033[33m" << testName << " :: Current Output" << "\033[0m" << std::endl;
+            std::cout << "\033[0m" << inputStr << std::endl << std::endl;
+
+            std::cout << "\033[33m" << testName << " :: Expected Output" << "\033[0m" << std::endl;
+            std::cout << "\033[0m" << outputStr << std::endl << std::endl;
+            std::cout << "======================================================" << std::endl;
+        }
+    } else if (verboseMode == 2) { // full verbose output | uses ANSI to show fails in red text
         std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << testName << " :: Input" << "\033[0m" << std::endl;
+        std::cout << "\033[33m" << testName << " :: Test Source Code" << "\033[0m" << std::endl;
+        if (testStatus) {
+            std::cout << "\033[0m" << srcCode << std::endl << std::endl;
+        } else
+        {
+            std::cout << "\033[31m" << srcCode << "\033[0m" << std::endl << std::endl;
+        }
+
+        std::cout << "\033[33m" << testName << " :: Current Output" << "\033[0m" << std::endl;
         if (testStatus) {
             std::cout << "\033[0m" << inputStr << std::endl << std::endl;
         } else
         {
             std::cout << "\033[31m" << inputStr << "\033[0m" << std::endl << std::endl;
         }
-        std::cout << "\033[33m" << testName << " :: Output" << "\033[0m" << std::endl;
+
+        std::cout << "\033[33m" << testName << " :: Expected Output" << "\033[0m" << std::endl;
         if (testStatus) {
             std::cout << "\033[0m" << outputStr << std::endl << std::endl;
         } else
