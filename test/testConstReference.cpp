@@ -2,7 +2,8 @@
 #include "./srcSliceTest.hpp"
 
 std::string sourceCode = "", input = "", output = "";
-bool verbose = false, testStatus = false;
+int verbose = -1;
+bool testStatus = false;
 
 TEST_CASE( "Const-Reference Test 1", "[srcslice]" ) {
     verbose = PromptVerbose();
@@ -28,7 +29,7 @@ TEST_CASE( "Const-Reference Test 1", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 1", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 1", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -56,7 +57,7 @@ TEST_CASE( "Const-Reference Test 2", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 2", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 2", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -95,7 +96,7 @@ TEST_CASE( "Const-Reference Test 3", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 3", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 3", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -135,7 +136,7 @@ TEST_CASE( "Const-Reference Test 4", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 4", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 4", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -176,7 +177,7 @@ TEST_CASE( "Const-Reference Test 5", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 5", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 5", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -218,7 +219,7 @@ TEST_CASE( "Const-Reference Test 6", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 6", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 6", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -260,7 +261,7 @@ TEST_CASE( "Const-Reference Test 7", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 7", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 7", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -303,7 +304,7 @@ TEST_CASE( "Const-Reference Test 8", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 8", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 8", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -374,7 +375,7 @@ TEST_CASE( "Const-Reference Test 9", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 9", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 9", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -446,7 +447,7 @@ TEST_CASE( "Const-Reference Test 10", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Const-Reference Test 10", input, output);
+    DebugOutput(verbose, testStatus, "Const-Reference Test 10", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
