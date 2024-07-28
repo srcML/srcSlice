@@ -726,17 +726,43 @@ public:
                             for (auto sliceParamItr = Spi->second.begin(); sliceParamItr != Spi->second.end(); ++sliceParamItr) {
                                 if (sliceParamItr->containsDeclaration) {
                                     if (sliceParamItr->function == name) {
-                                        // Once we have the correct parameter slice, we need to compare its
-                                        // uses and defs to whats present in sliceItr and remove some non-initial defs
-                                        // from the slices as the use of sliceItr concerning params should only have the
-                                        // line where the param was initially declared, we dont want to store pure redefinitons
-                                        // at this point in time
-                                        for (auto defLines : sliceParamItr->definitions) {
-                                            // Ensure the defLine exists in the sliceItrs definitons list
-                                            if (sliceItr->definitions.find(defLines) != sliceItr->definitions.end()) {
-                                                sliceItr->definitions.erase(defLines);
+                                        // If the sliceParamItr is a pointer or a reference
+                                        // we want to push the redefinitions of the sliceParamItr
+                                        // and push the uses of the sliceParamItr to sliceItr
+                                        if (sliceParamItr->isPointer || sliceParamItr->isReference) {
+                                            sliceItr->uses.insert(sliceParamItr->uses.begin(), sliceParamItr->uses.end());
+                                            sliceItr->definitions.insert(sliceParamItr->definitions.begin(), sliceParamItr->definitions.end());
+
+                                            // we need to swap the initial decl line from sliceItrs def to a use
+                                            for (auto initDeclItem : initDeclData) {
+                                                // With a collection of data concerning where all variables are initially declared
+                                                // check if the sliceProfile passed matches with a variable name within the collection
+                                                if (sliceParamItr->variableName != initDeclItem.first) continue;
+
+                                                // Verify the correct slice by checking if the slice definition contains
+                                                // the initial decl line number for the slice with the matching name
+                                                if (sliceParamItr->definitions.find(initDeclItem.second) == sliceParamItr->definitions.end()) continue;
+
+                                                // Ensure the defLine exists in the sliceItrs definitons list
+                                                if (sliceItr->definitions.find(initDeclItem.second) != sliceItr->definitions.end()) {
+                                                    sliceItr->definitions.erase(initDeclItem.second);
+                                                    sliceItr->uses.insert(initDeclItem.second);
+                                                }
+                                            }
+                                        } else {
+                                            // Once we have the correct parameter slice, we need to compare its
+                                            // uses and defs to whats present in sliceItr and remove some non-initial defs
+                                            // from the slices as the use of sliceItr concerning params should only have the
+                                            // line where the param was initially declared, we dont want to store pure redefinitons
+                                            // at this point in time
+                                            for (auto defLines : sliceParamItr->definitions) {
+                                                // Ensure the defLine exists in the sliceItrs definitons list
+                                                if (sliceItr->definitions.find(defLines) != sliceItr->definitions.end()) {
+                                                    sliceItr->definitions.erase(defLines);
+                                                }
                                             }
                                         }
+
                                         break;
                                     }
                                 }
