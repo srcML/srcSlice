@@ -268,7 +268,9 @@ public:
                 if (updateDvarAtThisLocation != profileMap->end()) {
                     if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias) {
-                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName) updateDvarAtThisLocation->second.back().aliases.insert(decldata.nameOfIdentifier);
+                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName) {
+                            updateDvarAtThisLocation->second.back().aliases.insert(decldata.nameOfIdentifier);
+                        }
                         continue;
                     }
                     updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
@@ -282,7 +284,9 @@ public:
                                                                                           }));
                     if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias) {
-                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName ) newSliceProfileFromDeclDvars.first->second.back().aliases.insert(decldata.nameOfIdentifier);
+                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName ) {
+                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(decldata.nameOfIdentifier);
+                        }
                         continue;
                     }
                     newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
@@ -319,9 +323,14 @@ public:
 
                     if (!StringContainsCharacters(exprDataSet.lhsName)) continue;
                     if (sliceProfileLHSItr != profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) {
-                        if ( exprDataSet.lhsName != sliceProfileExprItr->second.back().variableName ) sliceProfileExprItr->second.back().aliases.insert(exprDataSet.lhsName);
+                        if ( exprDataSet.lhsName != sliceProfileExprItr->second.back().variableName ) {
+                            sliceProfileExprItr->second.back().aliases.insert(exprDataSet.lhsName);
+                        }
                         continue;
                     }
+
+                    //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                    // IE : abc = abc + i;
                     if (!StringContainsCharacters(currentName)) continue;
                     if (!currentName.empty() &&
                         (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
@@ -343,10 +352,14 @@ public:
 
                     if (!StringContainsCharacters(exprDataSet.lhsName)) continue;
                     if (sliceProfileLHSItr != profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) {
-                        if ( exprDataSet.lhsName != sliceProfileLHSItr->second.back().variableName ) sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
+                        if ( exprDataSet.lhsName != sliceProfileLHSItr->second.back().variableName ) {
+                            sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
+                        }
                         continue;
                     }
+
                     //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                    // IE : abc = abc + i;
                     if (!StringContainsCharacters(currentName)) continue;
                     if (!currentName.empty() &&
                         (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
@@ -993,8 +1006,6 @@ private:
         closeEventMap[ParserState::name] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&returnPolicy);
             ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
-
-            currentName.clear();
         };
 
         openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
@@ -1002,7 +1013,6 @@ private:
         };
         closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
-
             currentName.clear();
         };
         
@@ -1011,7 +1021,6 @@ private:
         };
         closeEventMap[ParserState::expr] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
-            currentName.clear();
         };
         
         openEventMap[ParserState::switchstmt] = [this](srcSAXEventContext &ctx) {
@@ -1021,7 +1030,6 @@ private:
         closeEventMap[ParserState::switchstmt] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
             conditionalPolicy.EditDepth(-1);
-            currentName.clear();
         };
         
         openEventMap[ParserState::switchcase] = [this](srcSAXEventContext &ctx) {
@@ -1029,7 +1037,6 @@ private:
         };
         closeEventMap[ParserState::switchcase] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
-            currentName.clear();
         };
 
         openEventMap[ParserState::call] = [this](srcSAXEventContext &ctx) {
