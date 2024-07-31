@@ -130,7 +130,7 @@ void StrLineCmp(const std::string& leftHandSide, const std::string& rightHandSid
         if ( leftSideLines[i] != rightSideLines[i] ) {
             // Lines Do Not Match
             std::cout << "\033[31m" << "|  " << leftSideLines[i] << "\033[0m" << std::endl;
-            std::cout << "\033[31m" << "-->" << rightSideLines[i] << "\033[0m" << std::endl;
+            std::cout << "\033[31m" << "-->" << "\033[32m" << rightSideLines[i] << "\033[0m" << std::endl;
         } else
         {
             // Lines Match
