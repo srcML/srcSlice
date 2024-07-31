@@ -739,6 +739,10 @@ public:
                             for (auto sliceParamItr = Spi->second.begin(); sliceParamItr != Spi->second.end(); ++sliceParamItr) {
                                 if (sliceParamItr->containsDeclaration) {
                                     if (sliceParamItr->function == name) {
+                                        // Push parameter variable slices (sliceParamItr) as dvars of sliceItr
+                                        // parameters are data dependent to the variables passed in via function-calls
+                                        sliceItr->dvars.insert(sliceParamItr->variableName);
+
                                         // If the sliceParamItr is a pointer or a reference
                                         // we want to push the redefinitions of the sliceParamItr
                                         // and push the uses of the sliceParamItr to sliceItr
@@ -1099,7 +1103,10 @@ private:
         };
 
         closeEventMap[ParserState::op] = [this](srcSAXEventContext &ctx) {
-            if (ctx.currentToken == "=") {
+            bool isAssignmentOperator = (ctx.currentToken == "=" || ctx.currentToken == "+=" ||
+                                        ctx.currentToken == "-=" || ctx.currentToken == "*=" ||
+                                        ctx.currentToken == "/=" || ctx.currentToken == "%=");
+            if (isAssignmentOperator) {
                 currentName = currentExprName;
             }
         };
