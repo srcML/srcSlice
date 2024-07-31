@@ -94,6 +94,51 @@ int PromptVerbose() {
     return mode;
 }
 
+std::vector<std::string> Split(const std::string& str) {
+    std::vector<std::string> splitLines;
+    int startOfLine = 0;
+    int endOfLine = str.find('\n', startOfLine);
+
+    // Split the lines before the final
+    while (endOfLine != -1) {
+        splitLines.push_back(str.substr(startOfLine, endOfLine-startOfLine));
+
+        startOfLine = ++endOfLine;
+        endOfLine = str.find('\n', startOfLine);
+    }
+
+    // Split the final line
+    startOfLine = str.rfind('\n', startOfLine) + 1;
+    splitLines.push_back(str.substr(startOfLine));
+
+    return splitLines;
+}
+
+void StrLineCmp(const std::string& leftHandSide, const std::string& rightHandSide) {
+    std::vector<std::string> leftSideLines = Split(leftHandSide);
+    std::vector<std::string> rightSideLines = Split(rightHandSide);
+
+    // compare line by line via strcmp
+    for (size_t i = 0; i < rightSideLines.size(); ++i) {
+        // Check if leftHandSide has less lines
+        if (i >= leftSideLines.size()) {
+            // lefthandside is missing lines
+            std::cout << "\033[31m" << "[-] " << rightSideLines[i] << "\033[0m" << std::endl;
+            continue;
+        }
+
+        if ( leftSideLines[i] != rightSideLines[i] ) {
+            // Lines Do Not Match
+            std::cout << "\033[31m" << "|  " << leftSideLines[i] << "\033[0m" << std::endl;
+            std::cout << "\033[31m" << "-->" << rightSideLines[i] << "\033[0m" << std::endl;
+        } else
+        {
+            // Lines Match
+            std::cout << "\033[0m" << leftSideLines[i] << "\033[0m" << std::endl;
+        }
+    }
+}
+
 void DebugOutput(int verboseMode, bool testStatus, const char* testName, const std::string& inputStr, const std::string& outputStr, std::string srcCode) {
     // Format srcCode to include line number for readability on verbose
     int startOfLine = 0;
@@ -134,11 +179,9 @@ void DebugOutput(int verboseMode, bool testStatus, const char* testName, const s
             std::cout << "\033[33m" << testName << " :: Test Source Code" << "\033[0m" << std::endl;
             std::cout << "\033[0m" << srcCode << std::endl << std::endl;
 
-            std::cout << "\033[33m" << testName << " :: Current Output" << "\033[0m" << std::endl;
-            std::cout << "\033[0m" << inputStr << std::endl << std::endl;
+            // Diff Style Output
+            StrLineCmp(inputStr, outputStr);
 
-            std::cout << "\033[33m" << testName << " :: Expected Output" << "\033[0m" << std::endl;
-            std::cout << "\033[0m" << outputStr << std::endl << std::endl;
             std::cout << "======================================================" << std::endl;
         }
     } else if (verboseMode == 2) { // full verbose output | uses ANSI to show fails in red text
@@ -151,21 +194,9 @@ void DebugOutput(int verboseMode, bool testStatus, const char* testName, const s
             std::cout << "\033[31m" << srcCode << "\033[0m" << std::endl << std::endl;
         }
 
-        std::cout << "\033[33m" << testName << " :: Current Output" << "\033[0m" << std::endl;
-        if (testStatus) {
-            std::cout << "\033[0m" << inputStr << std::endl << std::endl;
-        } else
-        {
-            std::cout << "\033[31m" << inputStr << "\033[0m" << std::endl << std::endl;
-        }
+        // Diff Style Output
+        StrLineCmp(inputStr, outputStr);
 
-        std::cout << "\033[33m" << testName << " :: Expected Output" << "\033[0m" << std::endl;
-        if (testStatus) {
-            std::cout << "\033[0m" << outputStr << std::endl << std::endl;
-        } else
-        {
-            std::cout << "\033[31m" << outputStr << "\033[0m" << std::endl << std::endl;
-        }
         std::cout << "======================================================" << std::endl;
     }
 }
