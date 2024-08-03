@@ -51,7 +51,7 @@ public:
     bool isGlobal;
     bool containsDeclaration;
 
-    bool isPointer, isReference;
+    bool isPointer = false, isReference = false;
 
     std::string variableName;
     std::string variableType;
@@ -61,7 +61,7 @@ public:
     std::set<unsigned int> uses;
 
     std::set<std::string> dvars;
-    std::set<std::string> aliases;
+    std::set<std::pair<std::string, unsigned int>> aliases;
 
     std::vector<std::pair<std::string, std::string>> cfunctions;
 
@@ -94,9 +94,9 @@ public:
             out << "Aliases: {";
             for (auto alias : profile.aliases) {
                 if (alias != *(--profile.aliases.end()))
-                    out << alias << ",";
+                    out << alias.first << "|" << alias.second << ", ";
                 else
-                    out << alias;
+                    out << alias.first << "|" << alias.second;
             }
             out << "}" << std::endl;
             out << "Called Functions: {";
@@ -154,9 +154,9 @@ public:
                 out << "    \"aliases\": [ ";
                 for (auto alias : profile.aliases) {
                     if (alias != *(--profile.aliases.end()))
-                        out << "\"" << alias << "\", ";
+                        out << "{ \"" << alias.first << "\": " << alias.second << " },";
                     else
-                        out << "\"" << alias << "\"";
+                        out << "{ \"" << alias.first << "\": " << alias.second << " }";
                 }
                 out << " ]," << std::endl;
 
@@ -269,7 +269,7 @@ public:
                     if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias) {
                         if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName) {
-                            updateDvarAtThisLocation->second.back().aliases.insert(decldata.nameOfIdentifier);
+                            updateDvarAtThisLocation->second.back().aliases.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
                         }
                         continue;
                     }
@@ -285,7 +285,7 @@ public:
                     if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias) {
                         if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName ) {
-                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(decldata.nameOfIdentifier);
+                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
                         }
                         continue;
                     }
@@ -324,7 +324,7 @@ public:
                     if (!StringContainsCharacters(exprDataSet.lhsName)) continue;
                     if (sliceProfileLHSItr != profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) {
                         if ( exprDataSet.lhsName != sliceProfileExprItr->second.back().variableName ) {
-                            sliceProfileExprItr->second.back().aliases.insert(exprDataSet.lhsName);
+                            sliceProfileExprItr->second.back().aliases.insert(std::make_pair(exprDataSet.lhsName, ctx.currentLineNumber));
                         }
                         continue;
                     }
@@ -353,7 +353,7 @@ public:
                     if (!StringContainsCharacters(exprDataSet.lhsName)) continue;
                     if (sliceProfileLHSItr != profileMap->end() && sliceProfileLHSItr->second.back().potentialAlias) {
                         if ( exprDataSet.lhsName != sliceProfileLHSItr->second.back().variableName ) {
-                            sliceProfileExprItr2.first->second.back().aliases.insert(exprDataSet.lhsName);
+                            sliceProfileExprItr2.first->second.back().aliases.insert(std::make_pair(exprDataSet.lhsName, ctx.currentLineNumber));
                         }
                         continue;
                     }
@@ -450,6 +450,9 @@ public:
                                                           std::vector<SliceProfile>{sliceProf}));
                     }
                     if (!funcNameAndCurrArgumentPos.empty()) ++funcNameAndCurrArgumentPos.back().second;
+
+                    // Track what function is called and on what line
+                    functionCallData[callOrder].insert(ctx.currentLineNumber);
                 }
             }
         } else if (typeid(ParamTypePolicy) == typeid(*policy)) {
@@ -656,6 +659,11 @@ public:
         for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
             for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
                 if (sliceItr->containsDeclaration) {
+                    // Variables that are reference variables should not carry aliases
+                    if (sliceItr->isReference) {
+                        sliceItr->aliases.clear();
+                    }
+
                     // Remove def lines concerning lines where params are
                     // declared and moving those lines to use
 
@@ -709,9 +717,11 @@ public:
                                     for (auto lineNum : funct->second) {
                                         // ensure the defs contains the line number before swapping
                                         if (sliceItr->definitions.find(lineNum) != sliceItr->definitions.end()) {
-                                            // Ensure if we're dealing with recursion we dont
-                                            // remove valid numbers
-                                            if (sliceParamItr != sliceItr) sliceItr->definitions.erase(lineNum);
+                                            // Incase we run into a recursive function that the sliceParamItr points back to sliceItr
+                                            // we dont want to remove its true definition
+                                            if (sliceParamItr != sliceItr) {
+                                                sliceItr->definitions.erase(lineNum);
+                                            }
                                             sliceItr->uses.insert(lineNum);
                                         }
                                     }
@@ -742,7 +752,8 @@ public:
                                         // If the sliceParamItr is a pointer or a reference
                                         // we want to push the redefinitions of the sliceParamItr
                                         // and push the uses of the sliceParamItr to sliceItr
-                                        if (sliceParamItr->isPointer || sliceParamItr->isReference) {
+
+                                        if (sliceParamItr->isReference || sliceParamItr->isPointer) {
                                             sliceItr->uses.insert(sliceParamItr->uses.begin(), sliceParamItr->uses.end());
                                             sliceItr->definitions.insert(sliceParamItr->definitions.begin(), sliceParamItr->definitions.end());
 
@@ -982,6 +993,7 @@ private:
     std::vector<std::pair<int, int>> ifdata;
     std::vector<std::pair<int, int>> elsedata;
     std::vector<std::pair<std::string, unsigned int>> initDeclData;
+    std::map<std::string, std::set<unsigned int>> functionCallData;
     int startLine;
     int endLine;
 
