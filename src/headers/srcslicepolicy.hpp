@@ -166,9 +166,9 @@ public:
                 out << "    \"calledFunctions\": [ ";
                 for (auto cfunc : profile.cfunctions) {
                     if (cfunc != *(--profile.cfunctions.end()))
-                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('_')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"defintionLine\": \"" << cfunc.second.second << "\"}, ";
+                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('_')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}, ";
                     else
-                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('_')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"defintionLine\": \"" << cfunc.second.second << "\"}";
+                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('_')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}";
                 }
                 out << " ]," << std::endl;
 
@@ -412,7 +412,6 @@ public:
                     ++trueArgCount;
                 }
             }
-            std::cout << std::endl << std::endl;
 
             bool isFuncNameNext = false;
             std::vector<std::pair<std::string, unsigned int>> funcNameAndCurrArgumentPos;
@@ -470,7 +469,7 @@ public:
                             }
 
                             // Find a Match between functSigMap.second.parameters.size() and trueArgCount
-                            if (functSigComponent->second.parameters.size() == trueArgCount) {
+                            if (functSigComponent->second.parameters.size() == trueArgCount && functSigComponent->second.nameOfContainingClass.empty()) {
                                 callOrder = functSigComponent->first;
                                 break;
                             }
@@ -518,8 +517,6 @@ public:
                                     classScope = functSigComponent->second.nameOfContainingClass;
                                 }
                             }
-
-                            std::cout << std::endl << std::endl;
                         }
 
                     //Just update cfunctions if name already exists. Otherwise, add new name.
