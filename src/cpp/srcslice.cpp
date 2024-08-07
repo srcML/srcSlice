@@ -157,19 +157,19 @@ int main(int argc, char **argv)
         size_t currIndex = 0, sliceIndex = 0;
         std::ostringstream sliceOutput;
 
-        for (auto it : profileMap)
+        for (auto& profile : profileMap)
         {
             ++currIndex;
             
-            for (auto profile : it.second)
+            for (auto& slice : profile.second)
             {
-                if (profile.containsDeclaration)
+                if (slice.containsDeclaration)
                 {
                     ++sliceIndex;
-                    profile.SetJsonOut(jsonOutput);
-                    profile.SetSliceIndex(sliceIndex - 1);
+                    slice.SetJsonOut(jsonOutput);
+                    slice.SetSliceIndex(sliceIndex - 1);
 
-                    sliceOutput << profile;
+                    sliceOutput << slice;
                     if ( jsonOutput && (currIndex != totalElements))
                         sliceOutput << "," << std::endl;
                     else
