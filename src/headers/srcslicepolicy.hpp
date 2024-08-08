@@ -1006,9 +1006,19 @@ public:
                                 }
 
                                 if (profileMap->find(var.first) != profileMap->end() && profileMap->find(Spi->first) != profileMap->end() && sliceItr != Spi->second.end()) {
-                                    profileMap->find(var.first)->second.back().definitions.insert(
-                                            sliceItr->definitions.begin(),
-                                            sliceItr->definitions.end());
+                                    if (!sliceItr->isReference && !sliceItr->isPointer) {
+                                        // pass by value
+                                        profileMap->find(var.first)->second.back().uses.insert(
+                                                sliceItr->definitions.begin(),
+                                                sliceItr->definitions.end());
+                                    } else
+                                    {
+                                        // pass by reference
+                                        profileMap->find(var.first)->second.back().definitions.insert(
+                                                sliceItr->definitions.begin(),
+                                                sliceItr->definitions.end());
+                                    }
+
                                     profileMap->find(var.first)->second.back().uses.insert(
                                             sliceItr->uses.begin(),
                                             sliceItr->uses.end());
