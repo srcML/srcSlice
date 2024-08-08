@@ -456,47 +456,51 @@ public:
                     int isMemberFunctCall = callOrder.find('.');
                     int functionDefinitionLine = 0;
 
+                    // Convert the unordered_map into a ordered map
+                    std::map<std::string, SignatureData> orderedFunctionSigMap;
+                    orderedFunctionSigMap.insert(functionSigMap.begin(), functionSigMap.end());
+
                     // class member functions have a '.' within callOrder variable
                     if (isMemberFunctCall == -1) {
                         // These are free-functions
 
                         // Find the first instance of the callOrder within functionSigMap
-                        auto functSigComponent = functionSigMap.find(callOrder);
+                        auto functSigComponent = orderedFunctionSigMap.find(callOrder);
 
-                        if (functSigComponent != functionSigMap.end()) {
+                        if (functSigComponent != orderedFunctionSigMap.end()) {
                             std::string functSigName = functSigComponent->first;
                             functionDefinitionLine = functSigComponent->second.lineNumber;
-                            
-                            // iterate all possible overload functionSigMap instances that
+
+                            // iterate all possible overload orderedFunctionSigMap instances that
                             // represent overload functions collected
-                            while (functSigName == callOrder) {
-                                // rename functSigName only if a ID tag is included in the string
-                                if (functSigComponent->first.find('_') != -1) {
-                                    functSigName = functSigComponent->first.substr(0, functSigComponent->first.find('_'));
-                                    functionDefinitionLine = functSigComponent->second.lineNumber;
-                                }
+                            for (auto& funcSig = functSigComponent; funcSig != orderedFunctionSigMap.end(); ++funcSig) {
+                                if (functSigName == callOrder) {
 
-                                // Find a Match between functSigMap.second.parameters.size() and trueArgCount
-                                if (functSigComponent->second.parameters.size() == trueArgCount && functSigComponent->second.nameOfContainingClass.empty()) {
-                                    callOrder = functSigComponent->first;
-                                    break;
-                                }
+                                    // rename functSigName only if a ID tag is included in the string
+                                    if (funcSig->first.find('_') != -1) {
+                                        functSigName = funcSig->first.substr(0, funcSig->first.find('_'));
+                                        functionDefinitionLine = funcSig->second.lineNumber;
+                                    }
 
-                                // goto the next object
-                                ++functSigComponent;
-                                if (functSigComponent == functionSigMap.end()) break;
+                                    // Find a Match between functSigMap.second.parameters.size() and trueArgCount
+                                    if (funcSig->second.parameters.size() == trueArgCount && funcSig->second.nameOfContainingClass.empty()) {
+                                        callOrder = funcSig->first;
+                                        std::cout << "FINAL CALL ORDER -> " << callOrder << std::endl;
+                                        break;
+                                    }
+                                }
                             }
                         }
                     } else
                         {
-                            // parse out the '.' and everything else behind it
+                            // parse out the '.' and everything else before it
                             std::string targetFunction = callOrder.substr(callOrder.find('.') + 1);
                             std::string classScope = "";
 
                             // get function definition line for member function being targeted
-                            auto functSigComponent = functionSigMap.find(targetFunction);
+                            auto functSigComponent = orderedFunctionSigMap.find(targetFunction);
 
-                            if (functSigComponent != functionSigMap.end()) {
+                            if (functSigComponent != orderedFunctionSigMap.end()) {
                                 functionDefinitionLine = functSigComponent->second.lineNumber;
                                 classScope = functSigComponent->second.nameOfContainingClass;
 
@@ -508,24 +512,21 @@ public:
 
                                 // iterate all possible overload functionSigMap instances that
                                 // represent overload functions collected
-                                while (targetFunction == functSigName) {
-                                    // Find a Match between functSigMap.second.parameters.size() and trueArgCount along with using class scoping
-                                    if (functSigComponent->second.parameters.size() == trueArgCount && classScope == functSigComponent->second.nameOfContainingClass) {
-                                        break;
-                                    }
+                                for (auto& funcSig = functSigComponent; funcSig != orderedFunctionSigMap.end(); ++funcSig) {
+                                    if (targetFunction == functSigName) {
+                                        // rename functionName only if a ID tag is included in the string
+                                        if (funcSig->first.find('_') != -1) {
+                                            functSigName = funcSig->first.substr(0, funcSig->first.find('_'));
+                                            functionDefinitionLine = funcSig->second.lineNumber;
+                                            classScope = funcSig->second.nameOfContainingClass;
+                                        }
 
-                                    // goto the next object
-                                    ++functSigComponent;
-                                    if (functSigComponent == functionSigMap.end()) break;
-
-                                    // Collect next name
-                                    functSigName = functSigComponent->first;
-
-                                    // rename functionName only if a ID tag is included in the string
-                                    if (functSigComponent->first.find('_') != -1) {
-                                        functSigName = functSigComponent->first.substr(0, functSigComponent->first.find('_'));
-                                        functionDefinitionLine = functSigComponent->second.lineNumber;
-                                        classScope = functSigComponent->second.nameOfContainingClass;
+                                        // Find a Match between functSigMap.second.parameters.size() and trueArgCount along with using class scoping
+                                        if (funcSig->second.parameters.size() == trueArgCount && classScope == funcSig->second.nameOfContainingClass) {
+                                            callOrder = funcSig->first;
+                                            std::cout << "FINAL CALL ORDER -> " << callOrder << std::endl;
+                                            break;
+                                        }
                                     }
                                 }
                             }
@@ -557,9 +558,6 @@ public:
                                                           std::vector<SliceProfile>{sliceProf}));
                     }
                     if (!funcNameAndCurrArgumentPos.empty()) ++funcNameAndCurrArgumentPos.back().second;
-
-                    // Track what function is called and on what line
-                    functionCallData[callOrder].insert(ctx.currentLineNumber);
                 }
             }
         } else if (typeid(ParamTypePolicy) == typeid(*policy)) {
@@ -609,17 +607,20 @@ public:
                 functionSigMap.insert(
                         std::make_pair(functName, functionsigdata)
                         );
+
+                std::cout << "Capturing :: " << functName << std::endl;
             } else
             {
                 functionSigMap.insert(
                         std::make_pair(functionsigdata.name, functionsigdata)
                         );
                 overloadFunctionCount[functionsigdata.name] = 0;
+
+                std::cout << "Capturing :: " << functionsigdata.name << std::endl;
             }
         } else if (typeid(ReturnPolicy) == typeid(*policy)) {
             for (auto dataSet : *returnPolicy.GetReturnUses()) {
                 auto sliceProfileItr = profileMap->find(dataSet.first);
-
                 
                 // incase we have multiple slices of the same name under the hood
                 // we determine if we have the right slice by checking its name
@@ -998,7 +999,7 @@ public:
                                         if (sliceItr->variableName != desiredVariableName) {
                                             continue;
                                         }
-                                        if (*(sliceItr->definitions.begin()) != std::stoi(cfunc.second.second)) {
+                                        if (sliceItr->function != cfunc.first) {
                                             continue;
                                         }
 
@@ -1006,7 +1007,10 @@ public:
                                     }
                                 }
 
-                                if (profileMap->find(var.first) != profileMap->end() && profileMap->find(Spi->first) != profileMap->end()) {
+                                if (profileMap->find(var.first) != profileMap->end() && profileMap->find(Spi->first) != profileMap->end() && sliceItr != Spi->second.end()) {
+                                    // std::cout << "[*] original  slice :: " << profileMap->find(var.first)->second.back().variableName << std::endl;
+                                    // std::cout << "[*] parameter slice :: " << sliceItr->variableName << std::endl;
+
                                     profileMap->find(var.first)->second.back().definitions.insert(
                                             sliceItr->definitions.begin(),
                                             sliceItr->definitions.end());
@@ -1180,7 +1184,6 @@ private:
     std::vector<std::pair<int, int>> ifdata;
     std::vector<std::pair<int, int>> elsedata;
     std::vector<std::pair<std::string, unsigned int>> initDeclData;
-    std::map<std::string, std::set<unsigned int>> functionCallData;
     std::map<std::string, unsigned int> overloadFunctionCount;
     int startLine;
     int endLine;
@@ -1377,7 +1380,7 @@ private:
             // Handles Collecting Control-Edges
             // ComputeControlPaths();
 
-            // ComputeInterprocedural();
+            ComputeInterprocedural();
 
             // Performs a pass over the data to fix any discrepancies
             // possibly produce by the original output
