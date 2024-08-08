@@ -485,7 +485,6 @@ public:
                                     // Find a Match between functSigMap.second.parameters.size() and trueArgCount
                                     if (funcSig->second.parameters.size() == trueArgCount && funcSig->second.nameOfContainingClass.empty()) {
                                         callOrder = funcSig->first;
-                                        std::cout << "FINAL CALL ORDER -> " << callOrder << std::endl;
                                         break;
                                     }
                                 }
@@ -524,7 +523,6 @@ public:
                                         // Find a Match between functSigMap.second.parameters.size() and trueArgCount along with using class scoping
                                         if (funcSig->second.parameters.size() == trueArgCount && classScope == funcSig->second.nameOfContainingClass) {
                                             callOrder = funcSig->first;
-                                            std::cout << "FINAL CALL ORDER -> " << callOrder << std::endl;
                                             break;
                                         }
                                     }
@@ -607,16 +605,12 @@ public:
                 functionSigMap.insert(
                         std::make_pair(functName, functionsigdata)
                         );
-
-                std::cout << "Capturing :: " << functName << std::endl;
             } else
             {
                 functionSigMap.insert(
                         std::make_pair(functionsigdata.name, functionsigdata)
                         );
                 overloadFunctionCount[functionsigdata.name] = 0;
-
-                std::cout << "Capturing :: " << functionsigdata.name << std::endl;
             }
         } else if (typeid(ReturnPolicy) == typeid(*policy)) {
             for (auto dataSet : *returnPolicy.GetReturnUses()) {
@@ -922,6 +916,7 @@ public:
                             // we want to extract the slice profile associated in the function params
                             auto Spi = ArgumentProfile(*funct, std::atoi(cfunctData.second.first.c_str()) - 1, junkMap);
                             auto sliceParamItr = Spi->second.begin();
+                            std::string paramVarName = funct->second.parameters.at(std::atoi(cfunctData.second.first.c_str()) - 1).nameOfIdentifier;
 
                             // If we run into recursive algorithms we want to ensure
                             // we dont hit an infinite loop due to the sliceItr pointing
@@ -930,7 +925,7 @@ public:
 
                             for (auto sliceParamItr = Spi->second.begin(); sliceParamItr != Spi->second.end(); ++sliceParamItr) {
                                 if (sliceParamItr->containsDeclaration) {
-                                    if (sliceParamItr->function == name) {
+                                    if (sliceParamItr->function == name && *(sliceParamItr->definitions.begin()) == funct->second.lineNumber && sliceParamItr->variableName == paramVarName ) {
                                         // If the sliceParamItr is a pointer or a reference
                                         // we want to push the redefinitions of the sliceParamItr
                                         // and push the uses of the sliceParamItr to sliceItr
@@ -999,7 +994,10 @@ public:
                                         if (sliceItr->variableName != desiredVariableName) {
                                             continue;
                                         }
-                                        if (sliceItr->function != cfunc.first) {
+                                        if (sliceItr->function != cfunc.first.substr(0, cfunc.first.find('_'))) {
+                                            continue;
+                                        }
+                                        if (*(sliceItr->definitions.begin()) != std::stoi(cfunc.second.second)) {
                                             continue;
                                         }
 
@@ -1008,9 +1006,6 @@ public:
                                 }
 
                                 if (profileMap->find(var.first) != profileMap->end() && profileMap->find(Spi->first) != profileMap->end() && sliceItr != Spi->second.end()) {
-                                    // std::cout << "[*] original  slice :: " << profileMap->find(var.first)->second.back().variableName << std::endl;
-                                    // std::cout << "[*] parameter slice :: " << sliceItr->variableName << std::endl;
-
                                     profileMap->find(var.first)->second.back().definitions.insert(
                                             sliceItr->definitions.begin(),
                                             sliceItr->definitions.end());
@@ -1035,6 +1030,8 @@ public:
                                     profileMap->find(var.first)->second.back().dvars.insert(
                                             sliceItr->dvars.begin(),
                                             sliceItr->dvars.end());
+                                } else {
+                                    std::cout << "[-] An Error has Occured in `ComputeInterprocedural`" << std::endl;
                                 }
                             }
                         }
