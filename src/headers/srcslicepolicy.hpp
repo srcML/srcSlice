@@ -170,9 +170,9 @@ public:
                 out << "    \"calledFunctions\": [ ";
                 for (auto cfunc : profile.cfunctions) {
                     if (cfunc != *(--profile.cfunctions.end()))
-                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('_')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}, ";
+                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}, ";
                     else
-                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('_')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}";
+                        out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}";
                 }
                 out << " ]," << std::endl;
 
@@ -477,8 +477,8 @@ public:
                                 if (functSigName == callOrder) {
 
                                     // rename functSigName only if a ID tag is included in the string
-                                    if (funcSig->first.find('_') != -1) {
-                                        functSigName = funcSig->first.substr(0, funcSig->first.find('_'));
+                                    if (funcSig->first.find('-') != -1) {
+                                        functSigName = funcSig->first.substr(0, funcSig->first.find('-'));
                                         functionDefinitionLine = funcSig->second.lineNumber;
                                     }
 
@@ -505,8 +505,8 @@ public:
 
                                 // Collect function name from overloads recorded
                                 std::string functSigName = functSigComponent->first;
-                                if (functSigComponent->first.find('_') != -1) {
-                                    functSigName = functSigComponent->first.substr(0, functSigComponent->first.find('_'));
+                                if (functSigComponent->first.find('-') != -1) {
+                                    functSigName = functSigComponent->first.substr(0, functSigComponent->first.find('-'));
                                 }
 
                                 // iterate all possible overload functionSigMap instances that
@@ -514,8 +514,8 @@ public:
                                 for (auto& funcSig = functSigComponent; funcSig != orderedFunctionSigMap.end(); ++funcSig) {
                                     if (targetFunction == functSigName) {
                                         // rename functionName only if a ID tag is included in the string
-                                        if (funcSig->first.find('_') != -1) {
-                                            functSigName = funcSig->first.substr(0, funcSig->first.find('_'));
+                                        if (funcSig->first.find('-') != -1) {
+                                            functSigName = funcSig->first.substr(0, funcSig->first.find('-'));
                                             functionDefinitionLine = funcSig->second.lineNumber;
                                             classScope = funcSig->second.nameOfContainingClass;
                                         }
@@ -600,7 +600,7 @@ public:
                 // construct a new name to log the overloaded function under
                 std::string functName = functionsigdata.name;
                 unsigned int overloadID = ++overloadFunctionCount[functionsigdata.name];
-                functName += "_" + std::to_string(overloadID);
+                functName += "-" + std::to_string(overloadID);
 
                 functionSigMap.insert(
                         std::make_pair(functName, functionsigdata)
@@ -994,7 +994,7 @@ public:
                                         if (sliceItr->variableName != desiredVariableName) {
                                             continue;
                                         }
-                                        if (sliceItr->function != cfunc.first.substr(0, cfunc.first.find('_'))) {
+                                        if (sliceItr->function != cfunc.first.substr(0, cfunc.first.find('-'))) {
                                             continue;
                                         }
                                         if (*(sliceItr->definitions.begin()) != std::stoi(cfunc.second.second)) {
