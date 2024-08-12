@@ -1393,7 +1393,7 @@ private:
 
             // Performs a pass over the data to fix any discrepancies
             // possibly produce by the original output
-            // PassOver();
+            PassOver();
         };
     }
 };
