@@ -659,6 +659,7 @@ public:
             for (auto name : insertTargets) {
                 conditionalPolicy.DeleteUsesCollection(name);
             }
+            insertTargets.clear();
 
             for (auto dataSet : *conditionalPolicy.GetConditionalDefs()) {
                 auto sliceProfileItr = profileMap->find(dataSet.first);
@@ -670,8 +671,8 @@ public:
                     if (sliceProfileItr->second.back().containsDeclaration &&
                         sliceProfileItr->second.back().variableName == dataSet.first &&
                         !sliceProfileItr->second.back().conditionalDefsInserted) {
-                        for (auto useLines : dataSet.second) {
-                            sliceProfileItr->second.back().definitions.insert(useLines);
+                        for (auto defLines : dataSet.second) {
+                            sliceProfileItr->second.back().definitions.insert(defLines);
                         }
                         sliceProfileItr->second.back().conditionalDefsInserted = true;
                         insertTargets.insert(dataSet.first);
@@ -683,6 +684,7 @@ public:
             for (auto name : insertTargets) {
                 conditionalPolicy.DeleteDefsCollection(name);
             }
+            insertTargets.clear();
         }
     }
 
