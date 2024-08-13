@@ -28,7 +28,7 @@ public:
             std::string name, int line, bool alias = 0, bool global = 0,
             std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {},
             std::vector<std::pair<std::string, std::pair<std::string, std::string>>> cFunc = {},
-            std::set<std::string> dv = {}, bool containsDecl = false,
+            std::set<std::pair<std::string, unsigned int>> dv = {}, bool containsDecl = false,
             std::set<std::pair<int, int>> edges = {}, bool visit = false) :
             variableName(name), lineNumber(line), potentialAlias(alias),
             isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
@@ -60,7 +60,7 @@ public:
     std::set<unsigned int> definitions;
     std::set<unsigned int> uses;
 
-    std::set<std::string> dvars;
+    std::set<std::pair<std::string, unsigned int>> dvars;
     std::set<std::pair<std::string, unsigned int>> aliases;
 
     std::vector<std::pair<std::string, std::pair<std::string, std::string>>> cfunctions;
@@ -152,9 +152,9 @@ public:
                 out << "    \"dependentVariables\": [ ";
                 for (auto dvar : profile.dvars) {
                     if (dvar != *(--profile.dvars.end()))
-                        out << "\"" << dvar << "\", ";
+                        out << "\"" << dvar.first << "\", ";
                     else
-                        out << "\"" << dvar << "\"";
+                        out << "\"" << dvar.first << "\"";
                 }
                 out << " ]," << std::endl;
 
@@ -282,7 +282,7 @@ public:
                         }
                         continue;
                     }
-                    updateDvarAtThisLocation->second.back().dvars.insert(decldata.nameOfIdentifier);
+                    updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
                 } else {
                     auto sliceProf = SliceProfile(dvar, decldata.lineNumber, false, false, std::set<unsigned int>{},
                                                   std::set<unsigned int>{decldata.lineNumber});
@@ -298,7 +298,7 @@ public:
                         }
                         continue;
                     }
-                    newSliceProfileFromDeclDvars.first->second.back().dvars.insert(decldata.nameOfIdentifier);
+                    newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
                 }
             }
 
@@ -338,14 +338,14 @@ public:
                         continue;
                     }
 
-                    //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                    // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                     // IE : abc = abc + i;
-                    if (!StringContainsCharacters(currentName)) continue;
-                    if (!currentName.empty() &&
-                        (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
-                        sliceProfileExprItr->second.back().dvars.insert(currentName);
-                        continue;
-                    }
+                    // if (!StringContainsCharacters(currentName)) continue;
+                    // if (!currentName.empty() &&
+                    //     (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
+                    //     sliceProfileExprItr->second.back().dvars.insert(currentName);
+                    //     continue;
+                    // }
 
                 } else {
                     auto sliceProfileExprItr2 = profileMap->insert(std::make_pair(exprdata.second.nameOfIdentifier,
@@ -367,14 +367,14 @@ public:
                         continue;
                     }
 
-                    //Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                    // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                     // IE : abc = abc + i;
-                    if (!StringContainsCharacters(currentName)) continue;
-                    if (!currentName.empty() &&
-                        (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
-                        sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
-                        continue;
-                    }
+                    // if (!StringContainsCharacters(currentName)) continue;
+                    // if (!currentName.empty() &&
+                    //     (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
+                    //     sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
+                    //     continue;
+                    // }
                 }
             }
             exprDataSet.clear();
@@ -398,6 +398,10 @@ public:
             }
             initDataSet.clear();
         } else if (typeid(CallPolicy) == typeid(*policy)) {
+            // Runs when function calls are detected
+
+            functionCallList.insert(ctx.currentLineNumber);
+
             calldata = *policy->Data<CallPolicy::CallData>();
             // This loop is for simply tracking how many args are within a loaded function call
             int trueArgCount = 0;
@@ -833,6 +837,13 @@ public:
     }
 
     void PassOver() {
+        // Create a set of data representing function scopes
+        // in ascending order from line number
+        std::map<std::string, unsigned int> functionBounds;
+        for (auto funcSig : functionSigMap) {
+            functionBounds[funcSig.first] = funcSig.second.lineNumber;
+        }
+
         // Pass Over to Update any errors from slices first run
         for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
             for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
@@ -970,6 +981,84 @@ public:
                                     }
                                 }
                             }
+                        }
+                    }
+
+                    // Aliases are to be local within scope of their focused slice
+                    for (auto alias = sliceItr->aliases.begin(); alias != sliceItr->aliases.end();) {
+                        bool removedData = false;
+
+                        if (functionCallList.find(alias->second) != functionCallList.end()) {
+                            // remove aliases formed at the occurance of a function call
+                            sliceItr->aliases.erase(alias++);
+                        } else {
+                            // check if the line where the alias is formed is within
+                            // local scope of the sliceItr variable
+                            unsigned int localScopeStart = functionBounds[sliceItr->function];
+
+                            // if the alias was formed in a function above the local scope
+                            // we can assume it is not within local scope
+                            if (alias->second < localScopeStart) {
+                                sliceItr->aliases.erase(alias++);
+                                removedData = true;
+                            } else {
+                                // definte the rough estimated end of local scope
+                                unsigned int endOfLocalScope = 0;
+                                for (auto data : functionBounds) {
+                                    if (data.second > localScopeStart) {
+                                        endOfLocalScope = data.second;
+                                        break;
+                                    }
+                                }
+
+                                // if the alias is formed farther down then the
+                                // end of the local scope remove this alias
+                                if (endOfLocalScope < alias->second) {
+                                    sliceItr->aliases.erase(alias++);
+                                    removedData = true;
+                                }
+                            }
+
+                            if (!removedData) ++alias;
+                        }
+                    }
+
+                    // Dvars are to be local within scope of their focused slice
+                    for (auto dvar = sliceItr->dvars.begin(); dvar != sliceItr->dvars.end();) {
+                        bool removedData = false;
+
+                        if (functionCallList.find(dvar->second) != functionCallList.end()) {
+                            // remove aliases formed at the occurance of a function call
+                            sliceItr->dvars.erase(dvar++);
+                        } else {
+                            // check if the line where the alias is formed is within
+                            // local scope of the sliceItr variable
+                            unsigned int localScopeStart = functionBounds[sliceItr->function];
+
+                            // if the alias was formed in a function above the local scope
+                            // we can assume it is not within local scope
+                            if (dvar->second < localScopeStart) {
+                                sliceItr->dvars.erase(dvar++);
+                                removedData = true;
+                            } else {
+                                // definte the rough estimated end of local scope
+                                unsigned int endOfLocalScope = 0;
+                                for (auto data : functionBounds) {
+                                    if (data.second > localScopeStart) {
+                                        endOfLocalScope = data.second;
+                                        break;
+                                    }
+                                }
+
+                                // if the alias is formed farther down then the
+                                // end of the local scope remove this alias
+                                if (endOfLocalScope < dvar->second) {
+                                    sliceItr->dvars.erase(dvar++);
+                                    removedData = true;
+                                }
+                            }
+
+                            if (!removedData) ++dvar;
                         }
                     }
                 }
@@ -1194,6 +1283,7 @@ private:
     std::vector<std::pair<int, int>> elsedata;
     std::vector<std::pair<std::string, unsigned int>> initDeclData;
     std::map<std::string, unsigned int> overloadFunctionCount;
+    std::set<unsigned int> functionCallList;
     int startLine;
     int endLine;
 
