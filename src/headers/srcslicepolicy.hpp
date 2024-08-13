@@ -293,7 +293,8 @@ public:
                                                                                           }));
                     if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap->end() && sliceProfileItr->second.back().potentialAlias) {
-                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName ) {
+                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName &&
+                            newSliceProfileFromDeclDvars.first->second.back().variableName != currentName) {
                             newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
                         }
                         continue;
@@ -340,12 +341,13 @@ public:
 
                     // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                     // IE : abc = abc + i;
-                    // if (!StringContainsCharacters(currentName)) continue;
-                    // if (!currentName.empty() &&
-                    //     (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
-                    //     sliceProfileExprItr->second.back().dvars.insert(currentName);
-                    //     continue;
-                    // }
+                    if (!StringContainsCharacters(currentName)) continue;
+                    if (!currentName.empty() &&
+                        (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier) &&
+                        sliceProfileExprItr->second.back().variableName != currentName) {
+                        sliceProfileExprItr->second.back().dvars.insert(std::make_pair(currentName, ctx.currentLineNumber));
+                        continue;
+                    }
 
                 } else {
                     auto sliceProfileExprItr2 = profileMap->insert(std::make_pair(exprdata.second.nameOfIdentifier,
@@ -369,12 +371,12 @@ public:
 
                     // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                     // IE : abc = abc + i;
-                    // if (!StringContainsCharacters(currentName)) continue;
-                    // if (!currentName.empty() &&
-                    //     (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
-                    //     sliceProfileExprItr2.first->second.back().dvars.insert(currentName);
-                    //     continue;
-                    // }
+                    if (!StringContainsCharacters(currentName)) continue;
+                    if (!currentName.empty() &&
+                        (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
+                        sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(currentName, ctx.currentLineNumber));
+                        continue;
+                    }
                 }
             }
             exprDataSet.clear();
@@ -1042,7 +1044,7 @@ public:
                                 removedData = true;
                             } else {
                                 // definte the rough estimated end of local scope
-                                unsigned int endOfLocalScope = 0;
+                                unsigned int endOfLocalScope = 0; // if no end of scope is found we are viewing the scope of the final function
                                 for (auto data : functionBounds) {
                                     if (data.second > localScopeStart) {
                                         endOfLocalScope = data.second;
@@ -1053,6 +1055,8 @@ public:
                                 // if the alias is formed farther down then the
                                 // end of the local scope remove this alias
                                 if (endOfLocalScope < dvar->second) {
+                                    if (endOfLocalScope == 0) break;
+
                                     sliceItr->dvars.erase(dvar++);
                                     removedData = true;
                                 }
@@ -1088,7 +1092,7 @@ public:
                                         if (sliceItr->function != cfunc.first.substr(0, cfunc.first.find('-'))) {
                                             continue;
                                         }
-                                        if (*(sliceItr->definitions.begin()) != std::stoi(cfunc.second.second)) {
+                                        if (sliceItr->lineNumber != std::stoi(cfunc.second.second)) {
                                             continue;
                                         }
 
