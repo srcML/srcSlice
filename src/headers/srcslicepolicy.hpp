@@ -1004,7 +1004,7 @@ public:
                                 sliceItr->aliases.erase(alias++);
                                 removedData = true;
                             } else {
-                                // definte the rough estimated end of local scope
+                                // define the rough estimated end of local scope
                                 unsigned int endOfLocalScope = 0;
                                 for (auto data : functionBounds) {
                                     if (data.second > localScopeStart) {
@@ -1016,6 +1016,7 @@ public:
                                 // if the alias is formed farther down then the
                                 // end of the local scope remove this alias
                                 if (endOfLocalScope < alias->second) {
+                                    if (endOfLocalScope == 0) break;
                                     sliceItr->aliases.erase(alias++);
                                     removedData = true;
                                 }
