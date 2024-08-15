@@ -851,7 +851,10 @@ public:
             for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
                 if (sliceItr->containsDeclaration) {
                     // Variables that are reference variables should not carry aliases
-                    if (sliceItr->isReference) {
+                    // Standard variables I don't believe should also carry aliases
+                    // assuming only pointers should carry aliases I'm going to check
+                    // if the slice profile is a pointer
+                    if (!sliceItr->isPointer) {
                         sliceItr->aliases.clear();
                     }
 
