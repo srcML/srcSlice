@@ -317,7 +317,7 @@ TEST_CASE( "Conditional Test 10", "[srcslice]" ) {
                 "        mode = k;\n"
                 "    } else\n"
                 "    {\n"
-                "        mode = -1;"
+                "        mode = -1;\n"
                 "    }\n"
                 "}";
 
@@ -363,7 +363,7 @@ TEST_CASE( "Conditional Test 11", "[srcslice]" ) {
                 "        mode = k;\n"
                 "    } else\n"
                 "    {\n"
-                "        mode = -1;"
+                "        mode = -1;\n"
                 "    }\n"
                 "    std::cout << mode << std::endl;\n"
                 "}";
@@ -542,7 +542,7 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"i\",\n"
-            "    \"dependentVariables\": [  ],\n"
+            "    \"dependentVariables\": [ \"k\" ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 3, 4, 5 ],\n"
