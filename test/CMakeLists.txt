@@ -5,18 +5,23 @@ file(GLOB SRCSLICE_SOURCE
     ../src/cpp/srcslicepolicy.cpp
     ../src/headers/srcslicepolicy.hpp
     )
+   
+file(GLOB SRCSLICETEST_SOURCE
+        srcSliceTest.cpp
+        srcSliceTest.hpp
+    )
 
-add_executable(testPointer ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testPointer.cpp)
+add_executable(testPointer ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPointer.cpp)
 target_link_libraries(testPointer gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
 
-add_executable(testConditional ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testConditional.cpp)
+add_executable(testConditional ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testConditional.cpp)
 target_link_libraries(testConditional gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
 
-add_executable(testPassByReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testPassByReference.cpp)
+add_executable(testPassByReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPassByReference.cpp)
 target_link_libraries(testPassByReference gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
 
-add_executable(testPassByValue ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testPassByValue.cpp)
+add_executable(testPassByValue ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPassByValue.cpp)
 target_link_libraries(testPassByValue gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
 
-add_executable(testConstReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} srcSliceTest.cpp srcSliceTest.hpp testConstReference.cpp)
+add_executable(testConstReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testConstReference.cpp)
 target_link_libraries(testConstReference gtest_main gtest srcsax_static srcml srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
