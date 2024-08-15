@@ -1072,6 +1072,28 @@ public:
                 }
             }
         }
+
+        // Update Dvars
+        for (auto dvarData : *conditionalPolicy.GetPossibleDvars()) {
+            for (auto slice : dvarData.dvars) {
+                // by using the pair we can find the correct slice profile
+                // we will insert dvarData.lhsName into, along with using
+                // other data we have collected
+                auto Spi = profileMap->find(slice.first);
+                for (auto sliceParamItr = Spi->second.begin(); sliceParamItr != Spi->second.end(); ++sliceParamItr) {
+                    if (sliceParamItr->containsDeclaration) {
+                        if (sliceParamItr->function != dvarData.function) {
+                            continue;
+                        }
+                        if (sliceParamItr->uses.find(dvarData.lhsDefLine) == sliceParamItr->uses.end()) {
+                            continue;
+                        }
+
+                        sliceParamItr->dvars.insert(std::make_pair(dvarData.lhsName, dvarData.lhsDefLine));
+                    }
+                }
+            }
+        }
     }
 
     void ComputeInterprocedural() {
@@ -1363,9 +1385,11 @@ private:
 
         openEventMap[ParserState::init] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->AddListenerDispatch(&initPolicy);
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
         closeEventMap[ParserState::init] = [this](srcSAXEventContext &ctx) {
             ctx.dispatcher->RemoveListenerDispatch(&initPolicy);
+            ctx.dispatcher->RemoveListener(&conditionalPolicy);
         };
 
         openEventMap[ParserState::forstmt] = [this](srcSAXEventContext &ctx) {
