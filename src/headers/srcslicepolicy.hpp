@@ -248,14 +248,14 @@ public:
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap->end()) {
                 auto sliceProfile = SliceProfile(decldata.nameOfIdentifier, decldata.lineNumber,
-                                                 (decldata.isPointer || !decldata.isReference), true,
+                                                 (decldata.isPointer), true,
                                                  std::set<unsigned int>{decldata.lineNumber});
                 sliceProfile.nameOfContainingClass = ctx.currentClassName;
                 sliceProfileItr->second.push_back(sliceProfile);
                 sliceProfileItr->second.back().containsDeclaration = true;
             } else {
                 auto sliceProf = SliceProfile(decldata.nameOfIdentifier, decldata.lineNumber,
-                                              (decldata.isPointer || !decldata.isReference), false,
+                                              (decldata.isPointer), false,
                                               std::set<unsigned int>{decldata.lineNumber});
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProf.containsDeclaration = true;
@@ -572,14 +572,14 @@ public:
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap->end()) {
                 auto sliceProf = SliceProfile(paramdata.nameOfIdentifier, paramdata.lineNumber,
-                                              (paramdata.isPointer || !paramdata.isReference), true,
+                                              (paramdata.isPointer), true,
                                               std::set<unsigned int>{paramdata.lineNumber});
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProfileItr->second.push_back(std::move(sliceProf));
             } else {
                 auto sliceProf = SliceProfile(paramdata.nameOfIdentifier, paramdata.lineNumber,
-                                              (paramdata.isPointer || !paramdata.isReference), true,
+                                              (paramdata.isPointer), true,
                                               std::set<unsigned int>{paramdata.lineNumber});
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
