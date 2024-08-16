@@ -655,7 +655,7 @@ TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
             "    \"function\":\"main\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"i\",\n"
-            "    \"dependentVariables\": [ ],\n"
+            "    \"dependentVariables\": [  ],\n"
             "    \"aliases\": [  ],\n"
             "    \"calledFunctions\": [  ],\n"
             "    \"use\": [ 3, 4 ],\n"
