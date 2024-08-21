@@ -152,9 +152,9 @@ public:
                 out << "    \"dependentVariables\": [ ";
                 for (auto dvar : profile.dvars) {
                     if (dvar != *(--profile.dvars.end()))
-                        out << "\"" << dvar.first << "\", ";
+                        out << "{ \"" << dvar.first << "\": " << dvar.second << " },";
                     else
-                        out << "\"" << dvar.first << "\"";
+                        out << "{ \"" << dvar.first << "\": " << dvar.second << " }";
                 }
                 out << " ]," << std::endl;
 
