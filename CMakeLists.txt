@@ -42,7 +42,7 @@ include_directories(${LIBXML2_INCLUDE_DIR}
                     srcSAXEventDispatch/src/dispatcher
                     srcSAXEventDispatch/src/policy_classes
                     src/headers
-                    /usr/local/include)
+                    /usr/local)
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(srcSAXEventDispatch)
