@@ -21,7 +21,7 @@
 #
 #  Build configuration file
 
-cmake_minimum_required(VERSION 2.8)
+cmake_minimum_required(VERSION 3.20)
 project(srcSlice)
 
 # find needed libraries
@@ -41,8 +41,7 @@ include_directories(${LIBXML2_INCLUDE_DIR}
                     ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/windows 
                     srcSAXEventDispatch/src/dispatcher
                     srcSAXEventDispatch/src/policy_classes
-                    src/headers
-                    /usr/local/include)
+                    src/headers)
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(srcSAXEventDispatch)
