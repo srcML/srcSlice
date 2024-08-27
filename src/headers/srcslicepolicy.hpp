@@ -644,24 +644,49 @@ public:
             std::set<std::string> insertTargets;
             for (auto dataSet : *conditionalPolicy.GetConditionalUses()) {
                 auto sliceProfileItr = profileMap->find(dataSet.first);
-                
+                std::vector<SliceProfile*> slicePtrs;
+
                 // incase we have multiple slices of the same name under the hood
                 // we determine if we have the right slice by checking its name
                 // and whether we've already inserted data into it
-                while (sliceProfileItr != profileMap->end()) {
-                    if (sliceProfileItr->second.back().containsDeclaration &&
-                        sliceProfileItr->second.back().variableName == dataSet.first &&
-                        !sliceProfileItr->second.back().conditionalUsesInserted) {
-                        for (auto useLines : dataSet.second) {
-                            if (useLines >= *(sliceProfileItr->second.back().definitions.begin())) {
-                                sliceProfileItr->second.back().uses.insert(useLines);
+                if (sliceProfileItr != profileMap->end()) {
+                    for (auto& slice : sliceProfileItr->second) {
+                        if (slice.containsDeclaration &&
+                            slice.variableName == dataSet.first &&
+                            !slice.conditionalUsesInserted) {
+
+                            // Building a vector of pointer to the referenced slices
+                            // in reverse by pushing to the front instead of push_back
+                            slicePtrs.insert(slicePtrs.begin(), &slice);
+                            
+                            for (auto useLines : dataSet.second) {
+                                if (useLines >= *(slice.definitions.begin())) {
+                                    slice.uses.insert(useLines);
+                                }
                             }
+                            slice.conditionalUsesInserted = true;
+                            insertTargets.insert(dataSet.first);
                         }
-                        sliceProfileItr->second.back().conditionalUsesInserted = true;
-                        insertTargets.insert(dataSet.first);
                     }
 
-                    ++sliceProfileItr;
+                    // Iterate the reverse array of ptrs to remove
+                    // falsely set uses between slices in the same function
+                    std::set<unsigned int> referencedUses;
+                    for (auto& slicePtr : slicePtrs) {
+                        if (slicePtr->function == conditionalPolicy.GetLastFunction()) {
+                            slicePtr->variableName += " ";
+
+                            // When we have referenced data it should be to a slice that is
+                            // in front of the current slice being indexed
+                            if (referencedUses.size() > 0) {
+                                for (const auto num : referencedUses) {
+                                    slicePtr->uses.erase(num);
+                                }
+                            } else {
+                                referencedUses = slicePtr->uses;
+                            }
+                        }
+                    }
                 }
             }
             for (auto name : insertTargets) {
@@ -675,26 +700,36 @@ public:
                 // incase we have multiple slices of the same name under the hood
                 // we determine if we have the right slice by checking its name
                 // and whether we've already inserted data into it
-                while (sliceProfileItr != profileMap->end()) {
-                    if (sliceProfileItr->second.back().containsDeclaration &&
-                        sliceProfileItr->second.back().variableName == dataSet.first &&
-                        !sliceProfileItr->second.back().conditionalDefsInserted) {
-                        for (auto defLines : dataSet.second) {
-                            if (defLines >= *(sliceProfileItr->second.back().definitions.begin())) {
-                                sliceProfileItr->second.back().definitions.insert(defLines);
+                if (sliceProfileItr != profileMap->end()) {
+                    for (auto& slice : sliceProfileItr->second) {
+                        if (slice.containsDeclaration &&
+                            slice.variableName == dataSet.first &&
+                            !slice.conditionalDefsInserted) {
+                            for (auto defLines : dataSet.second) {
+                                if (defLines >= *(slice.definitions.begin())) {
+                                    slice.uses.insert(defLines);
+                                }
                             }
+                            slice.conditionalDefsInserted = true;
+                            insertTargets.insert(dataSet.first);
                         }
-                        sliceProfileItr->second.back().conditionalDefsInserted = true;
-                        insertTargets.insert(dataSet.first);
                     }
-
-                    ++sliceProfileItr;
                 }
             }
             for (auto name : insertTargets) {
                 conditionalPolicy.DeleteDefsCollection(name);
             }
             insertTargets.clear();
+            RepairVariableNames();
+        }
+    }
+    
+    void RepairVariableNames() {
+        for (auto& mapItr : *profileMap) {
+            for (auto& slice : mapItr.second) {
+                // repairing variable names from line 677
+                slice.variableName = slice.variableName.substr(0, slice.variableName.find(32));
+            }
         }
     }
 
