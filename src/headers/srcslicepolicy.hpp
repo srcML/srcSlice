@@ -653,7 +653,9 @@ public:
                         sliceProfileItr->second.back().variableName == dataSet.first &&
                         !sliceProfileItr->second.back().conditionalUsesInserted) {
                         for (auto useLines : dataSet.second) {
-                            sliceProfileItr->second.back().uses.insert(useLines);
+                            if (useLines >= *(sliceProfileItr->second.back().definitions.begin())) {
+                                sliceProfileItr->second.back().uses.insert(useLines);
+                            }
                         }
                         sliceProfileItr->second.back().conditionalUsesInserted = true;
                         insertTargets.insert(dataSet.first);
@@ -678,7 +680,9 @@ public:
                         sliceProfileItr->second.back().variableName == dataSet.first &&
                         !sliceProfileItr->second.back().conditionalDefsInserted) {
                         for (auto defLines : dataSet.second) {
-                            sliceProfileItr->second.back().definitions.insert(defLines);
+                            if (defLines >= *(sliceProfileItr->second.back().definitions.begin())) {
+                                sliceProfileItr->second.back().definitions.insert(defLines);
+                            }
                         }
                         sliceProfileItr->second.back().conditionalDefsInserted = true;
                         insertTargets.insert(dataSet.first);
