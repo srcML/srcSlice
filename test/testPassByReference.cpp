@@ -2,12 +2,9 @@
 #include "./srcSliceTest.hpp"
 
 std::string sourceCode = "", input = "", output = "";
-int verbose = -1;
 bool testStatus = false;
 
 TEST_CASE( "Pass-By-Reference Test 1", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
     sourceCode = "void foo(int& a) {\n"
                 "}";
 
@@ -29,7 +26,7 @@ TEST_CASE( "Pass-By-Reference Test 1", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 1", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 1", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -57,7 +54,7 @@ TEST_CASE( "Pass-By-Reference Test 2", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 2", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 2", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -86,7 +83,7 @@ TEST_CASE( "Pass-By-Reference Test 3", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 3", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 3", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -125,7 +122,7 @@ TEST_CASE( "Pass-By-Reference Test 4", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 4", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 4", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -165,7 +162,7 @@ TEST_CASE( "Pass-By-Reference Test 5", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 5", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 5", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -206,7 +203,7 @@ TEST_CASE( "Pass-By-Reference Test 6", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 6", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 6", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -248,7 +245,7 @@ TEST_CASE( "Pass-By-Reference Test 7", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 7", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 7", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -291,7 +288,7 @@ TEST_CASE( "Pass-By-Reference Test 8", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 8", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 8", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -353,7 +350,7 @@ TEST_CASE( "Pass-By-Reference Test 9", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 9", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 9", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -410,7 +407,7 @@ TEST_CASE( "Pass-By-Reference Test 10", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 10", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 10", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -468,7 +465,7 @@ TEST_CASE( "Pass-By-Reference Test 11", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 11", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 11", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -507,7 +504,7 @@ TEST_CASE( "Pass-By-Reference Test 12", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 12", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 12", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -559,7 +556,7 @@ TEST_CASE( "Pass-By-Reference Test 13", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 13", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 13", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -611,7 +608,7 @@ TEST_CASE( "Pass-By-Reference Test 14", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 14", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 14", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -664,7 +661,7 @@ TEST_CASE( "Pass-By-Reference Test 15", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 15", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 15", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -718,7 +715,7 @@ TEST_CASE( "Pass-By-Reference Test 16", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 16", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 16", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -774,7 +771,7 @@ TEST_CASE( "Pass-By-Reference Test 17", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 17", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 17", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -843,7 +840,7 @@ TEST_CASE( "Pass-By-Reference Test 18", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 18", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 18", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -925,7 +922,7 @@ TEST_CASE( "Pass-By-Reference Test 19", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 19", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 19", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -1008,7 +1005,7 @@ TEST_CASE( "Pass-By-Reference Test 20", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 20", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 20", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -1105,7 +1102,7 @@ TEST_CASE( "Pass-By-Reference Test 21", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 21", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 21", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -1203,7 +1200,7 @@ TEST_CASE( "Pass-By-Reference Test 22", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 22", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 22", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -1302,7 +1299,7 @@ TEST_CASE( "Pass-By-Reference Test 23", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 23", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 23", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -1402,7 +1399,7 @@ TEST_CASE( "Pass-By-Reference Test 24", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 24", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 24", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -1501,7 +1498,7 @@ TEST_CASE( "Pass-By-Reference Test 25", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 25", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 25", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -1601,7 +1598,7 @@ TEST_CASE( "Pass-By-Reference Test 26", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pass-By-Reference Test 26", input, output, sourceCode);
+    DebugOutput(testStatus, "Pass-By-Reference Test 26", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }

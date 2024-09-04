@@ -2,12 +2,9 @@
 #include "./srcSliceTest.hpp"
 
 std::string sourceCode = "", input = "", output = "";
-int verbose = -1;
 bool testStatus = false;
 
 TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
-    verbose = PromptVerbose();
-
     sourceCode = "int main() {\n"
                 "    std::string* strPtr;\n"
                 "}";
@@ -30,7 +27,7 @@ TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pointer Test 1", input, output, sourceCode);
+    DebugOutput(testStatus, "Pointer Test 1", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -72,7 +69,7 @@ TEST_CASE( "Pointer Test 2", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pointer Test 2", input, output, sourceCode);
+    DebugOutput(testStatus, "Pointer Test 2", input, output, sourceCode);
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -115,7 +112,7 @@ TEST_CASE( "Pointer Test 3", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Pointer Test 3", input, output, sourceCode);
+    DebugOutput(testStatus, "Pointer Test 3", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }

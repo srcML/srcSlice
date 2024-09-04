@@ -50,8 +50,8 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
             seenAssignment = false;
             InitializeEventHandlers();
         }
-        void Notify(const PolicyDispatcher * policy, const srcSAXEventDispatch::srcSAXEventContext & ctx) override {} //doesn't use other parsers
-        void NotifyWrite(const PolicyDispatcher * policy, srcSAXEventDispatch::srcSAXEventContext & ctx) override {} //doesn't use other parsers
+        void Notify(const PolicyDispatcher * policy [[maybe_unused]], const srcSAXEventDispatch::srcSAXEventContext & ctx [[maybe_unused]]) override {} //doesn't use other parsers
+        void NotifyWrite(const PolicyDispatcher * policy [[maybe_unused]], srcSAXEventDispatch::srcSAXEventContext & ctx [[maybe_unused]]) override {} //doesn't use other parsers
     protected:
         void * DataInner() const override {
             return new InitDataSet(dataSet);
@@ -63,8 +63,6 @@ class InitPolicy : public srcSAXEventDispatch::EventListener, public srcSAXEvent
         bool seenAssignment;
         void InitializeEventHandlers(){
             using namespace srcSAXEventDispatch;
-
-            closeEventMap[ParserState::modifier] = [this](srcSAXEventContext& ctx){ };
 
             closeEventMap[ParserState::name] = [this](srcSAXEventContext& ctx){
                 if(currentLine.empty() || currentLine.back() != ctx.currentLineNumber){

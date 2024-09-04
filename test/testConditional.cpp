@@ -8,12 +8,9 @@
 */
 
 std::string sourceCode = "", input = "", output = "";
-int verbose = -1;
 bool testStatus = false;
 
 TEST_CASE( "Conditional Test 1", "[srcslice]" ) {
-    verbose = PromptVerbose();
-    
     sourceCode = "int main() {\n"
                 "    srand(time(nullptr));\n"
                 "    if (int r = rand() % 100 - 1; r % 2 == 0) {\n"
@@ -40,7 +37,7 @@ TEST_CASE( "Conditional Test 1", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 1", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 1", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -72,7 +69,7 @@ TEST_CASE( "Conditional Test 2", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 2", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 2", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -104,7 +101,7 @@ TEST_CASE( "Conditional Test 3", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 3", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 3", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -136,7 +133,7 @@ TEST_CASE( "Conditional Test 4", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 4", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 4", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -167,7 +164,7 @@ TEST_CASE( "Conditional Test 5", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 5", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 5", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -209,7 +206,7 @@ TEST_CASE( "Conditional Test 6", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 6", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 6", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -239,7 +236,7 @@ TEST_CASE( "Conditional Test 7", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 7", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 7", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -270,7 +267,7 @@ TEST_CASE( "Conditional Test 8", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 8", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 8", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -304,7 +301,7 @@ TEST_CASE( "Conditional Test 9", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 9", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 9", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -351,7 +348,7 @@ TEST_CASE( "Conditional Test 10", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 10", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 10", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -398,7 +395,7 @@ TEST_CASE( "Conditional Test 11", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 11", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 11", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -431,7 +428,7 @@ TEST_CASE( "Conditional Test 12", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 12", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 12", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -474,7 +471,7 @@ TEST_CASE( "Conditional Test 13", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 13", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 13", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -518,7 +515,7 @@ TEST_CASE( "Conditional Test 14", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 14", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 14", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -563,7 +560,7 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 15", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 15", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -595,7 +592,7 @@ TEST_CASE( "Conditional Test 16", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 16", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 16", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -628,7 +625,7 @@ TEST_CASE( "Conditional Test 17", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 17", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 17", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -676,7 +673,7 @@ TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 18", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 18", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
@@ -726,7 +723,7 @@ TEST_CASE( "Conditional Test 19", "[srcslice]" ) {
             "}\n";
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
-    DebugOutput(verbose, testStatus, "Conditional Test 19", input, output, sourceCode);
+    DebugOutput(testStatus, "Conditional Test 19", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }

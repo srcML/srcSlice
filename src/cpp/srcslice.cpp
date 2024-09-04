@@ -1,4 +1,4 @@
-#include <srcslicepolicy.hpp>
+#include <srcslicehandler.hpp>
 
 bool validFlag(const char *arg)
 {
@@ -52,7 +52,7 @@ int main(int argc, char **argv)
                 return 1;
             } else
                 {
-                    // Check for Duplicate Parameters/Flags
+                    // Check for DuplisrcSliceHandlere Parameters/Flags
 
                     // Detect output file flag
                     if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) && !hasOutFile)
@@ -62,7 +62,7 @@ int main(int argc, char **argv)
                             hasOutFile = true;
                         } else
                             {
-                                std::cerr << "\033[31m" << "Duplicate Parameters!" << "\033[0m" << std::endl;
+                                std::cerr << "\033[31m" << "DuplisrcSliceHandlere Parameters!" << "\033[0m" << std::endl;
                                 Usage();
                                 return 6;
                             }
@@ -76,7 +76,7 @@ int main(int argc, char **argv)
                             jsonOutput = true;
                         } else
                             {
-                                std::cerr << "\033[31m" << "Duplicate Parameters!" << "\033[0m" << std::endl;
+                                std::cerr << "\033[31m" << "DuplisrcSliceHandlere Parameters!" << "\033[0m" << std::endl;
                                 Usage();
                                 return 6;
                             }
@@ -132,11 +132,7 @@ int main(int argc, char **argv)
     }
 
     try {
-        std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-        SrcSlicePolicy *cat = new SrcSlicePolicy(&profileMap);
-        srcSAXController control(argv[1]);
-        srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
-        control.parse(&handler); // Start parsing
+        SrcSliceHandler srcSliceHandler(argv[1]);
 
         // Set up output save file if needed
         if (argi != -1)
@@ -153,11 +149,11 @@ int main(int argc, char **argv)
                 std::cout << "{" << std::endl;
         }
 
-        size_t totalElements = profileMap.size();
+        size_t totalElements = srcSliceHandler.GetProfileMap()->size();
         size_t currIndex = 0, sliceIndex = 0;
         std::ostringstream sliceOutput;
 
-        for (auto& profile : profileMap)
+        for (auto& profile : *srcSliceHandler.GetProfileMap())
         {
             ++currIndex;
             

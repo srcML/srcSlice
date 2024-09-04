@@ -75,25 +75,6 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
     return stream2string;
 }
 
-int PromptVerbose() {
-    int mode = 0;
-    std::cout << ":::: Select Verbose Mode ::::" << std::endl;
-    std::cout << "    0 - None" << std::endl;
-    std::cout << "    1 - Display Only Failed Cases" << std::endl;
-    std::cout << "    2 - Full Verbose" << std::endl << std::endl;
-
-    std::cout << "Enter Mode > ";
-    std::cin >> mode;
-
-    while (mode < 0 || mode > 2) {
-        std::cout << "Enter Mode > ";
-        std::cin >> mode;
-    }
-    std::cout << ":::::::::::::::::::::::::::::" << std::endl << std::endl;
-    
-    return mode;
-}
-
 std::vector<std::string> Split(const std::string& str) {
     std::vector<std::string> splitLines;
     int startOfLine = 0;
@@ -139,7 +120,12 @@ void StrLineCmp(const std::string& leftHandSide, const std::string& rightHandSid
     }
 }
 
-void DebugOutput(int verboseMode, bool testStatus, const char* testName, const std::string& inputStr, const std::string& outputStr, std::string srcCode) {
+void DebugOutput(bool testStatus, const char* testName, const std::string& inputStr, const std::string& outputStr, std::string srcCode) {
+    // if the test passed dont run extra logic
+    if (testStatus) return;
+
+    // only debug output when a test fails
+
     // Format srcCode to include line number for readability on verbose
     int startOfLine = 0;
     int endOfLine = srcCode.find('\n', startOfLine);
@@ -173,30 +159,12 @@ void DebugOutput(int verboseMode, bool testStatus, const char* testName, const s
     
     srcCode.insert(startOfLine, prependStr);
 
-    if (verboseMode == 1) { // only show fails
-        if (!testStatus) {
-            std::cout << "======================================================" << std::endl;
-            std::cout << "\033[33m" << testName << " :: Test Source Code" << "\033[0m" << std::endl;
-            std::cout << "\033[0m" << srcCode << std::endl << std::endl;
+    std::cout << "======================================================" << std::endl;
+    std::cout << "\033[33m" << testName << " :: Test Source Code" << "\033[0m" << std::endl;
+    std::cout << "\033[0m" << srcCode << std::endl << std::endl;
 
-            // Diff Style Output
-            StrLineCmp(inputStr, outputStr);
+    // Diff Style Output
+    StrLineCmp(inputStr, outputStr);
 
-            std::cout << "======================================================" << std::endl;
-        }
-    } else if (verboseMode == 2) { // full verbose output | uses ANSI to show fails in red text
-        std::cout << "======================================================" << std::endl;
-        std::cout << "\033[33m" << testName << " :: Test Source Code" << "\033[0m" << std::endl;
-        if (testStatus) {
-            std::cout << "\033[0m" << srcCode << std::endl << std::endl;
-        } else
-        {
-            std::cout << "\033[31m" << srcCode << "\033[0m" << std::endl << std::endl;
-        }
-
-        // Diff Style Output
-        StrLineCmp(inputStr, outputStr);
-
-        std::cout << "======================================================" << std::endl;
-    }
+    std::cout << "======================================================" << std::endl;
 }
