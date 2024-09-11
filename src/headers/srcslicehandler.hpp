@@ -36,7 +36,7 @@ public:
         control.parse(&handler); // Start parsing
     }
 
-    void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
+    void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx [[maybe_unused]]) override {
         if (typeid(SrcSliceEvent) == typeid(*policy)) {
             sliceEventData = *policy->Data<SliceEventData>();
         }

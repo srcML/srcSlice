@@ -19,82 +19,37 @@
 #include <ConditionalPolicy.hpp>
 #include <sstream>
 
+struct SliceEventData {
+    SliceEventData() = default;
+    
+    // members of the struct
+    std::unordered_map<std::string, std::vector<unsigned int>> funcDefMap;
+    SignatureData functionsigdata;
+    std::unordered_map<std::string, SignatureData> functionSigMap;
+    std::string currentExprName;
+    std::vector<std::string> declDvars;
+
+    std::vector<std::pair<int, int>> loopdata;
+    std::vector<std::pair<int, int>> ifdata;
+    std::vector<std::pair<int, int>> elsedata;
+    std::vector<std::pair<std::string, unsigned int>> initDeclData;
+    std::map<std::string, unsigned int> overloadFunctionCount;
+    std::set<unsigned int> functionCallList;
+    int startLine;
+    int endLine;
+
+    std::string currentName;
+};
+
+bool StringContainsCharacters(const std::string &str);
+
 class SrcSliceEvent
         : public srcSAXEventDispatch::EventListener,
           public srcSAXEventDispatch::PolicyDispatcher,
           public srcSAXEventDispatch::PolicyListener {
 public:
-    struct SliceEventData {
-        SliceEventData() = default;
-        
-        // Copy constructor
-        SliceEventData(const SliceEventData& other)
-            : declPolicy(other.declPolicy),
-            decldata(other.decldata),
-            paramdata(other.paramdata),
-            initPolicy(other.initPolicy),
-            initDataSet(other.initDataSet),
-            exprDataSet(other.exprDataSet),
-            exprPolicy(other.exprPolicy),
-            callPolicy(other.callPolicy),
-            calldata(other.calldata),
-            returnPolicy(other.returnPolicy),
-            funcDefMap(other.funcDefMap),
-            conditionalPolicy(other.conditionalPolicy),
-            functionPolicy(other.functionPolicy),
-            functionsigdata(other.functionsigdata),
-            functionSigMap(other.functionSigMap),
-            currentExprName(other.currentExprName),
-            declDvars(other.declDvars),
-            loopdata(other.loopdata),
-            ifdata(other.ifdata),
-            elsedata(other.elsedata),
-            initDeclData(other.initDeclData),
-            overloadFunctionCount(other.overloadFunctionCount),
-            functionCallList(other.functionCallList),
-            startLine(other.startLine),
-            endLine(other.endLine),
-            currentName(other.currentName)
-        {
-            // Copy constructor logic
-        }
-
-        // members of the struct
-        DeclTypePolicy declPolicy;
-        DeclData decldata;
-        DeclData paramdata;
-
-        InitPolicy initPolicy;
-        InitPolicy::InitDataSet initDataSet;
-
-        ExprPolicy::ExprDataSet exprDataSet;
-        ExprPolicy exprPolicy;
-
-        CallPolicy callPolicy;
-        CallPolicy::CallData calldata;
-        
-        ReturnPolicy returnPolicy;
-        std::unordered_map<std::string, std::vector<unsigned int>> funcDefMap;
-        
-        ConditionalPolicy conditionalPolicy;
-
-        FunctionSignaturePolicy functionPolicy;
-        SignatureData functionsigdata;
-        std::unordered_map<std::string, SignatureData> functionSigMap;
-        std::string currentExprName;
-        std::vector<std::string> declDvars;
-
-        std::vector<std::pair<int, int>> loopdata;
-        std::vector<std::pair<int, int>> ifdata;
-        std::vector<std::pair<int, int>> elsedata;
-        std::vector<std::pair<std::string, unsigned int>> initDeclData;
-        std::map<std::string, unsigned int> overloadFunctionCount;
-        std::set<unsigned int> functionCallList;
-        int startLine;
-        int endLine;
-
-        std::string currentName;
-    };
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    SliceEventData sliceEventData;
 
     ~SrcSliceEvent() {};
     SrcSliceEvent(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {})
@@ -112,7 +67,7 @@ public:
             // Dumps out the variable names of variables
             // declared in a function body :: main(), ...
 
-            initDeclData.push_back(std::make_pair(decldata.nameOfIdentifier, decldata.lineNumber));
+            sliceEventData.initDeclData.push_back(std::make_pair(decldata.nameOfIdentifier, decldata.lineNumber));
 
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap.end()) {
@@ -141,7 +96,7 @@ public:
             sliceProfileItr->second.back().isPointer = decldata.isPointer;
 
             //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
-            for (std::string dvar : declDvars) {
+            for (std::string dvar : sliceEventData.declDvars) {
                 auto updateDvarAtThisLocation = profileMap.find(dvar);
                 if (updateDvarAtThisLocation != profileMap.end()) {
                     if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
@@ -163,7 +118,7 @@ public:
                     if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
                         if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName &&
-                            newSliceProfileFromDeclDvars.first->second.back().variableName != currentName) {
+                            newSliceProfileFromDeclDvars.first->second.back().variableName != sliceEventData.currentName) {
                             newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
                         }
                         continue;
@@ -184,7 +139,7 @@ public:
             // Link the function this slice is located in
             sliceProfileItr->second.back().function = ctx.currentFunctionName;
 
-            declDvars.clear();
+            sliceEventData.declDvars.clear();
             decldata.clear();
         } else if (typeid(ExprPolicy) == typeid(*policy)) {
             exprDataSet = *policy->Data<ExprPolicy::ExprDataSet>();
@@ -210,11 +165,11 @@ public:
                     
                     // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                     // IE : abc = abc + i;
-                    if (!StringContainsCharacters(currentName)) continue;
-                    if (!currentName.empty() &&
-                        (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier) &&
-                        sliceProfileExprItr->second.back().variableName != currentName) {
-                        sliceProfileExprItr->second.back().dvars.insert(std::make_pair(currentName, ctx.currentLineNumber));
+                    if (!StringContainsCharacters(sliceEventData.currentName)) continue;
+                    if (!sliceEventData.currentName.empty() &&
+                        (exprdata.second.lhs || sliceEventData.currentName != exprdata.second.nameOfIdentifier) &&
+                        sliceProfileExprItr->second.back().variableName != sliceEventData.currentName) {
+                        sliceProfileExprItr->second.back().dvars.insert(std::make_pair(sliceEventData.currentName, ctx.currentLineNumber));
                         continue;
                     }
 
@@ -240,10 +195,10 @@ public:
 
                     // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                     // IE : abc = abc + i;
-                    if (!StringContainsCharacters(currentName)) continue;
-                    if (!currentName.empty() &&
-                        (exprdata.second.lhs || currentName != exprdata.second.nameOfIdentifier)) {
-                        sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(currentName, ctx.currentLineNumber));
+                    if (!StringContainsCharacters(sliceEventData.currentName)) continue;
+                    if (!sliceEventData.currentName.empty() &&
+                        (exprdata.second.lhs || sliceEventData.currentName != exprdata.second.nameOfIdentifier)) {
+                        sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(sliceEventData.currentName, ctx.currentLineNumber));
                         continue;
                     }
                 }
@@ -253,7 +208,7 @@ public:
             initDataSet = *policy->Data<InitPolicy::InitDataSet>();
             //iterate through every token found in the initialization of a decl_stmt
             for (auto initdata : initDataSet.dataSet) {
-                declDvars.push_back(initdata.second.nameOfIdentifier);
+                sliceEventData.declDvars.push_back(initdata.second.nameOfIdentifier);
                 auto sliceProfileItr = profileMap.find(initdata.second.nameOfIdentifier);
                 //Just update definitions and uses if name already exists. Otherwise, add new name.
                 if (sliceProfileItr != profileMap.end()) {
@@ -271,7 +226,7 @@ public:
         } else if (typeid(CallPolicy) == typeid(*policy)) {
             // Runs when function calls are detected
 
-            functionCallList.insert(ctx.currentLineNumber);
+            sliceEventData.functionCallList.insert(ctx.currentLineNumber);
 
             calldata = *policy->Data<CallPolicy::CallData>();
             // This loop is for simply tracking how many args are within a loaded function call
@@ -333,7 +288,7 @@ public:
 
                     // Convert the unordered_map into a ordered map
                     std::map<std::string, SignatureData> orderedFunctionSigMap;
-                    orderedFunctionSigMap.insert(functionSigMap.begin(), functionSigMap.end());
+                    orderedFunctionSigMap.insert(sliceEventData.functionSigMap.begin(), sliceEventData.functionSigMap.end());
 
                     // class member functions have a '.' within callOrder variable
                     if (isMemberFunctCall == -1) {
@@ -467,25 +422,25 @@ public:
 
             paramdata.clear();
         } else if (typeid(FunctionSignaturePolicy) == typeid(*policy)) {
-            functionsigdata = *policy->Data<SignatureData>();
+            sliceEventData.functionsigdata = *policy->Data<SignatureData>();
 
-            if (functionSigMap.find(functionsigdata.name) != functionSigMap.end() && !functionsigdata.name.empty()) {
+            if (sliceEventData.functionSigMap.find(sliceEventData.functionsigdata.name) != sliceEventData.functionSigMap.end() && !sliceEventData.functionsigdata.name.empty()) {
                 // overloaded function detected
 
                 // construct a new name to log the overloaded function under
-                std::string functName = functionsigdata.name;
-                unsigned int overloadID = ++overloadFunctionCount[functionsigdata.name];
+                std::string functName = sliceEventData.functionsigdata.name;
+                unsigned int overloadID = ++sliceEventData.overloadFunctionCount[sliceEventData.functionsigdata.name];
                 functName += "-" + std::to_string(overloadID);
 
-                functionSigMap.insert(
-                        std::make_pair(functName, functionsigdata)
+                sliceEventData.functionSigMap.insert(
+                        std::make_pair(functName, sliceEventData.functionsigdata)
                         );
             } else
             {
-                functionSigMap.insert(
-                        std::make_pair(functionsigdata.name, functionsigdata)
+                sliceEventData.functionSigMap.insert(
+                        std::make_pair(sliceEventData.functionsigdata.name, sliceEventData.functionsigdata)
                         );
-                overloadFunctionCount[functionsigdata.name] = 0;
+                sliceEventData.overloadFunctionCount[sliceEventData.functionsigdata.name] = 0;
             }
         } else if (typeid(ReturnPolicy) == typeid(*policy)) {
             for (auto dataSet : *returnPolicy.GetReturnUses()) {
@@ -591,7 +546,7 @@ public:
                 conditionalPolicy.DeleteDefsCollection(name);
             }
             insertTargets.clear();
-            RepairVariableNames();
+            // RepairVariableNames();
         }
     }
 
@@ -603,79 +558,95 @@ protected:
     }
 
 private:
-    SliceEventData sliceEventData;
+    DeclTypePolicy declPolicy;
+    DeclData decldata;
+    DeclData paramdata;
+
+    InitPolicy initPolicy;
+    InitPolicy::InitDataSet initDataSet;
+
+    ExprPolicy::ExprDataSet exprDataSet;
+    ExprPolicy exprPolicy;
+
+    CallPolicy callPolicy;
+    CallPolicy::CallData calldata;
+    
+    ReturnPolicy returnPolicy;
+    ConditionalPolicy conditionalPolicy;
+
+    FunctionSignaturePolicy functionPolicy;
 
     void InitializeEventHandlers() {
         using namespace srcSAXEventDispatch;
 
         openEventMap[ParserState::decl] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.declPolicy));
+            ctx.dispatcher->AddListenerDispatch(&declPolicy);
         };
         closeEventMap[ParserState::decl] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListener(&(sliceEventData.declPolicy));
-            sliceEventData.declPolicy.Finalize(ctx);
+            ctx.dispatcher->RemoveListener(&declPolicy);
+            declPolicy.Finalize(ctx);
             sliceEventData.currentName.clear();
         };
 
         openEventMap[ParserState::name] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.returnPolicy));
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->AddListenerDispatch(&returnPolicy);
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
         closeEventMap[ParserState::name] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.returnPolicy));
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->RemoveListenerDispatch(&returnPolicy);
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
         };
 
         openEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.exprPolicy));
+            ctx.dispatcher->AddListenerDispatch(&exprPolicy);
         };
         closeEventMap[ParserState::exprstmt] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.exprPolicy));
+            ctx.dispatcher->RemoveListenerDispatch(&exprPolicy);
             sliceEventData.currentName.clear();
         };
         
         openEventMap[ParserState::expr] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
         closeEventMap[ParserState::expr] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
         };
 
         openEventMap[ParserState::switchstmt] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.conditionalPolicy));
-            sliceEventData.conditionalPolicy.EditDepth(1);
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
+            conditionalPolicy.EditDepth(1);
         };
         closeEventMap[ParserState::switchstmt] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.conditionalPolicy));
-            sliceEventData.conditionalPolicy.EditDepth(-1);
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
+            conditionalPolicy.EditDepth(-1);
         };
         
         openEventMap[ParserState::switchcase] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
         closeEventMap[ParserState::switchcase] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
         };
 
         openEventMap[ParserState::call] = [this](srcSAXEventContext &ctx) {
             //don't want multiple callPolicy parsers running
             if (ctx.NumCurrentlyOpen(ParserState::call) < 2) {
-                ctx.dispatcher->AddListenerDispatch(&(sliceEventData.callPolicy));
+                ctx.dispatcher->AddListenerDispatch(&callPolicy);
             }
         };
         closeEventMap[ParserState::call] = [this](srcSAXEventContext &ctx) {
             if (ctx.NumCurrentlyOpen(ParserState::call) < 2) {
-                ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.callPolicy));
+                ctx.dispatcher->RemoveListenerDispatch(&callPolicy);
             }
         };
 
         openEventMap[ParserState::init] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.initPolicy));
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->AddListenerDispatch(&initPolicy);
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
         closeEventMap[ParserState::init] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.initPolicy));
-            ctx.dispatcher->RemoveListener(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->RemoveListenerDispatch(&initPolicy);
+            ctx.dispatcher->RemoveListener(&conditionalPolicy);
         };
 
         openEventMap[ParserState::forstmt] = [this](srcSAXEventContext &ctx) {
@@ -728,13 +699,13 @@ private:
         };
 
         openEventMap[ParserState::function] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.functionPolicy));
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->AddListenerDispatch(&functionPolicy);
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
 
         openEventMap[ParserState::functionblock] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&(sliceEventData.functionPolicy));
-            ctx.dispatcher->AddListenerDispatch(&(sliceEventData.conditionalPolicy));
+            ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
+            ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
 
         closeEventMap[ParserState::tokenstring] = [this](srcSAXEventContext &ctx) {
