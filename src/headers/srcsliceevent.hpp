@@ -2,7 +2,6 @@
 #define SRCSLICEEVENT
 
 #include <srcsliceprofile.hpp>
-#include <srcslicehandler.hpp>
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
@@ -23,11 +22,17 @@ struct SliceEventData {
     SliceEventData() = default;
     
     // members of the struct
+    std::unordered_map<std::string, std::vector<SliceProfile>>* pmPtr = nullptr;
     std::unordered_map<std::string, std::vector<unsigned int>> funcDefMap;
     SignatureData functionsigdata;
     std::unordered_map<std::string, SignatureData> functionSigMap;
     std::string currentExprName;
     std::vector<std::string> declDvars;
+
+    std::vector<unsigned int>* possibleDefinitions = nullptr;
+    std::vector<DvarData>* possibleDvars = nullptr;
+    std::unordered_map<std::string, std::vector<unsigned int>>* switchUses = nullptr;
+    std::unordered_map<std::string, std::vector<unsigned int>>* switchDefs = nullptr;
 
     std::vector<std::pair<int, int>> loopdata;
     std::vector<std::pair<int, int>> ifdata;
@@ -55,7 +60,15 @@ public:
     SrcSliceEvent(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {})
             : srcSAXEventDispatch::PolicyDispatcher(listeners) {
         // making SSP a listener for FSPP
-        // InitializeEventHandlers();
+        InitializeEventHandlers();
+
+        declPolicy.AddListener(this);
+        exprPolicy.AddListener(this);
+        callPolicy.AddListener(this);
+        initPolicy.AddListener(this);
+        functionPolicy.AddListener(this);
+        returnPolicy.AddListener(this);
+        conditionalPolicy.AddListener(this);
     }
 
     void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
@@ -465,8 +478,6 @@ public:
 
             returnPolicy.ClearCollection();
         } else if (typeid(ConditionalPolicy) == typeid(*policy)) {
-            std::cout << "Recently Encountered Function :: " << conditionalPolicy.GetLastFunction() << std::endl;
-
             std::set<std::string> insertTargets;
             for (auto dataSet : *conditionalPolicy.GetConditionalUses()) {
                 auto sliceProfileItr = profileMap.find(dataSet.first);
@@ -716,6 +727,17 @@ private:
                     sliceEventData.currentExprName = ctx.currentToken;
                 }
             }
+        };
+
+        closeEventMap[ParserState::archive] = [this](srcSAXEventContext &ctx) {
+            sliceEventData.pmPtr = &profileMap;
+
+            sliceEventData.possibleDefinitions = declPolicy.GetPossibleDefs();
+            sliceEventData.possibleDvars = conditionalPolicy.GetPossibleDvars();
+            sliceEventData.switchUses = conditionalPolicy.GetSwitchUses();
+            sliceEventData.switchDefs = conditionalPolicy.GetSwitchDefs();
+
+            NotifyAll(ctx);
         };
     } // End of Initialize Event Handlers
 };
