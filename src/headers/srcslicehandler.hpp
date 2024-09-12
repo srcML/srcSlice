@@ -19,28 +19,29 @@
 #include <ConditionalPolicy.hpp>
 #include <sstream>
 
-bool StringContainsCharacters(const std::string &str);
-
 class SrcSliceHandler
         : public srcSAXEventDispatch::EventListener,
           public srcSAXEventDispatch::PolicyDispatcher,
           public srcSAXEventDispatch::PolicyListener {
 public:
-    ~SrcSliceHandler() {};
+    ~SrcSliceHandler() { delete sliceEventData; };
     std::unordered_map<std::string, std::vector<SliceProfile>>* profileMap;
 
     SrcSliceHandler(const char* filename, std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {})
             : srcSAXEventDispatch::PolicyDispatcher(listeners) {
         srcSAXController control(filename);
-        srcSAXEventDispatch::srcSAXEventDispatcher<SrcSliceEvent, DeclTypePolicy, ExprPolicy, CallPolicy, InitPolicy, FunctionSignaturePolicy, ConditionalPolicy, ReturnPolicy> handler(this);
+        srcSAXEventDispatch::srcSAXEventDispatcher<SrcSliceEvent> handler(this);
         control.parse(&handler); // Start parsing
     }
 
     void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx [[maybe_unused]]) override {
         if (typeid(SrcSliceEvent) == typeid(*policy)) {
-            sliceEventData = *policy->Data<SliceEventData>();
+            sliceEventData = policy->Data<SliceEventData>();
 
-            profileMap = sliceEventData.pmPtr;
+            profileMap = sliceEventData->pmPtr;
+
+            std::cout << "Collected Data Size :: " << profileMap->size() << std::endl;
+            std::cout << "New Addr of PM :: " << profileMap << std::endl;
 
             SrcSliceFinalize();
         }
@@ -63,12 +64,12 @@ public:
 
         // Ensure the key exists in the map
         std::string functionName = func.first;
-        if (sliceEventData.funcDefMap.find(functionName) == sliceEventData.funcDefMap.end()) {
-            sliceEventData.funcDefMap[functionName] = std::vector<unsigned int>();
+        if (sliceEventData->funcDefMap.find(functionName) == sliceEventData->funcDefMap.end()) {
+            sliceEventData->funcDefMap[functionName] = std::vector<unsigned int>();
         }
 
         // Check for Duplicates before pushing a line number
-        auto& lineVector = sliceEventData.funcDefMap[functionName];
+        auto& lineVector = sliceEventData->funcDefMap[functionName];
         if (std::find(lineVector.begin(), lineVector.end(), func.second.lineNumber) == lineVector.end()) {
             lineVector.push_back(func.second.lineNumber);
             // std::cout << functionName << " | Line Num " << func.second.lineNumber << std::endl;
@@ -80,8 +81,8 @@ public:
             } else {
                 for (auto cfunc : profileMap->find(param.nameOfIdentifier)->second.back().cfunctions) {
                     if (cfunc.first.compare(func.first) != 0) {
-                        auto function = sliceEventData.functionSigMap.find(cfunc.first);
-                        if (function != sliceEventData.functionSigMap.end()) {
+                        auto function = sliceEventData->functionSigMap.find(cfunc.first);
+                        if (function != sliceEventData->functionSigMap.end()) {
                             if (cfunc.first.compare(function->first) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
 				                visit_func.insert(cfunc.first);
                                 auto recursiveSpi = ArgumentProfile(*function, std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
@@ -116,7 +117,7 @@ public:
     }
 
     void InsertSwitchData(SliceProfile& sliceProfile) {
-        for (auto initDeclItem : sliceEventData.initDeclData) {
+        for (auto initDeclItem : sliceEventData->initDeclData) {
             // With a collection of data concerning where all variables are initially declared
             // check if the sliceProfile passed matches with a variable name within the collection
             if (sliceProfile.variableName != initDeclItem.first) continue;
@@ -127,7 +128,7 @@ public:
 
             // Store iterators of the functionSigMap in a vector
             std::vector<std::unordered_map<std::string, SignatureData>::iterator> funcSigMapItrs;
-            for (auto it = sliceEventData.functionSigMap.begin(); it != sliceEventData.functionSigMap.end(); ++it) {
+            for (auto it = sliceEventData->functionSigMap.begin(); it != sliceEventData->functionSigMap.end(); ++it) {
                 funcSigMapItrs.push_back(it);
             }
 
@@ -142,7 +143,7 @@ public:
                     // to prevent using variables with the same names in different functions, this works as
                     // another verify check
                     if (initDeclItem.second >= (*func)->second.lineNumber && initDeclItem.second <= (*nextFunc)->second.lineNumber - 1) {
-                        for (auto data : *sliceEventData.switchUses) {
+                        for (auto data : *sliceEventData->switchUses) {
                             // When iterating through the collection of collected Switch Uses
                             // check if the name of the the variable the use list goes to
                             // matches with the slice profile variable name
@@ -159,7 +160,7 @@ public:
                             }
                         }
 
-                        for (auto data : *sliceEventData.switchDefs) {
+                        for (auto data : *sliceEventData->switchDefs) {
                             // When iterating through the collection of collected Switch Defs
                             // check if the name of the the variable the def list goes to
                             // matches with the slice profile variable name
@@ -179,7 +180,7 @@ public:
                     // Check if the variables initial declaration is within the final functions scope
                     if (initDeclItem.second >= (*func)->second.lineNumber) {
                         // Uses the same logic as up above
-                        for (auto data : *sliceEventData.switchUses) {
+                        for (auto data : *sliceEventData->switchUses) {
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
                                 if (nums < initDeclItem.second) continue;
@@ -187,7 +188,7 @@ public:
                             }
                         }
 
-                        for (auto data : *sliceEventData.switchDefs) {
+                        for (auto data : *sliceEventData->switchDefs) {
                             if (data.first != initDeclItem.first) continue;
                             for (auto nums : data.second) {
                                 if (nums < initDeclItem.second) continue;
@@ -200,8 +201,10 @@ public:
         }
     }
 
-    std::unordered_map<std::string, std::vector<SliceProfile>>* GetProfileMap() {
-        return profileMap;
+    std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap() const {
+        std::cout << "Size on Get :: " << profileMap->size() << std::endl;
+        std::cout << "   Addr of Get :: " << profileMap << std::endl;
+        return *profileMap;
     }
 
     // split into 3 readable functions
@@ -209,7 +212,7 @@ public:
         // Create a set of data representing function scopes
         // in ascending order from line number
         std::map<std::string, unsigned int> functionBounds;
-        for (auto funcSig : sliceEventData.functionSigMap) {
+        for (auto funcSig : sliceEventData->functionSigMap) {
             functionBounds[funcSig.first] = funcSig.second.lineNumber;
         }
 
@@ -260,16 +263,16 @@ public:
 
                     std::unordered_set <std::string> junkMap; // Need this to use the ArgumentProfile function
 
-                    for (auto line : *sliceEventData.possibleDefinitions) {
+                    for (auto line : *sliceEventData->possibleDefinitions) {
                         // within the slice does the line exist within the def set
                         if ( sliceItr->definitions.find(line) != sliceItr->definitions.end() ) {
                             // Check the cfunctions to see if defs need switched
                             for (auto cfunctData : sliceItr->cfunctions) {
                                 std::string name = cfunctData.first;
                                 
-                                auto funct = sliceEventData.funcDefMap.find(name);
-                                if (funct != sliceEventData.funcDefMap.end()) {
-                                    auto Spi = ArgumentProfile(*sliceEventData.functionSigMap.find(name), std::atoi(cfunctData.second.first.c_str()) - 1, junkMap);
+                                auto funct = sliceEventData->funcDefMap.find(name);
+                                if (funct != sliceEventData->funcDefMap.end()) {
+                                    auto Spi = ArgumentProfile(*sliceEventData->functionSigMap.find(name), std::atoi(cfunctData.second.first.c_str()) - 1, junkMap);
                                     auto sliceParamItr = Spi->second.begin();
 
                                     for (auto lineNum : funct->second) {
@@ -292,8 +295,8 @@ public:
                     // Iterate through called function data if the slice has any data
                     for (auto cfunctData : sliceItr->cfunctions) {
                         std::string name = cfunctData.first;
-                        auto funct = sliceEventData.functionSigMap.find(name);
-                        if (funct != sliceEventData.functionSigMap.end()) {
+                        auto funct = sliceEventData->functionSigMap.find(name);
+                        if (funct != sliceEventData->functionSigMap.end()) {
                             // If we get a valid find on a function shown in a profiles called functions
                             // we want to extract the slice profile associated in the function params
                             auto Spi = ArgumentProfile(*funct, std::atoi(cfunctData.second.first.c_str()) - 1, junkMap);
@@ -317,7 +320,7 @@ public:
                                             sliceItr->definitions.insert(sliceParamItr->definitions.begin(), sliceParamItr->definitions.end());
 
                                             // we need to swap the initial decl line from sliceItrs def to a use
-                                            for (auto initDeclItem : sliceEventData.initDeclData) {
+                                            for (auto initDeclItem : sliceEventData->initDeclData) {
                                                 // With a collection of data concerning where all variables are initially declared
                                                 // check if the sliceProfile passed matches with a variable name within the collection
                                                 if (sliceParamItr->variableName != initDeclItem.first) continue;
@@ -357,7 +360,7 @@ public:
                     for (auto alias = sliceItr->aliases.begin(); alias != sliceItr->aliases.end();) {
                         bool removedData = false;
 
-                        if (sliceEventData.functionCallList.find(alias->second) != sliceEventData.functionCallList.end()) {
+                        if (sliceEventData->functionCallList.find(alias->second) != sliceEventData->functionCallList.end()) {
                             // remove aliases formed at the occurance of a function call
                             sliceItr->aliases.erase(alias++);
                         } else {
@@ -397,7 +400,7 @@ public:
                     for (auto dvar = sliceItr->dvars.begin(); dvar != sliceItr->dvars.end();) {
                         bool removedData = false;
 
-                        if (sliceEventData.functionCallList.find(dvar->second) != sliceEventData.functionCallList.end()) {
+                        if (sliceEventData->functionCallList.find(dvar->second) != sliceEventData->functionCallList.end()) {
                             // remove aliases formed at the occurance of a function call
                             sliceItr->dvars.erase(dvar++);
                         } else {
@@ -438,7 +441,7 @@ public:
         }
 
         // Update Dvars
-        for (auto dvarData : *sliceEventData.possibleDvars) {
+        for (auto dvarData : *sliceEventData->possibleDvars) {
             for (auto slice : dvarData.dvars) {
                 // by using the pair we can find the correct slice profile
                 // we will insert dvarData.lhsName into, along with using
@@ -467,8 +470,8 @@ public:
             if (!profileMap->find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {
                     for (auto cfunc : var.second.back().cfunctions) {
-                        auto funcIt = sliceEventData.functionSigMap.find(cfunc.first);
-                        if(funcIt != sliceEventData.functionSigMap.end()) {
+                        auto funcIt = sliceEventData->functionSigMap.find(cfunc.first);
+                        if(funcIt != sliceEventData->functionSigMap.end()) {
                             if (cfunc.first.compare(funcIt->first) == 0) { //TODO fix for case: Overload
                                 auto Spi = ArgumentProfile(*funcIt, std::atoi(cfunc.second.first.c_str()) - 1, visited_func);
                                 auto sliceItr = Spi->second.begin();
@@ -543,7 +546,7 @@ public:
             std::merge(var.second.back().definitions.begin(), var.second.back().definitions.end(),
                        var.second.back().uses.begin(), var.second.back().uses.end(),
                        std::inserter(sLines, sLines.begin()));
-            for (auto loop : sliceEventData.loopdata) {
+            for (auto loop : sliceEventData->loopdata) {
                 int predecessor = 0;
                 int falseSuccessor = 0;
                 int trueSuccessor = loop.second;
@@ -581,14 +584,14 @@ public:
                 if (i + 1 < sLines.size()) {
                     bool outIf = true;
                     bool outElse = true;
-                    for (auto ifblock : sliceEventData.ifdata) {
+                    for (auto ifblock : sliceEventData->ifdata) {
                         if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
                             outIf = false;
                             break;
                         }
                     }
                     if (!outIf) {
-                        for (auto elseblock : sliceEventData.elsedata) {
+                        for (auto elseblock : sliceEventData->elsedata) {
                             if (sLines[i + 1] >= elseblock.first && sLines[i + 1] <= elseblock.second) {
                                 outElse = false;
                                 break;
@@ -603,14 +606,14 @@ public:
                     }
                 }
                 bool outControlBlock = true;
-                for (auto loop : sliceEventData.loopdata) {
+                for (auto loop : sliceEventData->loopdata) {
                     if (sLines[i] >= loop.first && sLines[i] <= loop.second) {
                         outControlBlock = false;
                         break;
                     }
                 }
                 if (outControlBlock) {
-                    for (auto ifblock : sliceEventData.ifdata) {
+                    for (auto ifblock : sliceEventData->ifdata) {
                         if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
                             outControlBlock = false;
                             break;
@@ -618,7 +621,7 @@ public:
                     }
                 }
                 if (outControlBlock) {
-                    for (auto elseblock : sliceEventData.elsedata) {
+                    for (auto elseblock : sliceEventData->elsedata) {
                         if (sLines[i] >= elseblock.first && sLines[i] <= elseblock.second) {
                             outControlBlock = false;
                             break;
@@ -647,9 +650,10 @@ protected:
     }
 
 private:
-    SliceEventData sliceEventData;
+    SliceEventData* sliceEventData;
 
     void SrcSliceFinalize() {
+        std::cout << "Finalize Size :: " << profileMap->size() << std::endl;
         for (auto it = profileMap->begin(); it != profileMap->end(); ++it) {
             for (std::vector<SliceProfile>::iterator sIt = it->second.begin(); sIt != it->second.end(); ++sIt) {
                 if (sIt->containsDeclaration) {
@@ -686,8 +690,8 @@ private:
                     // Updating the called function definition line for cases
                     // where function calls occured before the function signature was created
                     for (auto& cfunct : slice.cfunctions) {
-                        auto functSigData = sliceEventData.functionSigMap.find(cfunct.first);
-                        if (functSigData != sliceEventData.functionSigMap.end()) {
+                        auto functSigData = sliceEventData->functionSigMap.find(cfunct.first);
+                        if (functSigData != sliceEventData->functionSigMap.end()) {
                             cfunct.second.second = std::to_string(functSigData->second.lineNumber);
                         }
                     }
@@ -703,6 +707,7 @@ private:
         // Performs a pass over the data to fix any discrepancies
         // possibly produce by the original output
         PassOver();
+        std::cout << "End Of Finalize Size :: " << profileMap->size() << std::endl << std::endl;
     }
 };
 
