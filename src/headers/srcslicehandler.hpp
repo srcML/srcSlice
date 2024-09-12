@@ -25,7 +25,7 @@ class SrcSliceHandler
           public srcSAXEventDispatch::PolicyListener {
 public:
     ~SrcSliceHandler() { delete sliceEventData; };
-    std::unordered_map<std::string, std::vector<SliceProfile>>* profileMap;
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
 
     SrcSliceHandler(const char* filename, std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {})
             : srcSAXEventDispatch::PolicyDispatcher(listeners) {
@@ -38,10 +38,7 @@ public:
         if (typeid(SrcSliceEvent) == typeid(*policy)) {
             sliceEventData = policy->Data<SliceEventData>();
 
-            profileMap = sliceEventData->pmPtr;
-
-            std::cout << "Collected Data Size :: " << profileMap->size() << std::endl;
-            std::cout << "New Addr of PM :: " << profileMap << std::endl;
+            profileMap = *(sliceEventData->pmPtr);
 
             SrcSliceFinalize();
         }
@@ -49,9 +46,12 @@ public:
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcSAXEventDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
     
+    std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap() {
+        return profileMap;
+    }
 
     void RepairVariableNames() {
-        for (auto& mapItr : *profileMap) {
+        for (auto& mapItr : profileMap) {
             for (auto& slice : mapItr.second) {
                 // repairing variable names from line 677
                 slice.variableName = slice.variableName.substr(0, slice.variableName.find(32));
@@ -60,7 +60,7 @@ public:
     }
     
     auto ArgumentProfile(std::pair<std::string, SignatureData> func, int paramIndex, std::unordered_set<std::string> visit_func) {
-	    auto Spi = profileMap->find(func.second.parameters.at(paramIndex).nameOfIdentifier);
+	    auto Spi = profileMap.find(func.second.parameters.at(paramIndex).nameOfIdentifier);
 
         // Ensure the key exists in the map
         std::string functionName = func.first;
@@ -76,33 +76,33 @@ public:
         }
 
         for (auto param : func.second.parameters) {
-            if (profileMap->find(param.nameOfIdentifier)->second.back().visited) {
+            if (profileMap.find(param.nameOfIdentifier)->second.back().visited) {
                 return Spi;
             } else {
-                for (auto cfunc : profileMap->find(param.nameOfIdentifier)->second.back().cfunctions) {
+                for (auto cfunc : profileMap.find(param.nameOfIdentifier)->second.back().cfunctions) {
                     if (cfunc.first.compare(func.first) != 0) {
                         auto function = sliceEventData->functionSigMap.find(cfunc.first);
                         if (function != sliceEventData->functionSigMap.end()) {
                             if (cfunc.first.compare(function->first) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
 				                visit_func.insert(cfunc.first);
                                 auto recursiveSpi = ArgumentProfile(*function, std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
-                                if (profileMap->find(param.nameOfIdentifier) != profileMap->end() &&
-                                    profileMap->find(recursiveSpi->first) != profileMap->end()) {
-                                    profileMap->find(param.nameOfIdentifier)->second.back().definitions.insert(
+                                if (profileMap.find(param.nameOfIdentifier) != profileMap.end() &&
+                                    profileMap.find(recursiveSpi->first) != profileMap.end()) {
+                                    profileMap.find(param.nameOfIdentifier)->second.back().definitions.insert(
                                             recursiveSpi->second.back().definitions.begin(),
                                             recursiveSpi->second.back().definitions.end());
-                                    profileMap->find(param.nameOfIdentifier)->second.back().uses.insert(
+                                    profileMap.find(param.nameOfIdentifier)->second.back().uses.insert(
                                             recursiveSpi->second.back().uses.begin(),
                                             recursiveSpi->second.back().uses.end());
-                                    profileMap->find(param.nameOfIdentifier)->second.back().cfunctions.insert(
-                                            profileMap->find(
+                                    profileMap.find(param.nameOfIdentifier)->second.back().cfunctions.insert(
+                                            profileMap.find(
                                                     param.nameOfIdentifier)->second.back().cfunctions.begin(),
                                             recursiveSpi->second.back().cfunctions.begin(),
                                             recursiveSpi->second.back().cfunctions.end());
-                                    profileMap->find(param.nameOfIdentifier)->second.back().aliases.insert(
+                                    profileMap.find(param.nameOfIdentifier)->second.back().aliases.insert(
                                             recursiveSpi->second.back().aliases.begin(),
                                             recursiveSpi->second.back().aliases.end());
-                                    profileMap->find(param.nameOfIdentifier)->second.back().dvars.insert(
+                                    profileMap.find(param.nameOfIdentifier)->second.back().dvars.insert(
                                             recursiveSpi->second.back().dvars.begin(),
                                             recursiveSpi->second.back().dvars.end());
                                 }
@@ -110,7 +110,7 @@ public:
                         }
                     }
                 }
-                profileMap->find(param.nameOfIdentifier)->second.back().visited = true;
+                profileMap.find(param.nameOfIdentifier)->second.back().visited = true;
             }
         }
         return Spi;
@@ -201,12 +201,6 @@ public:
         }
     }
 
-    std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap() const {
-        std::cout << "Size on Get :: " << profileMap->size() << std::endl;
-        std::cout << "   Addr of Get :: " << profileMap << std::endl;
-        return *profileMap;
-    }
-
     // split into 3 readable functions
     void PassOver() {
         // Create a set of data representing function scopes
@@ -217,7 +211,7 @@ public:
         }
 
         // Pass Over to Update any errors from slices first run
-        for (auto mapItr = profileMap->begin(); mapItr != profileMap->end(); ++mapItr) {
+        for (auto mapItr = profileMap.begin(); mapItr != profileMap.end(); ++mapItr) {
             for (auto sliceItr = mapItr->second.begin(); sliceItr != mapItr->second.end(); ++sliceItr) {
                 if (sliceItr->containsDeclaration) {
                     // Variables that are reference variables should not carry aliases
@@ -446,7 +440,7 @@ public:
                 // by using the pair we can find the correct slice profile
                 // we will insert dvarData.lhsName into, along with using
                 // other data we have collected
-                auto Spi = profileMap->find(slice.first);
+                auto Spi = profileMap.find(slice.first);
                 for (auto sliceParamItr = Spi->second.begin(); sliceParamItr != Spi->second.end(); ++sliceParamItr) {
                     if (sliceParamItr->containsDeclaration) {
                         if (sliceParamItr->function != dvarData.function) {
@@ -465,9 +459,9 @@ public:
 
     void ComputeInterprocedural() {
 	    std::unordered_set <std::string> visited_func;
-	    for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
+	    for (std::pair<std::string, std::vector<SliceProfile>> var : profileMap) {
             // Need to watch the Slices we attempt to dig into because we are collecting slices we have no interest in
-            if (!profileMap->find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
+            if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {
                     for (auto cfunc : var.second.back().cfunctions) {
                         auto funcIt = sliceEventData->functionSigMap.find(cfunc.first);
@@ -493,39 +487,39 @@ public:
                                     }
                                 }
 
-                                if (profileMap->find(var.first) != profileMap->end() && profileMap->find(Spi->first) != profileMap->end() && sliceItr != Spi->second.end()) {
+                                if (profileMap.find(var.first) != profileMap.end() && profileMap.find(Spi->first) != profileMap.end() && sliceItr != Spi->second.end()) {
                                     if (!sliceItr->isReference && !sliceItr->isPointer) {
                                         // pass by value
-                                        profileMap->find(var.first)->second.back().uses.insert(
+                                        profileMap.find(var.first)->second.back().uses.insert(
                                                 sliceItr->definitions.begin(),
                                                 sliceItr->definitions.end());
                                     } else
                                     {
                                         // pass by reference
-                                        profileMap->find(var.first)->second.back().definitions.insert(
+                                        profileMap.find(var.first)->second.back().definitions.insert(
                                                 sliceItr->definitions.begin(),
                                                 sliceItr->definitions.end());
                                     }
 
-                                    profileMap->find(var.first)->second.back().uses.insert(
+                                    profileMap.find(var.first)->second.back().uses.insert(
                                             sliceItr->uses.begin(),
                                             sliceItr->uses.end());
 
                                     // By converting the cfunctions vector to a set, allows us to remove
                                     // duplicate entries, once those are removed we can convert this cleaned
                                     // set back into its vector form
-                                    profileMap->find(var.first)->second.back().cfunctions.insert(
-                                            profileMap->find(var.first)->second.back().cfunctions.begin(),
+                                    profileMap.find(var.first)->second.back().cfunctions.insert(
+                                            profileMap.find(var.first)->second.back().cfunctions.begin(),
                                             sliceItr->cfunctions.begin(),
                                             sliceItr->cfunctions.end());
-                                    auto oldCalledFunctions = profileMap->find(var.first)->second.back().cfunctions;
+                                    auto oldCalledFunctions = profileMap.find(var.first)->second.back().cfunctions;
                                     std::set<std::pair<std::string, std::pair<std::string, std::string>>> calledFunctionSet(oldCalledFunctions.begin(), oldCalledFunctions.end());
-                                    profileMap->find(var.first)->second.back().cfunctions = std::vector<std::pair<std::string, std::pair<std::string, std::string>>>(calledFunctionSet.begin(), calledFunctionSet.end());
+                                    profileMap.find(var.first)->second.back().cfunctions = std::vector<std::pair<std::string, std::pair<std::string, std::string>>>(calledFunctionSet.begin(), calledFunctionSet.end());
 
-                                    profileMap->find(var.first)->second.back().aliases.insert(
+                                    profileMap.find(var.first)->second.back().aliases.insert(
                                             sliceItr->aliases.begin(),
                                             sliceItr->aliases.end());
-                                    profileMap->find(var.first)->second.back().dvars.insert(
+                                    profileMap.find(var.first)->second.back().dvars.insert(
                                             sliceItr->dvars.begin(),
                                             sliceItr->dvars.end());
                                 } else {
@@ -535,13 +529,13 @@ public:
                         }
                     }
                 }
-                profileMap->find(var.first)->second.back().visited = true;
+                profileMap.find(var.first)->second.back().visited = true;
             }
         }
     }
 
     void ComputeControlPaths() {
-        for (std::pair<std::string, std::vector<SliceProfile>> var : *profileMap) {
+        for (std::pair<std::string, std::vector<SliceProfile>> var : profileMap) {
             std::vector<int> sLines;
             std::merge(var.second.back().definitions.begin(), var.second.back().definitions.end(),
                        var.second.back().uses.begin(), var.second.back().uses.end(),
@@ -568,13 +562,13 @@ public:
                 if (predecessor < falseSuccessor) {
                     if (trueSuccessorExists) {
                         if (predecessor != trueSuccessor) {
-                            profileMap->find(var.first)->second.back().controlEdges.insert(
+                            profileMap.find(var.first)->second.back().controlEdges.insert(
                                     std::make_pair(predecessor, trueSuccessor));
                         }
                     }
 
                     if (predecessor != falseSuccessor) {
-                        profileMap->find(var.first)->second.back().controlEdges.insert(
+                        profileMap.find(var.first)->second.back().controlEdges.insert(
                                 std::make_pair(predecessor, falseSuccessor));
                     }
                 }
@@ -600,7 +594,7 @@ public:
                     }
                     if ((outIf || outElse) && sLines[i] != sLines[i + 1]) {
                         if (sLines[i] != sLines[i + 1]) {
-                            profileMap->find(var.first)->second.back().controlEdges.insert(
+                            profileMap.find(var.first)->second.back().controlEdges.insert(
                                     std::make_pair(sLines[i], sLines[i + 1]));
                         }
                     }
@@ -633,7 +627,7 @@ public:
                         prevSL = sLines[i];
                     } else {
                         if (prevSL != sLines[i]) {
-                            profileMap->find(var.first)->second.back().controlEdges.insert(
+                            profileMap.find(var.first)->second.back().controlEdges.insert(
                                     std::make_pair(prevSL, sLines[i]));
                         }
 
@@ -653,8 +647,8 @@ private:
     SliceEventData* sliceEventData;
 
     void SrcSliceFinalize() {
-        std::cout << "Finalize Size :: " << profileMap->size() << std::endl;
-        for (auto it = profileMap->begin(); it != profileMap->end(); ++it) {
+        std::cout << "Finalize Size :: " << profileMap.size() << std::endl;
+        for (auto it = profileMap.begin(); it != profileMap.end(); ++it) {
             for (std::vector<SliceProfile>::iterator sIt = it->second.begin(); sIt != it->second.end(); ++sIt) {
                 if (sIt->containsDeclaration) {
                     std::vector<SliceProfile>::iterator sIt2 = it->second.begin();
@@ -681,7 +675,7 @@ private:
         // Updating Data before PassOver
         // need to use auto ref to ensure the profile objects
         // are references and not copies
-        for (auto& profile : *profileMap) {
+        for (auto& profile : profileMap) {
             for (auto& slice : profile.second) {
                 if (slice.containsDeclaration) {
                     // Attempt to insert the Switch_Stmt data collected to the appropriate slice
@@ -707,7 +701,7 @@ private:
         // Performs a pass over the data to fix any discrepancies
         // possibly produce by the original output
         PassOver();
-        std::cout << "End Of Finalize Size :: " << profileMap->size() << std::endl << std::endl;
+        std::cout << "End Of Finalize Size :: " << profileMap.size() << std::endl << std::endl;
     }
 };
 
