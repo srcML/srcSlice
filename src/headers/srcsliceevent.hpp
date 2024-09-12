@@ -706,10 +706,18 @@ private:
             ctx.dispatcher->AddListenerDispatch(&functionPolicy);
             ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
         };
+        closeEventMap[ParserState::function] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
+        };
 
         openEventMap[ParserState::functionblock] = [this](srcSAXEventContext &ctx) {
-            ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
+            ctx.dispatcher->AddListenerDispatch(&functionPolicy);
             ctx.dispatcher->AddListenerDispatch(&conditionalPolicy);
+        };
+        closeEventMap[ParserState::functionblock] = [this](srcSAXEventContext &ctx) {
+            ctx.dispatcher->RemoveListenerDispatch(&functionPolicy);
+            ctx.dispatcher->RemoveListenerDispatch(&conditionalPolicy);
         };
 
         closeEventMap[ParserState::tokenstring] = [this](srcSAXEventContext &ctx) {
