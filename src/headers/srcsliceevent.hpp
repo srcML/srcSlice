@@ -58,85 +58,79 @@ public:
 
     ~SrcSliceEvent() {};
     SrcSliceEvent(std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {})
-            : srcSAXEventDispatch::PolicyDispatcher(listeners) {
+            : srcSAXEventDispatch::PolicyDispatcher(listeners),
+            declPolicy({this}), exprPolicy({this}), callPolicy({this}), initPolicy({this}),
+            functionPolicy({this}), returnPolicy({this}), conditionalPolicy({this}) {
         // making SSP a listener for FSPP
         InitializeEventHandlers();
-
-        declPolicy.AddListener(this);
-        exprPolicy.AddListener(this);
-        callPolicy.AddListener(this);
-        initPolicy.AddListener(this);
-        functionPolicy.AddListener(this);
-        returnPolicy.AddListener(this);
-        conditionalPolicy.AddListener(this);
     }
 
     void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx) override {
         using namespace srcSAXEventDispatch;
         if (typeid(DeclTypePolicy) == typeid(*policy)) {
-            decldata = *policy->Data<DeclData>();
-            auto sliceProfileItr = profileMap.find(decldata.nameOfIdentifier);
+            DeclData* decldata = policy->Data<DeclData>();
+            auto sliceProfileItr = profileMap.find(decldata->nameOfIdentifier);
 
             // Dumps out the variable names of variables
             // declared in a function body :: main(), ...
 
-            sliceEventData.initDeclData.push_back(std::make_pair(decldata.nameOfIdentifier, decldata.lineNumber));
+            sliceEventData.initDeclData.push_back(std::make_pair(decldata->nameOfIdentifier, decldata->lineNumber));
 
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap.end()) {
-                auto sliceProfile = SliceProfile(decldata.nameOfIdentifier, decldata.lineNumber,
-                                                 (decldata.isPointer), true,
-                                                 std::set<unsigned int>{decldata.lineNumber});
+                auto sliceProfile = SliceProfile(decldata->nameOfIdentifier, decldata->lineNumber,
+                                                 (decldata->isPointer), true,
+                                                 std::set<unsigned int>{decldata->lineNumber});
                 sliceProfile.nameOfContainingClass = ctx.currentClassName;
                 sliceProfileItr->second.push_back(sliceProfile);
                 sliceProfileItr->second.back().containsDeclaration = true;
             } else {
-                auto sliceProf = SliceProfile(decldata.nameOfIdentifier, decldata.lineNumber,
-                                              (decldata.isPointer), false,
-                                              std::set<unsigned int>{decldata.lineNumber});
+                auto sliceProf = SliceProfile(decldata->nameOfIdentifier, decldata->lineNumber,
+                                              (decldata->isPointer), false,
+                                              std::set<unsigned int>{decldata->lineNumber});
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProf.containsDeclaration = true;
-                profileMap.insert(std::make_pair(decldata.nameOfIdentifier,
+                profileMap.insert(std::make_pair(decldata->nameOfIdentifier,
                                                   std::vector<SliceProfile>{
                                                           std::move(sliceProf)
                                                   }));
             }
 
             // Do not remove, it will cause a segmentation fault
-            sliceProfileItr = profileMap.find(decldata.nameOfIdentifier);
+            sliceProfileItr = profileMap.find(decldata->nameOfIdentifier);
 
-            sliceProfileItr->second.back().isReference = decldata.isReference;
-            sliceProfileItr->second.back().isPointer = decldata.isPointer;
+            sliceProfileItr->second.back().isReference = decldata->isReference;
+            sliceProfileItr->second.back().isPointer = decldata->isPointer;
 
             //look at the dvars and add this current variable to their dvar's lists. If we haven't seen this name before, add its slice profile
             for (std::string dvar : sliceEventData.declDvars) {
                 auto updateDvarAtThisLocation = profileMap.find(dvar);
                 if (updateDvarAtThisLocation != profileMap.end()) {
-                    if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
+                    if (!StringContainsCharacters(decldata->nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
-                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName) {
-                            updateDvarAtThisLocation->second.back().aliases.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
+                        if ( decldata->nameOfIdentifier != sliceProfileItr->second.back().variableName) {
+                            updateDvarAtThisLocation->second.back().aliases.insert(std::make_pair(decldata->nameOfIdentifier, ctx.currentLineNumber));
                         }
                         continue;
                     }
-                    updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
+                    updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(decldata->nameOfIdentifier, ctx.currentLineNumber));
                 } else {
-                    auto sliceProf = SliceProfile(dvar, decldata.lineNumber, false, false, std::set<unsigned int>{},
-                                                  std::set<unsigned int>{decldata.lineNumber});
+                    auto sliceProf = SliceProfile(dvar, decldata->lineNumber, false, false, std::set<unsigned int>{},
+                                                  std::set<unsigned int>{decldata->lineNumber});
                     sliceProf.nameOfContainingClass = ctx.currentClassName;
                     auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
                                                                                           std::vector<SliceProfile>{
                                                                                                   std::move(sliceProf)
                                                                                           }));
-                    if (!StringContainsCharacters(decldata.nameOfIdentifier)) continue;
+                    if (!StringContainsCharacters(decldata->nameOfIdentifier)) continue;
                     if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
-                        if ( decldata.nameOfIdentifier != sliceProfileItr->second.back().variableName &&
+                        if ( decldata->nameOfIdentifier != sliceProfileItr->second.back().variableName &&
                             newSliceProfileFromDeclDvars.first->second.back().variableName != sliceEventData.currentName) {
-                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
+                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(decldata->nameOfIdentifier, ctx.currentLineNumber));
                         }
                         continue;
                     }
-                    newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(decldata.nameOfIdentifier, ctx.currentLineNumber));
+                    newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(decldata->nameOfIdentifier, ctx.currentLineNumber));
                 }
             }
 
@@ -153,13 +147,14 @@ public:
             sliceProfileItr->second.back().function = ctx.currentFunctionName;
 
             sliceEventData.declDvars.clear();
-            decldata.clear();
+            decldata->clear();
+            delete decldata;
         } else if (typeid(ExprPolicy) == typeid(*policy)) {
-            exprDataSet = *policy->Data<ExprPolicy::ExprDataSet>();
+            ExprPolicy::ExprDataSet* exprDataSet = policy->Data<ExprPolicy::ExprDataSet>();
             //iterate through every token found in the expression statement
-            for (auto exprdata : exprDataSet.dataSet) {
+            for (auto exprdata : exprDataSet->dataSet) {
                 auto sliceProfileExprItr = profileMap.find(exprdata.second.nameOfIdentifier);
-                auto sliceProfileLHSItr = profileMap.find(exprDataSet.lhsName);
+                auto sliceProfileLHSItr = profileMap.find(exprDataSet->lhsName);
                 //Just update definitions and uses if name already exists. Otherwise, add new name.
                 if (sliceProfileExprItr != profileMap.end()) {
                     sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
@@ -168,10 +163,10 @@ public:
                     sliceProfileExprItr->second.back().definitions.insert(exprdata.second.definitions.begin(),
                                                                           exprdata.second.definitions.end());
 
-                    if (!StringContainsCharacters(exprDataSet.lhsName)) continue;
+                    if (!StringContainsCharacters(exprDataSet->lhsName)) continue;
                     if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
-                        if ( exprDataSet.lhsName != sliceProfileExprItr->second.back().variableName ) {
-                            sliceProfileExprItr->second.back().aliases.insert(std::make_pair(exprDataSet.lhsName, ctx.currentLineNumber));
+                        if ( exprDataSet->lhsName != sliceProfileExprItr->second.back().variableName ) {
+                            sliceProfileExprItr->second.back().aliases.insert(std::make_pair(exprDataSet->lhsName, ctx.currentLineNumber));
                         }
                         continue;
                     }
@@ -198,10 +193,10 @@ public:
                                                                                   }));
                     sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
 
-                    if (!StringContainsCharacters(exprDataSet.lhsName)) continue;
+                    if (!StringContainsCharacters(exprDataSet->lhsName)) continue;
                     if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
-                        if ( exprDataSet.lhsName != sliceProfileLHSItr->second.back().variableName ) {
-                            sliceProfileExprItr2.first->second.back().aliases.insert(std::make_pair(exprDataSet.lhsName, ctx.currentLineNumber));
+                        if ( exprDataSet->lhsName != sliceProfileLHSItr->second.back().variableName ) {
+                            sliceProfileExprItr2.first->second.back().aliases.insert(std::make_pair(exprDataSet->lhsName, ctx.currentLineNumber));
                         }
                         continue;
                     }
@@ -216,11 +211,12 @@ public:
                     }
                 }
             }
-            exprDataSet.clear();
+            exprDataSet->clear();
+            delete exprDataSet;
         } else if (typeid(InitPolicy) == typeid(*policy)) {
-            initDataSet = *policy->Data<InitPolicy::InitDataSet>();
+            InitPolicy::InitDataSet* initDataSet = policy->Data<InitPolicy::InitDataSet>();
             //iterate through every token found in the initialization of a decl_stmt
-            for (auto initdata : initDataSet.dataSet) {
+            for (auto initdata : initDataSet->dataSet) {
                 sliceEventData.declDvars.push_back(initdata.second.nameOfIdentifier);
                 auto sliceProfileItr = profileMap.find(initdata.second.nameOfIdentifier);
                 //Just update definitions and uses if name already exists. Otherwise, add new name.
@@ -235,17 +231,18 @@ public:
                                                       std::vector<SliceProfile>{sliceProf}));
                 }
             }
-            initDataSet.clear();
+            initDataSet->clear();
+            delete initDataSet;
         } else if (typeid(CallPolicy) == typeid(*policy)) {
             // Runs when function calls are detected
 
             sliceEventData.functionCallList.insert(ctx.currentLineNumber);
 
-            calldata = *policy->Data<CallPolicy::CallData>();
+            CallPolicy::CallData* calldata = policy->Data<CallPolicy::CallData>();
             // This loop is for simply tracking how many args are within a loaded function call
             int trueArgCount = 0;
             bool psuedoBool = false;
-            for (auto currentCallToken : calldata.callargumentlist) {
+            for (auto currentCallToken : calldata->callargumentlist) {
                 switch (currentCallToken[0]) {
                     case '(': {
                         psuedoBool = true;
@@ -265,7 +262,7 @@ public:
             bool isFuncNameNext = false;
             std::vector<std::pair<std::string, unsigned int>> funcNameAndCurrArgumentPos;
             //Go through each token found in a function call
-            for (auto currentCallToken : calldata.callargumentlist) {
+            for (auto currentCallToken : calldata->callargumentlist) {
                 //Check to see if we are entering a function call or exiting--
                 //if entering, we know the next token is the name of the call
                 //otherwise, we're exiting and need to pop the current function call off the stack
@@ -401,41 +398,45 @@ public:
                     if (!funcNameAndCurrArgumentPos.empty()) ++funcNameAndCurrArgumentPos.back().second;
                 }
             }
+
+            delete calldata;
         } else if (typeid(ParamTypePolicy) == typeid(*policy)) {
-            paramdata = *policy->Data<DeclData>();
+            DeclData* paramdata = policy->Data<DeclData>();
             
             //record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
-            auto sliceProfileItr = profileMap.find(paramdata.nameOfIdentifier);
+            auto sliceProfileItr = profileMap.find(paramdata->nameOfIdentifier);
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap.end()) {
-                auto sliceProf = SliceProfile(paramdata.nameOfIdentifier, paramdata.lineNumber,
-                                              (paramdata.isPointer), true,
-                                              std::set<unsigned int>{paramdata.lineNumber});
+                auto sliceProf = SliceProfile(paramdata->nameOfIdentifier, paramdata->lineNumber,
+                                              (paramdata->isPointer), true,
+                                              std::set<unsigned int>{paramdata->lineNumber});
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProfileItr->second.push_back(std::move(sliceProf));
             } else {
-                auto sliceProf = SliceProfile(paramdata.nameOfIdentifier, paramdata.lineNumber,
-                                              (paramdata.isPointer), true,
-                                              std::set<unsigned int>{paramdata.lineNumber});
+                auto sliceProf = SliceProfile(paramdata->nameOfIdentifier, paramdata->lineNumber,
+                                              (paramdata->isPointer), true,
+                                              std::set<unsigned int>{paramdata->lineNumber});
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
-                profileMap.insert(std::make_pair(paramdata.nameOfIdentifier,
+                profileMap.insert(std::make_pair(paramdata->nameOfIdentifier,
                                                   std::vector<SliceProfile>{std::move(sliceProf)}));
             }
 
             // Attempt to insert data-types for sliceprofiles found in function/ctor parameters
-            profileMap.find(paramdata.nameOfIdentifier)->second.back().variableType = paramdata.nameOfType;
+            profileMap.find(paramdata->nameOfIdentifier)->second.back().variableType = paramdata->nameOfType;
 
             // Link the filepath this slice is located in
-            profileMap.find(paramdata.nameOfIdentifier)->second.back().file = ctx.currentFilePath;
+            profileMap.find(paramdata->nameOfIdentifier)->second.back().file = ctx.currentFilePath;
 
             // Link the function the XML Originates from
-            profileMap.find(paramdata.nameOfIdentifier)->second.back().function = ctx.currentFunctionName;
+            profileMap.find(paramdata->nameOfIdentifier)->second.back().function = ctx.currentFunctionName;
 
-            paramdata.clear();
+            paramdata->clear();
+            delete paramdata;
         } else if (typeid(FunctionSignaturePolicy) == typeid(*policy)) {
-            sliceEventData.functionsigdata = *policy->Data<SignatureData>();
+            SignatureData* funcSigDataPtr = policy->Data<SignatureData>();
+            sliceEventData.functionsigdata = *funcSigDataPtr;
 
             if (sliceEventData.functionSigMap.find(sliceEventData.functionsigdata.name) != sliceEventData.functionSigMap.end() && !sliceEventData.functionsigdata.name.empty()) {
                 // overloaded function detected
@@ -455,6 +456,8 @@ public:
                         );
                 sliceEventData.overloadFunctionCount[sliceEventData.functionsigdata.name] = 0;
             }
+
+            delete funcSigDataPtr;
         } else if (typeid(ReturnPolicy) == typeid(*policy)) {
             for (auto dataSet : *returnPolicy.GetReturnUses()) {
                 auto sliceProfileItr = profileMap.find(dataSet.first);
@@ -570,21 +573,11 @@ protected:
 
 private:
     DeclTypePolicy declPolicy;
-    DeclData decldata;
-    DeclData paramdata;
-
     InitPolicy initPolicy;
-    InitPolicy::InitDataSet initDataSet;
-
-    ExprPolicy::ExprDataSet exprDataSet;
     ExprPolicy exprPolicy;
-
     CallPolicy callPolicy;
-    CallPolicy::CallData calldata;
-    
     ReturnPolicy returnPolicy;
     ConditionalPolicy conditionalPolicy;
-
     FunctionSignaturePolicy functionPolicy;
 
     void InitializeEventHandlers() {
