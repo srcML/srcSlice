@@ -8,8 +8,6 @@ bool validFlag(const char *arg)
 
     if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
         return true;
-    if (strcmp(arg, "-j") == 0 || strcmp(arg, "--json") == 0)
-        return true;
     if (strcmp(arg, "-o") == 0 || strcmp(arg, "--output") == 0)
         return true;
 
@@ -24,13 +22,12 @@ void Usage()
                  "        Command Summary:\n"
                  "            -h / --help              Shows this Page\n"
                  "            -o / --output            Output File Name\n"
-                 "            -j / --json              JSON output\n"
               << std::endl;
 }
 
 int main(int argc, char **argv)
 {
-    bool hasOutFile = false, jsonOutput = false;
+    bool hasOutFile = false;
 
     {
         if (argc < 2) {
@@ -60,20 +57,6 @@ int main(int argc, char **argv)
                         if (!hasOutFile)
                         {
                             hasOutFile = true;
-                        } else
-                            {
-                                std::cerr << "\033[31m" << "DuplisrcSliceHandlere Parameters!" << "\033[0m" << std::endl;
-                                Usage();
-                                return 6;
-                            }
-                    }
-
-                    // Detect JSON output flag
-                    if ((strcmp(argv[i], "-j") == 0 || strcmp(argv[i], "--json") == 0))
-                    {
-                        if (!jsonOutput)
-                        {
-                            jsonOutput = true;
                         } else
                             {
                                 std::cerr << "\033[31m" << "DuplisrcSliceHandlere Parameters!" << "\033[0m" << std::endl;
@@ -134,26 +117,27 @@ int main(int argc, char **argv)
     try {
         SrcSliceHandler srcSliceHandler(argv[1]);
 
-        // Set up output save file if needed
-        if (argi != -1)
-            outFile = std::ofstream(argv[argi]);
-        else
-            outFile.close();
+        std::cout << "Performing the Get Call. . ." << std::endl;
+        auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
-        
-        if (jsonOutput)
-        {
-            if (argi != -1)
-                outFile << "{" << std::endl;
-            else
-                std::cout << "{" << std::endl;
-        }
-
-        size_t totalElements = srcSliceHandler.GetProfileMap()->size();
+        size_t totalElements = sliceProfileMap.size();
         size_t currIndex = 0, sliceIndex = 0;
         std::ostringstream sliceOutput;
 
-        for (auto& profile : *srcSliceHandler.GetProfileMap())
+        std::cout << "Fetched Map Size :: " << totalElements << std::endl;
+
+        if (argi != -1) {
+            // allow output file to be written in
+            outFile = std::ofstream(argv[argi]);
+        } else {
+            // close output file
+            outFile.close();
+        }
+
+        // opening of the entire JSON object
+        sliceOutput << "{" << std::endl;
+
+        for (auto& profile : sliceProfileMap)
         {
             ++currIndex;
             
@@ -161,45 +145,44 @@ int main(int argc, char **argv)
             {
                 if (slice.containsDeclaration)
                 {
-                    ++sliceIndex;
-                    slice.SetJsonOut(jsonOutput);
-                    slice.SetSliceIndex(sliceIndex - 1);
+                    // write out the start of the json object
+                    sliceOutput << "\"slice_" << sliceIndex++ << "\" : {" << std::endl;
 
+                    // print out content of the SliceProfile
                     sliceOutput << slice;
-                    if ( jsonOutput && (currIndex != totalElements))
-                        sliceOutput << "," << std::endl;
+
+                    // write out the end of the json object
+                    if (currIndex != totalElements)
+                        sliceOutput << "}," << std::endl;
                     else
-                        sliceOutput << std::endl;
+                        sliceOutput << "}" << std::endl;
                 }
             }
         }
 
-        if (jsonOutput)
-        {
-            sliceOutput << "}" << std::endl;
-        }
+        // closing of the entire JSON object
+        sliceOutput << "}" << std::endl;
 
         // Check for leading comma and remove it
         std::string stream2string = sliceOutput.str();
 
-        if (stream2string[stream2string.size() - 4] == ',')
-        {
+        if (stream2string[stream2string.size() - 4] == ',') {
             stream2string.erase(stream2string.size() - 4, 1);
         }
 
-        if (hasOutFile)
-        {
+        // write to either stdout or output file
+        if (hasOutFile) {
             outFile << stream2string;
-        } else
-            {
-                std::cout << stream2string;
-            }
+        } else {
+            std::cout << stream2string;
+        }
     } catch (std::string errormsg) {
         std::cout << "\033[31m" << errormsg << "\033[0m" << std::endl;
         return 3;
     }
 
     // ensure if we do have an output file we close it
+    // alert user that an output file has been created
     if (argi != -1) {
         std::cout << "Output Saved to :: " << argv[argi] << std::endl;
         outFile.close();
