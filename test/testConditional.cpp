@@ -19,7 +19,7 @@ TEST_CASE( "Conditional Test 1", "[srcslice]" ) {
                 "    return 0;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "ifStmtDef.cpp");
+    input = FetchSlices(sourceCode.c_str(), "ifStmtDef.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -51,7 +51,7 @@ TEST_CASE( "Conditional Test 2", "[srcslice]" ) {
                 "    return 0;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simpleIfStmt.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simpleIfStmt.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -83,7 +83,7 @@ TEST_CASE( "Conditional Test 3", "[srcslice]" ) {
                 "    return 0;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simpleDoWhileStmt.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simpleDoWhileStmt.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -115,7 +115,7 @@ TEST_CASE( "Conditional Test 4", "[srcslice]" ) {
                 "    return 0;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simpleWhileStmt.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simpleWhileStmt.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -146,7 +146,7 @@ TEST_CASE( "Conditional Test 5", "[srcslice]" ) {
                 "    return 0;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simpleForStmt.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simpleForStmt.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -188,7 +188,7 @@ TEST_CASE( "Conditional Test 6", "[srcslice]" ) {
                 "    return 0;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simpleSwitchStmt.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simpleSwitchStmt.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -218,7 +218,7 @@ TEST_CASE( "Conditional Test 7", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -249,7 +249,7 @@ TEST_CASE( "Conditional Test 8", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -283,7 +283,7 @@ TEST_CASE( "Conditional Test 9", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -318,7 +318,7 @@ TEST_CASE( "Conditional Test 10", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -365,7 +365,7 @@ TEST_CASE( "Conditional Test 11", "[srcslice]" ) {
                 "    std::cout << mode << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -410,7 +410,7 @@ TEST_CASE( "Conditional Test 12", "[srcslice]" ) {
                 "    std::cout << a << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -441,7 +441,7 @@ TEST_CASE( "Conditional Test 13", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -485,7 +485,7 @@ TEST_CASE( "Conditional Test 14", "[srcslice]" ) {
                 "    std::cout << k << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -530,7 +530,7 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
                 "    std::cout << k << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -574,7 +574,7 @@ TEST_CASE( "Conditional Test 16", "[srcslice]" ) {
                 "    std::cout << tmp << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -607,7 +607,7 @@ TEST_CASE( "Conditional Test 17", "[srcslice]" ) {
                 "    std::cout << tmp << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -643,7 +643,7 @@ TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -693,7 +693,7 @@ TEST_CASE( "Conditional Test 19", "[srcslice]" ) {
                 "    std::cout << bmi << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"

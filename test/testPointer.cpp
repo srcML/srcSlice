@@ -9,7 +9,7 @@ TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
                 "    std::string* strPtr;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simplePointer.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simplePointer.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -39,7 +39,7 @@ TEST_CASE( "Pointer Test 2", "[srcslice]" ) {
                 "    strPtr = &key;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simplePointerDef.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simplePointerDef.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
@@ -82,7 +82,7 @@ TEST_CASE( "Pointer Test 3", "[srcslice]" ) {
                 "    std::cout << *strPtr << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode, "simplePointerUse.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simplePointerUse.cpp");
 
     output = "{\n"
             "\"slice_0\" : {\n"
