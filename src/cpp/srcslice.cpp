@@ -117,14 +117,11 @@ int main(int argc, char **argv)
     try {
         SrcSliceHandler srcSliceHandler(argv[1]);
 
-        std::cout << "Performing the Get Call. . ." << std::endl;
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
         size_t totalElements = sliceProfileMap.size();
         size_t currIndex = 0, sliceIndex = 0;
         std::ostringstream sliceOutput;
-
-        std::cout << "Fetched Map Size :: " << totalElements << std::endl;
 
         if (argi != -1) {
             // allow output file to be written in
