@@ -31,30 +31,30 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
     std::ostringstream output;
     std::string srcmlStr = StringToSrcML(cppSource, fileName);
 
-    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-    SrcSlicePolicy *cat = new SrcSlicePolicy(&profileMap);
-    srcSAXController control(srcmlStr);
-    srcSAXEventDispatch::srcSAXEventDispatcher<> handler({cat});
-    control.parse(&handler); // Start parsing
+    SrcSliceHandler srcSliceHandler(srcmlStr);
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap = srcSliceHandler.GetProfileMap();
 
     size_t totalElements = profileMap.size();
     size_t currIndex = 0, sliceIndex = 0;
 
     output << "{" << std::endl;
-    for (auto it : profileMap) {
+    for (auto profiles : profileMap) {
         ++currIndex;
-        for (auto profile : it.second) {
-            if (profile.containsDeclaration) {
-                ++sliceIndex;
-                profile.SetJsonOut(true);
-                profile.SetSliceIndex(sliceIndex - 1);
+        for (auto& slice : profiles.second)
+        {
+            if (slice.containsDeclaration)
+            {
+                // write out the start of the json object
+                output << "\"slice_" << sliceIndex++ << "\" : {" << std::endl;
 
-                output << profile;
-                if (currIndex != totalElements) {
-                    output << "," << std::endl;
-                } else {
-                    output << std::endl;
-                }
+                // print out content of the SliceProfile
+                output << slice;
+
+                // write out the end of the json object
+                if (currIndex != totalElements)
+                    output << "}," << std::endl;
+                else
+                    output << "}" << std::endl;
             }
         }
     }

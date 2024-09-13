@@ -2,7 +2,7 @@
 #define SRCSLICETEST_HEADER
 
 #include <iostream>
-#include <srcslicepolicy.hpp>
+#include <srcslicehandler.hpp>
 #include <sstream>
 #include <srcml.h>
 #include "../src/catch2/catch.hpp"
