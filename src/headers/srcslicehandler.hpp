@@ -25,8 +25,8 @@ class SrcSliceHandler
           public srcSAXEventDispatch::PolicyListener {
 public:
     ~SrcSliceHandler() { delete sliceEventData; };
-    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
 
+    // Use literal string filename ctor of srcSAXController
     SrcSliceHandler(const char* filename, std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {})
             : srcSAXEventDispatch::PolicyDispatcher(listeners) {
         srcSAXController control(filename);
@@ -34,19 +34,27 @@ public:
         control.parse(&handler); // Start parsing
     }
 
+    // Use string srcml buffer ctor of srcSAXController
+    SrcSliceHandler(const std::string sourceCodeStr, std::initializer_list<srcSAXEventDispatch::PolicyListener *> listeners = {})
+            : srcSAXEventDispatch::PolicyDispatcher(listeners) {
+        srcSAXController control(sourceCodeStr);
+        srcSAXEventDispatch::srcSAXEventDispatcher<SrcSliceEvent> handler(this);
+        control.parse(&handler); // Start parsing
+    }
+
     void Notify(const PolicyDispatcher *policy, const srcSAXEventDispatch::srcSAXEventContext &ctx [[maybe_unused]]) override {
         if (typeid(SrcSliceEvent) == typeid(*policy)) {
             sliceEventData = policy->Data<SliceEventData>();
-
             profileMap = *(sliceEventData->pmPtr);
-
+            // std::cout << "SIZE :: " << profileMap.size() << std::endl;
             SrcSliceFinalize();
         }
     }
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcSAXEventDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
-    
+
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap() {
+        // std::cout << "SIZE2 :: " << profileMap.size() << std::endl;
         return profileMap;
     }
 
@@ -523,6 +531,8 @@ public:
                                             sliceItr->dvars.begin(),
                                             sliceItr->dvars.end());
                                 } else {
+                                    std::cout << std::boolalpha << (profileMap.find(var.first) != profileMap.end()) << " && " << (profileMap.find(Spi->first) != profileMap.end()) << " && " << (sliceItr != Spi->second.end()) << std::endl;
+                                    std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
                                     std::cout << "[-] An Error has Occured in `ComputeInterprocedural`" << std::endl;
                                 }
                             }
@@ -645,9 +655,9 @@ protected:
 
 private:
     SliceEventData* sliceEventData;
+    std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
 
     void SrcSliceFinalize() {
-        std::cout << "Finalize Size :: " << profileMap.size() << std::endl;
         for (auto it = profileMap.begin(); it != profileMap.end(); ++it) {
             for (std::vector<SliceProfile>::iterator sIt = it->second.begin(); sIt != it->second.end(); ++sIt) {
                 if (sIt->containsDeclaration) {
@@ -701,7 +711,6 @@ private:
         // Performs a pass over the data to fix any discrepancies
         // possibly produce by the original output
         PassOver();
-        std::cout << "End Of Finalize Size :: " << profileMap.size() << std::endl << std::endl;
     }
 };
 
