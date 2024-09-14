@@ -57,15 +57,6 @@ public:
         // std::cout << "SIZE2 :: " << profileMap.size() << std::endl;
         return profileMap;
     }
-
-    void RepairVariableNames() {
-        for (auto& mapItr : profileMap) {
-            for (auto& slice : mapItr.second) {
-                // repairing variable names from line 677
-                slice.variableName = slice.variableName.substr(0, slice.variableName.find(32));
-            }
-        }
-    }
     
     auto ArgumentProfile(std::pair<std::string, SignatureData> func, int paramIndex, std::unordered_set<std::string> visit_func) {
 	    auto Spi = profileMap.find(func.second.parameters.at(paramIndex).nameOfIdentifier);

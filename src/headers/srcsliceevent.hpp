@@ -81,14 +81,22 @@ public:
                 auto sliceProfile = SliceProfile(decldata->nameOfIdentifier, decldata->lineNumber,
                                                  (decldata->isPointer), true,
                                                  std::set<unsigned int>{decldata->lineNumber});
+
                 sliceProfile.nameOfContainingClass = ctx.currentClassName;
+                sliceProfile.nameOfNamespace = ctx.currentNameSpaceName;
+                sliceProfile.language = ctx.currentFileLanguage;
+
                 sliceProfileItr->second.push_back(sliceProfile);
                 sliceProfileItr->second.back().containsDeclaration = true;
             } else {
                 auto sliceProf = SliceProfile(decldata->nameOfIdentifier, decldata->lineNumber,
                                               (decldata->isPointer), false,
                                               std::set<unsigned int>{decldata->lineNumber});
+
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.nameOfNamespace = ctx.currentNameSpaceName;
+                sliceProf.language = ctx.currentFileLanguage;
+
                 sliceProf.containsDeclaration = true;
                 profileMap.insert(std::make_pair(decldata->nameOfIdentifier,
                                                   std::vector<SliceProfile>{
@@ -560,7 +568,6 @@ public:
                 conditionalPolicy.DeleteDefsCollection(name);
             }
             insertTargets.clear();
-            // RepairVariableNames();
         }
     }
 

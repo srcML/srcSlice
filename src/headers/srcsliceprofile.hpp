@@ -35,6 +35,8 @@ public:
     std::string file;
     std::string function;
     std::string nameOfContainingClass;
+    std::string nameOfNamespace;
+    std::string language;
     bool potentialAlias;
     bool dereferenced;
 
@@ -65,6 +67,8 @@ public:
 
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;
+        out << "    \"language\":\"" << profile.language << "\"," << std::endl;
+        out << "    \"namespace\":\"" << profile.nameOfNamespace << "\"," << std::endl;
         out << "    \"class\":\"" << profile.nameOfContainingClass << "\"," << std::endl;
         out << "    \"function\":\"" << profile.function << "\"," << std::endl;
         out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
@@ -91,9 +95,9 @@ public:
         out << "    \"calledFunctions\": [ ";
         for (auto cfunc : profile.cfunctions) {
             if (cfunc != *(--profile.cfunctions.end()))
-                out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}, ";
+                out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameter\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}, ";
             else
-                out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameterNumber\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}";
+                out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameter\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}";
         }
         out << " ]," << std::endl;
 
