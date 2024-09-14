@@ -256,6 +256,9 @@ public:
 
                     std::unordered_set <std::string> junkMap; // Need this to use the ArgumentProfile function
 
+                    // Ensuring for called function resolution that the line
+                    // number where the slice profile points to a function param
+                    // is not treated as a definition but as a use of the slice
                     for (auto line : *sliceEventData->possibleDefinitions) {
                         // within the slice does the line exist within the def set
                         if ( sliceItr->definitions.find(line) != sliceItr->definitions.end() ) {
@@ -286,6 +289,7 @@ public:
 
 
                     // Iterate through called function data if the slice has any data
+                    // and removing the same false definition data like above
                     for (auto cfunctData : sliceItr->cfunctions) {
                         std::string name = cfunctData.first;
                         auto funct = sliceEventData->functionSigMap.find(name);
