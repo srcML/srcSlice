@@ -131,6 +131,8 @@ int main(int argc, char **argv)
             outFile.close();
         }
 
+        std::map<std::string, unsigned int> sliceProfileNames;
+
         // opening of the entire JSON object
         sliceOutput << "{" << std::endl;
 
@@ -143,7 +145,16 @@ int main(int argc, char **argv)
                 if (slice.containsDeclaration)
                 {
                     // write out the start of the json object
-                    sliceOutput << "\"slice_" << sliceIndex++ << "\" : {" << std::endl;
+                    // build json slice profile name
+                    // variableName_initDefLine_checksum_numericalTagger
+
+                    std::string name(slice.variableName + '_' + std::to_string(slice.lineNumber) + '_' + slice.checksum);
+                    ++sliceProfileNames[name]; // if the name exists in the map we will see the value increase
+                    // if the numeric tag after substracting 1 is not 0 we need to include this tag
+                    // in the slice name when we pipe to stdout
+                    if (sliceProfileNames[name]-1 != 0) name += '_' + sliceProfileNames[name];
+
+                    sliceOutput << "\"" << name << "\" : {" << std::endl;
 
                     // print out content of the SliceProfile
                     sliceOutput << slice;

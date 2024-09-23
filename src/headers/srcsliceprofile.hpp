@@ -37,6 +37,7 @@ public:
     std::string nameOfContainingClass;
     std::string nameOfNamespace;
     std::string language;
+    std::string checksum;
     bool potentialAlias;
     bool dereferenced;
 

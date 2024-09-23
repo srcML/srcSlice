@@ -150,6 +150,9 @@ public:
 
             // Link the filepath the XML Originates
             sliceProfileItr->second.back().file = ctx.currentFilePath;
+
+            // Link the file hash attribute
+            sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
             
             // Link the function this slice is located in
             sliceProfileItr->second.back().function = ctx.currentFunctionName;
@@ -436,6 +439,9 @@ public:
 
             // Link the filepath this slice is located in
             profileMap.find(paramdata->nameOfIdentifier)->second.back().file = ctx.currentFilePath;
+
+            // Link the file hash attribute
+            profileMap.find(paramdata->nameOfIdentifier)->second.back().checksum = ctx.currentFileChecksum;
 
             // Link the function the XML Originates from
             profileMap.find(paramdata->nameOfIdentifier)->second.back().function = ctx.currentFunctionName;
