@@ -83,7 +83,7 @@ public:
                                                  std::set<unsigned int>{decldata->lineNumber});
 
                 sliceProfile.nameOfContainingClass = ctx.currentClassName;
-                sliceProfile.nameOfNamespace = ctx.currentNameSpaceName;
+                sliceProfile.containingNameSpaces = ctx.currentNamespaces;
                 sliceProfile.language = ctx.currentFileLanguage;
 
                 sliceProfileItr->second.push_back(sliceProfile);
@@ -94,7 +94,7 @@ public:
                                               std::set<unsigned int>{decldata->lineNumber});
 
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
-                sliceProf.nameOfNamespace = ctx.currentNameSpaceName;
+                sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
 
                 sliceProf.containsDeclaration = true;
@@ -126,6 +126,7 @@ public:
                     auto sliceProf = SliceProfile(dvar, decldata->lineNumber, false, false, std::set<unsigned int>{},
                                                   std::set<unsigned int>{decldata->lineNumber});
                     sliceProf.nameOfContainingClass = ctx.currentClassName;
+                    sliceProf.containingNameSpaces = ctx.currentNamespaces;
                     auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
                                                                                           std::vector<SliceProfile>{
                                                                                                   std::move(sliceProf)
@@ -169,6 +170,7 @@ public:
                 //Just update definitions and uses if name already exists. Otherwise, add new name.
                 if (sliceProfileExprItr != profileMap.end()) {
                     sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
+                    sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
                     sliceProfileExprItr->second.back().uses.insert(exprdata.second.uses.begin(),
                                                                    exprdata.second.uses.end());
                     sliceProfileExprItr->second.back().definitions.insert(exprdata.second.definitions.begin(),
@@ -203,6 +205,7 @@ public:
                                                                                                   exprdata.second.uses)
                                                                                   }));
                     sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
+                    sliceProfileExprItr2.first->second.back().containingNameSpaces = ctx.currentNamespaces;
 
                     if (!StringContainsCharacters(exprDataSet->lhsName)) continue;
                     if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
@@ -238,6 +241,7 @@ public:
                     auto sliceProf = SliceProfile(initdata.second.nameOfIdentifier, ctx.currentLineNumber, false, false,
                                                   std::set<unsigned int>{}, initdata.second.uses);
                     sliceProf.nameOfContainingClass = ctx.currentClassName;
+                    sliceProf.containingNameSpaces = ctx.currentNamespaces;
                     profileMap.insert(std::make_pair(initdata.second.nameOfIdentifier,
                                                       std::vector<SliceProfile>{sliceProf}));
                 }
@@ -403,6 +407,7 @@ public:
                                                       std::vector<std::pair<std::string, std::pair<std::string, std::string>>>{
                                                               std::make_pair(callOrder, std::make_pair(argumentOrder, std::to_string(functionDefinitionLine)))});
                         sliceProf.nameOfContainingClass = ctx.currentClassName;
+                        sliceProf.containingNameSpaces = ctx.currentNamespaces;
                         profileMap.insert(std::make_pair(currentCallToken,
                                                           std::vector<SliceProfile>{sliceProf}));
                     }
@@ -423,6 +428,7 @@ public:
                                               std::set<unsigned int>{paramdata->lineNumber});
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProfileItr->second.push_back(std::move(sliceProf));
             } else {
                 auto sliceProf = SliceProfile(paramdata->nameOfIdentifier, paramdata->lineNumber,
@@ -430,6 +436,7 @@ public:
                                               std::set<unsigned int>{paramdata->lineNumber});
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 profileMap.insert(std::make_pair(paramdata->nameOfIdentifier,
                                                   std::vector<SliceProfile>{std::move(sliceProf)}));
             }

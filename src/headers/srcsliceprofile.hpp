@@ -35,7 +35,7 @@ public:
     std::string file;
     std::string function;
     std::string nameOfContainingClass;
-    std::string nameOfNamespace;
+    std::vector<std::string> containingNameSpaces;
     std::string language;
     std::string checksum;
     bool potentialAlias;
@@ -69,7 +69,16 @@ public:
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;
         out << "    \"language\":\"" << profile.language << "\"," << std::endl;
-        out << "    \"namespace\":\"" << profile.nameOfNamespace << "\"," << std::endl;
+        
+        out << "    \"namespace\":\" [ ";
+        for (std::string nameSpace : profile.containingNameSpaces) {
+            if (nameSpace != profile.containingNameSpaces.back())
+                out << "\"" << nameSpace << "\",";
+            else
+                out << "\"" << nameSpace << "\"";
+        }
+        out << " ]," << std::endl;
+
         out << "    \"class\":\"" << profile.nameOfContainingClass << "\"," << std::endl;
         out << "    \"function\":\"" << profile.function << "\"," << std::endl;
         out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
