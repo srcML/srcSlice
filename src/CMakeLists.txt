@@ -1,5 +1,5 @@
-file(GLOB DISPATCHER_SOURCE dispatcher/*.cpp)
-file(GLOB DISPATCHER_HEADER dispatcher/*.hpp)
+file(GLOB DISPATCHER_SOURCE ../srcDispatch/*.cpp)
+file(GLOB DISPATCHER_HEADER ../srcDispatch/*.hpp)
 
 file(GLOB SLICE_SOURCE cpp/*.cpp)
 file(GLOB SLICE_HEADER headers/*.hpp)
