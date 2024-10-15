@@ -27,21 +27,21 @@ project(srcSlice)
 # find needed libraries
 find_package(LibXml2 REQUIRED)
 
-set(CMAKE_CXX_STANDARD 14)
-set(CMAKE_CXX_FLAGS "-O0 -Wno-reorder -Wunused-variable -Wunused-parameter -Wnarrowing -Werror=narrowing -Wno-error=all -g")
+set(CMAKE_CXX_STANDARD 17)
+set(CMAKE_CXX_FLAGS "-O0 -g -Wno-reorder -Wunused-variable -Wunused-parameter -Wnarrowing -Werror=narrowing -Wno-error=all")
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 include_directories(${LIBXML2_INCLUDE_DIR}
-                    ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/srcsax
-                    ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/cpp
-                    ${CMAKE_SOURCE_DIR}/srcSAXEventDispatch/srcSAX/src/windows 
-                    srcSAXEventDispatch/src/dispatcher
-                    srcSAXEventDispatch/src/policy_classes
+                    ${CMAKE_SOURCE_DIR}/srcDispatch/srcSAX/src/srcsax
+                    ${CMAKE_SOURCE_DIR}/srcDispatch/srcSAX/src/cpp
+                    ${CMAKE_SOURCE_DIR}/srcDispatch/srcSAX/src/windows 
+                    srcDispatch/src/dispatcher
+                    srcDispatch/src/policy_classes
                     src/headers)
 
 add_subdirectory(src)
 add_subdirectory(test)
-add_subdirectory(srcSAXEventDispatch)
+add_subdirectory(srcDispatch)
