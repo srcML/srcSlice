@@ -36,6 +36,8 @@ public:
         srcSAXController control(filename);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
+
+        PrintCollection();
     }
 
     // Use string srcml buffer ctor of srcSAXController
@@ -44,31 +46,23 @@ public:
         srcSAXController control(sourceCodeStr);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
+
+        PrintCollection();
     }
 
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) override {
-        // if (typeid(SrcSliceEvent) == typeid(*policy)) {
-        //     sliceEventData = policy->Data<SliceEventData>();
-        //     profileMap = *(sliceEventData->pmPtr);
-        //     // std::cout << "SIZE :: " << profileMap.size() << std::endl;
-        //     SrcSliceFinalize();
-        // }
-
         if(typeid(ClassPolicy) == typeid(*policy)) {
-            // std::shared_ptr<ClassData> class_data = policy->Data<ClassData>();
-            // classInfo.push_back( class_data );
-            std::cout << "ClassPolicy Ping!" << std::endl;
+            std::shared_ptr<ClassData> class_data = policy->Data<ClassData>();
+            classInfo.push_back( class_data );
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
-            // std::shared_ptr<FunctionData> function_data = policy->Data<FunctionData>();
-            // functionInfo.push_back( function_data );
-            std::cout << "FunctionPolicy Ping!" << std::endl;
+            std::shared_ptr<FunctionData> function_data = policy->Data<FunctionData>();
+            functionInfo.push_back( function_data );
         }
     }
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
 
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap() {
-        // std::cout << "SIZE2 :: " << profileMap.size() << std::endl;
         return profileMap;
     }
     
@@ -666,6 +660,70 @@ protected:
 
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    std::vector<std::shared_ptr<ClassData>> classInfo;
+    std::vector<std::shared_ptr<FunctionData>> functionInfo;
+
+    // Process the class and function information collected
+    void PrintCollection() {
+        for (std::shared_ptr<ClassData> data : classInfo) {
+            std::cout << "Class: " << data->name->SimpleName() << std::endl;
+            std::cout << "Language: " << data->language << std::endl;
+            std::cout << "Filename: " << data->filename << std::endl;
+            std::cout << "Fields: " << std::endl;
+            for (unsigned int j=0; j<data->fields[ClassData::PUBLIC].size(); ++j) {
+                std::cout << " " << data->fields[ClassData::PUBLIC][j]->name->ToString() << std::endl;
+            }
+            for (unsigned int j=0; j<data->fields[ClassData::PROTECTED].size(); ++j) {
+                std::cout << " " << data->fields[ClassData::PROTECTED][j]->name->ToString() << std::endl;
+            }
+            for (unsigned int j=0; j<data->fields[ClassData::PRIVATE].size(); ++j) {
+                std::cout << " " << data->fields[ClassData::PRIVATE][j]->name->ToString() << std::endl;
+            }
+            std::cout << "Methods: " << std::endl;
+            for (unsigned int j=0; j<data->methods[ClassData::PUBLIC].size(); ++j) {
+                std::cout << " " << data->methods[ClassData::PUBLIC][j]->ToString() << std::endl;
+            }
+            for (unsigned int j=0; j<data->methods[ClassData::PROTECTED].size(); ++j) {
+                std::cout << " " << data->methods[ClassData::PROTECTED][j]->ToString() << std::endl;
+            }
+            for (unsigned int j=0; j<data->methods[ClassData::PRIVATE].size(); ++j) {
+                std::cout << " " << data->methods[ClassData::PRIVATE][j]->ToString() << std::endl;
+            }
+            for (unsigned int j=0; j<data->operators[ClassData::PUBLIC].size(); ++j) {
+                std::cout << " " << data->operators[ClassData::PUBLIC][j]->ToString() << std::endl;
+            }
+            for (unsigned int j=0; j<data->operators[ClassData::PROTECTED].size(); ++j) {
+                std::cout << " " << data->operators[ClassData::PROTECTED][j]->ToString() << std::endl;
+            }
+            for (unsigned int j=0; j<data->operators[ClassData::PRIVATE].size(); ++j) {
+                std::cout << " " << data->operators[ClassData::PRIVATE][j]->ToString() << std::endl;
+            }
+            std::cout << std::endl;
+        }
+
+        for (std::shared_ptr<FunctionData> data : functionInfo) {
+            std::cout << "Function: " << *(data->name) << std::endl;
+            std::cout << "Language: " << data->language << std::endl;
+            std::cout << "Filename: " << data->filename << std::endl;
+            std::cout << "  " << data->ToString() << std::endl;
+            std::cout << "  Locals:" << std::endl;
+            for(std::size_t pos = 0; pos < data->block->locals.size(); ++pos) {
+                std::cout << "   " <<  *(data->block->locals[pos]) << std::endl;
+            }
+            std::cout << "  Returns: " << data->block->returns.size() << std::endl;
+            for(std::size_t pos = 0; pos < data->block->returns.size(); ++pos) {
+                std::cout << "   " << *(data->block->returns[pos]) << std::endl;
+            }
+            std::cout << "  Expressions: " << data->block->expr_stmts.size() << std::endl;
+            for(std::size_t pos = 0; pos < data->block->expr_stmts.size(); ++pos) {
+                std::cout << "   " << *(data->block->expr_stmts[pos]) << std::endl;
+            }
+
+
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
 
     /*
     void SrcSliceFinalize() {
