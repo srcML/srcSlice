@@ -1,3 +1,4 @@
+/*
 #include "../headers/srcsliceevent.hpp"
 
 bool StringContainsCharacters(const std::string &str) {
@@ -8,3 +9,4 @@ bool StringContainsCharacters(const std::string &str) {
     }
     return false;
 }
+*/
