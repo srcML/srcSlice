@@ -120,7 +120,7 @@ int main(int argc, char **argv)
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
         size_t totalElements = sliceProfileMap.size();
-        size_t currIndex = 0, sliceIndex = 0;
+        size_t currIndex = 0;
         std::ostringstream sliceOutput;
 
         if (argi != -1) {
