@@ -2,6 +2,7 @@
 #define SRCSLICEHANDLER
 
 #include <srcsliceprofile.hpp>
+#include <srcslicecollection.hpp>
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
@@ -22,15 +23,6 @@
 #include <ReturnPolicy.hpp>
 #include <ConditionalPolicy.hpp>
 */
-
-bool StringContainsCharacters(const std::string &str) {
-    for (char ch : str) {
-        if (std::isalpha(ch)) {
-            return true;
-        }
-    }
-    return false;
-}
 
 class SrcSliceHandler
         : public srcDispatch::EventListener,
@@ -67,13 +59,13 @@ public:
 
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, const srcDispatch::srcSAXEventContext& ctx) {
         ProcessDeclStmts(function_data->block->locals, ctx);
-        ProcessExprStmts(function_data->block->expr_stmts);
+        ProcessExprStmts(function_data->block->expr_stmts, ctx);
     }
 
     void ProcessDeclStmts(std::vector<std::shared_ptr<DeclTypeData>>& decls, const srcDispatch::srcSAXEventContext& ctx) {
         // loop through all the expression statements within Decl Statements
         for (const auto& localVar : decls) {
-            auto exprPairs = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
+            auto varDataGroup = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
 
             // Collect pieces about the newly declared variable to use later when adding it into
             // our profileMap
@@ -81,6 +73,8 @@ public:
             std::string declVarType = localVar->type->ToString();
             bool isPointer = false;
             bool isReference = false;
+
+            // std::cout << "[*] Decl Name -> " << declVarName << std::endl;
 
             for(std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
                 const std::pair<std::any, TypeData::TypeType> & type = localVar->type->types[pos];
@@ -135,8 +129,10 @@ public:
 
             // Look at the dvars and add this current variable to their dvar's lists.
             // If we haven't seen this name before, add its slice profile
-            for (auto& p : exprPairs) {
-                for (std::string dvar : p.second) {
+            for (auto& varData : varDataGroup) {
+                for (auto& dvarData : varData.rhsElems) {
+                    std::string dvar = dvarData.GetNameOfIdentifier();
+
                     auto updateDvarAtThisLocation = profileMap.find(dvar);
                     if (updateDvarAtThisLocation != profileMap.end()) {
                         if (!StringContainsCharacters(declVarName)) continue;
@@ -183,59 +179,132 @@ public:
             // Link the function this slice is located in
             sliceProfileItr->second.back().function = ctx.currentFunctionName;
             
-            if (exprPairs.size() > 0) {
-                std::cout << *localVar->name << " is Defined Using [ ";
-                for (const auto& p : exprPairs) {
-                    std::cout << p.first << " "; // LHS
-                    for (const auto& rhs : p.second) {
-                        std::cout << rhs << " "; // RHS
+            // if (varDataGroup.size() > 0) {
+            //     std::cout << *localVar->name << " is Defined Using [ ";
+            //     for (const auto& varData : varDataGroup) {
+            //         std::cout << varData.GetNameOfIdentifier() << " "; // LHS
+            //         for (const auto& rhsData : varData.rhsElems) {
+            //             std::cout << rhsData.GetNameOfIdentifier() << " "; // RHS
                         
-                    }
-                }
-                std::cout << "]" << std::endl;
-            } else {
-                std::cout << *localVar->name << " is Defined Using a Literal" << std::endl;
-            }
+            //         }
+            //     }
+            //     std::cout << "]" << std::endl;
+            // } else {
+            //     std::cout << *localVar->name << " is Defined Using a Literal" << std::endl;
+            // }
         }
-        std::cout << std::endl;
+        // std::cout << std::endl;
     }
 
-    void ProcessExprStmts(std::vector<std::shared_ptr<ExpressionData>>& exprStmts) {
+    void ProcessExprStmts(std::vector<std::shared_ptr<ExpressionData>>& exprStmts, const srcDispatch::srcSAXEventContext& ctx) {
         // loop through all the expression statements
         for (const auto& expr : exprStmts) {
-            auto exprPairs = ParseExpr(*expr, expr->lineNumber);
+            auto varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
-            if (exprPairs.size() > 0) {
-                for (const auto& p : exprPairs) {
-                    std::cout << p.first << " "; // LHS
-                    if (p.second.size() > 0) {
-                        std::cout << "is defined using the following -> [ ";
-                        for (const auto& rhs : p.second) {
-                            std::cout << rhs << " "; // RHS
+            // if (varDataGroup.size() > 0) {
+            //     for (const auto& varData : varDataGroup) {
+            //         std::cout << varData.GetNameOfIdentifier() << " "; // LHS
+            //         if (varData.rhsElems.size() > 0) {
+            //             std::cout << "is defined using the following -> [ ";
+            //             for (const auto& rhsVarData : varData.rhsElems) {
+            //                 std::cout << rhsVarData.GetNameOfIdentifier() << " "; // RHS
+            //             }
+            //             std::cout << "]";
+            //         } else {
+            //             std::cout << "is defined using a Literal";
+            //         }
+            //     }
+            //     std::cout << std::endl;
+            // }
+
+            //iterate through every token found in the expression statement
+            for (auto& varData : varDataGroup) {
+                for (auto& rhsVarData : varData.rhsElems) {
+                    std::shared_ptr<ExpressionElement> lhsData = varData.lhsElem;
+                    std::string lhsName = varData.GetNameOfIdentifier();
+                    std::string rhsName = rhsVarData.GetNameOfIdentifier();
+
+                    auto sliceProfileExprItr = profileMap.find(rhsName);
+                    auto sliceProfileLHSItr = profileMap.find(lhsName);
+
+                    // std::cout << "[*] `ProcessExprStmts` sliceProfileLHSItr  :: " << lhsName << std::endl;
+                    // std::cout << "[*] `ProcessExprStmts` sliceProfileExprItr :: " << rhsName << std::endl << std::endl;
+
+                    //Just update definitions and uses if name already exists. Otherwise, add new name.
+                    if (sliceProfileExprItr != profileMap.end()) {
+                        sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
+                        sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
+                        sliceProfileExprItr->second.back().uses.insert(rhsVarData.uses.begin(),
+                                                                       rhsVarData.uses.end());
+                        sliceProfileExprItr->second.back().definitions.insert(rhsVarData.definitions.begin(),
+                                                                              rhsVarData.definitions.end());
+
+                        if (!StringContainsCharacters(lhsName)) continue;
+                        if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
+                            if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
+                                sliceProfileExprItr->second.back().aliases.insert(std::make_pair(lhsName, ctx.currentLineNumber));
+                            }
+                            continue;
                         }
-                        std::cout << "]";
+                        
+                        // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                        // IE : abc = abc + i;
+                        if (!StringContainsCharacters(lhsName)) continue;
+                        if (!lhsName.empty() && sliceProfileExprItr->second.back().variableName != lhsName) {
+                            sliceProfileExprItr->second.back().dvars.insert(std::make_pair(lhsName, ctx.currentLineNumber));
+                            continue;
+                        }
+
                     } else {
-                        std::cout << "is defined using a Literal";
+                        auto sliceProfileExprItr2 = profileMap.insert(std::make_pair(rhsName,
+                                                                                        std::vector<SliceProfile>{
+                                                                                                SliceProfile(
+                                                                                                        rhsName,
+                                                                                                        ctx.currentLineNumber,
+                                                                                                        false, false,
+                                                                                                        rhsVarData.definitions,
+                                                                                                        rhsVarData.uses)
+                                                                                        }));
+                        sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
+                        sliceProfileExprItr2.first->second.back().containingNameSpaces = ctx.currentNamespaces;
+
+                        if (!StringContainsCharacters(lhsName)) continue;
+                        if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
+                            if ( lhsName != sliceProfileLHSItr->second.back().variableName ) {
+                                sliceProfileExprItr2.first->second.back().aliases.insert(std::make_pair(lhsName, ctx.currentLineNumber));
+                            }
+                            continue;
+                        }
+
+                        // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                        // IE : abc = abc + i;
+                        if (!StringContainsCharacters(lhsName)) continue;
+                        if (!lhsName.empty() && (lhsName != rhsName)) {
+                            sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(lhsName, ctx.currentLineNumber));
+                            continue;
+                        }
                     }
                 }
-                std::cout << std::endl;
             }
         }
+
     }
 
-    std::unordered_map<std::string, std::vector<std::string>> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
-        std::unordered_map<std::string, std::vector<std::string>> exprPairs;
-        std::string LHS = "", expr_op = "";
-        std::vector<std::string> RHS;
+    std::vector<VariableData> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
+        std::vector<VariableData> varDataGroup;
+        std::string expr_op = "";
+        VariableData exprVariable; // LHS variable
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
             switch (exprElem->type) {
                 case ExpressionElement::NAME: // 0
                     if (expr_op.empty()) {
-                        LHS = exprElem->name->name;
+                        exprVariable.lhsElem = exprElem;
+                        exprVariable.uses.insert(lineNumber);
                     } else {
-                        RHS.push_back( exprElem->name->name );
+                        exprVariable.rhsElems.push_back( VariableData(exprElem) );
+                        exprVariable.rhsElems.back().uses.insert(lineNumber);
                     }
                 break;
                 case ExpressionElement::OP: // 1
@@ -244,17 +313,13 @@ public:
                         expr_op = exprElem->token->token;
 
                         // Print the current LHS and RHS pair
-                        if (!RHS.empty() && isAssignment(expr_op)) {
-                            // before clearing RHS we need to ensure we link
-                            // the LHS and RHS for the slice profiles however needed
-
-                            // Push LHS-RHS pair into storage
-                            exprPairs.insert(std::make_pair(LHS, RHS));
-
-                            // if we have a LHS this needs to become RHS.back()
-                            LHS = RHS.back();
-                            
-                            RHS.clear();
+                        if (!exprVariable.rhsElems.empty() && isAssignment(expr_op)) {
+                            // Push back the lhs-rhs set
+                            exprVariable.lhs = true;
+                            varDataGroup.push_back(exprVariable);
+                            exprVariable.clear();
+                            // Set the new lhs for the potential next lhs-rhs pair
+                            exprVariable = exprVariable.rhsElems.back();
                         }
                     }
                 break;
@@ -270,31 +335,26 @@ public:
                 default:
                 break;
             }
-
-            // std::cout << "Current LHS :: " << LHS << std::endl;
         }
 
-        if (!LHS.empty()) {
-            // LHS assignment_op RHS
-            if (!RHS.empty()) {
-                // store the final LHS-RHS pair
-                exprPairs.insert(std::make_pair(LHS, RHS));
-            } else {
-                // RHS was a LITERAL
-                std::cout << LHS << " used on Line " << lineNumber << std::endl;
+        // Ensure we collect the final expr variable in the expr_stmt
+        if (exprVariable.lhsElem != nullptr) {
+            if (exprVariable.rhsElems.size() > 0) {
+                exprVariable.lhs = true;
             }
+            varDataGroup.push_back(exprVariable);
         }
 
-        if (exprPairs.size() > 1) {
+        if (varDataGroup.size() > 1) {
             // Insert the vector collection from vectors
             // in-front of a specific vector to show all
             // RHS vars used against a LHS var
 
-            for (auto pItr = exprPairs.begin(); pItr != exprPairs.end(); ++pItr) {
-                auto* v = &(pItr->second);
+            for (auto pItr = varDataGroup.begin(); pItr != varDataGroup.end(); ++pItr) {
+                auto* v = &(pItr->rhsElems);
                 auto nextItr = std::next(pItr);
-                if (nextItr != nullptr) {
-                    auto* v2 = &(nextItr->second);
+                if (nextItr != varDataGroup.end()) {
+                    auto* v2 = &(nextItr->rhsElems);
                     v->insert(v->end(), v2->begin(), v2->end());
                 }
             }
@@ -320,7 +380,16 @@ public:
         //     std::cout << "::----------------------------::" << std::endl;
         // }
 
-        return exprPairs;
+        return varDataGroup;
+    }
+
+    bool StringContainsCharacters(const std::string &str) {
+        for (char ch : str) {
+            if (std::isalpha(ch)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     bool isAssignment(const std::string& expr_op) {
