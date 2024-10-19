@@ -23,6 +23,15 @@
 #include <ConditionalPolicy.hpp>
 */
 
+bool StringContainsCharacters(const std::string &str) {
+    for (char ch : str) {
+        if (std::isalpha(ch)) {
+            return true;
+        }
+    }
+    return false;
+}
+
 class SrcSliceHandler
         : public srcDispatch::EventListener,
           public srcDispatch::PolicyDispatcher,
@@ -36,8 +45,6 @@ public:
         srcSAXController control(filename);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
-
-        PrintCollection();
     }
 
     // Use string srcml buffer ctor of srcSAXController
@@ -46,21 +53,283 @@ public:
         srcSAXController control(sourceCodeStr);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
-
-        PrintCollection();
     }
 
-    void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) override {
+    void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if(typeid(ClassPolicy) == typeid(*policy)) {
             std::shared_ptr<ClassData> class_data = policy->Data<ClassData>();
-            classInfo.push_back( class_data );
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
-            std::shared_ptr<FunctionData> function_data = policy->Data<FunctionData>();
-            functionInfo.push_back( function_data );
+            ProcessFunctionData(policy->Data<FunctionData>(), ctx);
         }
     }
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
+
+    void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, const srcDispatch::srcSAXEventContext& ctx) {
+        ProcessDeclStmts(function_data->block->locals, ctx);
+        ProcessExprStmts(function_data->block->expr_stmts);
+    }
+
+    void ProcessDeclStmts(std::vector<std::shared_ptr<DeclTypeData>>& decls, const srcDispatch::srcSAXEventContext& ctx) {
+        // loop through all the expression statements within Decl Statements
+        for (const auto& localVar : decls) {
+            auto exprPairs = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
+
+            // Collect pieces about the newly declared variable to use later when adding it into
+            // our profileMap
+            std::string declVarName = localVar->name->name;
+            std::string declVarType = localVar->type->ToString();
+            bool isPointer = false;
+            bool isReference = false;
+
+            for(std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
+                const std::pair<std::any, TypeData::TypeType> & type = localVar->type->types[pos];
+                if (type.second == TypeData::POINTER) {
+                    isPointer = true;
+                } else if (type.second == TypeData::REFERENCE) {
+                    isReference = true;
+                } /* else if (type.second == TypeData::RVALUE) {
+                } else if (type.second == TypeData::SPECIFIER) {
+                } else if (type.second == TypeData::TYPENAME) {
+                } */
+            }
+
+            auto sliceProfileItr = profileMap.find(declVarName);
+
+            // Dumps out the variable names of variables
+            // declared in a function body :: main(), ...
+
+            //Just add new slice profile if name already exists. Otherwise, add new entry in map.
+            if (sliceProfileItr != profileMap.end()) {
+                auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber,
+                                                 isPointer, true,
+                                                 std::set<unsigned int>{localVar->lineNumber});
+
+                sliceProfile.nameOfContainingClass = ctx.currentClassName;
+                sliceProfile.containingNameSpaces = ctx.currentNamespaces;
+                sliceProfile.language = ctx.currentFileLanguage;
+
+                sliceProfileItr->second.push_back(sliceProfile);
+                sliceProfileItr->second.back().containsDeclaration = true;
+            } else {
+                auto sliceProf = SliceProfile(declVarName, localVar->lineNumber,
+                                              (isPointer), false,
+                                              std::set<unsigned int>{localVar->lineNumber});
+
+                sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                sliceProf.language = ctx.currentFileLanguage;
+
+                sliceProf.containsDeclaration = true;
+                profileMap.insert(std::make_pair(declVarName,
+                                                  std::vector<SliceProfile>{
+                                                          std::move(sliceProf)
+                                                  }));
+            }
+
+            // Do not remove, it will cause a segmentation fault
+            sliceProfileItr = profileMap.find(declVarName);
+
+            sliceProfileItr->second.back().isReference = isReference;
+            sliceProfileItr->second.back().isPointer = isPointer;
+
+            // Look at the dvars and add this current variable to their dvar's lists.
+            // If we haven't seen this name before, add its slice profile
+            for (auto& p : exprPairs) {
+                for (std::string dvar : p.second) {
+                    auto updateDvarAtThisLocation = profileMap.find(dvar);
+                    if (updateDvarAtThisLocation != profileMap.end()) {
+                        if (!StringContainsCharacters(declVarName)) continue;
+                        if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
+                            if ( declVarName != sliceProfileItr->second.back().variableName) {
+                                updateDvarAtThisLocation->second.back().aliases.insert(std::make_pair(declVarName, ctx.currentLineNumber));
+                            }
+                            continue;
+                        }
+                        updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, ctx.currentLineNumber));
+                    } else {
+                        auto sliceProf = SliceProfile(dvar, localVar->lineNumber, false, false, std::set<unsigned int>{},
+                                                    std::set<unsigned int>{localVar->lineNumber});
+                        sliceProf.nameOfContainingClass = ctx.currentClassName;
+                        sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                        auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
+                                                                                            std::vector<SliceProfile>{
+                                                                                                    std::move(sliceProf)
+                                                                                            }));
+                        if (!StringContainsCharacters(declVarName)) continue;
+                        if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
+                            if ( declVarName != sliceProfileItr->second.back().variableName ) {
+                                newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, ctx.currentLineNumber));
+                            }
+                            continue;
+                        }
+                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, ctx.currentLineNumber));
+                    }
+                }
+            }
+
+            // This allows me to set the data type of the variable in its slice
+            // after its been set up from the logic above here
+            // Set the data-type of sliceprofile for decl vars inside of function bodies
+
+            sliceProfileItr->second.back().variableType = declVarType;
+
+            // Link the filepath the XML Originates
+            sliceProfileItr->second.back().file = ctx.currentFilePath;
+
+            // Link the file hash attribute
+            sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
+            
+            // Link the function this slice is located in
+            sliceProfileItr->second.back().function = ctx.currentFunctionName;
+            
+            if (exprPairs.size() > 0) {
+                std::cout << *localVar->name << " is Defined Using [ ";
+                for (const auto& p : exprPairs) {
+                    std::cout << p.first << " "; // LHS
+                    for (const auto& rhs : p.second) {
+                        std::cout << rhs << " "; // RHS
+                        
+                    }
+                }
+                std::cout << "]" << std::endl;
+            } else {
+                std::cout << *localVar->name << " is Defined Using a Literal" << std::endl;
+            }
+        }
+        std::cout << std::endl;
+    }
+
+    void ProcessExprStmts(std::vector<std::shared_ptr<ExpressionData>>& exprStmts) {
+        // loop through all the expression statements
+        for (const auto& expr : exprStmts) {
+            auto exprPairs = ParseExpr(*expr, expr->lineNumber);
+
+            if (exprPairs.size() > 0) {
+                for (const auto& p : exprPairs) {
+                    std::cout << p.first << " "; // LHS
+                    if (p.second.size() > 0) {
+                        std::cout << "is defined using the following -> [ ";
+                        for (const auto& rhs : p.second) {
+                            std::cout << rhs << " "; // RHS
+                        }
+                        std::cout << "]";
+                    } else {
+                        std::cout << "is defined using a Literal";
+                    }
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+
+    std::unordered_map<std::string, std::vector<std::string>> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
+        std::unordered_map<std::string, std::vector<std::string>> exprPairs;
+        std::string LHS = "", expr_op = "";
+        std::vector<std::string> RHS;
+
+        // loop through each element within a specific expression statement
+        for (const auto& exprElem : expr.expr) {
+            switch (exprElem->type) {
+                case ExpressionElement::NAME: // 0
+                    if (expr_op.empty()) {
+                        LHS = exprElem->name->name;
+                    } else {
+                        RHS.push_back( exprElem->name->name );
+                    }
+                break;
+                case ExpressionElement::OP: // 1
+                    // Dont set the operator to a whitespace
+                    if (!isWhiteSpace(exprElem->token->token)) {
+                        expr_op = exprElem->token->token;
+
+                        // Print the current LHS and RHS pair
+                        if (!RHS.empty() && isAssignment(expr_op)) {
+                            // before clearing RHS we need to ensure we link
+                            // the LHS and RHS for the slice profiles however needed
+
+                            // Push LHS-RHS pair into storage
+                            exprPairs.insert(std::make_pair(LHS, RHS));
+
+                            // if we have a LHS this needs to become RHS.back()
+                            LHS = RHS.back();
+                            
+                            RHS.clear();
+                        }
+                    }
+                break;
+                case ExpressionElement::CALL: // 2
+                    for (const auto& arg : exprElem->call->arguments) {
+                        for (const auto& argExprElem : arg->expr) {
+                            std::cout << *argExprElem->name <<
+                            " is used within Call -> " << *exprElem->call->name <<
+                            " on Line " << lineNumber << std::endl;
+                        }
+                    }
+                break;
+                default:
+                break;
+            }
+
+            // std::cout << "Current LHS :: " << LHS << std::endl;
+        }
+
+        if (!LHS.empty()) {
+            // LHS assignment_op RHS
+            if (!RHS.empty()) {
+                // store the final LHS-RHS pair
+                exprPairs.insert(std::make_pair(LHS, RHS));
+            } else {
+                // RHS was a LITERAL
+                std::cout << LHS << " used on Line " << lineNumber << std::endl;
+            }
+        }
+
+        if (exprPairs.size() > 1) {
+            // Insert the vector collection from vectors
+            // in-front of a specific vector to show all
+            // RHS vars used against a LHS var
+
+            for (auto pItr = exprPairs.begin(); pItr != exprPairs.end(); ++pItr) {
+                auto* v = &(pItr->second);
+                auto nextItr = std::next(pItr);
+                if (nextItr != nullptr) {
+                    auto* v2 = &(nextItr->second);
+                    v->insert(v->end(), v2->begin(), v2->end());
+                }
+            }
+        }
+
+        // if (exprPairs.size() > 0) {
+        //     // display the pairs on terminal
+        //     std::cout << ":: Displaying Extracted Pairs ::" << std::endl;
+        //     std::cout << "\033[35m";
+        //     for (const auto& p : exprPairs) {
+        //         std::cout << "[*] Expr Set :: LHS -> " << p.first;
+        //         if (p.second.size() > 0) {
+        //             std::cout << " is defined by Using the Following RHS [ ";
+        //             for (const auto& rhs : p.second) {
+        //                 std::cout << rhs << " ";
+        //             }
+        //             std::cout << "]" << std::endl;
+        //         } else {
+        //             std::cout << " is defined by Using a Literal" << std::endl;
+        //         }
+        //     }
+        //     std::cout << "\033[0m";
+        //     std::cout << "::----------------------------::" << std::endl;
+        // }
+
+        return exprPairs;
+    }
+
+    bool isAssignment(const std::string& expr_op) {
+        return (expr_op == "=") || (expr_op == "+=") || (expr_op == "-=") || (expr_op == "*=") || (expr_op == "/=") || (expr_op == "%=");
+    }
+
+    bool isWhiteSpace(const std::string& str) {
+        return str.find_first_not_of(" \t\n\r") == std::string::npos;
+    }
 
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap() {
         return profileMap;
@@ -707,16 +976,41 @@ private:
             std::cout << "Filename: " << data->filename << std::endl;
             std::cout << "  " << data->ToString() << std::endl;
             std::cout << "  Locals:" << std::endl;
-            for(std::size_t pos = 0; pos < data->block->locals.size(); ++pos) {
-                std::cout << "   " <<  *(data->block->locals[pos]) << std::endl;
+            for (const auto& item : data->block->locals) {
+                // initial def line
+                std::cout << item->name->name << " | " << item->lineNumber << std::endl;
             }
             std::cout << "  Returns: " << data->block->returns.size() << std::endl;
             for(std::size_t pos = 0; pos < data->block->returns.size(); ++pos) {
                 std::cout << "   " << *(data->block->returns[pos]) << std::endl;
             }
             std::cout << "  Expressions: " << data->block->expr_stmts.size() << std::endl;
-            for(std::size_t pos = 0; pos < data->block->expr_stmts.size(); ++pos) {
-                std::cout << "   " << *(data->block->expr_stmts[pos]) << std::endl;
+            for (const auto& exprData : data->block->expr_stmts) {
+                for (size_t pos = 0; pos < exprData->expr.size(); ++pos) {
+                    for (const auto& exprElem : exprData->expr) {
+                        switch (exprElem->type) {
+                            case ExpressionElement::NAME:
+                                std::cout << "NAME -> " << *exprElem->name;
+                                break;
+                            case ExpressionElement::OP:
+                                std::cout << "OP -> " << *exprElem->token;
+                                break;
+                            case ExpressionElement::LITERAL:
+                                std::cout << "LIT -> " << *exprElem->token;
+                                break;
+                            case ExpressionElement::CALL:
+                                std::cout << "CALL -> " << *exprElem->call << std::endl;
+                                std::cout << "Call_Name -> " << *exprElem->call->name << std::endl;
+                                for (const auto& arg : exprElem->call->arguments) {
+                                    for (const auto& argExprElem : arg->expr) {
+                                        std::cout << "Arg_Name -> " << *argExprElem->name << " ";
+                                    }
+                                }
+                                break;
+                        }
+                    }
+                    std::cout << " used on Line " << exprData->lineNumber << std::endl;
+                }
             }
 
 
