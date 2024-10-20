@@ -15,7 +15,7 @@
 #include <ClassPolicySingleEvent.hpp>
 #include <UnitPolicySingleEvent.hpp>
 
-struct VariableData{
+struct VariableData {
     VariableData(){}
     VariableData(std::shared_ptr<ExpressionElement> elem){ lhsElem = elem; }
 
@@ -31,6 +31,7 @@ struct VariableData{
     // Name of an expression variable that may be a LHS/RHS var
     // potentially have none to many RHS variables the LHS uses
     std::string GetNameOfIdentifier() const {
+        if (!lhsElem) return "";
         return lhsElem->name->name;
     }
 

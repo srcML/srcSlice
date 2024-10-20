@@ -63,6 +63,11 @@ public:
     }
 
     void ProcessDeclStmts(std::vector<std::shared_ptr<DeclTypeData>>& decls, const srcDispatch::srcSAXEventContext& ctx) {
+        /*
+            - Need to find where Function Definitions and Function Parameter data is stored in the new collection format
+              currently no slices for function parameters are being generated
+        */
+        
         // loop through all the expression statements within Decl Statements
         for (const auto& localVar : decls) {
             auto varDataGroup = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
@@ -73,8 +78,6 @@ public:
             std::string declVarType = localVar->type->ToString();
             bool isPointer = false;
             bool isReference = false;
-
-            // std::cout << "[*] Decl Name -> " << declVarName << std::endl;
 
             for(std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
                 const std::pair<std::any, TypeData::TypeType> & type = localVar->type->types[pos];
@@ -178,22 +181,7 @@ public:
             
             // Link the function this slice is located in
             sliceProfileItr->second.back().function = ctx.currentFunctionName;
-            
-            // if (varDataGroup.size() > 0) {
-            //     std::cout << *localVar->name << " is Defined Using [ ";
-            //     for (const auto& varData : varDataGroup) {
-            //         std::cout << varData.GetNameOfIdentifier() << " "; // LHS
-            //         for (const auto& rhsData : varData.rhsElems) {
-            //             std::cout << rhsData.GetNameOfIdentifier() << " "; // RHS
-                        
-            //         }
-            //     }
-            //     std::cout << "]" << std::endl;
-            // } else {
-            //     std::cout << *localVar->name << " is Defined Using a Literal" << std::endl;
-            // }
         }
-        // std::cout << std::endl;
     }
 
     void ProcessExprStmts(std::vector<std::shared_ptr<ExpressionData>>& exprStmts, const srcDispatch::srcSAXEventContext& ctx) {
@@ -201,23 +189,6 @@ public:
         for (const auto& expr : exprStmts) {
             auto varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
-            // if (varDataGroup.size() > 0) {
-            //     for (const auto& varData : varDataGroup) {
-            //         std::cout << varData.GetNameOfIdentifier() << " "; // LHS
-            //         if (varData.rhsElems.size() > 0) {
-            //             std::cout << "is defined using the following -> [ ";
-            //             for (const auto& rhsVarData : varData.rhsElems) {
-            //                 std::cout << rhsVarData.GetNameOfIdentifier() << " "; // RHS
-            //             }
-            //             std::cout << "]";
-            //         } else {
-            //             std::cout << "is defined using a Literal";
-            //         }
-            //     }
-            //     std::cout << std::endl;
-            // }
-
-            //iterate through every token found in the expression statement
             for (auto& varData : varDataGroup) {
                 for (auto& rhsVarData : varData.rhsElems) {
                     std::shared_ptr<ExpressionElement> lhsData = varData.lhsElem;
@@ -290,7 +261,52 @@ public:
 
     }
 
+    void ProcessFunctionCall(std::shared_ptr<CallData> funcCallData) {
+        int argIndex = 0;
+        for (auto& arg : funcCallData->arguments) {
+            ++argIndex;
+
+            // Extract the Variable Name from the expression contained within
+            // the function call argument list index
+            for (auto& exprElem : arg->expr) {
+                unsigned int argUseLineNumber = funcCallData->lineNumber;
+
+                /*
+                    - Need to Reimplement the FunctionSiguature map to link the Function Definition
+                      Line Number when inserting new Call data into a slice
+                */
+
+                // Update an existing slices Call data
+                auto sliceProfileItr = profileMap.find(exprElem->name->name);
+                if (sliceProfileItr != profileMap.end()) {
+                    auto sliceCallData = std::make_pair(
+                        funcCallData->name->name, // function call name
+                        std::make_pair(
+                            std::to_string(argIndex), // arg index starting from 1 to n
+                            std::to_string(0) // function definition line number
+                        )
+                    );
+
+                    // Need to also potentially add definition line numbers incase there are
+                    // increment or decrement operators with the argument expression
+                    sliceProfileItr->second.back().uses.insert(argUseLineNumber);
+
+                    if (sliceProfileItr->second.back().cfunctions.empty()) {
+                        sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                    } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
+                        sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                    }
+                }
+            }
+        }
+    }
+
     std::vector<VariableData> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
+        /*
+            - Need to implement logic to capture pre/postfix assignment occurences to a Vars Def set
+            - Need also a way to seperate processing pre/postfix operators from assignment & compound assignment
+        */
+
         std::vector<VariableData> varDataGroup;
         std::string expr_op = "";
         VariableData exprVariable; // LHS variable
@@ -324,13 +340,11 @@ public:
                     }
                 break;
                 case ExpressionElement::CALL: // 2
-                    for (const auto& arg : exprElem->call->arguments) {
-                        for (const auto& argExprElem : arg->expr) {
-                            std::cout << *argExprElem->name <<
-                            " is used within Call -> " << *exprElem->call->name <<
-                            " on Line " << lineNumber << std::endl;
-                        }
-                    }
+                    // This will read through the Call Args and attempt
+                    // to find the slice profile for the extracted arg
+                    // and will attempt to insert potential:
+                    // use/def/call data
+                    ProcessFunctionCall(exprElem->call);
                 break;
                 default:
                 break;
@@ -349,7 +363,6 @@ public:
             // Insert the vector collection from vectors
             // in-front of a specific vector to show all
             // RHS vars used against a LHS var
-
             for (auto pItr = varDataGroup.begin(); pItr != varDataGroup.end(); ++pItr) {
                 auto* v = &(pItr->rhsElems);
                 auto nextItr = std::next(pItr);
@@ -359,26 +372,6 @@ public:
                 }
             }
         }
-
-        // if (exprPairs.size() > 0) {
-        //     // display the pairs on terminal
-        //     std::cout << ":: Displaying Extracted Pairs ::" << std::endl;
-        //     std::cout << "\033[35m";
-        //     for (const auto& p : exprPairs) {
-        //         std::cout << "[*] Expr Set :: LHS -> " << p.first;
-        //         if (p.second.size() > 0) {
-        //             std::cout << " is defined by Using the Following RHS [ ";
-        //             for (const auto& rhs : p.second) {
-        //                 std::cout << rhs << " ";
-        //             }
-        //             std::cout << "]" << std::endl;
-        //         } else {
-        //             std::cout << " is defined by Using a Literal" << std::endl;
-        //         }
-        //     }
-        //     std::cout << "\033[0m";
-        //     std::cout << "::----------------------------::" << std::endl;
-        // }
 
         return varDataGroup;
     }
@@ -999,7 +992,6 @@ protected:
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
     std::vector<std::shared_ptr<ClassData>> classInfo;
-    std::vector<std::shared_ptr<FunctionData>> functionInfo;
 
     // Process the class and function information collected
     void PrintCollection() {
@@ -1036,53 +1028,6 @@ private:
             for (unsigned int j=0; j<data->operators[ClassData::PRIVATE].size(); ++j) {
                 std::cout << " " << data->operators[ClassData::PRIVATE][j]->ToString() << std::endl;
             }
-            std::cout << std::endl;
-        }
-
-        for (std::shared_ptr<FunctionData> data : functionInfo) {
-            std::cout << "Function: " << *(data->name) << std::endl;
-            std::cout << "Language: " << data->language << std::endl;
-            std::cout << "Filename: " << data->filename << std::endl;
-            std::cout << "  " << data->ToString() << std::endl;
-            std::cout << "  Locals:" << std::endl;
-            for (const auto& item : data->block->locals) {
-                // initial def line
-                std::cout << item->name->name << " | " << item->lineNumber << std::endl;
-            }
-            std::cout << "  Returns: " << data->block->returns.size() << std::endl;
-            for(std::size_t pos = 0; pos < data->block->returns.size(); ++pos) {
-                std::cout << "   " << *(data->block->returns[pos]) << std::endl;
-            }
-            std::cout << "  Expressions: " << data->block->expr_stmts.size() << std::endl;
-            for (const auto& exprData : data->block->expr_stmts) {
-                for (size_t pos = 0; pos < exprData->expr.size(); ++pos) {
-                    for (const auto& exprElem : exprData->expr) {
-                        switch (exprElem->type) {
-                            case ExpressionElement::NAME:
-                                std::cout << "NAME -> " << *exprElem->name;
-                                break;
-                            case ExpressionElement::OP:
-                                std::cout << "OP -> " << *exprElem->token;
-                                break;
-                            case ExpressionElement::LITERAL:
-                                std::cout << "LIT -> " << *exprElem->token;
-                                break;
-                            case ExpressionElement::CALL:
-                                std::cout << "CALL -> " << *exprElem->call << std::endl;
-                                std::cout << "Call_Name -> " << *exprElem->call->name << std::endl;
-                                for (const auto& arg : exprElem->call->arguments) {
-                                    for (const auto& argExprElem : arg->expr) {
-                                        std::cout << "Arg_Name -> " << *argExprElem->name << " ";
-                                    }
-                                }
-                                break;
-                        }
-                    }
-                    std::cout << " used on Line " << exprData->lineNumber << std::endl;
-                }
-            }
-
-
             std::cout << std::endl;
         }
         std::cout << std::endl;
