@@ -70,64 +70,64 @@ public:
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;
         out << "    \"language\":\"" << profile.language << "\"," << std::endl;
         
-        out << "    \"namespace\":\" [ ";
+        out << "    \"namespace\":\"[";
         for (std::string nameSpace : profile.containingNameSpaces) {
             if (nameSpace != profile.containingNameSpaces.back())
                 out << "\"" << nameSpace << "\",";
             else
                 out << "\"" << nameSpace << "\"";
         }
-        out << " ]," << std::endl;
+        out << "]," << std::endl;
 
         out << "    \"class\":\"" << profile.nameOfContainingClass << "\"," << std::endl;
         out << "    \"function\":\"" << profile.function << "\"," << std::endl;
         out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
         out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
 
-        out << "    \"dependentVariables\": [ ";
+        out << "    \"dependentVariables\":[";
         for (auto dvar : profile.dvars) {
             if (dvar != *(--profile.dvars.end()))
-                out << "{ \"" << dvar.first << "\": " << dvar.second << " },";
+                out << "{\"" << dvar.first << "\":" << dvar.second << "},";
             else
-                out << "{ \"" << dvar.first << "\": " << dvar.second << " }";
+                out << "{\"" << dvar.first << "\":" << dvar.second << "}";
         }
-        out << " ]," << std::endl;
+        out << "]," << std::endl;
 
-        out << "    \"aliases\": [ ";
+        out << "    \"aliases\":[";
         for (auto alias : profile.aliases) {
             if (alias != *(--profile.aliases.end()))
-                out << "{ \"" << alias.first << "\": " << alias.second << " },";
+                out << "{\"" << alias.first << "\":" << alias.second << "},";
             else
-                out << "{ \"" << alias.first << "\": " << alias.second << " }";
+                out << "{\"" << alias.first << "\":" << alias.second << "}";
         }
-        out << " ]," << std::endl;
+        out << "]," << std::endl;
 
-        out << "    \"calledFunctions\": [ ";
+        out << "    \"calledFunctions\":[";
         for (auto cfunc : profile.cfunctions) {
             if (cfunc != *(--profile.cfunctions.end()))
-                out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameter\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}, ";
+                out << "{\"functionName\":\"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"},";
             else
-                out << "{\"functionName\": \"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\", \"parameter\": \"" << cfunc.second.first << "\", \"definitionLine\": \"" << cfunc.second.second << "\"}";
+                out << "{\"functionName\":\"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"}";
         }
-        out << " ]," << std::endl;
+        out << "]," << std::endl;
 
-        out << "    \"use\": [ ";
+        out << "    \"use\":[";
         for (auto use : profile.uses) {
             if (use != *(--profile.uses.end()))
-                out << use << ", ";
+                out << use << ",";
             else
                 out << use;
         }
-        out << " ]," << std::endl;
+        out << "]," << std::endl;
 
-        out << "    \"definition\": [ ";
+        out << "    \"definition\":[";
         for (auto def : profile.definitions) {
             if (def != *(--profile.definitions.end()))
-                out << def << ", ";
+                out << def << ",";
             else
                 out << def;
         }
-        out << " ]" << std::endl;
+        out << "]" << std::endl;
 
         // out << "    \"controlEdges\": [ ";
         // for (auto edge : profile.controlEdges) {

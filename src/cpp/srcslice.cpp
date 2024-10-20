@@ -16,7 +16,7 @@ bool validFlag(const char *arg)
 
 void Usage()
 {
-    std::cout << "Src-Slice (srcml Slicing Tool)\n"
+    std::cout << "srcSlice (srcML Slicing Tool)\n"
                  "./srcslice [srcML file name] [-j json] [-h help] [-o output file name]\n"
                  "  \033[31m NOTE - srcML input file should be built using the --position flag! \033[0m \n"
                  "        Command Summary:\n"
@@ -49,7 +49,7 @@ int main(int argc, char **argv)
                 return 1;
             } else
                 {
-                    // Check for DuplisrcSliceHandlere Parameters/Flags
+                    // Check for Duplicate srcSlice Parameters/Flags
 
                     // Detect output file flag
                     if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) && !hasOutFile)
@@ -59,7 +59,7 @@ int main(int argc, char **argv)
                             hasOutFile = true;
                         } else
                             {
-                                std::cerr << "\033[31m" << "DuplisrcSliceHandlere Parameters!" << "\033[0m" << std::endl;
+                                std::cerr << "\033[31m" << "Duplicate srcSlice Parameters!" << "\033[0m" << std::endl;
                                 Usage();
                                 return 6;
                             }
@@ -154,7 +154,7 @@ int main(int argc, char **argv)
                     // in the slice name when we pipe to stdout
                     if (sliceProfileNames[name]-1 != 0) name += '_' + sliceProfileNames[name];
 
-                    sliceOutput << "\"" << name << "\" : {" << std::endl;
+                    sliceOutput << "\"" << name << "\":{" << std::endl;
 
                     // print out content of the SliceProfile
                     sliceOutput << slice;
