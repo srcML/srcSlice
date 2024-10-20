@@ -1,121 +1,20 @@
 #include <srcslicehandler.hpp>
 
-bool validFlag(const char *arg)
-{
-    // flags all have - as the first char, so we want to skip non-flags
-    if (arg[0] != '-')
-        return true;
-
-    if (strcmp(arg, "-h") == 0 || strcmp(arg, "--help") == 0)
-        return true;
-    if (strcmp(arg, "-o") == 0 || strcmp(arg, "--output") == 0)
-        return true;
-
-    return false;
-}
-
-void Usage()
-{
-    std::cout << "srcSlice (srcML Slicing Tool)\n"
-                 "./srcslice [srcML file name] [-j json] [-h help] [-o output file name]\n"
-                 "  \033[31m NOTE - srcML input file should be built using the --position flag! \033[0m \n"
-                 "        Command Summary:\n"
-                 "            -h / --help              Shows this Page\n"
-                 "            -o / --output            Output File Name\n"
-              << std::endl;
-}
-
 int main(int argc, char **argv)
 {
-    bool hasOutFile = false;
-
-    {
-        if (argc < 2) {
-            std::cerr << "\033[31m" << "Not Enough Parameters!" << "\033[0m" << std::endl;
-            Usage();
-            return -1;
-        }
-    }
-
-    {
-        // Flag Parameter Handling
-        for (int i = 1; i < argc; ++i)
-        {
-            if (!validFlag(argv[i]))
-            {
-                // Quit when bad flags are present
-                std::cerr << "Bad Argument :: " << "\033[31m" << argv[i] << "\033[0m" << std::endl;
-                Usage();
-                return 1;
-            } else
-                {
-                    // Check for Duplicate srcSlice Parameters/Flags
-
-                    // Detect output file flag
-                    if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0) && !hasOutFile)
-                    {
-                        if (!hasOutFile)
-                        {
-                            hasOutFile = true;
-                        } else
-                            {
-                                std::cerr << "\033[31m" << "Duplicate srcSlice Parameters!" << "\033[0m" << std::endl;
-                                Usage();
-                                return 6;
-                            }
-                    }
-                }
-
-            // Display help when requested in the command at any position
-            if (strcmp(argv[i], "-h") == 0 || strcmp(argv[i], "--help") == 0)
-            {
-                Usage();
-                return 0;
-            }
-        }
-    }
-
-    // Quit when too many parameters exist in the command
-    if (argc > 5)
-    {
-        std::cerr << "\033[31m" << "Too Many Parameters!" << "\033[0m" << std::endl;
-        Usage();
-        return 2;
-    }
-
     // search for the output flag and set a marker
-    int argi = -1;
+    std::string inputFile = "", outputFile = "";
     std::ofstream outFile;
 
-    for (int i = 0; i < argc; ++i)
-    {
-        if ((strcmp(argv[i], "-o") == 0 || strcmp(argv[i], "--output") == 0))
-        {
-            if (i + 1 < argc)
-            {
-                // extremely unlikely for a filename to start with '-'
-                if (argv[i + 1][0] == '-')
-                {
-                    // error due to missing output name
-                    std::cerr << "\033[31m" << "-o/--output takes one parameter!" << "\033[0m" << std::endl;
-                    Usage();
-                    return 5;
-                }
-
-                argi = i + 1;
-                break;
-            } else
-                {
-                    // error due to missing output name
-                    std::cerr << "\033[31m" << "-o/--output takes one parameter!" << "\033[0m" << std::endl;
-                    Usage();
-                    return 5;
-                }
-        }
-    }
+    CLI::App app{"srcSlice (srcML Slicing Tool)"};
+    // Options hold extra data
+    app.add_option  ("-i, --input",   inputFile,             "Name of the srcML input file [Must be built using the --position flag]")->required();
+    app.add_option  ("-o, --output",  outputFile,            "Name of the JSON output file [Stdout is Default]");
+    
+    CLI11_PARSE(app, argc, argv);
 
     try {
-        SrcSliceHandler srcSliceHandler(argv[1]);
+        SrcSliceHandler srcSliceHandler(inputFile.c_str());
 
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
@@ -123,9 +22,9 @@ int main(int argc, char **argv)
         size_t currIndex = 0;
         std::ostringstream sliceOutput;
 
-        if (argi != -1) {
+        if (!outputFile.empty()) {
             // allow output file to be written in
-            outFile = std::ofstream(argv[argi]);
+            outFile = std::ofstream(outputFile);
         } else {
             // close output file
             outFile.close();
@@ -179,7 +78,7 @@ int main(int argc, char **argv)
         }
 
         // write to either stdout or output file
-        if (hasOutFile) {
+        if (!outputFile.empty()) {
             outFile << stream2string;
         } else {
             std::cout << stream2string;
@@ -191,8 +90,8 @@ int main(int argc, char **argv)
 
     // ensure if we do have an output file we close it
     // alert user that an output file has been created
-    if (argi != -1) {
-        std::cout << "Output Saved to :: " << argv[argi] << std::endl;
+    if (!outputFile.empty()) {
+        std::cout << "Output Saved to :: " << outputFile << std::endl;
         outFile.close();
     }
 }
