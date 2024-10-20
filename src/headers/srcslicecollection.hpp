@@ -43,4 +43,11 @@ struct VariableData {
     std::set<unsigned int> definitions;
 };
 
+// Store Data concerning both Function Signature Data along with a
+// counter so track how many times a function is potentially overloaded
+struct FunctionSignatureData {
+    std::unordered_map<std::string, std::shared_ptr<FunctionData>> functionSigMap;
+    std::unordered_map<std::string, unsigned int> overloadFunctionCount;
+};
+
 #endif
