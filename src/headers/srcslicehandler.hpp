@@ -50,6 +50,7 @@ public:
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if(typeid(ClassPolicy) == typeid(*policy)) {
             std::shared_ptr<ClassData> class_data = policy->Data<ClassData>();
+            classInfo.push_back( class_data );
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
             ProcessFunctionData(policy->Data<FunctionData>(), ctx);
         }
@@ -58,16 +59,12 @@ public:
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
 
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, const srcDispatch::srcSAXEventContext& ctx) {
+        ProcessFunctionSignature(function_data, ctx);
         ProcessDeclStmts(function_data->block->locals, ctx);
         ProcessExprStmts(function_data->block->expr_stmts, ctx);
     }
 
     void ProcessDeclStmts(std::vector<std::shared_ptr<DeclTypeData>>& decls, const srcDispatch::srcSAXEventContext& ctx) {
-        /*
-            - Need to find where Function Definitions and Function Parameter data is stored in the new collection format
-              currently no slices for function parameters are being generated
-        */
-        
         // loop through all the expression statements within Decl Statements
         for (const auto& localVar : decls) {
             auto varDataGroup = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
@@ -198,9 +195,6 @@ public:
                     auto sliceProfileExprItr = profileMap.find(rhsName);
                     auto sliceProfileLHSItr = profileMap.find(lhsName);
 
-                    // std::cout << "[*] `ProcessExprStmts` sliceProfileLHSItr  :: " << lhsName << std::endl;
-                    // std::cout << "[*] `ProcessExprStmts` sliceProfileExprItr :: " << rhsName << std::endl << std::endl;
-
                     //Just update definitions and uses if name already exists. Otherwise, add new name.
                     if (sliceProfileExprItr != profileMap.end()) {
                         sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
@@ -271,19 +265,21 @@ public:
             for (auto& exprElem : arg->expr) {
                 unsigned int argUseLineNumber = funcCallData->lineNumber;
 
-                /*
-                    - Need to Reimplement the FunctionSiguature map to link the Function Definition
-                      Line Number when inserting new Call data into a slice
-                */
-
                 // Update an existing slices Call data
                 auto sliceProfileItr = profileMap.find(exprElem->name->name);
                 if (sliceProfileItr != profileMap.end()) {
+                    std::string functionName = funcCallData->name->name;
+                    auto funcSig = funcSigCollection.functionSigMap.find(functionName);
+                    unsigned int funcLineDef = 0;
+                    if (funcSig != funcSigCollection.functionSigMap.end()) {
+                        funcLineDef = funcSig->second->lineNumber;
+                    }
+
                     auto sliceCallData = std::make_pair(
-                        funcCallData->name->name, // function call name
+                        functionName, // function call name
                         std::make_pair(
                             std::to_string(argIndex), // arg index starting from 1 to n
-                            std::to_string(0) // function definition line number
+                            std::to_string(funcLineDef) // function definition line number
                         )
                     );
 
@@ -374,6 +370,92 @@ public:
         }
 
         return varDataGroup;
+    }
+
+    void ProcessFunctionParameters(std::vector<std::shared_ptr<ParamTypeData>>& parameters, const srcDispatch::srcSAXEventContext& ctx) {
+        for (auto& parameter : parameters) {
+            std::string paramName = parameter->name->ToString();
+
+            // the Type string also includes the symbols along with data-type name
+            // so this needs to be parsed out of the ToString() output
+            std::string paramType = parameter->type->ToString().substr(0,parameter->type->ToString().find(' '));
+
+            bool isPointer = false;
+            bool isReference = false;
+
+            for(std::size_t pos = 0; pos < parameter->type->types.size(); ++pos) {
+                const std::pair<std::any, TypeData::TypeType> & type = parameter->type->types[pos];
+                if (type.second == TypeData::POINTER) {
+                    isPointer = true;
+                } else if (type.second == TypeData::REFERENCE) {
+                    isReference = true;
+                } /* else if (type.second == TypeData::RVALUE) {
+                } else if (type.second == TypeData::SPECIFIER) {
+                } else if (type.second == TypeData::TYPENAME) {
+                } */
+            }
+            
+            // Record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
+            auto sliceProfileItr = profileMap.find(paramName);
+            // Just add new slice profile if name already exists. Otherwise, add new entry in map.
+            if (sliceProfileItr != profileMap.end()) {
+                auto sliceProf = SliceProfile(paramName, parameter->lineNumber,
+                                              isPointer, true,
+                                              std::set<unsigned int>{parameter->lineNumber});
+                sliceProf.containsDeclaration = true;
+                sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                sliceProfileItr->second.push_back(std::move(sliceProf));
+            } else {
+                auto sliceProf = SliceProfile(paramName, parameter->lineNumber,
+                                              isPointer, true,
+                                              std::set<unsigned int>{parameter->lineNumber});
+                sliceProf.containsDeclaration = true;
+                sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                profileMap.insert(std::make_pair(paramName,
+                                                  std::vector<SliceProfile>{std::move(sliceProf)}));
+            }
+
+            // Attempt to insert data-types for sliceprofiles found in function/ctor parameters
+            profileMap.find(paramName)->second.back().variableType = paramType;
+
+            // Link the filepath this slice is located in
+            profileMap.find(paramName)->second.back().file = ctx.currentFilePath;
+
+            // Link the file hash attribute
+            profileMap.find(paramName)->second.back().checksum = ctx.currentFileChecksum;
+
+            // Link the function the XML Originates from
+            profileMap.find(paramName)->second.back().function = ctx.currentFunctionName;
+        }
+    }
+
+    void ProcessFunctionSignature(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
+        std::string functionName = funcData->name->ToString();
+        if (functionName.empty()) return;
+
+        // Process the parameters in a separate function
+        ProcessFunctionParameters(funcData->parameters, ctx);
+
+        if (funcSigCollection.functionSigMap.find(functionName) != funcSigCollection.functionSigMap.end()) {
+            // overloaded function detected
+
+            // construct a new name to log the overloaded function under
+            std::string functName = functionName;
+            unsigned int overloadID = ++funcSigCollection.overloadFunctionCount[functName];
+            functName += "-" + std::to_string(overloadID);
+
+            funcSigCollection.functionSigMap.insert(
+                    std::make_pair(functName, funcData)
+                    );
+        } else {
+            // Insert a new signature
+            funcSigCollection.functionSigMap.insert(
+                    std::make_pair(functionName, funcData)
+                    );
+            funcSigCollection.overloadFunctionCount[functionName] = 0;
+        }
     }
 
     bool StringContainsCharacters(const std::string &str) {
@@ -992,6 +1074,7 @@ protected:
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
     std::vector<std::shared_ptr<ClassData>> classInfo;
+    FunctionSignatureData funcSigCollection;
 
     // Process the class and function information collected
     void PrintCollection() {
