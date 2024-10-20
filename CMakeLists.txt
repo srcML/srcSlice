@@ -37,7 +37,8 @@ set(CMAKE_ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 include_directories(${LIBXML2_INCLUDE_DIR}
                     ${CMAKE_SOURCE_DIR}/srcDispatch/srcSAX/src/srcsax
                     ${CMAKE_SOURCE_DIR}/srcDispatch/srcSAX/src/cpp
-                    ${CMAKE_SOURCE_DIR}/srcDispatch/srcSAX/src/windows 
+                    ${CMAKE_SOURCE_DIR}/srcDispatch/srcSAX/src/windows
+                    external
                     srcDispatch/src/dispatcher
                     srcDispatch/src/policy_classes
                     src/headers)
@@ -45,3 +46,8 @@ include_directories(${LIBXML2_INCLUDE_DIR}
 add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(srcDispatch)
+
+# Download the CLI11 parser into directory named "external".
+set(CMAKE_EXTERNAL_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external) # Creates folder if doesn't exists.
+# Name of file is needed since content of file itself are being downloaded.
+file(DOWNLOAD https://github.com/CLIUtils/CLI11/releases/download/v2.3.2/CLI11.hpp ${CMAKE_EXTERNAL_SOURCE_DIR}/CLI11.hpp)

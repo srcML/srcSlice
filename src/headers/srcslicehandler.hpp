@@ -13,6 +13,7 @@
 #include <FunctionPolicySingleEvent.hpp>
 #include <ClassPolicySingleEvent.hpp>
 #include <UnitPolicySingleEvent.hpp>
+#include <CLI11.hpp>
 /*
 #include <DeclTypePolicy.hpp>
 #include <ExprPolicy.hpp>
