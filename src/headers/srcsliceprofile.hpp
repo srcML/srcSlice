@@ -70,7 +70,7 @@ public:
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;
         out << "    \"language\":\"" << profile.language << "\"," << std::endl;
         
-        out << "    \"namespace\":\"[";
+        out << "    \"namespace\":[";
         for (std::string nameSpace : profile.containingNameSpaces) {
             if (nameSpace != profile.containingNameSpaces.back())
                 out << "\"" << nameSpace << "\",";
