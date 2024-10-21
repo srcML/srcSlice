@@ -91,9 +91,6 @@ public:
 
             auto sliceProfileItr = profileMap.find(declVarName);
 
-            // Dumps out the variable names of variables
-            // declared in a function body :: main(), ...
-
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap.end()) {
                 auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber,
@@ -131,8 +128,11 @@ public:
             // Look at the dvars and add this current variable to their dvar's lists.
             // If we haven't seen this name before, add its slice profile
             for (auto& varData : varDataGroup) {
+                UpdateLHSSlices(varData);
                 for (auto& dvarData : varData.rhsElems) {
                     std::string dvar = dvarData.GetNameOfIdentifier();
+
+                    // std::cout << "[*] DVAR RHS Name -> " << dvar << " | LHS Name -> " << varData.GetNameOfIdentifier() << " | declVarName -> " << declVarName << std::endl;
 
                     auto updateDvarAtThisLocation = profileMap.find(dvar);
                     if (updateDvarAtThisLocation != profileMap.end()) {
@@ -149,6 +149,7 @@ public:
                                                     std::set<unsigned int>{localVar->lineNumber});
                         sliceProf.nameOfContainingClass = ctx.currentClassName;
                         sliceProf.containingNameSpaces = ctx.currentNamespaces;
+
                         auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
                                                                                             std::vector<SliceProfile>{
                                                                                                     std::move(sliceProf)
@@ -188,6 +189,7 @@ public:
             auto varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
             for (auto& varData : varDataGroup) {
+                UpdateLHSSlices(varData);
                 for (auto& rhsVarData : varData.rhsElems) {
                     std::shared_ptr<ExpressionElement> lhsData = varData.lhsElem;
                     std::string lhsName = varData.GetNameOfIdentifier();
@@ -200,6 +202,7 @@ public:
                     if (sliceProfileExprItr != profileMap.end()) {
                         sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
                         sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
+
                         sliceProfileExprItr->second.back().uses.insert(rhsVarData.uses.begin(),
                                                                        rhsVarData.uses.end());
                         sliceProfileExprItr->second.back().definitions.insert(rhsVarData.definitions.begin(),
@@ -299,11 +302,6 @@ public:
     }
 
     std::vector<VariableData> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
-        /*
-            - Need to implement logic to capture pre/postfix assignment occurences to a Vars Def set
-            - Need also a way to seperate processing pre/postfix operators from assignment & compound assignment
-        */
-
         std::vector<VariableData> varDataGroup;
         std::string expr_op = "";
         VariableData exprVariable; // LHS variable
@@ -316,7 +314,14 @@ public:
                         exprVariable.lhsElem = exprElem;
                         exprVariable.uses.insert(lineNumber);
                     } else {
-                        exprVariable.rhsElems.push_back( VariableData(exprElem) );
+                        VariableData rhsExprVar(exprElem);
+                        rhsExprVar.uses.insert(lineNumber);
+
+                        if (expr_op == "++" || expr_op == "--" ) {
+                            rhsExprVar.definitions.insert(lineNumber);
+                        }
+
+                        exprVariable.rhsElems.push_back( rhsExprVar );
                         exprVariable.rhsElems.back().uses.insert(lineNumber);
                     }
                 break;
@@ -326,13 +331,30 @@ public:
                         expr_op = exprElem->token->token;
 
                         // Print the current LHS and RHS pair
-                        if (!exprVariable.rhsElems.empty() && isAssignment(expr_op)) {
-                            // Push back the lhs-rhs set
-                            exprVariable.lhs = true;
-                            varDataGroup.push_back(exprVariable);
-                            exprVariable.clear();
-                            // Set the new lhs for the potential next lhs-rhs pair
-                            exprVariable = exprVariable.rhsElems.back();
+                        if (!exprVariable.rhsElems.empty()) {
+                            if (isAssignment(expr_op)) {
+                                // Push back the lhs-rhs set
+                                exprVariable.lhs = true;
+                                varDataGroup.push_back(exprVariable);
+                                exprVariable.clear();
+
+                                // Set the new lhs for the potential next lhs-rhs pair
+                                exprVariable = exprVariable.rhsElems.back();
+
+                                // LHS side of any assignment is a form of definiiton
+                                exprVariable.definitions.insert(lineNumber);
+
+                                // For compound assignment operators this is a def-use chain
+                                if (isCompoundAssignment(expr_op)) {
+                                    exprVariable.definitions.insert(lineNumber);
+                                    exprVariable.uses.insert(lineNumber);
+                                }
+                            } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                                exprVariable.uses.insert(lineNumber);
+                            } else if (expr_op == "++" || expr_op == "--" ) {
+                                exprVariable.uses.insert(lineNumber);
+                                exprVariable.definitions.insert(lineNumber);
+                            }
                         }
                     }
                 break;
@@ -406,6 +428,7 @@ public:
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
+
                 sliceProfileItr->second.push_back(std::move(sliceProf));
             } else {
                 auto sliceProf = SliceProfile(paramName, parameter->lineNumber,
@@ -414,6 +437,7 @@ public:
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
+
                 profileMap.insert(std::make_pair(paramName,
                                                   std::vector<SliceProfile>{std::move(sliceProf)}));
             }
@@ -459,6 +483,21 @@ public:
         }
     }
 
+    // Use for inserting Uses and Defs for Slices in the LHS of an Expression Statement
+    void UpdateLHSSlices(VariableData& varData) {
+        auto sliceProfileItr = profileMap.find(varData.GetNameOfIdentifier());
+
+        // Just update definitions and uses if name already exists. Otherwise, add new name.
+        if (sliceProfileItr != profileMap.end()) {
+            sliceProfileItr->second.back().uses.insert(varData.uses.begin(),
+                                                       varData.uses.end());
+            sliceProfileItr->second.back().definitions.insert(varData.definitions.begin(),
+                                                              varData.definitions.end());
+        } else {
+            std::cout << "[*] There is no Slice of --> " << varData.GetNameOfIdentifier() << std::endl;
+        }
+    }
+
     bool StringContainsCharacters(const std::string &str) {
         for (char ch : str) {
             if (std::isalpha(ch)) {
@@ -470,6 +509,10 @@ public:
 
     bool isAssignment(const std::string& expr_op) {
         return (expr_op == "=") || (expr_op == "+=") || (expr_op == "-=") || (expr_op == "*=") || (expr_op == "/=") || (expr_op == "%=");
+    }
+
+    bool isCompoundAssignment(const std::string& expr_op) {
+        return (expr_op == "+=") || (expr_op == "-=") || (expr_op == "*=") || (expr_op == "/=") || (expr_op == "%=");
     }
 
     bool isWhiteSpace(const std::string& str) {
