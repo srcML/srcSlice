@@ -8,8 +8,11 @@ int main(int argc, char **argv)
 
     CLI::App app{"srcSlice (srcML Slicing Tool)"};
     // Options hold extra data
-    app.add_option  ("-i, --input",   inputFile,             "Name of the srcML input file [Must be built using the --position flag]")->required();
-    app.add_option  ("-o, --output",  outputFile,            "Name of the JSON output file [Stdout is Default]");
+    app.add_option  ("-i, --input",   inputFile,             "Name of the srcML input file [Must be built using the --position flag]")
+        ->required()
+        ->type_name("");
+    app.add_option  ("-o, --output",  outputFile,            "Name of the JSON output file [Stdout is Default]")
+        ->type_name("");
     
     CLI11_PARSE(app, argc, argv);
 
