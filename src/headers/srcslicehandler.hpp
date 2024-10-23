@@ -61,13 +61,13 @@ public:
 
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, const srcDispatch::srcSAXEventContext& ctx) {
         ProcessFunctionSignature(function_data, ctx);
-        ProcessDeclStmts(function_data->block->locals, ctx);
-        ProcessExprStmts(function_data->block->expr_stmts, ctx);
+        ProcessDeclStmts(function_data, ctx);
+        ProcessExprStmts(function_data, ctx);
     }
 
-    void ProcessDeclStmts(std::vector<std::shared_ptr<DeclTypeData>>& decls, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
         // loop through all the expression statements within Decl Statements
-        for (const auto& localVar : decls) {
+        for (const auto& localVar : funcData->block->locals) {
             auto varDataGroup = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
 
             // Collect pieces about the newly declared variable to use later when adding it into
@@ -132,10 +132,15 @@ public:
                 for (auto& dvarData : varData.rhsElems) {
                     std::string dvar = dvarData.GetNameOfIdentifier();
 
-                    // std::cout << "[*] DVAR RHS Name -> " << dvar << " | LHS Name -> " << varData.GetNameOfIdentifier() << " | declVarName -> " << declVarName << std::endl;
-
                     auto updateDvarAtThisLocation = profileMap.find(dvar);
                     if (updateDvarAtThisLocation != profileMap.end()) {
+
+                        // Update the use/defs for already existing slices
+                        // ProcessExprStmts does not capture expr_stmts
+                        // contained within Decl_stmts
+                        updateDvarAtThisLocation->second.back().uses.insert(dvarData.uses.begin(), dvarData.uses.end());
+                        updateDvarAtThisLocation->second.back().definitions.insert(dvarData.definitions.begin(), dvarData.definitions.end());
+
                         if (!StringContainsCharacters(declVarName)) continue;
                         if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
                             if ( declVarName != sliceProfileItr->second.back().variableName) {
@@ -145,8 +150,15 @@ public:
                         }
                         updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, ctx.currentLineNumber));
                     } else {
-                        auto sliceProf = SliceProfile(dvar, localVar->lineNumber, false, false, std::set<unsigned int>{},
-                                                    std::set<unsigned int>{localVar->lineNumber});
+                        auto sliceProf = SliceProfile(
+                            dvar,
+                            localVar->lineNumber,
+                            false,
+                            false,
+                            std::set<unsigned int>{},
+                            std::set<unsigned int>{localVar->lineNumber}
+                        );
+
                         sliceProf.nameOfContainingClass = ctx.currentClassName;
                         sliceProf.containingNameSpaces = ctx.currentNamespaces;
 
@@ -179,13 +191,13 @@ public:
             sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
             
             // Link the function this slice is located in
-            sliceProfileItr->second.back().function = ctx.currentFunctionName;
+            sliceProfileItr->second.back().function = funcData->name->ToString();
         }
     }
 
-    void ProcessExprStmts(std::vector<std::shared_ptr<ExpressionData>>& exprStmts, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessExprStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
         // loop through all the expression statements
-        for (const auto& expr : exprStmts) {
+        for (const auto& expr : funcData->block->expr_stmts) {
             auto varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
             for (auto& varData : varDataGroup) {
@@ -304,57 +316,83 @@ public:
     std::vector<VariableData> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
         std::vector<VariableData> varDataGroup;
         std::string expr_op = "";
-        VariableData exprVariable; // LHS variable
+        VariableData lhsVar;
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
             switch (exprElem->type) {
-                case ExpressionElement::NAME: // 0
-                    if (expr_op.empty()) {
-                        exprVariable.lhsElem = exprElem;
-                        exprVariable.uses.insert(lineNumber);
-                    } else {
-                        VariableData rhsExprVar(exprElem);
-                        rhsExprVar.uses.insert(lineNumber);
+                case ExpressionElement::NAME: // 0 --> enum to integer value
+                    if (!lhsVar.isInitialized()) {
+                        lhsVar.InitializeLHS(exprElem);
 
-                        if (expr_op == "++" || expr_op == "--" ) {
-                            rhsExprVar.definitions.insert(lineNumber);
+                        lhsVar.definitions.insert(lineNumber);
+
+                        // capture use-def chains for single statements such as: ++i
+                        if (expr_op == "++" || expr_op == "--") {
+                            lhsVar.uses.insert(lineNumber);
+                        }
+                    } else {
+                        VariableData newRHSVar(exprElem);
+                        newRHSVar.uses.insert(lineNumber);
+
+                        // capture use-def chains for rhs var statements such as: a = ++i
+                        if (expr_op == "++" || expr_op == "--") {
+                            newRHSVar.definitions.insert(lineNumber);
                         }
 
-                        exprVariable.rhsElems.push_back( rhsExprVar );
-                        exprVariable.rhsElems.back().uses.insert(lineNumber);
+                        lhsVar.AddRHS(newRHSVar);
                     }
                 break;
                 case ExpressionElement::OP: // 1
-                    // Dont set the operator to a whitespace
-                    if (!isWhiteSpace(exprElem->token->token)) {
-                        expr_op = exprElem->token->token;
+                    expr_op = exprElem->token->token;
 
-                        // Print the current LHS and RHS pair
-                        if (!exprVariable.rhsElems.empty()) {
-                            if (isAssignment(expr_op)) {
-                                // Push back the lhs-rhs set
-                                exprVariable.lhs = true;
-                                varDataGroup.push_back(exprVariable);
-                                exprVariable.clear();
+                    if (!lhsVar.rhsElems.empty()) {
+                        VariableData* prevRHSPtr = lhsVar.GetRecentRHS();
+                        bool isPostfix = true;
 
-                                // Set the new lhs for the potential next lhs-rhs pair
-                                exprVariable = exprVariable.rhsElems.back();
+                        // Take advantage of white-spaces to deduce which variable a potential
+                        // pre/postfix operator is effecting so the use-def chain gets assigned
+                        // correctly
+                        if (isWhiteSpace(expr_op))
+                            isPostfix = false;
 
-                                // LHS side of any assignment is a form of definiiton
-                                exprVariable.definitions.insert(lineNumber);
+                        if (isAssignment(expr_op)) {
+                            // When we encounter assignment while containing a group of RHS variables
+                            // we need to push this LHS-RHS pair into the vector we later return
+                            lhsVar.lhs = true;
+                            varDataGroup.push_back(lhsVar);
 
-                                // For compound assignment operators this is a def-use chain
-                                if (isCompoundAssignment(expr_op)) {
-                                    exprVariable.definitions.insert(lineNumber);
-                                    exprVariable.uses.insert(lineNumber);
-                                }
-                            } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                                exprVariable.uses.insert(lineNumber);
-                            } else if (expr_op == "++" || expr_op == "--" ) {
-                                exprVariable.uses.insert(lineNumber);
-                                exprVariable.definitions.insert(lineNumber);
+                            // We need to set the new LHS variable to start creating a new
+                            // LHS-RHS pair group
+                            lhsVar.clear();
+                            lhsVar.InitializeLHS(prevRHSPtr->lhsElem);
+                            lhsVar.definitions.insert(lineNumber);
+
+                            // Coumpound Assignment is a classic Use-Def Chain
+                            // ie: int a = b += c; // b is used and defined by +=
+                            if (isCompoundAssignment(expr_op)) {
+                                lhsVar.uses.insert(lineNumber);
                             }
+
+                        } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                            // We will have captured some RHS variable, if we encounter this block we've encountered
+                            // a use for the most recent RHS variable we've encountered
+                            if (prevRHSPtr != nullptr) {
+                                prevRHSPtr->uses.insert(lineNumber);
+                            }
+                        } else if (expr_op == "++" || expr_op == "--" ) {
+                            if (isPostfix) {
+                                if (prevRHSPtr != nullptr) {
+                                    prevRHSPtr->uses.insert(lineNumber);
+                                    prevRHSPtr->definitions.insert(lineNumber);
+                                }
+                            }
+                        }
+                    } else {
+                        // Coumpound Assignment is a classic Use-Def Chain
+                        // ie: n += 2;
+                        if (isCompoundAssignment(expr_op)) {
+                            lhsVar.uses.insert(lineNumber);
                         }
                     }
                 break;
@@ -370,32 +408,14 @@ public:
             }
         }
 
-        // Ensure we collect the final expr variable in the expr_stmt
-        if (exprVariable.lhsElem != nullptr) {
-            if (exprVariable.rhsElems.size() > 0) {
-                exprVariable.lhs = true;
-            }
-            varDataGroup.push_back(exprVariable);
-        }
-
-        if (varDataGroup.size() > 1) {
-            // Insert the vector collection from vectors
-            // in-front of a specific vector to show all
-            // RHS vars used against a LHS var
-            for (auto pItr = varDataGroup.begin(); pItr != varDataGroup.end(); ++pItr) {
-                auto* v = &(pItr->rhsElems);
-                auto nextItr = std::next(pItr);
-                if (nextItr != varDataGroup.end()) {
-                    auto* v2 = &(nextItr->rhsElems);
-                    v->insert(v->end(), v2->begin(), v2->end());
-                }
-            }
-        }
+        // Ensure the final LHS-RHS pair is pushed into out collection we return
+        lhsVar.lhs = true;
+        varDataGroup.push_back(lhsVar);
 
         return varDataGroup;
     }
 
-    void ProcessFunctionParameters(std::vector<std::shared_ptr<ParamTypeData>>& parameters, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessFunctionParameters(std::vector<std::shared_ptr<ParamTypeData>>& parameters, const std::string& currentFunctionName, const srcDispatch::srcSAXEventContext& ctx) {
         for (auto& parameter : parameters) {
             std::string paramName = parameter->name->ToString();
 
@@ -452,7 +472,7 @@ public:
             profileMap.find(paramName)->second.back().checksum = ctx.currentFileChecksum;
 
             // Link the function the XML Originates from
-            profileMap.find(paramName)->second.back().function = ctx.currentFunctionName;
+            profileMap.find(paramName)->second.back().function = currentFunctionName;
         }
     }
 
@@ -461,7 +481,7 @@ public:
         if (functionName.empty()) return;
 
         // Process the parameters in a separate function
-        ProcessFunctionParameters(funcData->parameters, ctx);
+        ProcessFunctionParameters(funcData->parameters, funcData->name->ToString(), ctx);
 
         if (funcSigCollection.functionSigMap.find(functionName) != funcSigCollection.functionSigMap.end()) {
             // overloaded function detected
@@ -485,6 +505,8 @@ public:
 
     // Use for inserting Uses and Defs for Slices in the LHS of an Expression Statement
     void UpdateLHSSlices(VariableData& varData) {
+        if (varData.GetNameOfIdentifier().empty()) return;
+
         auto sliceProfileItr = profileMap.find(varData.GetNameOfIdentifier());
 
         // Just update definitions and uses if name already exists. Otherwise, add new name.
@@ -494,7 +516,7 @@ public:
             sliceProfileItr->second.back().definitions.insert(varData.definitions.begin(),
                                                               varData.definitions.end());
         } else {
-            std::cout << "[*] There is no Slice of --> " << varData.GetNameOfIdentifier() << std::endl;
+            std::cout << "[*] There is no Slice of --> '" << varData.GetNameOfIdentifier() << "'" << std::endl;
         }
     }
 
