@@ -15,9 +15,20 @@
 #include <ClassPolicySingleEvent.hpp>
 #include <UnitPolicySingleEvent.hpp>
 
-struct VariableData {
-    VariableData(){}
-    VariableData(std::shared_ptr<ExpressionElement> elem){ lhsElem = elem; }
+class VariableData {
+public:
+    VariableData(std::shared_ptr<ExpressionElement> elem = nullptr): lhsElem(elem){}
+    VariableData(const VariableData& rhs) {
+        lhsElem = rhs.lhsElem;
+        rhsElems = rhs.rhsElems;
+        lhs = rhs.lhs;
+        uses = rhs.uses;
+        definitions = rhs.definitions;
+    }
+    VariableData& operator=(VariableData rhs) {
+        std::swap(*this, rhs);
+        return *this;
+    }
 
     // Basic clean up of this struct to allow simple re-purposing
     void clear(){
@@ -34,6 +45,13 @@ struct VariableData {
         if (!lhsElem) return "";
         return lhsElem->name->name;
     }
+
+    bool isInitialized() { return lhsElem != nullptr; }
+
+    void InitializeLHS(std::shared_ptr<ExpressionElement> elem) { lhsElem = elem; }
+
+    void AddRHS(VariableData& var) { rhsElems.push_back(var); }
+    VariableData* GetRecentRHS() { return rhsElems.size() > 0 ? &(rhsElems.back()) : nullptr; }
 
     std::shared_ptr<ExpressionElement> lhsElem;
     std::vector<VariableData> rhsElems;
