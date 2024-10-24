@@ -38,6 +38,8 @@ public:
         srcSAXController control(filename);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
+
+        // PrintCollection();
     }
 
     // Use string srcml buffer ctor of srcSAXController
@@ -54,6 +56,7 @@ public:
             classInfo.push_back( class_data );
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
             ProcessFunctionData(policy->Data<FunctionData>(), ctx);
+            functionInfo.push_back(policy->Data<FunctionData>());
         }
     }
 
@@ -66,13 +69,25 @@ public:
     }
 
     void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
+        std::vector<std::shared_ptr<DeclTypeData>> localGroup;
+
+        // Capture general locals (decls)
+        localGroup.insert(localGroup.end(), funcData->block->locals.begin(), funcData->block->locals.end());
+
+        // Capture Conditional locals (decls)
+        for (const auto& cntl : funcData->block->conditionals) {
+            std::vector<std::shared_ptr<DeclTypeData>> cntl_locals = cntl->block->locals;
+            // std::cout << "[+] Inserting local group with size -> " << cntl_locals.size() << std::endl;
+            localGroup.insert(localGroup.end(), cntl_locals.begin(), cntl_locals.end());
+        }
+
         // loop through all the expression statements within Decl Statements
-        for (const auto& localVar : funcData->block->locals) {
+        for (const auto& localVar : localGroup) {
             auto varDataGroup = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
 
             // Collect pieces about the newly declared variable to use later when adding it into
             // our profileMap
-            std::string declVarName = localVar->name->name;
+            std::string declVarName = localVar->name->ToString();
             std::string declVarType = localVar->type->ToString();
             bool isPointer = false;
             bool isReference = false;
@@ -161,6 +176,7 @@ public:
 
                         sliceProf.nameOfContainingClass = ctx.currentClassName;
                         sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                        sliceProf.language = ctx.currentFileLanguage;
 
                         auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
                                                                                             std::vector<SliceProfile>{
@@ -196,8 +212,25 @@ public:
     }
 
     void ProcessExprStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
+        std::vector<std::shared_ptr<ExpressionData>> exprStmts;
+        
+        // Capture normal expressions
+        exprStmts.insert(exprStmts.end(), funcData->block->expr_stmts.begin(), funcData->block->expr_stmts.end());
+        
+        // Capture Return expressions
+        exprStmts.insert(exprStmts.end(), funcData->block->returns.begin(), funcData->block->returns.end());
+
+        // Capture Conditional expressions
+        for (const auto& cntl : funcData->block->conditionals) {
+            // Comes from the condition stmt
+            exprStmts.push_back(cntl->condition);
+            
+            // Comes from the conditional body
+            exprStmts.insert(exprStmts.end(), cntl->block->expr_stmts.begin(), cntl->block->expr_stmts.end());
+        }
+        
         // loop through all the expression statements
-        for (const auto& expr : funcData->block->expr_stmts) {
+        for (const auto& expr : exprStmts) {
             auto varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
             for (auto& varData : varDataGroup) {
@@ -214,6 +247,7 @@ public:
                     if (sliceProfileExprItr != profileMap.end()) {
                         sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
                         sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
+                        sliceProfileExprItr->second.back().language = ctx.currentFileLanguage;
 
                         sliceProfileExprItr->second.back().uses.insert(rhsVarData.uses.begin(),
                                                                        rhsVarData.uses.end());
@@ -248,6 +282,7 @@ public:
                                                                                         }));
                         sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
                         sliceProfileExprItr2.first->second.back().containingNameSpaces = ctx.currentNamespaces;
+                        sliceProfileExprItr2.first->second.back().language = ctx.currentFileLanguage;
 
                         if (!StringContainsCharacters(lhsName)) continue;
                         if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
@@ -320,6 +355,8 @@ public:
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
+            bool isPostfix = true;
+
             switch (exprElem->type) {
                 case ExpressionElement::NAME: // 0 --> enum to integer value
                     if (!lhsVar.isInitialized()) {
@@ -348,7 +385,6 @@ public:
 
                     if (!lhsVar.rhsElems.empty()) {
                         VariableData* prevRHSPtr = lhsVar.GetRecentRHS();
-                        bool isPostfix = true;
 
                         // Take advantage of white-spaces to deduce which variable a potential
                         // pre/postfix operator is effecting so the use-def chain gets assigned
@@ -389,10 +425,28 @@ public:
                             }
                         }
                     } else {
+                        if (isWhiteSpace(expr_op))
+                            isPostfix = false;
+
                         // Coumpound Assignment is a classic Use-Def Chain
                         // ie: n += 2;
                         if (isCompoundAssignment(expr_op)) {
                             lhsVar.uses.insert(lineNumber);
+                        } else if (expr_op == "++" || expr_op == "--" ) {
+                            if (isPostfix) {
+                                lhsVar.uses.insert(lineNumber);
+                                lhsVar.definitions.insert(lineNumber);
+                            }
+                        } else if (isLogical(expr_op)) {
+                            // anything within logical conditionals are uses
+                            // we also will need to redeclare the lhs variable
+                            lhsVar.uses.insert(lineNumber);
+
+                            // for cases like "a == 4" we dont want 'a' being defined on this line
+                            lhsVar.definitions.erase(lineNumber);
+
+                            varDataGroup.push_back(lhsVar);
+                            lhsVar.clear();
                         }
                     }
                 break;
@@ -448,6 +502,7 @@ public:
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                sliceProf.language = ctx.currentFileLanguage;
 
                 sliceProfileItr->second.push_back(std::move(sliceProf));
             } else {
@@ -457,6 +512,7 @@ public:
                 sliceProf.containsDeclaration = true;
                 sliceProf.nameOfContainingClass = ctx.currentClassName;
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                sliceProf.language = ctx.currentFileLanguage;
 
                 profileMap.insert(std::make_pair(paramName,
                                                   std::vector<SliceProfile>{std::move(sliceProf)}));
@@ -535,6 +591,11 @@ public:
 
     bool isCompoundAssignment(const std::string& expr_op) {
         return (expr_op == "+=") || (expr_op == "-=") || (expr_op == "*=") || (expr_op == "/=") || (expr_op == "%=");
+    }
+
+    bool isLogical(const std::string& expr_op) {
+        return ( (expr_op == "<") || (expr_op == ">") || (expr_op == "<=") || (expr_op == ">=") || (expr_op == "==")
+                || (expr_op == "!=") || (expr_op == "&&" || (expr_op == "||")) );
     }
 
     bool isWhiteSpace(const std::string& str) {
@@ -1140,10 +1201,15 @@ protected:
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
     std::vector<std::shared_ptr<ClassData>> classInfo;
+    std::vector<std::shared_ptr<FunctionData>> functionInfo;
     FunctionSignatureData funcSigCollection;
 
     // Process the class and function information collected
     void PrintCollection() {
+        std::cout << "================= DEBUG ===================" << std::endl;
+        
+        std::cout << ":::: Class Info ::::" << std::endl;
+
         for (std::shared_ptr<ClassData> data : classInfo) {
             std::cout << "Class: " << data->name->SimpleName() << std::endl;
             std::cout << "Language: " << data->language << std::endl;
@@ -1179,7 +1245,35 @@ private:
             }
             std::cout << std::endl;
         }
-        std::cout << std::endl;
+
+        std::cout << ":::: Function Info ::::" << std::endl;
+
+        for (std::shared_ptr<FunctionData> data : functionInfo) {
+            std::cout << "Function: " << *(data->name) << std::endl;
+            std::cout << "Language: " << data->language << std::endl;
+            std::cout << "Filename: " << data->filename << std::endl;
+            std::cout << "  " << data->ToString() << std::endl;
+            std::cout << "  Locals:" << std::endl;
+            for(std::size_t pos = 0; pos < data->block->locals.size(); ++pos) {
+                std::cout << "   " <<  *(data->block->locals[pos]) << std::endl;
+            }
+            std::cout << "  Returns: " << data->block->returns.size() << std::endl;
+            for(std::size_t pos = 0; pos < data->block->returns.size(); ++pos) {
+                std::cout << "   " << *(data->block->returns[pos]) << std::endl;
+            }
+            std::cout << "  Expressions: " << data->block->expr_stmts.size() << std::endl;
+            for(std::size_t pos = 0; pos < data->block->expr_stmts.size(); ++pos) {
+                std::cout << "   " << *(data->block->expr_stmts[pos]) << std::endl;
+            }
+
+            std::cout << "  Conditions: " << data->block->conditionals.size() << std::endl;
+            for(std::size_t pos = 0; pos < data->block->conditionals.size(); ++pos) {
+                std::cout << "   " << *(data->block->conditionals[pos]) << std::endl;
+            }
+
+            std::cout << std::endl;
+        }
+        std::cout << "===========================================" << std::endl;
     }
 
     /*
