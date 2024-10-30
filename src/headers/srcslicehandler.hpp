@@ -69,21 +69,27 @@ public:
     }
 
     void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
-        std::vector<std::shared_ptr<DeclTypeData>> localGroup;
+        std::vector<std::shared_ptr<DeclData>> localGroup;
 
         // Capture general locals (decls)
         localGroup.insert(localGroup.end(), funcData->block->locals.begin(), funcData->block->locals.end());
 
         // Capture Conditional locals (decls)
         for (const auto& cntl : funcData->block->conditionals) {
-            std::vector<std::shared_ptr<DeclTypeData>> cntl_locals = cntl->block->locals;
+            std::vector<std::shared_ptr<DeclData>> cntl_locals = cntl->block->locals;
             // std::cout << "[+] Inserting local group with size -> " << cntl_locals.size() << std::endl;
             localGroup.insert(localGroup.end(), cntl_locals.begin(), cntl_locals.end());
         }
 
+        // Handle For-stmts
+        for (const auto& forData : funcData->block->fors) {
+            localGroup.insert(localGroup.end(), forData->control->init.begin(), forData->control->init.end());
+            localGroup.insert(localGroup.end(), forData->block->locals.begin(), forData->block->locals.end());
+        }
+
         // loop through all the expression statements within Decl Statements
         for (const auto& localVar : localGroup) {
-            auto varDataGroup = ParseExpr(*localVar->initializer, localVar->initializer->lineNumber);
+            auto varDataGroup = ParseExpr(*localVar->init, localVar->init->lineNumber);
 
             // Collect pieces about the newly declared variable to use later when adding it into
             // our profileMap
@@ -228,6 +234,13 @@ public:
             // Comes from the conditional body
             exprStmts.insert(exprStmts.end(), cntl->block->expr_stmts.begin(), cntl->block->expr_stmts.end());
         }
+
+        // Handle For-stmts
+        for (const auto& forData : funcData->block->fors) {
+            exprStmts.push_back(forData->control->condition);
+            exprStmts.insert(exprStmts.end(), forData->control->incr.begin(), forData->control->incr.end());
+            exprStmts.insert(exprStmts.end(), forData->block->expr_stmts.begin(), forData->block->expr_stmts.end());
+        }
         
         // loop through all the expression statements
         for (const auto& expr : exprStmts) {
@@ -315,6 +328,9 @@ public:
             // the function call argument list index
             for (auto& exprElem : arg->expr) {
                 unsigned int argUseLineNumber = funcCallData->lineNumber;
+
+                // Don't worry about exprElems with bad name ptrs
+                if (exprElem->name == nullptr) continue;
 
                 // Update an existing slices Call data
                 auto sliceProfileItr = profileMap.find(exprElem->name->name);
@@ -462,6 +478,13 @@ public:
             }
         }
 
+        // For expressions with only a single variable name
+        // where we never encounter an operator, ie `return x;`
+        if (lhsVar.rhsElems.size() == 0 && expr_op.empty()) {
+            lhsVar.uses.insert(lineNumber);
+            lhsVar.definitions.erase(lineNumber);
+        }
+
         // Ensure the final LHS-RHS pair is pushed into out collection we return
         lhsVar.lhs = true;
         varDataGroup.push_back(lhsVar);
@@ -469,7 +492,7 @@ public:
         return varDataGroup;
     }
 
-    void ProcessFunctionParameters(std::vector<std::shared_ptr<ParamTypeData>>& parameters, const std::string& currentFunctionName, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessFunctionParameters(std::vector<std::shared_ptr<DeclData>>& parameters, const std::string& currentFunctionName, const srcDispatch::srcSAXEventContext& ctx) {
         for (auto& parameter : parameters) {
             std::string paramName = parameter->name->ToString();
 
