@@ -52,8 +52,8 @@ public:
 
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if(typeid(ClassPolicy) == typeid(*policy)) {
-            std::shared_ptr<ClassData> class_data = policy->Data<ClassData>();
-            classInfo.push_back( class_data );
+            ProcessClassData(policy->Data<ClassData>(), ctx);
+            classInfo.push_back(policy->Data<ClassData>());
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
             ProcessFunctionData(policy->Data<FunctionData>(), ctx);
             functionInfo.push_back(policy->Data<FunctionData>());
@@ -64,32 +64,71 @@ public:
 
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, const srcDispatch::srcSAXEventContext& ctx) {
         ProcessFunctionSignature(function_data, ctx);
-        ProcessDeclStmts(function_data, ctx);
+        ProcessDeclStmts(function_data, nullptr, ctx);
         ProcessExprStmts(function_data, ctx);
     }
 
-    void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
-        std::vector<std::shared_ptr<DeclData>> localGroup;
+    void ProcessClassData(std::shared_ptr<ClassData> class_data, const srcDispatch::srcSAXEventContext& ctx) {
+        // Process Class Member Variables
+        ProcessDeclStmts(nullptr, class_data, ctx);
 
-        // Capture general locals (decls)
-        localGroup.insert(localGroup.end(), funcData->block->locals.begin(), funcData->block->locals.end());
-
-        // Capture Conditional locals (decls)
-        for (const auto& cntl : funcData->block->conditionals) {
-            std::vector<std::shared_ptr<DeclData>> cntl_locals = cntl->block->locals;
-            // std::cout << "[+] Inserting local group with size -> " << cntl_locals.size() << std::endl;
-            localGroup.insert(localGroup.end(), cntl_locals.begin(), cntl_locals.end());
+        // Process Class Contructors
+        for (size_t i = 0; i < class_data->constructors->size(); ++i) {
+            ProcessFunctionData(class_data->constructors->at(i), ctx);
         }
 
-        // Handle For-stmts
-        for (const auto& forData : funcData->block->fors) {
-            localGroup.insert(localGroup.end(), forData->control->init.begin(), forData->control->init.end());
-            localGroup.insert(localGroup.end(), forData->block->locals.begin(), forData->block->locals.end());
+        // Process Class Methods (Member Functions)
+        for (size_t i = 0; i < class_data->methods->size(); ++i) {
+            ProcessFunctionData(class_data->methods->at(i), ctx);
+        }
+
+        // Process Operator Overloading
+        for (size_t i = 0; i < class_data->operators->size(); ++i) {
+            ProcessFunctionData(class_data->operators->at(i), ctx);
+        }
+    }
+
+    void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData, const srcDispatch::srcSAXEventContext& ctx) {
+        std::vector<std::shared_ptr<DeclData>> localGroup;
+
+        if (funcData != nullptr) {
+            // Capture general locals (decls)
+            localGroup.insert(localGroup.end(), funcData->block->locals.begin(), funcData->block->locals.end());
+
+            // Capture Conditional locals (decls)
+            for (const auto& cntl : funcData->block->conditionals) {
+                std::vector<std::shared_ptr<DeclData>> cntl_locals = cntl->block->locals;
+                // std::cout << "[+] Inserting local group with size -> " << cntl_locals.size() << std::endl;
+                localGroup.insert(localGroup.end(), cntl_locals.begin(), cntl_locals.end());
+            }
+
+            // Handle For-stmts
+            for (const auto& forData : funcData->block->fors) {
+                localGroup.insert(localGroup.end(), forData->control->init.begin(), forData->control->init.end());
+                localGroup.insert(localGroup.end(), forData->block->locals.begin(), forData->block->locals.end());
+            }
+        }
+
+        // Look at all declared members from each class field
+        if (classData != nullptr) {
+            for (unsigned int j=0; j < classData->fields[ClassData::PUBLIC].size(); ++j) {
+                localGroup.insert(localGroup.end(), classData->fields[ClassData::PUBLIC].begin(), classData->fields[ClassData::PUBLIC].end());
+            }
+            for (unsigned int j=0; j < classData->fields[ClassData::PROTECTED].size(); ++j) {
+                localGroup.insert(localGroup.end(), classData->fields[ClassData::PROTECTED].begin(), classData->fields[ClassData::PROTECTED].end());
+            }
+            for (unsigned int j=0; j < classData->fields[ClassData::PRIVATE].size(); ++j) {
+                localGroup.insert(localGroup.end(), classData->fields[ClassData::PRIVATE].begin(), classData->fields[ClassData::PRIVATE].end());
+            }
+            localGroup.insert(localGroup.end(), classData->fields->begin(), classData->fields->end());
         }
 
         // loop through all the expression statements within Decl Statements
         for (const auto& localVar : localGroup) {
-            auto varDataGroup = ParseExpr(*localVar->init, localVar->init->lineNumber);
+            std::vector<VariableData> varDataGroup;
+
+            if (localVar->init != nullptr)
+                varDataGroup = ParseExpr(*localVar->init, localVar->init->lineNumber);
 
             // Collect pieces about the newly declared variable to use later when adding it into
             // our profileMap
@@ -213,7 +252,12 @@ public:
             sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
             
             // Link the function this slice is located in
-            sliceProfileItr->second.back().function = funcData->name->ToString();
+            if (funcData != nullptr)
+                sliceProfileItr->second.back().function = funcData->name->ToString();
+                
+            // Link the class this slice is located in
+            if (classData != nullptr)
+                sliceProfileItr->second.back().nameOfContainingClass = classData->name->ToString();
         }
     }
 
@@ -480,7 +524,7 @@ public:
 
         // For expressions with only a single variable name
         // where we never encounter an operator, ie `return x;`
-        if (lhsVar.rhsElems.size() == 0 && expr_op.empty()) {
+        if (lhsVar.rhsElems.size() == 0 || !lhsVar.lhs) {
             lhsVar.uses.insert(lineNumber);
             lhsVar.definitions.erase(lineNumber);
         }
