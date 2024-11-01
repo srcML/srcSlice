@@ -133,7 +133,18 @@ public:
             // Collect pieces about the newly declared variable to use later when adding it into
             // our profileMap
             std::string declVarName = localVar->name->ToString();
-            std::string declVarType = localVar->type->ToString();
+            std::string declVarType = "";
+
+            // Extract just the Data-Type name without extra data
+            for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
+                const std::pair<std::any, TypeData::TypeType>& type = localVar->type->types[pos];
+                if (type.second == TypeData::TYPENAME) {
+                    declVarType = std::any_cast<std::shared_ptr<NameData>>(type.first)->ToString();
+                    // remove `std ` in `std string` if neccessary
+                    declVarType = declVarType.substr(declVarType.find(' ')+1);
+                }
+            }
+
             bool isPointer = false;
             bool isReference = false;
 
@@ -487,6 +498,9 @@ public:
                     } else {
                         if (isWhiteSpace(expr_op))
                             isPostfix = false;
+
+                        if (isAssignment(expr_op))
+                            lhsVar.lhs = true;
 
                         // Coumpound Assignment is a classic Use-Def Chain
                         // ie: n += 2;
