@@ -168,7 +168,7 @@ public:
                                                  isPointer, true,
                                                  std::set<unsigned int>{localVar->lineNumber});
 
-                sliceProfile.nameOfContainingClass = ctx.currentClassName;
+                sliceProfile.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                 sliceProfile.containingNameSpaces = ctx.currentNamespaces;
                 sliceProfile.language = ctx.currentFileLanguage;
 
@@ -179,7 +179,7 @@ public:
                                               (isPointer), false,
                                               std::set<unsigned int>{localVar->lineNumber});
 
-                sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
 
@@ -230,7 +230,7 @@ public:
                             std::set<unsigned int>{localVar->lineNumber}
                         );
 
-                        sliceProf.nameOfContainingClass = ctx.currentClassName;
+                        sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                         sliceProf.containingNameSpaces = ctx.currentNamespaces;
                         sliceProf.language = ctx.currentFileLanguage;
 
@@ -313,7 +313,7 @@ public:
 
                     //Just update definitions and uses if name already exists. Otherwise, add new name.
                     if (sliceProfileExprItr != profileMap.end()) {
-                        sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName;
+                        sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                         sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
                         sliceProfileExprItr->second.back().language = ctx.currentFileLanguage;
 
@@ -348,7 +348,7 @@ public:
                                                                                                         rhsVarData.definitions,
                                                                                                         rhsVarData.uses)
                                                                                         }));
-                        sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName;
+                        sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                         sliceProfileExprItr2.first->second.back().containingNameSpaces = ctx.currentNamespaces;
                         sliceProfileExprItr2.first->second.back().language = ctx.currentFileLanguage;
 
@@ -582,7 +582,7 @@ public:
                                               isPointer, true,
                                               std::set<unsigned int>{parameter->lineNumber});
                 sliceProf.containsDeclaration = true;
-                sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
 
@@ -592,7 +592,7 @@ public:
                                               isPointer, true,
                                               std::set<unsigned int>{parameter->lineNumber});
                 sliceProf.containsDeclaration = true;
-                sliceProf.nameOfContainingClass = ctx.currentClassName;
+                sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
 
