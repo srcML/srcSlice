@@ -12,7 +12,7 @@
 
 class SliceProfile {
 public:
-    SliceProfile() : index(0), containsDeclaration(false), potentialAlias(false), dereferenced(false),
+    SliceProfile() : containsDeclaration(false), potentialAlias(false), dereferenced(false),
                      isGlobal(false) { isPointer = false; isReference = false; }
 
     SliceProfile(
@@ -30,7 +30,6 @@ public:
         isReference = false;
     }
 
-    unsigned int index;
     int lineNumber;
     std::string file;
     std::string function;
