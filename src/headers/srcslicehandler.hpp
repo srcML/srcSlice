@@ -10,6 +10,11 @@
 #include <sstream>
 #include <srcDispatcher.hpp>
 #include <srcSAXHandler.hpp>
+#include <IfStmtPolicySingleEvent.hpp>
+#include <SwitchPolicySingleEvent.hpp>
+#include <WhilePolicySingleEvent.hpp>
+#include <ForPolicySingleEvent.hpp>
+#include <DoPolicySingleEvent.hpp>
 #include <FunctionPolicySingleEvent.hpp>
 #include <ClassPolicySingleEvent.hpp>
 #include <UnitPolicySingleEvent.hpp>
@@ -97,17 +102,7 @@ public:
             localGroup.insert(localGroup.end(), funcData->block->locals.begin(), funcData->block->locals.end());
 
             // Capture Conditional locals (decls)
-            for (const auto& cntl : funcData->block->conditionals) {
-                std::vector<std::shared_ptr<DeclData>> cntl_locals = cntl->block->locals;
-                // std::cout << "[+] Inserting local group with size -> " << cntl_locals.size() << std::endl;
-                localGroup.insert(localGroup.end(), cntl_locals.begin(), cntl_locals.end());
-            }
-
-            // Handle For-stmts
-            for (const auto& forData : funcData->block->fors) {
-                localGroup.insert(localGroup.end(), forData->control->init.begin(), forData->control->init.end());
-                localGroup.insert(localGroup.end(), forData->block->locals.begin(), forData->block->locals.end());
-            }
+            CollectConditionalData(nullptr, &localGroup, funcData->block->conditionals);
         }
 
         // Look at all declared members from each class field
@@ -136,21 +131,13 @@ public:
             std::string declVarName = localVar->name->ToString();
             std::string declVarType = "";
 
-            // Extract just the Data-Type name without extra data
-            for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
-                const std::pair<std::any, TypeData::TypeType>& type = localVar->type->types[pos];
-                if (type.second == TypeData::TYPENAME) {
-                    declVarType = std::any_cast<std::shared_ptr<NameData>>(type.first)->ToString();
-                    // remove `std ` in `std string` if neccessary
-                    declVarType = declVarType.substr(declVarType.find(' ')+1);
-                }
-            }
-
             bool isPointer = false;
             bool isReference = false;
 
-            for(std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
-                const std::pair<std::any, TypeData::TypeType> & type = localVar->type->types[pos];
+            // Extract just the Data-Type name without extra data
+            for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
+                const std::pair<std::any, TypeData::TypeType>& type = localVar->type->types[pos];
+
                 if (type.second == TypeData::POINTER) {
                     isPointer = true;
                 } else if (type.second == TypeData::REFERENCE) {
@@ -159,7 +146,15 @@ public:
                 } else if (type.second == TypeData::SPECIFIER) {
                 } else if (type.second == TypeData::TYPENAME) {
                 } */
+
+                if (type.second == TypeData::TYPENAME) {
+                    declVarType = std::any_cast<std::shared_ptr<NameData>>(type.first)->ToString();
+                    // remove `std ` in `std string` if neccessary
+                    declVarType = declVarType.substr(declVarType.find(' ')+1);
+                }
             }
+
+            std::cout << "[*] " << localVar->lineNumber << " | " << localVar->type->ToString() << std::endl;
 
             auto sliceProfileItr = profileMap.find(declVarName);
 
@@ -283,27 +278,14 @@ public:
     void ProcessExprStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
         std::vector<std::shared_ptr<ExpressionData>> exprStmts;
         
-        // Capture normal expressions
+        // Capture general expressions
         exprStmts.insert(exprStmts.end(), funcData->block->expr_stmts.begin(), funcData->block->expr_stmts.end());
         
-        // Capture Return expressions
+        // Capture general Return expressions
         exprStmts.insert(exprStmts.end(), funcData->block->returns.begin(), funcData->block->returns.end());
 
         // Capture Conditional expressions
-        for (const auto& cntl : funcData->block->conditionals) {
-            // Comes from the condition stmt
-            exprStmts.push_back(cntl->condition);
-            
-            // Comes from the conditional body
-            exprStmts.insert(exprStmts.end(), cntl->block->expr_stmts.begin(), cntl->block->expr_stmts.end());
-        }
-
-        // Handle For-stmts
-        for (const auto& forData : funcData->block->fors) {
-            exprStmts.push_back(forData->control->condition);
-            exprStmts.insert(exprStmts.end(), forData->control->incr.begin(), forData->control->incr.end());
-            exprStmts.insert(exprStmts.end(), forData->block->expr_stmts.begin(), forData->block->expr_stmts.end());
-        }
+        CollectConditionalData(&exprStmts, nullptr, funcData->block->conditionals);
         
         // loop through all the expression statements
         for (const auto& expr : exprStmts) {
@@ -423,6 +405,96 @@ public:
                         sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
                     }
                 }
+            }
+        }
+    }
+
+    void CollectConditionalData(std::vector<std::shared_ptr<ExpressionData>>* exprStmts, std::vector<std::shared_ptr<DeclData>>* declStmts, std::vector<std::any>& conditionals) {
+        std::vector<std::shared_ptr<BlockData>> cntlBlocks;
+
+        for (const auto& cntl : conditionals) {
+            if (cntl.type() == typeid(std::shared_ptr<IfStmtData>)) {
+                // Extract all of the block data from if statements
+                std::shared_ptr<IfStmtData> ifcntl = std::any_cast<std::shared_ptr<IfStmtData>>(cntl);
+
+                for (const auto& clause : ifcntl->clauses) {
+                    if (clause.type() == typeid(std::shared_ptr<IfData>)) {
+                        std::shared_ptr<IfData> data = std::any_cast<std::shared_ptr<IfData>>(clause);
+
+                        if (exprStmts != nullptr) {
+                            exprStmts->push_back(data->condition);
+                        }
+
+                        cntlBlocks.push_back(data->block);
+                    } else if (clause.type() == typeid(std::shared_ptr<ElseIfData>)) {
+                        std::shared_ptr<ElseIfData> data = std::any_cast<std::shared_ptr<ElseIfData>>(clause);
+
+                        if (exprStmts != nullptr) {
+                            exprStmts->push_back(data->condition);
+                        }
+
+                        cntlBlocks.push_back(data->block);
+                    } else if (clause.type() == typeid(std::shared_ptr<ElseData>)) {
+                        std::shared_ptr<ElseData> data = std::any_cast<std::shared_ptr<ElseData>>(clause);
+                        cntlBlocks.push_back(data->block);
+                    }
+                }
+            } else if (cntl.type() == typeid(std::shared_ptr<SwitchData>)) {
+                // Extract all of the block data from Switch statements
+                std::shared_ptr<SwitchData> switchcntl = std::any_cast<std::shared_ptr<SwitchData>>(cntl);
+
+                /*
+                    Ensure we are getting the uses from the case lines
+                    Ensure we capture data from the case blocks as well
+                */
+
+                if (exprStmts != nullptr) {
+                    exprStmts->push_back(switchcntl->condition);
+                }
+
+                cntlBlocks.push_back(switchcntl->block);
+            } else if (cntl.type() == typeid(std::shared_ptr<WhileData>)) {
+                // Extract all of the block data from While Loops
+                std::shared_ptr<WhileData> whilecntl = std::any_cast<std::shared_ptr<WhileData>>(cntl);
+
+                if (exprStmts != nullptr) {
+                    exprStmts->push_back(whilecntl->condition);
+                }
+
+                cntlBlocks.push_back(whilecntl->block);
+            } else if (cntl.type() == typeid(std::shared_ptr<ForData>)) {
+                // Extract all of the block data from For Loops
+                std::shared_ptr<ForData> forcntl = std::any_cast<std::shared_ptr<ForData>>(cntl);
+
+                if (declStmts != nullptr) {
+                    declStmts->insert(declStmts->end(), forcntl->control->init.begin(), forcntl->control->init.end());
+                }
+
+                if (exprStmts != nullptr) {
+                    exprStmts->push_back(forcntl->control->condition);
+                }
+
+                cntlBlocks.push_back(forcntl->block);
+            } else if (cntl.type() == typeid(std::shared_ptr<DoData>)) {
+                // Extract all of the block data from Do-While Loops
+                std::shared_ptr<DoData> dowhilecntl = std::any_cast<std::shared_ptr<DoData>>(cntl);
+
+                if (exprStmts != nullptr) {
+                    exprStmts->push_back(dowhilecntl->condition);
+                }
+
+                cntlBlocks.push_back(dowhilecntl->block);
+            }
+        }
+
+        for (const auto& block : cntlBlocks) {
+            if (declStmts != nullptr) {
+                declStmts->insert(declStmts->end(), block->locals.begin(), block->locals.end());
+            }
+
+            if (exprStmts != nullptr) {
+                exprStmts->insert(exprStmts->end(), block->expr_stmts.begin(), block->expr_stmts.end());
+                exprStmts->insert(exprStmts->end(), block->returns.begin(), block->returns.end());
             }
         }
     }
@@ -1356,7 +1428,7 @@ private:
 
             std::cout << "  Conditions: " << data->block->conditionals.size() << std::endl;
             for(std::size_t pos = 0; pos < data->block->conditionals.size(); ++pos) {
-                std::cout << "   " << *(data->block->conditionals[pos]) << std::endl;
+                // std::cout << "   " << *(data->block->conditionals[pos]) << std::endl;
             }
 
             std::cout << std::endl;
