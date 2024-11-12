@@ -121,7 +121,7 @@ public:
 
         // loop through all the expression statements within Decl Statements
         for (const auto& localVar : localGroup) {
-            std::vector<VariableData> varDataGroup;
+            std::vector<VariableData*> varDataGroup;
 
             if (localVar->init != nullptr)
                 varDataGroup = ParseExpr(*localVar->init, localVar->init->lineNumber);
@@ -153,8 +153,6 @@ public:
                     declVarType = declVarType.substr(declVarType.find(' ')+1);
                 }
             }
-
-            std::cout << "[*] " << localVar->lineNumber << " | " << localVar->type->ToString() << std::endl;
 
             auto sliceProfileItr = profileMap.find(declVarName);
 
@@ -201,10 +199,10 @@ public:
 
             // Look at the dvars and add this current variable to their dvar's lists.
             // If we haven't seen this name before, add its slice profile
-            for (auto& varData : varDataGroup) {
+            for (auto varData : varDataGroup) {
                 UpdateLHSSlices(varData);
-                for (auto& dvarData : varData.rhsElems) {
-                    std::string dvar = dvarData.GetNameOfIdentifier();
+                for (auto dvarData : varData->rhsElems) {
+                    std::string dvar = dvarData->GetNameOfIdentifier();
 
                     auto updateDvarAtThisLocation = profileMap.find(dvar);
                     if (updateDvarAtThisLocation != profileMap.end()) {
@@ -212,17 +210,17 @@ public:
                         // Update the use/defs for already existing slices
                         // ProcessExprStmts does not capture expr_stmts
                         // contained within Decl_stmts
-                        updateDvarAtThisLocation->second.back().uses.insert(dvarData.uses.begin(), dvarData.uses.end());
-                        updateDvarAtThisLocation->second.back().definitions.insert(dvarData.definitions.begin(), dvarData.definitions.end());
+                        updateDvarAtThisLocation->second.back().uses.insert(dvarData->uses.begin(), dvarData->uses.end());
+                        updateDvarAtThisLocation->second.back().definitions.insert(dvarData->definitions.begin(), dvarData->definitions.end());
 
                         if (!StringContainsCharacters(declVarName)) continue;
                         if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
                             if ( declVarName != sliceProfileItr->second.back().variableName) {
-                                updateDvarAtThisLocation->second.back().aliases.insert(std::make_pair(declVarName, dvarData.originLine));
+                                updateDvarAtThisLocation->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
                             }
                             continue;
                         }
-                        updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, dvarData.originLine));
+                        updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
                     } else {
                         auto sliceProf = SliceProfile(
                             dvar,
@@ -244,11 +242,11 @@ public:
                         if (!StringContainsCharacters(declVarName)) continue;
                         if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
                             if ( declVarName != sliceProfileItr->second.back().variableName ) {
-                                newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, dvarData.originLine));
+                                newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
                             }
                             continue;
                         }
-                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, dvarData.originLine));
+                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
                     }
                 }
             }
@@ -291,12 +289,12 @@ public:
         for (const auto& expr : exprStmts) {
             auto varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
-            for (auto& varData : varDataGroup) {
+            for (auto varData : varDataGroup) {
                 UpdateLHSSlices(varData);
-                for (auto& rhsVarData : varData.rhsElems) {
-                    std::shared_ptr<ExpressionElement> lhsData = varData.lhsElem;
-                    std::string lhsName = varData.GetNameOfIdentifier();
-                    std::string rhsName = rhsVarData.GetNameOfIdentifier();
+                for (auto rhsVarData : varData->rhsElems) {
+                    std::shared_ptr<ExpressionElement> lhsData = varData->lhsElem;
+                    std::string lhsName = varData->GetNameOfIdentifier();
+                    std::string rhsName = rhsVarData->GetNameOfIdentifier();
 
                     auto sliceProfileExprItr = profileMap.find(rhsName);
                     auto sliceProfileLHSItr = profileMap.find(lhsName);
@@ -307,15 +305,15 @@ public:
                         sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
                         sliceProfileExprItr->second.back().language = ctx.currentFileLanguage;
 
-                        sliceProfileExprItr->second.back().uses.insert(rhsVarData.uses.begin(),
-                                                                       rhsVarData.uses.end());
-                        sliceProfileExprItr->second.back().definitions.insert(rhsVarData.definitions.begin(),
-                                                                              rhsVarData.definitions.end());
+                        sliceProfileExprItr->second.back().uses.insert(rhsVarData->uses.begin(),
+                                                                       rhsVarData->uses.end());
+                        sliceProfileExprItr->second.back().definitions.insert(rhsVarData->definitions.begin(),
+                                                                              rhsVarData->definitions.end());
 
                         if (!StringContainsCharacters(lhsName)) continue;
                         if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
                             if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
-                                sliceProfileExprItr->second.back().aliases.insert(std::make_pair(lhsName, varData.originLine));
+                                sliceProfileExprItr->second.back().aliases.insert(std::make_pair(lhsName, varData->originLine));
                             }
                             continue;
                         }
@@ -324,7 +322,7 @@ public:
                         // IE : abc = abc + i;
                         if (!StringContainsCharacters(lhsName)) continue;
                         if (!lhsName.empty() && sliceProfileExprItr->second.back().variableName != lhsName) {
-                            sliceProfileExprItr->second.back().dvars.insert(std::make_pair(lhsName, varData.originLine));
+                            sliceProfileExprItr->second.back().dvars.insert(std::make_pair(lhsName, varData->originLine));
                             continue;
                         }
 
@@ -333,10 +331,10 @@ public:
                                                                                         std::vector<SliceProfile>{
                                                                                                 SliceProfile(
                                                                                                         rhsName,
-                                                                                                        rhsVarData.originLine,
+                                                                                                        rhsVarData->originLine,
                                                                                                         false, false,
-                                                                                                        rhsVarData.definitions,
-                                                                                                        rhsVarData.uses)
+                                                                                                        rhsVarData->definitions,
+                                                                                                        rhsVarData->uses)
                                                                                         }));
                         sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                         sliceProfileExprItr2.first->second.back().containingNameSpaces = ctx.currentNamespaces;
@@ -345,7 +343,7 @@ public:
                         if (!StringContainsCharacters(lhsName)) continue;
                         if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
                             if ( lhsName != sliceProfileLHSItr->second.back().variableName ) {
-                                sliceProfileExprItr2.first->second.back().aliases.insert(std::make_pair(lhsName, varData.originLine));
+                                sliceProfileExprItr2.first->second.back().aliases.insert(std::make_pair(lhsName, varData->originLine));
                             }
                             continue;
                         }
@@ -354,7 +352,7 @@ public:
                         // IE : abc = abc + i;
                         if (!StringContainsCharacters(lhsName)) continue;
                         if (!lhsName.empty() && (lhsName != rhsName)) {
-                            sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(lhsName, varData.originLine));
+                            sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(lhsName, varData->originLine));
                             continue;
                         }
                     }
@@ -499,10 +497,13 @@ public:
         }
     }
 
-    std::vector<VariableData> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
-        std::vector<VariableData> varDataGroup;
+    std::vector<VariableData*> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
+        std::vector<VariableData*> varDataGroup;
         std::string expr_op = "";
-        VariableData lhsVar;
+        VariableData* lhsVar = new VariableData();
+
+        std::vector<VariableData*> lhsStack;
+        bool groupCollect = false;
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
@@ -510,33 +511,48 @@ public:
 
             switch (exprElem->type) {
                 case ExpressionElement::NAME: // 0 --> enum to integer value
-                    if (!lhsVar.isInitialized()) {
-                        lhsVar.InitializeLHS(exprElem, lineNumber);
-
-                        lhsVar.definitions.insert(lineNumber);
+                    if (!lhsVar->isInitialized()) {
+                        lhsVar->InitializeLHS(exprElem, lineNumber);
 
                         // capture use-def chains for single statements such as: ++i
                         if (expr_op == "++" || expr_op == "--") {
-                            lhsVar.uses.insert(lineNumber);
+                            lhsVar->definitions.insert(lineNumber);
+                            lhsVar->uses.insert(lineNumber);
                         }
                     } else {
-                        VariableData newRHSVar(exprElem);
-                        newRHSVar.uses.insert(lineNumber);
-                        newRHSVar.SetOriginLine(lineNumber);
+                        VariableData* newRHSVar = new VariableData(exprElem);
+                        newRHSVar->uses.insert(lineNumber);
+                        newRHSVar->SetOriginLine(lineNumber);
 
                         // capture use-def chains for rhs var statements such as: a = ++i
                         if (expr_op == "++" || expr_op == "--") {
-                            newRHSVar.definitions.insert(lineNumber);
+                            newRHSVar->definitions.insert(lineNumber);
                         }
 
-                        lhsVar.AddRHS(newRHSVar);
+                        lhsVar->lhs = true;
+                        lhsVar->AddRHS(newRHSVar);
                     }
                 break;
                 case ExpressionElement::OP: // 1
                     expr_op = exprElem->token->token;
 
-                    if (!lhsVar.rhsElems.empty()) {
-                        VariableData* prevRHSPtr = lhsVar.GetRecentRHS();
+                    if (expr_op == "(") {
+                        groupCollect = true;
+                        break;
+                    }
+
+                    if (expr_op == ")") {
+                        groupCollect = false;
+                        if (lhsStack.size() > 0) {
+                            varDataGroup.push_back(lhsVar);
+                            lhsVar = lhsStack.back();
+                            lhsStack.pop_back();
+                        }
+                        break;
+                    }
+
+                    if (!lhsVar->rhsElems.empty()) {
+                        VariableData* prevRHSPtr = lhsVar->GetRecentRHS();
 
                         // Take advantage of white-spaces to deduce which variable a potential
                         // pre/postfix operator is effecting so the use-def chain gets assigned
@@ -547,32 +563,46 @@ public:
                         if (isAssignment(expr_op)) {
                             // When we encounter assignment while containing a group of RHS variables
                             // we need to push this LHS-RHS pair into the vector we later return
-                            lhsVar.lhs = true;
+                            lhsVar->lhs = true;
                             varDataGroup.push_back(lhsVar);
+                            lhsStack.push_back(lhsVar); // save reference to outter lhs
+                            lhsVar = new VariableData();
 
                             // We need to set the new LHS variable to start creating a new
                             // LHS-RHS pair group
-                            lhsVar.clear();
-                            lhsVar.InitializeLHS(prevRHSPtr->lhsElem, lineNumber);
-                            lhsVar.definitions.insert(lineNumber);
+                            lhsVar->InitializeLHS(prevRHSPtr->lhsElem, lineNumber);
+                            lhsVar->definitions.insert(lineNumber);
 
                             // Coumpound Assignment is a classic Use-Def Chain
                             // ie: int a = b += c; // b is used and defined by +=
                             if (isCompoundAssignment(expr_op)) {
-                                lhsVar.uses.insert(lineNumber);
+                                lhsVar->definitions.insert(lineNumber);
+                                lhsVar->uses.insert(lineNumber);
                             }
 
-                        } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                            // We will have captured some RHS variable, if we encounter this block we've encountered
-                            // a use for the most recent RHS variable we've encountered
-                            if (prevRHSPtr != nullptr) {
-                                prevRHSPtr->uses.insert(lineNumber);
-                            }
-                        } else if (expr_op == "++" || expr_op == "--" ) {
-                            if (isPostfix) {
+                        } else {
+                            if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                                // We will have captured some RHS variable, if we encounter this block we've encountered
+                                // a use for the most recent RHS variable we've encountered
                                 if (prevRHSPtr != nullptr) {
                                     prevRHSPtr->uses.insert(lineNumber);
-                                    prevRHSPtr->definitions.insert(lineNumber);
+                                }
+                            }
+                            
+                            if (expr_op == "++" || expr_op == "--" ) {
+                                if (isPostfix) {
+                                    if (prevRHSPtr != nullptr) {
+                                        prevRHSPtr->uses.insert(lineNumber);
+                                        prevRHSPtr->definitions.insert(lineNumber);
+                                    }
+                                }
+                            }
+
+                            if (!groupCollect) {
+                                if (lhsStack.size() > 0) {
+                                    varDataGroup.push_back(lhsVar);
+                                    lhsVar = lhsStack.back();
+                                    lhsStack.pop_back();
                                 }
                             }
                         }
@@ -580,28 +610,29 @@ public:
                         if (isWhiteSpace(expr_op))
                             isPostfix = false;
 
-                        if (isAssignment(expr_op))
-                            lhsVar.lhs = true;
+                        if (isAssignment(expr_op)) {
+                            lhsVar->lhs = true;
+                            lhsVar->definitions.insert(lineNumber);
+                        }
 
                         // Coumpound Assignment is a classic Use-Def Chain
                         // ie: n += 2;
                         if (isCompoundAssignment(expr_op)) {
-                            lhsVar.uses.insert(lineNumber);
+                            lhsVar->uses.insert(lineNumber);
+                            lhsVar->definitions.insert(lineNumber);
                         } else if (expr_op == "++" || expr_op == "--" ) {
                             if (isPostfix) {
-                                lhsVar.uses.insert(lineNumber);
-                                lhsVar.definitions.insert(lineNumber);
+                                lhsVar->uses.insert(lineNumber);
+                                lhsVar->definitions.insert(lineNumber);
                             }
+                        } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                            lhsVar->uses.insert(lineNumber);
                         } else if (isLogical(expr_op)) {
                             // anything within logical conditionals are uses
                             // we also will need to redeclare the lhs variable
-                            lhsVar.uses.insert(lineNumber);
-
-                            // for cases like "a == 4" we dont want 'a' being defined on this line
-                            lhsVar.definitions.erase(lineNumber);
+                            lhsVar->uses.insert(lineNumber);
 
                             varDataGroup.push_back(lhsVar);
-                            lhsVar.clear();
                         }
                     }
                 break;
@@ -619,13 +650,13 @@ public:
 
         // For expressions with only a single variable name
         // where we never encounter an operator, ie `return x;`
-        if (lhsVar.rhsElems.size() == 0 || !lhsVar.lhs) {
-            lhsVar.uses.insert(lineNumber);
-            lhsVar.definitions.erase(lineNumber);
+        if (lhsVar->rhsElems.size() == 0 || !lhsVar->lhs) {
+            lhsVar->uses.insert(lineNumber);
+            lhsVar->definitions.erase(lineNumber);
         }
 
         // Ensure the final LHS-RHS pair is pushed into out collection we return
-        lhsVar.lhs = true;
+        lhsVar->lhs = true;
         varDataGroup.push_back(lhsVar);
 
         return varDataGroup;
@@ -728,19 +759,19 @@ public:
     }
 
     // Use for inserting Uses and Defs for Slices in the LHS of an Expression Statement
-    void UpdateLHSSlices(VariableData& varData) {
-        if (varData.GetNameOfIdentifier().empty()) return;
+    void UpdateLHSSlices(VariableData* varData) {
+        if (varData->GetNameOfIdentifier().empty()) return;
 
-        auto sliceProfileItr = profileMap.find(varData.GetNameOfIdentifier());
+        auto sliceProfileItr = profileMap.find(varData->GetNameOfIdentifier());
 
         // Just update definitions and uses if name already exists. Otherwise, add new name.
         if (sliceProfileItr != profileMap.end()) {
-            sliceProfileItr->second.back().uses.insert(varData.uses.begin(),
-                                                       varData.uses.end());
-            sliceProfileItr->second.back().definitions.insert(varData.definitions.begin(),
-                                                              varData.definitions.end());
+            sliceProfileItr->second.back().uses.insert(varData->uses.begin(),
+                                                       varData->uses.end());
+            sliceProfileItr->second.back().definitions.insert(varData->definitions.begin(),
+                                                              varData->definitions.end());
         } else {
-            std::cout << "[*] There is no Slice of --> '" << varData.GetNameOfIdentifier() << "'" << std::endl;
+            std::cout << "[*] There is no Slice of --> '" << varData->GetNameOfIdentifier() << "'" << std::endl;
         }
     }
 

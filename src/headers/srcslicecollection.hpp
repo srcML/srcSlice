@@ -26,6 +26,8 @@ public:
         definitions = rhs.definitions;
         originLine = rhs.originLine;
     }
+    ~VariableData() {}
+
     VariableData& operator=(VariableData rhs) {
         std::swap(*this, rhs);
         return *this;
@@ -53,11 +55,14 @@ public:
 
     void SetOriginLine(unsigned int line) { originLine = line; }
 
-    void AddRHS(VariableData& var) { rhsElems.push_back(var); }
-    VariableData* GetRecentRHS() { return rhsElems.size() > 0 ? &(rhsElems.back()) : nullptr; }
+    void AddRHS(VariableData* var) {
+        if (rhsElems.size() == 0 || rhsElems.back() != var)
+            rhsElems.push_back(var);
+    }
+    VariableData* GetRecentRHS() { return rhsElems.size() > 0 ? rhsElems.back() : nullptr; }
 
     std::shared_ptr<ExpressionElement> lhsElem;
-    std::vector<VariableData> rhsElems;
+    std::vector<VariableData*> rhsElems;
 
     bool lhs = false;
     unsigned int originLine;
