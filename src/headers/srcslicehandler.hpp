@@ -531,6 +531,11 @@ public:
 
                         lhsVar->lhs = true;
                         lhsVar->AddRHS(newRHSVar);
+
+                        // Ensure that tracked lhs variables get assigned all of their
+                        // rhs vars in the expression
+                        for (auto lhs : lhsStack)
+                            lhs->AddRHS(newRHSVar);
                     }
                 break;
                 case ExpressionElement::OP: // 1
