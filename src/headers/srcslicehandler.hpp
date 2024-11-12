@@ -683,6 +683,12 @@ public:
                 } else if (type.second == TypeData::SPECIFIER) {
                 } else if (type.second == TypeData::TYPENAME) {
                 } */
+
+                if (type.second == TypeData::TYPENAME) {
+                    paramType = std::any_cast<std::shared_ptr<NameData>>(type.first)->ToString();
+                    // remove `std ` in `std string` if neccessary
+                    paramType = paramType.substr(paramType.find(' ')+1);
+                }
             }
             
             // Record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
