@@ -25,8 +25,8 @@ This is the version we presented at [ICSE 16](https://www.cs.kent.edu/~jmaletic/
 6. Once everything is built, you can find your executable at `./bin/srcslice`.
 
 ## :computer: To run srcSlice
-1. Create an output srcML file, `srcml [input file] -o [outfile name] --position`<br>
-    * You MUST include `--position` as srcSlice uses the extra data produced by this flag
+1. Create an output srcML file, `srcml [input file] -o [outfile name] --position --hash`<br>
+    * You must include `--position` and `--hash` flags as srcSlice uses the extra data produced by these flags
 
 2. Locate your `srcslice` binary and execute
     * For a list of options run `srcslice [-h/--help]`
