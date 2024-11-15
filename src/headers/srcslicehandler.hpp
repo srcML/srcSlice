@@ -160,23 +160,23 @@ public:
 
             //Just add new slice profile if name already exists. Otherwise, add new entry in map.
             if (sliceProfileItr != profileMap.end()) {
-                auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber,
-                                                 isPointer, true,
-                                                 std::set<unsigned int>{localVar->lineNumber});
+                // Check if the new slice we potentially try to create has not already been made
+                // (we dont want to have duplicates of the same slice)
+                if (sliceProfileItr->second.back().variableName != declVarName && sliceProfileItr->second.back().lineNumber != localVar->lineNumber) {
+                    auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber, isPointer, true, std::set<unsigned int>{localVar->lineNumber});
 
-                sliceProfile.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                sliceProfile.containingNameSpaces = ctx.currentNamespaces;
-                sliceProfile.language = ctx.currentFileLanguage;
+                    sliceProfile.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
+                    sliceProfile.containingNameSpaces = ctx.currentNamespaces;
+                    sliceProfile.language = ctx.currentFileLanguage;
 
-                sliceProfile.isPointer = isPointer;
-                sliceProfile.isReference = isReference;
+                    sliceProfile.isPointer = isPointer;
+                    sliceProfile.isReference = isReference;
 
-                sliceProfileItr->second.push_back(sliceProfile);
-                sliceProfileItr->second.back().containsDeclaration = true;
+                    sliceProfileItr->second.push_back(sliceProfile);
+                    sliceProfileItr->second.back().containsDeclaration = true;
+                }
             } else {
-                auto sliceProf = SliceProfile(declVarName, localVar->lineNumber,
-                                              (isPointer), false,
-                                              std::set<unsigned int>{localVar->lineNumber});
+                auto sliceProf = SliceProfile(declVarName, localVar->lineNumber, (isPointer), false, std::set<unsigned int>{localVar->lineNumber});
 
                 sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
                 sliceProf.containingNameSpaces = ctx.currentNamespaces;
@@ -187,10 +187,7 @@ public:
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
 
-                profileMap.insert(std::make_pair(declVarName,
-                                                  std::vector<SliceProfile>{
-                                                          std::move(sliceProf)
-                                                  }));
+                profileMap.insert(std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProf) }));
             }
 
             // Do not remove, it will cause a segmentation fault
@@ -513,6 +510,10 @@ public:
 
             switch (exprElem->type) {
                 case ExpressionElement::NAME: // 0 --> enum to integer value
+                    // ignore the this keyword
+                    if (exprElem->name->ToString() == "this") break;
+                    if (expr_op == "." || expr_op == "->") break;
+
                     if (!lhsVar->isInitialized()) {
                         lhsVar->InitializeLHS(exprElem, lineNumber);
 
@@ -1240,7 +1241,6 @@ public:
                                 }
 
                                 if (profileMap.find(var.first) != profileMap.end() && profileMap.find(Spi->first) != profileMap.end() && sliceItr != Spi->second.end()) {
-                                    std::cout << std::boolalpha << "[*] " << sliceItr->variableName << " | Ref -> " << sliceItr->isReference << ", Ptr -> " << sliceItr->isPointer << std::endl;
                                     if (!sliceItr->isReference && !sliceItr->isPointer) {
                                         // pass by value
                                         profileMap.find(var.first)->second.back().uses.insert(
