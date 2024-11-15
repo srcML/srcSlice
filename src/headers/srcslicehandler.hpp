@@ -140,8 +140,10 @@ public:
 
                 if (type.second == TypeData::POINTER) {
                     isPointer = true;
+                    declVarType += "*";
                 } else if (type.second == TypeData::REFERENCE) {
                     isReference = true;
+                    declVarType += "&";
                 } /* else if (type.second == TypeData::RVALUE) {
                 } else if (type.second == TypeData::SPECIFIER) {
                 } else if (type.second == TypeData::TYPENAME) {
@@ -673,7 +675,7 @@ public:
 
             // the Type string also includes the symbols along with data-type name
             // so this needs to be parsed out of the ToString() output
-            std::string paramType = parameter->type->ToString().substr(0,parameter->type->ToString().find(' '));
+            std::string paramType = "";
 
             bool isPointer = false;
             bool isReference = false;
@@ -682,8 +684,10 @@ public:
                 const std::pair<std::any, TypeData::TypeType> & type = parameter->type->types[pos];
                 if (type.second == TypeData::POINTER) {
                     isPointer = true;
+                    paramType += "*";
                 } else if (type.second == TypeData::REFERENCE) {
                     isReference = true;
+                    paramType += "&";
                 } /* else if (type.second == TypeData::RVALUE) {
                 } else if (type.second == TypeData::SPECIFIER) {
                 } else if (type.second == TypeData::TYPENAME) {
