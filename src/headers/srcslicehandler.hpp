@@ -64,7 +64,7 @@ public:
             // classInfo.push_back(policy->Data<ClassData>());
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
             
-            ProcessFunctionData(policy->Data<FunctionData>(), ctx);
+            ProcessFunctionData(policy->Data<FunctionData>(), "", ctx);
             
             // functionInfo.push_back(policy->Data<FunctionData>());
         }
@@ -72,39 +72,44 @@ public:
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
 
-    void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         
-        ProcessFunctionSignature(function_data, ctx);
+        ProcessFunctionSignature(function_data, className, ctx);
         
-        ProcessDeclStmts(function_data, nullptr, ctx);
+        ProcessDeclStmts(function_data, nullptr, className, ctx);
         
-        ProcessExprStmts(function_data, ctx);
+        ProcessExprStmts(function_data, className, ctx);
         
     }
 
     void ProcessClassData(std::shared_ptr<ClassData> class_data, const srcDispatch::srcSAXEventContext& ctx) {
+
+        std::string className = class_data->name->ToString();
         
         // Process Class Member Variables
-        ProcessDeclStmts(nullptr, class_data, ctx);
+        ProcessDeclStmts(nullptr, class_data, className, ctx);
 
         // Process Class Contructors
-        for (size_t i = 0; i < class_data->constructors->size(); ++i) {
-            ProcessFunctionData(class_data->constructors->at(i), ctx);
+        for (auto& funcVec : class_data->constructors) {// [ vect<func>, vect<func>, vect<func> ]
+            for (auto func : funcVec)
+                ProcessFunctionData(func, className, ctx);
         }
 
         // Process Class Methods (Member Functions)
-        for (size_t i = 0; i < class_data->methods->size(); ++i) {
-            ProcessFunctionData(class_data->methods->at(i), ctx);
+        for (auto& funcVec : class_data->methods) {// [ vect<func>, vect<func>, vect<func> ]
+            for (auto func : funcVec)
+                ProcessFunctionData(func, className, ctx);
         }
         
         // Process Operator Overloading
-        for (size_t i = 0; i < class_data->operators->size(); ++i) {
-            ProcessFunctionData(class_data->operators->at(i), ctx);
+        for (auto& funcVec : class_data->operators) {// [ vect<func>, vect<func>, vect<func> ]
+            for (auto func : funcVec)
+                ProcessFunctionData(func, className, ctx);
         }
         
     }
 
-    void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         std::vector<std::shared_ptr<DeclData>> localGroup;
 
         if (funcData != nullptr) {
@@ -127,6 +132,7 @@ public:
                 localGroup.insert(localGroup.end(), classData->fields[ClassData::PRIVATE].begin(), classData->fields[ClassData::PRIVATE].end());
             }
             localGroup.insert(localGroup.end(), classData->fields->begin(), classData->fields->end());
+            className = classData->name->ToString();
         }
 
         // loop through all the expression statements within Decl Statements
@@ -175,8 +181,8 @@ public:
                 if (sliceProfileItr->second.back().variableName != declVarName && sliceProfileItr->second.back().lineNumber != localVar->lineNumber) {
                     auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber, isPointer, true, std::set<unsigned int>{localVar->lineNumber});
 
-                    sliceProfile.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                    sliceProfile.containingNameSpaces = ctx.currentNamespaces;
+                    sliceProfile.nameOfContainingClass = className;
+                    // sliceProfile.containingNameSpaces = ctx.currentNamespaces;
                     sliceProfile.language = ctx.currentFileLanguage;
 
                     sliceProfile.isPointer = isPointer;
@@ -188,8 +194,8 @@ public:
             } else {
                 auto sliceProf = SliceProfile(declVarName, localVar->lineNumber, (isPointer), false, std::set<unsigned int>{localVar->lineNumber});
 
-                sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                sliceProf.nameOfContainingClass = className;
+                // sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
 
                 sliceProf.containsDeclaration = true;
@@ -240,8 +246,8 @@ public:
                             std::set<unsigned int>{localVar->lineNumber}
                         );
 
-                        sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                        sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                        sliceProf.nameOfContainingClass = className;
+                        // sliceProf.containingNameSpaces = ctx.currentNamespaces;
                         sliceProf.language = ctx.currentFileLanguage;
 
                         auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
@@ -282,7 +288,7 @@ public:
         }
     }
 
-    void ProcessExprStmts(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessExprStmts(std::shared_ptr<FunctionData> funcData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         std::vector<std::shared_ptr<ExpressionData>> exprStmts;
         
         // Capture general expressions
@@ -310,8 +316,8 @@ public:
 
                     //Just update definitions and uses if name already exists. Otherwise, add new name.
                     if (sliceProfileExprItr != profileMap.end()) {
-                        sliceProfileExprItr->second.back().nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                        sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
+                        sliceProfileExprItr->second.back().nameOfContainingClass = className;
+                        // sliceProfileExprItr->second.back().containingNameSpaces = ctx.currentNamespaces;
                         sliceProfileExprItr->second.back().language = ctx.currentFileLanguage;
 
                         sliceProfileExprItr->second.back().uses.insert(rhsVarData->uses.begin(),
@@ -345,8 +351,8 @@ public:
                                                                                                         rhsVarData->definitions,
                                                                                                         rhsVarData->uses)
                                                                                         }));
-                        sliceProfileExprItr2.first->second.back().nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                        sliceProfileExprItr2.first->second.back().containingNameSpaces = ctx.currentNamespaces;
+                        sliceProfileExprItr2.first->second.back().nameOfContainingClass = className;
+                        // sliceProfileExprItr2.first->second.back().containingNameSpaces = ctx.currentNamespaces;
                         sliceProfileExprItr2.first->second.back().language = ctx.currentFileLanguage;
 
                         if (!StringContainsCharacters(lhsName)) continue;
@@ -534,7 +540,6 @@ public:
                 case ExpressionElement::NAME: // 0 --> enum to integer value
                     // ignore the this keyword
                     if (exprElem->name->ToString() == "this") break;
-                    if (expr_op == "." || expr_op == "->") break;
 
                     if (!lhsVar->isInitialized()) {
                         lhsVar->InitializeLHS(exprElem, lineNumber);
@@ -692,7 +697,7 @@ public:
         return varDataGroup;
     }
 
-    void ProcessFunctionParameters(std::vector<std::shared_ptr<DeclData>>& parameters, const std::string& currentFunctionName, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessFunctionParameters(std::vector<std::shared_ptr<DeclData>>& parameters, const std::string& currentFunctionName, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         for (auto& parameter : parameters) {
             std::string paramName = parameter->name->ToString();
 
@@ -731,8 +736,8 @@ public:
                                               isPointer, true,
                                               std::set<unsigned int>{parameter->lineNumber});
                 sliceProf.containsDeclaration = true;
-                sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                sliceProf.nameOfContainingClass = className;
+                // sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
 
                 sliceProf.isPointer = isPointer;
@@ -744,8 +749,8 @@ public:
                                               isPointer, true,
                                               std::set<unsigned int>{parameter->lineNumber});
                 sliceProf.containsDeclaration = true;
-                sliceProf.nameOfContainingClass = ctx.currentClassName.substr(0, ctx.currentClassName.find('\n'));
-                sliceProf.containingNameSpaces = ctx.currentNamespaces;
+                sliceProf.nameOfContainingClass = className;
+                // sliceProf.containingNameSpaces = ctx.currentNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
                 
                 sliceProf.isPointer = isPointer;
@@ -769,12 +774,12 @@ public:
         }
     }
 
-    void ProcessFunctionSignature(std::shared_ptr<FunctionData> funcData, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessFunctionSignature(std::shared_ptr<FunctionData> funcData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         std::string functionName = funcData->name->ToString();
         if (functionName.empty()) return;
 
         // Process the parameters in a separate function
-        ProcessFunctionParameters(funcData->parameters, funcData->name->ToString(), ctx);
+        ProcessFunctionParameters(funcData->parameters, funcData->name->ToString(), className, ctx);
         auto funcSig = funcSigCollection.functionSigMap.find(functionName);
 
         if (funcSig != funcSigCollection.functionSigMap.end()) {
