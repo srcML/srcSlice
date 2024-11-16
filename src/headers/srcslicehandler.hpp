@@ -137,7 +137,7 @@ public:
 
         // loop through all the expression statements within Decl Statements
         for (const auto& localVar : localGroup) {
-            std::vector<VariableData*> varDataGroup;
+            std::vector<std::shared_ptr<VariableData>> varDataGroup;
 
             if (localVar->init != nullptr)
                 varDataGroup = ParseExpr(*localVar->init, localVar->init->lineNumber);
@@ -304,7 +304,8 @@ public:
         
         // loop through all the expression statements
         for (const auto& expr : exprStmts) {
-            auto varDataGroup = ParseExpr(*expr, expr->lineNumber);
+            std::vector<std::shared_ptr<VariableData>> varDataGroup;
+            varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
             for (auto varData : varDataGroup) {
                 UpdateLHSSlices(varData);
@@ -524,24 +525,31 @@ public:
         }
     }
 
-    std::vector<VariableData*> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
-        std::vector<VariableData*> varDataGroup;
+    std::vector<std::shared_ptr<VariableData>> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
+        std::vector<std::shared_ptr<VariableData>> varDataGroup;
         std::string expr_op = "";
-        VariableData* lhsVar = new VariableData();
+        std::shared_ptr<VariableData> lhsVar = std::make_shared<VariableData>();
 
-        std::vector<VariableData*> lhsStack;
+        std::vector<std::shared_ptr<VariableData>> lhsStack;
         bool groupCollect = false;
 
         // std::cout << lineNumber << " " << expr << std::endl;
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
-            bool isPostfix = true;
+            bool isPostfix = true, invalidName = false;
+            const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short"};
 
             switch (exprElem->type) {
                 case ExpressionElement::NAME: // 0 --> enum to integer value
-                    // ignore the this keyword
-                    if (exprElem->name->ToString() == "this") break;
+                    // Ignore the extracted name if its within the keywords array
+                    for (const auto& w : keywords) {
+                        if (exprElem->name->ToString() == w) {
+                            invalidName = true;
+                            break;
+                        }
+                    }
+                    if (invalidName) break;
 
                     if (!lhsVar->isInitialized()) {
                         lhsVar->InitializeLHS(exprElem, lineNumber);
@@ -552,7 +560,7 @@ public:
                             lhsVar->uses.insert(lineNumber);
                         }
                     } else {
-                        VariableData* newRHSVar = new VariableData(exprElem);
+                        std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(exprElem);
                         newRHSVar->uses.insert(lineNumber);
                         newRHSVar->SetOriginLine(lineNumber);
 
@@ -589,7 +597,7 @@ public:
                     }
 
                     if (!lhsVar->rhsElems.empty()) {
-                        VariableData* prevRHSPtr = lhsVar->GetRecentRHS();
+                        std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
 
                         // Take advantage of white-spaces to deduce which variable a potential
                         // pre/postfix operator is effecting so the use-def chain gets assigned
@@ -603,7 +611,7 @@ public:
                             lhsVar->lhs = true;
                             varDataGroup.push_back(lhsVar);
                             lhsStack.push_back(lhsVar); // save reference to outter lhs
-                            lhsVar = new VariableData();
+                            lhsVar = std::make_shared<VariableData>();
 
                             // We need to set the new LHS variable to start creating a new
                             // LHS-RHS pair group
@@ -796,7 +804,7 @@ public:
     }
 
     // Use for inserting Uses and Defs for Slices in the LHS of an Expression Statement
-    void UpdateLHSSlices(VariableData* varData) {
+    void UpdateLHSSlices(std::shared_ptr<VariableData> varData) {
         if (varData->GetNameOfIdentifier().empty()) return;
 
         auto sliceProfileItr = profileMap.find(varData->GetNameOfIdentifier());
@@ -1320,7 +1328,7 @@ public:
                                             sliceItr->dvars.begin(),
                                             sliceItr->dvars.end());
                                 } else {
-                                    std::cout << std::boolalpha << (profileMap.find(var.first) != profileMap.end()) << " && " << (profileMap.find(Spi->first) != profileMap.end()) << " && " << (sliceItr != Spi->second.end()) << std::endl;
+                                    std::cout << std::boolalpha << "Is var a Map Entry? " << (profileMap.find(var.first) != profileMap.end()) << " | Is Spi a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end()) << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
                                     std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
                                     std::cout << "[-] An Error has Occured in `ComputeInterprocedural`" << std::endl;
                                 }

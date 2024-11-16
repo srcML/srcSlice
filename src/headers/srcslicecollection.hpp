@@ -55,14 +55,14 @@ public:
 
     void SetOriginLine(unsigned int line) { originLine = line; }
 
-    void AddRHS(VariableData* var) {
+    void AddRHS(std::shared_ptr<VariableData> var) {
         if (rhsElems.size() == 0 || rhsElems.back() != var)
             rhsElems.push_back(var);
     }
-    VariableData* GetRecentRHS() { return rhsElems.size() > 0 ? rhsElems.back() : nullptr; }
+    std::shared_ptr<VariableData> GetRecentRHS() { return rhsElems.size() > 0 ? rhsElems.back() : nullptr; }
 
     std::shared_ptr<ExpressionElement> lhsElem;
-    std::vector<VariableData*> rhsElems;
+    std::vector<std::shared_ptr<VariableData>> rhsElems;
 
     bool lhs = false;
     unsigned int originLine;
