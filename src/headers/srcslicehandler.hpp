@@ -58,23 +58,32 @@ public:
 
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if(typeid(ClassPolicy) == typeid(*policy)) {
+            
             ProcessClassData(policy->Data<ClassData>(), ctx);
-            classInfo.push_back(policy->Data<ClassData>());
+            
+            // classInfo.push_back(policy->Data<ClassData>());
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
+            
             ProcessFunctionData(policy->Data<FunctionData>(), ctx);
-            functionInfo.push_back(policy->Data<FunctionData>());
+            
+            // functionInfo.push_back(policy->Data<FunctionData>());
         }
     }
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
 
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, const srcDispatch::srcSAXEventContext& ctx) {
+        
         ProcessFunctionSignature(function_data, ctx);
+        
         ProcessDeclStmts(function_data, nullptr, ctx);
+        
         ProcessExprStmts(function_data, ctx);
+        
     }
 
     void ProcessClassData(std::shared_ptr<ClassData> class_data, const srcDispatch::srcSAXEventContext& ctx) {
+        
         // Process Class Member Variables
         ProcessDeclStmts(nullptr, class_data, ctx);
 
@@ -87,11 +96,12 @@ public:
         for (size_t i = 0; i < class_data->methods->size(); ++i) {
             ProcessFunctionData(class_data->methods->at(i), ctx);
         }
-
+        
         // Process Operator Overloading
         for (size_t i = 0; i < class_data->operators->size(); ++i) {
             ProcessFunctionData(class_data->operators->at(i), ctx);
         }
+        
     }
 
     void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData, const srcDispatch::srcSAXEventContext& ctx) {
@@ -362,6 +372,8 @@ public:
     }
 
     void ProcessFunctionCall(std::shared_ptr<CallData> funcCallData) {
+        std::string functionName = funcCallData->name->ToString();
+
         int argIndex = 0;
         for (auto& arg : funcCallData->arguments) {
             ++argIndex;
@@ -377,29 +389,37 @@ public:
                 // Update an existing slices Call data
                 auto sliceProfileItr = profileMap.find(exprElem->name->name);
                 if (sliceProfileItr != profileMap.end()) {
-                    std::string functionName = funcCallData->name->name;
+                    // Get the collection of functions by name
                     auto funcSig = funcSigCollection.functionSigMap.find(functionName);
-                    unsigned int funcLineDef = 0;
                     if (funcSig != funcSigCollection.functionSigMap.end()) {
-                        funcLineDef = funcSig->second->lineNumber;
-                    }
+                        size_t pos = 0;
+                        
+                        // Attempt to fingerprint the right signature based on function call parameter list size
+                        while (funcCallData->arguments.size() != funcSig->second[pos]->parameters.size()) {
+                            if (++pos >= funcSig->second.size()) break;
+                        }
 
-                    auto sliceCallData = std::make_pair(
-                        functionName, // function call name
-                        std::make_pair(
-                            std::to_string(argIndex), // arg index starting from 1 to n
-                            std::to_string(funcLineDef) // function definition line number
-                        )
-                    );
+                        unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
 
-                    // Need to also potentially add definition line numbers incase there are
-                    // increment or decrement operators with the argument expression
-                    sliceProfileItr->second.back().uses.insert(argUseLineNumber);
+                        auto sliceCallData = std::make_pair(
+                            functionName, // function call name
+                            std::make_pair(
+                                std::to_string(argIndex), // arg index starting from 1 to n
+                                std::to_string(funcLineDef) // function definition line number
+                            )
+                        );
 
-                    if (sliceProfileItr->second.back().cfunctions.empty()) {
-                        sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
-                    } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
-                        sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                        // Need to also potentially add definition line numbers incase there are
+                        // increment or decrement operators with the argument expression
+                        sliceProfileItr->second.back().uses.insert(argUseLineNumber);
+
+                        if (sliceProfileItr->second.back().cfunctions.empty()) {
+                            sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                        } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
+                            sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                        }
+                    } else {
+                        std::cout << "[-] No Function Signature Found for -> " << functionName << std::endl;
                     }
                 }
             }
@@ -503,6 +523,8 @@ public:
 
         std::vector<VariableData*> lhsStack;
         bool groupCollect = false;
+
+        // std::cout << lineNumber << " " << expr << std::endl;
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
@@ -753,24 +775,16 @@ public:
 
         // Process the parameters in a separate function
         ProcessFunctionParameters(funcData->parameters, funcData->name->ToString(), ctx);
+        auto funcSig = funcSigCollection.functionSigMap.find(functionName);
 
-        if (funcSigCollection.functionSigMap.find(functionName) != funcSigCollection.functionSigMap.end()) {
+        if (funcSig != funcSigCollection.functionSigMap.end()) {
             // overloaded function detected
-
-            // construct a new name to log the overloaded function under
-            std::string functName = functionName;
-            unsigned int overloadID = ++funcSigCollection.overloadFunctionCount[functName];
-            functName += "-" + std::to_string(overloadID);
-
-            funcSigCollection.functionSigMap.insert(
-                    std::make_pair(functName, funcData)
-                    );
+            funcSig->second.push_back(funcData);
         } else {
             // Insert a new signature
             funcSigCollection.functionSigMap.insert(
-                    std::make_pair(functionName, funcData)
+                    std::make_pair(functionName, std::vector<std::shared_ptr<FunctionData>>{funcData})
                     );
-            funcSigCollection.overloadFunctionCount[functionName] = 0;
         }
     }
 
@@ -823,18 +837,27 @@ public:
     
     auto ArgumentProfile(std::pair<std::string, std::shared_ptr<FunctionData>> func, int paramIndex, std::unordered_set<std::string> visit_func) {
 	    auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name->ToString());
-
+        
         for (auto param : func.second->parameters) {
             if (profileMap.find(param->name->ToString())->second.back().visited) {
                 return Spi;
             } else {
                 for (auto cfunc : profileMap.find(param->name->ToString())->second.back().cfunctions) {
                     if (cfunc.first.compare(func.first) != 0) {
-                        auto function = funcSigCollection.functionSigMap.find(cfunc.first);
-                        if (function != funcSigCollection.functionSigMap.end()) {
-                            if (cfunc.first.compare(function->first) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
+                        auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.first);
+                        if (funcGroup != funcSigCollection.functionSigMap.end()) {
+                            size_t pos = 0;
+                            std::shared_ptr<FunctionData> func = funcGroup->second[pos];
+
+                            // Attempt to fingerprint the right signature based on function call definition line and called function
+                            // def line data
+                            while (cfunc.second.second != std::to_string(funcGroup->second[pos]->lineNumber)) {
+                                if (++pos >= funcGroup->second.size()) break;
+                            }
+
+                            if (cfunc.first.compare(func->name->ToString()) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
 				                visit_func.insert(cfunc.first);
-                                auto recursiveSpi = ArgumentProfile(*function, std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
+                                auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
                                 if (profileMap.find(param->name->ToString()) != profileMap.end() &&
                                     profileMap.find(recursiveSpi->first) != profileMap.end()) {
                                     profileMap.find(param->name->ToString())->second.back().definitions.insert(
@@ -862,6 +885,7 @@ public:
                 profileMap.find(param->name->ToString())->second.back().visited = true;
             }
         }
+        
         return Spi;
     }
 
@@ -1217,10 +1241,19 @@ public:
             if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {
                     for (auto cfunc : var.second.back().cfunctions) {
-                        auto funcIt = funcSigCollection.functionSigMap.find(cfunc.first);
-                        if(funcIt != funcSigCollection.functionSigMap.end()) {
-                            if (cfunc.first.compare(funcIt->first) == 0) { //TODO fix for case: Overload
-                                auto Spi = ArgumentProfile(*funcIt, std::atoi(cfunc.second.first.c_str()) - 1, visited_func);
+                        auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.first);
+                        if(funcGroup != funcSigCollection.functionSigMap.end()) {
+                            size_t pos = 0;
+                            std::shared_ptr<FunctionData> func = funcGroup->second[pos];
+
+                            // Attempt to fingerprint the right signature based on function call definition line and called function
+                            // def line data
+                            while (cfunc.second.second != std::to_string(funcGroup->second[pos]->lineNumber)) {
+                                if (++pos >= funcGroup->second.size()) break;
+                            }
+
+                            if (cfunc.first.compare(func->name->ToString()) == 0 && func->parameters.size() > 0) { //TODO fix for case: Overload
+                                auto Spi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visited_func);
                                 auto sliceItr = Spi->second.begin();
                                 std::string desiredVariableName = sliceItr->variableName;
 
