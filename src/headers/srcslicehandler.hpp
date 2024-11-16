@@ -1275,12 +1275,17 @@ public:
                                 for (sliceItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
                                     if (sliceItr->containsDeclaration) {
                                         if (sliceItr->variableName != desiredVariableName) {
+                                            // std::cout << "Name Check -> " << sliceItr->variableName << " | " << desiredVariableName << std::endl;
                                             continue;
                                         }
-                                        if (sliceItr->function != cfunc.first.substr(0, cfunc.first.find('-'))) {
+                                        if (sliceItr->function != cfunc.first) {
+                                            // std::cout << "Function Check -> " << sliceItr->function << " | " << cfunc.first << std::endl;
                                             continue;
                                         }
-                                        if (sliceItr->lineNumber != std::stoi(cfunc.second.second)) {
+                                        std::string parameterDeclLine = std::to_string(func->parameters[std::stoi(cfunc.second.first) - 1]->lineNumber);
+                                        if (std::to_string(sliceItr->lineNumber) != parameterDeclLine) {
+                                            // std::cout << "Line Check -> " << std::to_string(sliceItr->lineNumber) << " | "
+                                            // << func->parameters[std::stoi(cfunc.second.first)]->lineNumber << std::endl;
                                             continue;
                                         }
 
