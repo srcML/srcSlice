@@ -178,7 +178,9 @@ public:
             if (sliceProfileItr != profileMap.end()) {
                 // Check if the new slice we potentially try to create has not already been made
                 // (we dont want to have duplicates of the same slice)
-                if (sliceProfileItr->second.back().variableName != declVarName && sliceProfileItr->second.back().lineNumber != localVar->lineNumber) {
+                
+                // We may have variables of the same name, but each slice of the same name must be initially declared on different lines
+                if (sliceProfileItr->second.back().variableName != declVarName || sliceProfileItr->second.back().lineNumber != localVar->lineNumber) {
                     auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber, isPointer, true, std::set<unsigned int>{localVar->lineNumber});
 
                     sliceProfile.nameOfContainingClass = className;
