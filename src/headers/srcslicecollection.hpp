@@ -70,11 +70,10 @@ public:
     std::set<unsigned int> definitions;
 };
 
-// Store Data concerning both Function Signature Data along with a
-// counter so track how many times a function is potentially overloaded
+// Store Data about Function Signatures by grouping functions of the same name
+// like Slices in profileMap
 struct FunctionSignatureData {
-    std::unordered_map<std::string, std::shared_ptr<FunctionData>> functionSigMap;
-    std::unordered_map<std::string, unsigned int> overloadFunctionCount;
+    std::unordered_map<std::string, std::vector<std::shared_ptr<FunctionData>>> functionSigMap;
 };
 
 #endif
