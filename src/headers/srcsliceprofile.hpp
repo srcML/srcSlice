@@ -104,9 +104,9 @@ public:
         out << "    \"calledFunctions\":[";
         for (auto cfunc : profile.cfunctions) {
             if (cfunc != *(--profile.cfunctions.end()))
-                out << "{\"functionName\":\"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"},";
+                out << "{\"functionName\":\"" << cfunc.first << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"},";
             else
-                out << "{\"functionName\":\"" << cfunc.first.substr(0, cfunc.first.find('-')) << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"}";
+                out << "{\"functionName\":\"" << cfunc.first << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"}";
         }
         out << "]," << std::endl;
 
