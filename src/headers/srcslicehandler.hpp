@@ -58,14 +58,10 @@ public:
 
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if(typeid(ClassPolicy) == typeid(*policy)) {
-            
             ProcessClassData(policy->Data<ClassData>(), ctx);
-            
             // classInfo.push_back(policy->Data<ClassData>());
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
-            
             ProcessFunctionData(policy->Data<FunctionData>(), "", ctx);
-            
             // functionInfo.push_back(policy->Data<FunctionData>());
         }
     }
@@ -73,13 +69,9 @@ public:
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
 
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
-        
         ProcessFunctionSignature(function_data, className, ctx);
-        
         ProcessDeclStmts(function_data, nullptr, className, ctx);
-        
-        ProcessExprStmts(function_data, className, ctx);
-        
+        // ProcessExprStmts(function_data, className, ctx);
     }
 
     void ProcessClassData(std::shared_ptr<ClassData> class_data, const srcDispatch::srcSAXEventContext& ctx) {
@@ -114,10 +106,17 @@ public:
 
         if (funcData != nullptr) {
             // Capture general locals (decls)
-            localGroup.insert(localGroup.end(), funcData->block->locals.begin(), funcData->block->locals.end());
+            if (funcData->block != nullptr) {
+                if (funcData->block->locals.size() > 0) {
+                    localGroup.insert(localGroup.end(), funcData->block->locals.begin(), funcData->block->locals.end());
+                }
 
-            // Capture Conditional locals (decls)
-            CollectConditionalData(nullptr, &localGroup, funcData->block->conditionals);
+                // Capture Conditional locals (decls)
+                if (funcData->block->conditionals.size() > 0) {
+                    CollectConditionalData(nullptr, &localGroup, funcData->block->conditionals);
+                }
+            }
+
         }
 
         // Look at all declared members from each class field
@@ -136,7 +135,10 @@ public:
         }
 
         // loop through all the expression statements within Decl Statements
-        for (const auto& localVar : localGroup) {
+        for (const auto localVar : localGroup) {
+            if (localVar == nullptr) continue;
+            if (localVar->name == nullptr) continue;
+
             std::vector<std::shared_ptr<VariableData>> varDataGroup;
 
             if (localVar->init != nullptr)
@@ -303,7 +305,9 @@ public:
         CollectConditionalData(&exprStmts, nullptr, funcData->block->conditionals);
         
         // loop through all the expression statements
-        for (const auto& expr : exprStmts) {
+        for (const auto expr : exprStmts) {
+            if (expr == nullptr) continue;
+
             std::vector<std::shared_ptr<VariableData>> varDataGroup;
             varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
@@ -408,24 +412,28 @@ public:
                             if (++pos >= funcSig->second.size()) break;
                         }
 
-                        unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
+                        if (pos < funcSig->second.size()) {
+                            unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
 
-                        auto sliceCallData = std::make_pair(
-                            functionName, // function call name
-                            std::make_pair(
-                                std::to_string(argIndex), // arg index starting from 1 to n
-                                std::to_string(funcLineDef) // function definition line number
-                            )
-                        );
+                            auto sliceCallData = std::make_pair(
+                                functionName, // function call name
+                                std::make_pair(
+                                    std::to_string(argIndex), // arg index starting from 1 to n
+                                    std::to_string(funcLineDef) // function definition line number
+                                )
+                            );
 
-                        // Need to also potentially add definition line numbers incase there are
-                        // increment or decrement operators with the argument expression
-                        sliceProfileItr->second.back().uses.insert(argUseLineNumber);
+                            // Need to also potentially add definition line numbers incase there are
+                            // increment or decrement operators with the argument expression
+                            sliceProfileItr->second.back().uses.insert(argUseLineNumber);
 
-                        if (sliceProfileItr->second.back().cfunctions.empty()) {
-                            sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
-                        } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
-                            sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                            if (sliceProfileItr->second.back().cfunctions.empty()) {
+                                sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                            } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
+                                sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                            }
+                        } else {
+                            std::cout << "[-] Fingerprint Not Found for -> " << functionName << std::endl;
                         }
                     } else {
                         std::cout << "[-] No Function Signature Found for -> " << functionName << std::endl;
@@ -438,7 +446,7 @@ public:
     void CollectConditionalData(std::vector<std::shared_ptr<ExpressionData>>* exprStmts, std::vector<std::shared_ptr<DeclData>>* declStmts, std::vector<std::any>& conditionals) {
         std::vector<std::shared_ptr<BlockData>> cntlBlocks;
 
-        for (const auto& cntl : conditionals) {
+        for (const auto cntl : conditionals) {
             if (cntl.type() == typeid(std::shared_ptr<IfStmtData>)) {
                 // Extract all of the block data from if statements
                 std::shared_ptr<IfStmtData> ifcntl = std::any_cast<std::shared_ptr<IfStmtData>>(cntl);
@@ -513,7 +521,7 @@ public:
             }
         }
 
-        for (const auto& block : cntlBlocks) {
+        for (const auto block : cntlBlocks) {
             if (declStmts != nullptr) {
                 declStmts->insert(declStmts->end(), block->locals.begin(), block->locals.end());
             }
@@ -536,7 +544,7 @@ public:
         // std::cout << lineNumber << " " << expr << std::endl;
 
         // loop through each element within a specific expression statement
-        for (const auto& exprElem : expr.expr) {
+        for (const auto exprElem : expr.expr) {
             bool isPostfix = true, invalidName = false;
             const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short"};
 
@@ -709,6 +717,7 @@ public:
 
     void ProcessFunctionParameters(std::vector<std::shared_ptr<DeclData>>& parameters, const std::string& currentFunctionName, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         for (auto& parameter : parameters) {
+            if (parameter->name == nullptr) continue;
             std::string paramName = parameter->name->ToString();
 
             // the Type string also includes the symbols along with data-type name
@@ -851,6 +860,7 @@ public:
     }
     
     auto ArgumentProfile(std::pair<std::string, std::shared_ptr<FunctionData>> func, int paramIndex, std::unordered_set<std::string> visit_func) {
+        // std::cerr << "[*] paramIndex -> " << paramIndex << " | " << func.second->parameters.size() << std::endl;
 	    auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name->ToString());
         
         for (auto param : func.second->parameters) {
@@ -872,26 +882,30 @@ public:
 
                             if (cfunc.first.compare(func->name->ToString()) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
 				                visit_func.insert(cfunc.first);
-                                auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
-                                if (profileMap.find(param->name->ToString()) != profileMap.end() &&
-                                    profileMap.find(recursiveSpi->first) != profileMap.end()) {
-                                    profileMap.find(param->name->ToString())->second.back().definitions.insert(
-                                            recursiveSpi->second.back().definitions.begin(),
-                                            recursiveSpi->second.back().definitions.end());
-                                    profileMap.find(param->name->ToString())->second.back().uses.insert(
-                                            recursiveSpi->second.back().uses.begin(),
-                                            recursiveSpi->second.back().uses.end());
-                                    profileMap.find(param->name->ToString())->second.back().cfunctions.insert(
-                                            profileMap.find(
-                                                    param->name->ToString())->second.back().cfunctions.begin(),
-                                            recursiveSpi->second.back().cfunctions.begin(),
-                                            recursiveSpi->second.back().cfunctions.end());
-                                    profileMap.find(param->name->ToString())->second.back().aliases.insert(
-                                            recursiveSpi->second.back().aliases.begin(),
-                                            recursiveSpi->second.back().aliases.end());
-                                    profileMap.find(param->name->ToString())->second.back().dvars.insert(
-                                            recursiveSpi->second.back().dvars.begin(),
-                                            recursiveSpi->second.back().dvars.end());
+                                // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
+                                if (cfunc.first.compare(func->name->ToString()) == 0 && func->parameters.size() > 0 &&
+                                    std::atoi(cfunc.second.first.c_str()) - 1 < func->parameters.size()) {
+                                    auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
+                                    if (profileMap.find(param->name->ToString()) != profileMap.end() &&
+                                        profileMap.find(recursiveSpi->first) != profileMap.end()) {
+                                        profileMap.find(param->name->ToString())->second.back().definitions.insert(
+                                                recursiveSpi->second.back().definitions.begin(),
+                                                recursiveSpi->second.back().definitions.end());
+                                        profileMap.find(param->name->ToString())->second.back().uses.insert(
+                                                recursiveSpi->second.back().uses.begin(),
+                                                recursiveSpi->second.back().uses.end());
+                                        profileMap.find(param->name->ToString())->second.back().cfunctions.insert(
+                                                profileMap.find(
+                                                        param->name->ToString())->second.back().cfunctions.begin(),
+                                                recursiveSpi->second.back().cfunctions.begin(),
+                                                recursiveSpi->second.back().cfunctions.end());
+                                        profileMap.find(param->name->ToString())->second.back().aliases.insert(
+                                                recursiveSpi->second.back().aliases.begin(),
+                                                recursiveSpi->second.back().aliases.end());
+                                        profileMap.find(param->name->ToString())->second.back().dvars.insert(
+                                                recursiveSpi->second.back().dvars.begin(),
+                                                recursiveSpi->second.back().dvars.end());
+                                    }
                                 }
                             }
                         }
@@ -1267,7 +1281,9 @@ public:
                                 if (++pos >= funcGroup->second.size()) break;
                             }
 
-                            if (cfunc.first.compare(func->name->ToString()) == 0 && func->parameters.size() > 0) { //TODO fix for case: Overload
+                            // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
+                            if (cfunc.first.compare(func->name->ToString()) == 0 && func->parameters.size() > 0 &&
+                                std::atoi(cfunc.second.first.c_str()) - 1 < func->parameters.size()) { //TODO fix for case: Overload
                                 auto Spi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visited_func);
                                 auto sliceItr = Spi->second.begin();
                                 std::string desiredVariableName = sliceItr->variableName;
