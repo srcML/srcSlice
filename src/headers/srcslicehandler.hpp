@@ -559,6 +559,11 @@ public:
                 exprStmts->insert(exprStmts->end(), block->expr_stmts.begin(), block->expr_stmts.end());
                 exprStmts->insert(exprStmts->end(), block->returns.begin(), block->returns.end());
             }
+            
+            // Recursive call to dive into nested conditionals
+            if (block->conditionals.size() > 0) {
+                CollectConditionalData(exprStmts, declStmts, block->conditionals);
+            }
         }
     }
 
