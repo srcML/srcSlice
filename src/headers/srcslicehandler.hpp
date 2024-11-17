@@ -395,6 +395,23 @@ public:
 
     }
 
+    // Use collected function call data to push a new cfunctions entry into a referenced slice profile
+    void CreateSliceCallData(std::string functionName, int argIndex, int functionDefLine, SliceProfile& sliceProfile) {
+        auto sliceCallData = std::make_pair(
+            functionName, // function call name
+            std::make_pair(
+                std::to_string(argIndex), // arg index starting from 1 to n
+                std::to_string(functionDefLine) // function definition line number
+            )
+        );
+
+        if (sliceProfile.cfunctions.empty()) {
+            sliceProfile.cfunctions.push_back(sliceCallData);
+        } else if (sliceProfile.cfunctions.back() != sliceCallData) {
+            sliceProfile.cfunctions.push_back(sliceCallData);
+        }
+    }
+
     void ProcessFunctionCall(std::shared_ptr<CallData> funcCallData) {
         std::string functionName = funcCallData->name->ToString();
 
@@ -415,6 +432,13 @@ public:
                     // Update an existing slices Call data
                     auto sliceProfileItr = profileMap.find(name->ToString());
                     if (sliceProfileItr != profileMap.end()) {
+                        // variable is used within a function call, even if a signature or fingerprint
+                        // cannot be located
+
+                        // Need to also potentially add definition line numbers incase there are
+                        // increment or decrement operators with the argument expression
+                        sliceProfileItr->second.back().uses.insert(argUseLineNumber);
+
                         // Get the collection of functions by name
                         auto funcSig = funcSigCollection.functionSigMap.find(functionName);
                         if (funcSig != funcSigCollection.functionSigMap.end()) {
@@ -427,29 +451,14 @@ public:
 
                             if (pos < funcSig->second.size()) {
                                 unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
-
-                                auto sliceCallData = std::make_pair(
-                                    functionName, // function call name
-                                    std::make_pair(
-                                        std::to_string(argIndex), // arg index starting from 1 to n
-                                        std::to_string(funcLineDef) // function definition line number
-                                    )
-                                );
-
-                                // Need to also potentially add definition line numbers incase there are
-                                // increment or decrement operators with the argument expression
-                                sliceProfileItr->second.back().uses.insert(argUseLineNumber);
-
-                                if (sliceProfileItr->second.back().cfunctions.empty()) {
-                                    sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
-                                } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
-                                    sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
-                                }
+                                CreateSliceCallData(functionName, argIndex, funcLineDef, sliceProfileItr->second.back());
                             } else {
                                 std::cout << "[-] Fingerprint Not Found for -> " << functionName << std::endl;
+                                CreateSliceCallData(functionName, argIndex, 0, sliceProfileItr->second.back());
                             }
                         } else {
                             std::cout << "[-] No Function Signature Found for -> " << functionName << std::endl;
+                            CreateSliceCallData(functionName, argIndex, 0, sliceProfileItr->second.back());
                         }
                     }
                 }
@@ -563,7 +572,7 @@ public:
         const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short"};
 
         // loop through each element within a specific expression statement
-        for (const auto exprElem : expr.expr) {
+        for (const auto& exprElem : expr.expr) {
             bool invalidName = false;
 
             if (exprElem.type() == typeid(std::shared_ptr<NameData>)) {
@@ -579,7 +588,6 @@ public:
                 }
                 if (invalidName) continue;
 
-                // std::cerr << "Name -> '" << name->ToString() << "'" << std::endl;
 
                 if (!lhsVar->isInitialized()) {
                     lhsVar->InitializeLHS(name->ToString(), lineNumber);
