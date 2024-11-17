@@ -17,9 +17,9 @@
 
 class VariableData {
 public:
-    VariableData(std::shared_ptr<ExpressionElement> elem = nullptr): lhsElem(elem){}
+    VariableData(std::string name=""): lhsVarName(name){}
     VariableData(const VariableData& rhs) {
-        lhsElem = rhs.lhsElem;
+        lhsVarName = rhs.lhsVarName;
         rhsElems = rhs.rhsElems;
         lhs = rhs.lhs;
         uses = rhs.uses;
@@ -35,7 +35,7 @@ public:
 
     // Basic clean up of this struct to allow simple re-purposing
     void clear(){
-        lhsElem = nullptr;
+        lhsVarName.clear();
         rhsElems.clear();
         lhs = false;
         uses.clear();
@@ -45,13 +45,14 @@ public:
     // Name of an expression variable that may be a LHS/RHS var
     // potentially have none to many RHS variables the LHS uses
     std::string GetNameOfIdentifier() const {
-        if (!lhsElem) return "";
-        return lhsElem->name->name;
+        if (lhsVarName.empty()) return "";
+        return lhsVarName;
     }
 
-    bool isInitialized() { return lhsElem != nullptr; }
+    // when the lhsVarName is not an empty string its considered initialized
+    bool isInitialized() { return !lhsVarName.empty(); }
 
-    void InitializeLHS(std::shared_ptr<ExpressionElement> elem, unsigned int line) { lhsElem = elem; originLine = line; }
+    void InitializeLHS(std::string name, unsigned int line) { lhsVarName = name; originLine = line; }
 
     void SetOriginLine(unsigned int line) { originLine = line; }
 
@@ -61,7 +62,7 @@ public:
     }
     std::shared_ptr<VariableData> GetRecentRHS() { return rhsElems.size() > 0 ? rhsElems.back() : nullptr; }
 
-    std::shared_ptr<ExpressionElement> lhsElem;
+    std::string lhsVarName;
     std::vector<std::shared_ptr<VariableData>> rhsElems;
 
     bool lhs = false;

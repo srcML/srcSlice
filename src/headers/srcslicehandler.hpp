@@ -71,7 +71,7 @@ public:
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         ProcessFunctionSignature(function_data, className, ctx);
         ProcessDeclStmts(function_data, nullptr, className, ctx);
-        // ProcessExprStmts(function_data, className, ctx);
+        ProcessExprStmts(function_data, className, ctx);
     }
 
     void ProcessClassData(std::shared_ptr<ClassData> class_data, const srcDispatch::srcSAXEventContext& ctx) {
@@ -296,13 +296,25 @@ public:
         std::vector<std::shared_ptr<ExpressionData>> exprStmts;
         
         // Capture general expressions
-        exprStmts.insert(exprStmts.end(), funcData->block->expr_stmts.begin(), funcData->block->expr_stmts.end());
+        if (funcData->block != nullptr) {
+            if (funcData->block->expr_stmts.size() > 0) {
+                exprStmts.insert(exprStmts.end(), funcData->block->expr_stmts.begin(), funcData->block->expr_stmts.end());
+            }
+        }
         
         // Capture general Return expressions
-        exprStmts.insert(exprStmts.end(), funcData->block->returns.begin(), funcData->block->returns.end());
+        if (funcData->block != nullptr) {
+            if (funcData->block->returns.size() > 0) {
+                exprStmts.insert(exprStmts.end(), funcData->block->returns.begin(), funcData->block->returns.end());
+            }
+        }
 
         // Capture Conditional expressions
-        CollectConditionalData(&exprStmts, nullptr, funcData->block->conditionals);
+        if (funcData->block != nullptr) {
+            if (funcData->block->conditionals.size() > 0) {
+                CollectConditionalData(&exprStmts, nullptr, funcData->block->conditionals);
+            }
+        }
         
         // loop through all the expression statements
         for (const auto expr : exprStmts) {
@@ -314,7 +326,6 @@ public:
             for (auto varData : varDataGroup) {
                 UpdateLHSSlices(varData);
                 for (auto rhsVarData : varData->rhsElems) {
-                    std::shared_ptr<ExpressionElement> lhsData = varData->lhsElem;
                     std::string lhsName = varData->GetNameOfIdentifier();
                     std::string rhsName = rhsVarData->GetNameOfIdentifier();
 
@@ -394,49 +405,52 @@ public:
             // Extract the Variable Name from the expression contained within
             // the function call argument list index
             for (auto& exprElem : arg->expr) {
-                unsigned int argUseLineNumber = funcCallData->lineNumber;
+                if (exprElem.type() == typeid(std::shared_ptr<NameData>)) {
+                    std::shared_ptr<NameData> name = std::any_cast<std::shared_ptr<NameData>>(exprElem);
+                    unsigned int argUseLineNumber = funcCallData->lineNumber;
 
-                // Don't worry about exprElems with bad name ptrs
-                if (exprElem->name == nullptr) continue;
+                    // Don't worry about exprElems with bad name ptrs
+                    if (name == nullptr) continue;
 
-                // Update an existing slices Call data
-                auto sliceProfileItr = profileMap.find(exprElem->name->name);
-                if (sliceProfileItr != profileMap.end()) {
-                    // Get the collection of functions by name
-                    auto funcSig = funcSigCollection.functionSigMap.find(functionName);
-                    if (funcSig != funcSigCollection.functionSigMap.end()) {
-                        size_t pos = 0;
-                        
-                        // Attempt to fingerprint the right signature based on function call parameter list size
-                        while (funcCallData->arguments.size() != funcSig->second[pos]->parameters.size()) {
-                            if (++pos >= funcSig->second.size()) break;
-                        }
+                    // Update an existing slices Call data
+                    auto sliceProfileItr = profileMap.find(name->ToString());
+                    if (sliceProfileItr != profileMap.end()) {
+                        // Get the collection of functions by name
+                        auto funcSig = funcSigCollection.functionSigMap.find(functionName);
+                        if (funcSig != funcSigCollection.functionSigMap.end()) {
+                            size_t pos = 0;
+                            
+                            // Attempt to fingerprint the right signature based on function call parameter list size
+                            while (funcCallData->arguments.size() != funcSig->second[pos]->parameters.size()) {
+                                if (++pos >= funcSig->second.size()) break;
+                            }
 
-                        if (pos < funcSig->second.size()) {
-                            unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
+                            if (pos < funcSig->second.size()) {
+                                unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
 
-                            auto sliceCallData = std::make_pair(
-                                functionName, // function call name
-                                std::make_pair(
-                                    std::to_string(argIndex), // arg index starting from 1 to n
-                                    std::to_string(funcLineDef) // function definition line number
-                                )
-                            );
+                                auto sliceCallData = std::make_pair(
+                                    functionName, // function call name
+                                    std::make_pair(
+                                        std::to_string(argIndex), // arg index starting from 1 to n
+                                        std::to_string(funcLineDef) // function definition line number
+                                    )
+                                );
 
-                            // Need to also potentially add definition line numbers incase there are
-                            // increment or decrement operators with the argument expression
-                            sliceProfileItr->second.back().uses.insert(argUseLineNumber);
+                                // Need to also potentially add definition line numbers incase there are
+                                // increment or decrement operators with the argument expression
+                                sliceProfileItr->second.back().uses.insert(argUseLineNumber);
 
-                            if (sliceProfileItr->second.back().cfunctions.empty()) {
-                                sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
-                            } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
-                                sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                                if (sliceProfileItr->second.back().cfunctions.empty()) {
+                                    sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                                } else if (sliceProfileItr->second.back().cfunctions.back() != sliceCallData) {
+                                    sliceProfileItr->second.back().cfunctions.push_back(sliceCallData);
+                                }
+                            } else {
+                                std::cout << "[-] Fingerprint Not Found for -> " << functionName << std::endl;
                             }
                         } else {
-                            std::cout << "[-] Fingerprint Not Found for -> " << functionName << std::endl;
+                            std::cout << "[-] No Function Signature Found for -> " << functionName << std::endl;
                         }
-                    } else {
-                        std::cout << "[-] No Function Signature Found for -> " << functionName << std::endl;
                     }
                 }
             }
@@ -444,6 +458,7 @@ public:
     }
 
     void CollectConditionalData(std::vector<std::shared_ptr<ExpressionData>>* exprStmts, std::vector<std::shared_ptr<DeclData>>* declStmts, std::vector<std::any>& conditionals) {
+        if (&conditionals == nullptr) return;
         std::vector<std::shared_ptr<BlockData>> cntlBlocks;
 
         for (const auto cntl : conditionals) {
@@ -501,7 +516,12 @@ public:
                 std::shared_ptr<ForData> forcntl = std::any_cast<std::shared_ptr<ForData>>(cntl);
 
                 if (declStmts != nullptr) {
-                    declStmts->insert(declStmts->end(), forcntl->control->init.begin(), forcntl->control->init.end());
+                    for (auto& initData : forcntl->control->init) {
+                        if (initData.type() == typeid(std::shared_ptr<DeclData>)) {
+                            std::shared_ptr<DeclData> forInitDecl = std::any_cast<std::shared_ptr<DeclData>>(initData);
+                            declStmts->push_back(forInitDecl);
+                        }
+                    }
                 }
 
                 if (exprStmts != nullptr) {
@@ -540,177 +560,159 @@ public:
 
         std::vector<std::shared_ptr<VariableData>> lhsStack;
         bool groupCollect = false;
-
-        // std::cout << lineNumber << " " << expr << std::endl;
+        const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short"};
 
         // loop through each element within a specific expression statement
         for (const auto exprElem : expr.expr) {
-            bool isPostfix = true, invalidName = false;
-            const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short"};
+            bool invalidName = false;
 
-            switch (exprElem->type) {
-                case ExpressionElement::NAME: // 0 --> enum to integer value
-                    // Ignore the extracted name if its within the keywords array
-                    for (const auto& w : keywords) {
-                        if (exprElem->name->ToString() == w) {
-                            invalidName = true;
-                            break;
-                        }
+            if (exprElem.type() == typeid(std::shared_ptr<NameData>)) {
+                std::shared_ptr<NameData> name = std::any_cast<std::shared_ptr<NameData>>(exprElem);
+                if (name->ToString().empty()) continue;
+
+                // Ignore the extracted name if its within the keywords array
+                for (const auto& w : keywords) {
+                    if (name->ToString() == w) {
+                        invalidName = true;
+                        break;
                     }
-                    if (invalidName) break;
+                }
+                if (invalidName) continue;
 
-                    if (!lhsVar->isInitialized()) {
-                        lhsVar->InitializeLHS(exprElem, lineNumber);
+                // std::cerr << "Name -> '" << name->ToString() << "'" << std::endl;
 
-                        // capture use-def chains for single statements such as: ++i
-                        if (expr_op == "++" || expr_op == "--") {
+                if (!lhsVar->isInitialized()) {
+                    lhsVar->InitializeLHS(name->ToString(), lineNumber);
+
+                    // capture use-def chains for single statements such as: ++i
+                    if (expr_op == "++" || expr_op == "--") {
+                        lhsVar->definitions.insert(lineNumber);
+                        lhsVar->uses.insert(lineNumber);
+                    }
+                } else {
+                    std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(name->ToString());
+                    newRHSVar->uses.insert(lineNumber);
+                    newRHSVar->SetOriginLine(lineNumber);
+
+                    // capture use-def chains for rhs var statements such as: a = ++i
+                    if (expr_op == "++" || expr_op == "--") {
+                        newRHSVar->definitions.insert(lineNumber);
+                    }
+
+                    lhsVar->lhs = true;
+                    lhsVar->AddRHS(newRHSVar);
+
+                    // Ensure that tracked lhs variables get assigned all of their
+                    // rhs vars in the expression
+                    for (auto lhs : lhsStack)
+                        lhs->AddRHS(newRHSVar);
+                }
+            } else if (exprElem.type() == typeid(std::shared_ptr<OperatorData>)) {
+                std::shared_ptr<OperatorData> opData = std::any_cast<std::shared_ptr<OperatorData>>(exprElem);
+                expr_op = opData->op;
+
+                if (expr_op == "(") {
+                    groupCollect = true;
+                    continue;
+                }
+
+                if (expr_op == ")") {
+                    groupCollect = false;
+                    if (lhsStack.size() > 0) {
+                        varDataGroup.push_back(lhsVar);
+                        lhsVar = lhsStack.back();
+                        lhsStack.pop_back();
+                    }
+                    continue;
+                }
+
+                if (!lhsVar->rhsElems.empty()) { // if the lhs has rhs members
+                    std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
+
+                    if (isAssignment(expr_op)) {
+                        // When we encounter assignment while containing a group of RHS variables
+                        // we need to push this LHS-RHS pair into the vector we later return
+                        lhsVar->lhs = true;
+                        varDataGroup.push_back(lhsVar);
+                        lhsStack.push_back(lhsVar); // save reference to outter lhs
+                        lhsVar = std::make_shared<VariableData>();
+
+                        // We need to set the new LHS variable to start creating a new
+                        // LHS-RHS pair group
+                        lhsVar->InitializeLHS(prevRHSPtr->GetNameOfIdentifier(), lineNumber);
+                        lhsVar->definitions.insert(lineNumber);
+
+                        // Coumpound Assignment is a classic Use-Def Chain
+                        // ie: int a = b += c; // b is used and defined by +=
+                        if (isCompoundAssignment(expr_op)) {
                             lhsVar->definitions.insert(lineNumber);
                             lhsVar->uses.insert(lineNumber);
                         }
-                    } else {
-                        std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(exprElem);
-                        newRHSVar->uses.insert(lineNumber);
-                        newRHSVar->SetOriginLine(lineNumber);
 
-                        // capture use-def chains for rhs var statements such as: a = ++i
-                        if (expr_op == "++" || expr_op == "--") {
-                            newRHSVar->definitions.insert(lineNumber);
+                    } else {
+                        if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                            // We will have captured some RHS variable, if we encounter this block we've encountered
+                            // a use for the most recent RHS variable we've encountered
+                            if (prevRHSPtr != nullptr) {
+                                prevRHSPtr->uses.insert(lineNumber);
+                            }
+                        } else if (expr_op == "++" || expr_op == "--" ) {
+                            if (prevRHSPtr != nullptr) {
+                                prevRHSPtr->uses.insert(lineNumber);
+                                prevRHSPtr->definitions.insert(lineNumber);
+                            }
                         }
 
+                    }
+                } else { // if the lhs has no rhs members
+                    if (isAssignment(expr_op)) {
                         lhsVar->lhs = true;
-                        lhsVar->AddRHS(newRHSVar);
-
-                        // Ensure that tracked lhs variables get assigned all of their
-                        // rhs vars in the expression
-                        for (auto lhs : lhsStack)
-                            lhs->AddRHS(newRHSVar);
-                    }
-                break;
-                case ExpressionElement::OP: // 1
-                    expr_op = exprElem->token->token;
-
-                    if (expr_op == "(") {
-                        groupCollect = true;
-                        break;
-                    }
-
-                    if (expr_op == ")") {
-                        groupCollect = false;
-                        if (lhsStack.size() > 0) {
-                            varDataGroup.push_back(lhsVar);
-                            lhsVar = lhsStack.back();
-                            lhsStack.pop_back();
-                        }
-                        break;
-                    }
-
-                    if (!lhsVar->rhsElems.empty()) {
-                        std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
-
-                        // Take advantage of white-spaces to deduce which variable a potential
-                        // pre/postfix operator is effecting so the use-def chain gets assigned
-                        // correctly
-                        if (isWhiteSpace(expr_op))
-                            isPostfix = false;
-
-                        if (isAssignment(expr_op)) {
-                            // When we encounter assignment while containing a group of RHS variables
-                            // we need to push this LHS-RHS pair into the vector we later return
-                            lhsVar->lhs = true;
-                            varDataGroup.push_back(lhsVar);
-                            lhsStack.push_back(lhsVar); // save reference to outter lhs
-                            lhsVar = std::make_shared<VariableData>();
-
-                            // We need to set the new LHS variable to start creating a new
-                            // LHS-RHS pair group
-                            lhsVar->InitializeLHS(prevRHSPtr->lhsElem, lineNumber);
-                            lhsVar->definitions.insert(lineNumber);
-
-                            // Coumpound Assignment is a classic Use-Def Chain
-                            // ie: int a = b += c; // b is used and defined by +=
-                            if (isCompoundAssignment(expr_op)) {
-                                lhsVar->definitions.insert(lineNumber);
-                                lhsVar->uses.insert(lineNumber);
-                            }
-
-                        } else {
-                            if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                                // We will have captured some RHS variable, if we encounter this block we've encountered
-                                // a use for the most recent RHS variable we've encountered
-                                if (prevRHSPtr != nullptr) {
-                                    prevRHSPtr->uses.insert(lineNumber);
-                                }
-                            }
-                            
-                            if (expr_op == "++" || expr_op == "--" ) {
-                                if (isPostfix) {
-                                    if (prevRHSPtr != nullptr) {
-                                        prevRHSPtr->uses.insert(lineNumber);
-                                        prevRHSPtr->definitions.insert(lineNumber);
-                                    }
-                                }
-                            }
-
-                            if (!groupCollect) {
-                                if (lhsStack.size() > 0) {
-                                    varDataGroup.push_back(lhsVar);
-                                    lhsVar = lhsStack.back();
-                                    lhsStack.pop_back();
-                                }
-                            }
-                        }
-                    } else {
-                        if (isWhiteSpace(expr_op))
-                            isPostfix = false;
-
-                        if (isAssignment(expr_op)) {
-                            lhsVar->lhs = true;
-                            lhsVar->definitions.insert(lineNumber);
-                        }
+                        lhsVar->definitions.insert(lineNumber);
 
                         // Coumpound Assignment is a classic Use-Def Chain
                         // ie: n += 2;
                         if (isCompoundAssignment(expr_op)) {
                             lhsVar->uses.insert(lineNumber);
                             lhsVar->definitions.insert(lineNumber);
-                        } else if (expr_op == "++" || expr_op == "--" ) {
-                            if (isPostfix) {
-                                lhsVar->uses.insert(lineNumber);
-                                lhsVar->definitions.insert(lineNumber);
-                            }
-                        } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                            lhsVar->uses.insert(lineNumber);
-                        } else if (isLogical(expr_op)) {
-                            // anything within logical conditionals are uses
-                            // we also will need to redeclare the lhs variable
-                            lhsVar->uses.insert(lineNumber);
-
-                            varDataGroup.push_back(lhsVar);
                         }
+                    } else if (expr_op == "++" || expr_op == "--" ) {
+                        lhsVar->uses.insert(lineNumber);
+                        lhsVar->definitions.insert(lineNumber);
+                    } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                        lhsVar->uses.insert(lineNumber);
+                    } else if (isLogical(expr_op)) {
+                        // anything within logical conditionals are uses
+                        // we also will need to redeclare the lhs variable
+                        lhsVar->uses.insert(lineNumber);
+
+                        varDataGroup.push_back(lhsVar);
                     }
-                break;
-                case ExpressionElement::CALL: // 2
-                    // This will read through the Call Args and attempt
-                    // to find the slice profile for the extracted arg
-                    // and will attempt to insert potential:
-                    // use/def/call data
-                    ProcessFunctionCall(exprElem->call);
-                break;
-                default:
-                break;
+                }
+            } else if (exprElem.type() == typeid(std::shared_ptr<CallData>)) {
+                // This will read through the Call Args and attempt
+                // to find the slice profile for the extracted arg
+                // and will attempt to insert potential:
+                // use/def/call data
+                std::shared_ptr<CallData> callData = std::any_cast<std::shared_ptr<CallData>>(exprElem);
+                ProcessFunctionCall(callData);
             }
-        }
+        } // end of looping elements
 
-        // For expressions with only a single variable name
-        // where we never encounter an operator, ie `return x;`
-        if (lhsVar->rhsElems.size() == 0 || !lhsVar->lhs) {
-            lhsVar->uses.insert(lineNumber);
-            lhsVar->definitions.erase(lineNumber);
-        }
+        // Only handle initialized variable data
+        if (lhsVar->isInitialized()) {
+            // For expressions with only a single variable name
+            // where we never encounter an operator, ie `return x;`
+            if (lhsVar->rhsElems.size() == 0 || !lhsVar->lhs) {
+                lhsVar->uses.insert(lineNumber);
+            }
 
-        // Ensure the final LHS-RHS pair is pushed into out collection we return
-        lhsVar->lhs = true;
-        varDataGroup.push_back(lhsVar);
+            // Ensure the final potential LHS-RHS pair is pushed into the
+            // collection we return
+            if (lhsVar->rhsElems.size() > 0) {
+                lhsVar->lhs = true;
+            }
+            varDataGroup.push_back(lhsVar);
+        }
 
         return varDataGroup;
     }
