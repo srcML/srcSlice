@@ -559,7 +559,7 @@ public:
                 exprStmts->insert(exprStmts->end(), block->expr_stmts.begin(), block->expr_stmts.end());
                 exprStmts->insert(exprStmts->end(), block->returns.begin(), block->returns.end());
             }
-            
+
             // Recursive call to dive into nested conditionals
             if (block->conditionals.size() > 0) {
                 CollectConditionalData(exprStmts, declStmts, block->conditionals);
@@ -697,8 +697,15 @@ public:
                         // anything within logical conditionals are uses
                         // we also will need to redeclare the lhs variable
                         lhsVar->uses.insert(lineNumber);
-
                         varDataGroup.push_back(lhsVar);
+
+                        lhsVar = std::make_shared<VariableData>();
+                    } else if (expr_op == "[" || expr_op == "]")
+                    {
+                        lhsVar->uses.insert(lineNumber);
+                        varDataGroup.push_back(lhsVar);
+
+                        lhsVar = std::make_shared<VariableData>();
                     }
                 }
             } else if (exprElem.type() == typeid(std::shared_ptr<CallData>)) {
