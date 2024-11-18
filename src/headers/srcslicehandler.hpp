@@ -317,8 +317,21 @@ public:
         }
         
         // loop through all the expression statements
-        for (const auto expr : exprStmts) {
+        for (auto itr = exprStmts.begin(); itr != exprStmts.end(); ++itr) {
+            std::shared_ptr<ExpressionData> expr = *itr;
             if (expr == nullptr) continue;
+
+            // Check if any NameData within an Express contains index operator expressions
+            // and insert those into the exprStmts vector
+            for (const auto& data : expr->expr) {
+                if (data.type() == typeid(std::shared_ptr<NameData>)) {
+                    std::shared_ptr<NameData> nameData = std::any_cast<std::shared_ptr<NameData>>(data);
+                    if (nameData->indices != nullptr) {
+                        itr = exprStmts.insert(itr+1, nameData->indices); // set to iterator of newly inserted data
+                        --itr;
+                    }
+                }
+            }
 
             std::vector<std::shared_ptr<VariableData>> varDataGroup;
             varDataGroup = ParseExpr(*expr, expr->lineNumber);
@@ -882,7 +895,8 @@ public:
     }
     
     auto ArgumentProfile(std::pair<std::string, std::shared_ptr<FunctionData>> func, int paramIndex, std::unordered_set<std::string> visit_func) {
-        // std::cerr << "[*] paramIndex -> " << paramIndex << " | " << func.second->parameters.size() << std::endl;
+        // std::cerr << "[*] " << func.first << " | paramIndex -> " << paramIndex << " | " << func.second->parameters.size() << std::endl;
+        // std::cerr << std::boolalpha << "No Name Data -> " << (func.second->parameters.at(paramIndex)->name == nullptr) << std::endl;
 	    auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name->ToString());
         
         for (auto param : func.second->parameters) {
