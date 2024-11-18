@@ -83,19 +83,19 @@ public:
 
         // Process Class Contructors
         for (auto& funcVec : class_data->constructors) {// [ vect<func>, vect<func>, vect<func> ]
-            for (auto func : funcVec)
+            for (auto& func : funcVec)
                 ProcessFunctionData(func, className, ctx);
         }
 
         // Process Class Methods (Member Functions)
         for (auto& funcVec : class_data->methods) {// [ vect<func>, vect<func>, vect<func> ]
-            for (auto func : funcVec)
+            for (auto& func : funcVec)
                 ProcessFunctionData(func, className, ctx);
         }
         
         // Process Operator Overloading
         for (auto& funcVec : class_data->operators) {// [ vect<func>, vect<func>, vect<func> ]
-            for (auto func : funcVec)
+            for (auto& func : funcVec)
                 ProcessFunctionData(func, className, ctx);
         }
         
@@ -218,9 +218,9 @@ public:
 
             // Look at the dvars and add this current variable to their dvar's lists.
             // If we haven't seen this name before, add its slice profile
-            for (auto varData : varDataGroup) {
+            for (auto& varData : varDataGroup) {
                 UpdateLHSSlices(varData);
-                for (auto dvarData : varData->rhsElems) {
+                for (auto& dvarData : varData->rhsElems) {
                     std::string dvar = dvarData->GetNameOfIdentifier();
 
                     auto updateDvarAtThisLocation = profileMap.find(dvar);
@@ -336,9 +336,9 @@ public:
             std::vector<std::shared_ptr<VariableData>> varDataGroup;
             varDataGroup = ParseExpr(*expr, expr->lineNumber);
 
-            for (auto varData : varDataGroup) {
+            for (auto& varData : varDataGroup) {
                 UpdateLHSSlices(varData);
-                for (auto rhsVarData : varData->rhsElems) {
+                for (auto& rhsVarData : varData->rhsElems) {
                     std::string lhsName = varData->GetNameOfIdentifier();
                     std::string rhsName = rhsVarData->GetNameOfIdentifier();
 
@@ -456,7 +456,7 @@ public:
                         auto funcSig = funcSigCollection.functionSigMap.find(functionName);
                         if (funcSig != funcSigCollection.functionSigMap.end()) {
                             size_t pos = 0;
-                            
+
                             // Attempt to fingerprint the right signature based on function call parameter list size
                             while (funcCallData->arguments.size() != funcSig->second[pos]->parameters.size()) {
                                 if (++pos >= funcSig->second.size()) break;
@@ -483,7 +483,7 @@ public:
         if (&conditionals == nullptr) return;
         std::vector<std::shared_ptr<BlockData>> cntlBlocks;
 
-        for (const auto cntl : conditionals) {
+        for (const auto& cntl : conditionals) {
             if (cntl.type() == typeid(std::shared_ptr<IfStmtData>)) {
                 // Extract all of the block data from if statements
                 std::shared_ptr<IfStmtData> ifcntl = std::any_cast<std::shared_ptr<IfStmtData>>(cntl);
@@ -563,7 +563,7 @@ public:
             }
         }
 
-        for (const auto block : cntlBlocks) {
+        for (const auto& block : cntlBlocks) {
             if (declStmts != nullptr) {
                 declStmts->insert(declStmts->end(), block->locals.begin(), block->locals.end());
             }
@@ -587,7 +587,7 @@ public:
 
         std::vector<std::shared_ptr<VariableData>> lhsStack;
         bool groupCollect = false;
-        const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short"};
+        const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short","cout","cin","cerr","endl"};
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
@@ -597,41 +597,51 @@ public:
                 std::shared_ptr<NameData> name = std::any_cast<std::shared_ptr<NameData>>(exprElem);
                 if (name->ToString().empty()) continue;
 
+                std::string varName = name->ToString();
+                std::string target = "std::";
+
+                // Check if the string starts with "std::"
+                if (varName.rfind(target, 0) == 0) {
+                    // Remove the prefix and set it to the result
+                    varName = varName.substr(target.size());
+                }
+
                 // Ignore the extracted name if its within the keywords array
                 for (const auto& w : keywords) {
-                    if (name->ToString() == w) {
+                    if (varName == w) {
                         invalidName = true;
                         break;
                     }
                 }
-                if (invalidName) continue;
 
+                // Only track valid variables
+                if (!invalidName) {
+                    if (!lhsVar->isInitialized()) {
+                        lhsVar->InitializeLHS(varName, lineNumber);
 
-                if (!lhsVar->isInitialized()) {
-                    lhsVar->InitializeLHS(name->ToString(), lineNumber);
+                        // capture use-def chains for single statements such as: ++i
+                        if (expr_op == "++" || expr_op == "--") {
+                            lhsVar->definitions.insert(lineNumber);
+                            lhsVar->uses.insert(lineNumber);
+                        }
+                    } else {
+                        std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(varName);
+                        newRHSVar->uses.insert(lineNumber);
+                        newRHSVar->SetOriginLine(lineNumber);
 
-                    // capture use-def chains for single statements such as: ++i
-                    if (expr_op == "++" || expr_op == "--") {
-                        lhsVar->definitions.insert(lineNumber);
-                        lhsVar->uses.insert(lineNumber);
+                        // capture use-def chains for rhs var statements such as: a = ++i
+                        if (expr_op == "++" || expr_op == "--") {
+                            newRHSVar->definitions.insert(lineNumber);
+                        }
+
+                        lhsVar->lhs = true;
+                        lhsVar->AddRHS(newRHSVar);
+
+                        // Ensure that tracked lhs variables get assigned all of their
+                        // rhs vars in the expression
+                        for (auto& lhs : lhsStack)
+                            lhs->AddRHS(newRHSVar);
                     }
-                } else {
-                    std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(name->ToString());
-                    newRHSVar->uses.insert(lineNumber);
-                    newRHSVar->SetOriginLine(lineNumber);
-
-                    // capture use-def chains for rhs var statements such as: a = ++i
-                    if (expr_op == "++" || expr_op == "--") {
-                        newRHSVar->definitions.insert(lineNumber);
-                    }
-
-                    lhsVar->lhs = true;
-                    lhsVar->AddRHS(newRHSVar);
-
-                    // Ensure that tracked lhs variables get assigned all of their
-                    // rhs vars in the expression
-                    for (auto lhs : lhsStack)
-                        lhs->AddRHS(newRHSVar);
                 }
             } else if (exprElem.type() == typeid(std::shared_ptr<OperatorData>)) {
                 std::shared_ptr<OperatorData> opData = std::any_cast<std::shared_ptr<OperatorData>>(exprElem);
@@ -639,20 +649,14 @@ public:
 
                 if (expr_op == "(") {
                     groupCollect = true;
-                    continue;
-                }
-
-                if (expr_op == ")") {
+                } else if (expr_op == ")") {
                     groupCollect = false;
                     if (lhsStack.size() > 0) {
                         varDataGroup.push_back(lhsVar);
                         lhsVar = lhsStack.back();
                         lhsStack.pop_back();
                     }
-                    continue;
-                }
-
-                if (!lhsVar->rhsElems.empty()) { // if the lhs has rhs members
+                } else if (!lhsVar->rhsElems.empty()) { // if the lhs has rhs members
                     std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
 
                     if (isAssignment(expr_op)) {
@@ -831,14 +835,31 @@ public:
     void ProcessFunctionSignature(std::shared_ptr<FunctionData> funcData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         std::string functionName = funcData->name->ToString();
         if (functionName.empty()) return;
+        bool updateSignature = (functionName.find("::") != std::string::npos);
+        std::string scopeName = "";
+
+        // Update a Signature Entry due to out-of-line definition
+        if (updateSignature) {
+            scopeName = functionName.substr(0, functionName.find("::"));
+            functionName = functionName.substr(functionName.find_last_of("::")+1, -1);
+        }
 
         // Process the parameters in a separate function
         ProcessFunctionParameters(funcData->parameters, funcData->name->ToString(), className, ctx);
         auto funcSig = funcSigCollection.functionSigMap.find(functionName);
 
         if (funcSig != funcSigCollection.functionSigMap.end()) {
-            // overloaded function detected
-            funcSig->second.push_back(funcData);
+            if (updateSignature) {
+                for (auto& func : funcSig->second) {
+                    if (func->parameters.size() == funcData->parameters.size()) {
+                        func = funcData;
+                        break;
+                    }
+                }
+            } else {
+                // overloaded function detected
+                funcSig->second.push_back(funcData);
+            }
         } else {
             // Insert a new signature
             funcSigCollection.functionSigMap.insert(
@@ -896,14 +917,14 @@ public:
     
     auto ArgumentProfile(std::pair<std::string, std::shared_ptr<FunctionData>> func, int paramIndex, std::unordered_set<std::string> visit_func) {
         // std::cerr << "[*] " << func.first << " | paramIndex -> " << paramIndex << " | " << func.second->parameters.size() << std::endl;
-        // std::cerr << std::boolalpha << "No Name Data -> " << (func.second->parameters.at(paramIndex)->name == nullptr) << std::endl;
+        // std::cerr << std::boolalpha << "No Name Data -> " << (func.second->parameters.at(paramIndex)->name == nullptr) << " | " << func.second->lineNumber << std::endl;
 	    auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name->ToString());
         
-        for (auto param : func.second->parameters) {
+        for (auto& param : func.second->parameters) {
             if (profileMap.find(param->name->ToString())->second.back().visited) {
                 return Spi;
             } else {
-                for (auto cfunc : profileMap.find(param->name->ToString())->second.back().cfunctions) {
+                for (auto& cfunc : profileMap.find(param->name->ToString())->second.back().cfunctions) {
                     if (cfunc.first.compare(func.first) != 0) {
                         auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.first);
                         if (funcGroup != funcSigCollection.functionSigMap.end()) {
@@ -1305,7 +1326,7 @@ public:
             // Need to watch the Slices we attempt to dig into because we are collecting slices we have no interest in
             if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {
-                    for (auto cfunc : var.second.back().cfunctions) {
+                    for (auto& cfunc : var.second.back().cfunctions) {
                         auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.first);
                         if(funcGroup != funcSigCollection.functionSigMap.end()) {
                             size_t pos = 0;
