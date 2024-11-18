@@ -439,8 +439,10 @@ public:
                         // increment or decrement operators with the argument expression
                         sliceProfileItr->second.back().uses.insert(argUseLineNumber);
 
+                        std::string simpleFunctionName = GetSimpleFunctionName(functionName);
+
                         // Get the collection of functions by name
-                        auto funcSig = funcSigCollection.functionSigMap.find(functionName);
+                        auto funcSig = funcSigCollection.functionSigMap.find(simpleFunctionName);
                         if (funcSig != funcSigCollection.functionSigMap.end()) {
                             size_t pos = 0;
 
@@ -451,14 +453,14 @@ public:
 
                             if (pos < funcSig->second.size()) {
                                 unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
-                                CreateSliceCallData(functionName, argIndex, funcLineDef, sliceProfileItr->second.back());
+                                CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back());
                             } else {
-                                std::cout << "[-] Fingerprint Not Found for -> " << functionName << std::endl;
-                                CreateSliceCallData(functionName, argIndex, 0, sliceProfileItr->second.back());
+                                std::cout << "[-] Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
+                                CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back());
                             }
                         } else {
-                            std::cout << "[-] No Function Signature Found for -> " << functionName << std::endl;
-                            CreateSliceCallData(functionName, argIndex, 0, sliceProfileItr->second.back());
+                            std::cout << "[-] No Function Signature Found for -> " << simpleFunctionName << std::endl;
+                            CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back());
                         }
                     }
                 }
@@ -863,6 +865,28 @@ public:
         }
     }
 
+    // Extract the function name within either a call or a complex function name
+    std::string GetSimpleFunctionName(std::string funcName) {
+        std::string simpleFunctionName = funcName;
+        bool containsScope = (funcName.find_last_of("::") != std::string::npos);
+        bool containsAccessor = (funcName.find_last_of(".") != std::string::npos);
+        bool containsPointsTo = (funcName.find_last_of("->") != std::string::npos);
+
+        if (containsScope) {
+            // Get the sub-string of a function call with a scope resolution
+            // due to map keys containing no scope resolution symbol (::)
+            simpleFunctionName = funcName.substr(funcName.find_last_of("::")+1, -1);
+        } else if (containsAccessor) {
+            // Get sub-string of function call using accessor operator
+            simpleFunctionName = funcName.substr(funcName.find_last_of(".")+1, -1);
+        } else if (containsPointsTo) {
+            // Get sub-string of function call using points-to operator
+            simpleFunctionName = funcName.substr(funcName.find_last_of("->")+1, -1);
+        }
+
+        return simpleFunctionName;
+    }
+
     // Use for inserting Uses and Defs for Slices in the LHS of an Expression Statement
     void UpdateLHSSlices(std::shared_ptr<VariableData> varData) {
         if (varData->GetNameOfIdentifier().empty()) return;
@@ -997,12 +1021,16 @@ public:
                             // Attempt to fingerprint the right signature based on function call definition line and called function
                             // def line data
                             while (cfunc.second.second != std::to_string(funcGroup->second[pos]->lineNumber)) {
+                                func = funcGroup->second[pos];
                                 if (++pos >= funcGroup->second.size()) break;
                             }
 
+                            std::string simpleFunctionName = GetSimpleFunctionName(func->name->ToString());
+
                             // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                            if (cfunc.first.compare(func->name->ToString()) == 0 && func->parameters.size() > 0 &&
-                                std::atoi(cfunc.second.first.c_str()) - 1 < func->parameters.size()) { //TODO fix for case: Overload
+                            if (cfunc.first.compare(simpleFunctionName) == 0 && func->parameters.size() > 0 &&
+                                std::atoi(cfunc.second.first.c_str()) - 1 < func->parameters.size() &&
+                                pos < funcGroup->second.size()) { //TODO fix for case: Overload
                                 auto Spi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visited_func);
                                 auto sliceItr = Spi->second.begin();
                                 std::string desiredVariableName = sliceItr->variableName;
@@ -1013,7 +1041,7 @@ public:
                                             // std::cout << "Name Check -> " << sliceItr->variableName << " | " << desiredVariableName << std::endl;
                                             continue;
                                         }
-                                        if (sliceItr->function != cfunc.first) {
+                                        if (GetSimpleFunctionName(sliceItr->function) != cfunc.first) {
                                             // std::cout << "Function Check -> " << sliceItr->function << " | " << cfunc.first << std::endl;
                                             continue;
                                         }
@@ -1068,7 +1096,10 @@ public:
                                             sliceItr->dvars.begin(),
                                             sliceItr->dvars.end());
                                 } else {
-                                    std::cout << std::boolalpha << "Is var a Map Entry? " << (profileMap.find(var.first) != profileMap.end()) << " | Is Spi a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end()) << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
+                                    std::cout << std::boolalpha << "Is '" << var.first << "' a Map Entry? " << (profileMap.find(var.first) != profileMap.end())
+                                    << " | Is Spi '"<< Spi->first <<"' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
+                                    << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
+
                                     std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
                                     std::cout << "[-] An Error has Occured in `ComputeInterprocedural`" << std::endl;
                                 }
