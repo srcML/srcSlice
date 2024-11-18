@@ -27,9 +27,9 @@ class SrcSliceHandler
 public:
     ~SrcSliceHandler() { };
 
-    // Use literal string filename ctor of srcSAXController
-    SrcSliceHandler(const char* filename, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
-            : srcDispatch::PolicyDispatcher(listeners) {
+    // Use literal string filename ctor of srcSAXController (srcslice cpp main)
+    SrcSliceHandler(const char* filename, bool v, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
+            : srcDispatch::PolicyDispatcher(listeners), verboseMode(v) {
         srcSAXController control(filename);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
@@ -39,7 +39,7 @@ public:
 
     // Use string srcml buffer ctor of srcSAXController
     SrcSliceHandler(const std::string sourceCodeStr, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
-            : srcDispatch::PolicyDispatcher(listeners) {
+            : srcDispatch::PolicyDispatcher(listeners), verboseMode(false) {
         srcSAXController control(sourceCodeStr);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
@@ -455,11 +455,13 @@ public:
                                 unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
                                 CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back());
                             } else {
-                                std::cout << "[-] Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
+                                if (verboseMode)
+                                    std::cout << "[-] Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
                                 CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back());
                             }
                         } else {
-                            std::cout << "[-] No Function Signature Found for -> " << simpleFunctionName << std::endl;
+                            if (verboseMode)
+                                std::cout << "[-] No Function Signature Found for -> " << simpleFunctionName << std::endl;
                             CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back());
                         }
                     }
@@ -900,7 +902,8 @@ public:
             sliceProfileItr->second.back().definitions.insert(varData->definitions.begin(),
                                                               varData->definitions.end());
         } else {
-            std::cout << "[*] There is no Slice of --> '" << varData->GetNameOfIdentifier() << "'" << std::endl;
+            if (verboseMode)
+                std::cout << "[*] There is no Slice of --> '" << varData->GetNameOfIdentifier() << "'" << std::endl;
         }
     }
 
@@ -1096,12 +1099,14 @@ public:
                                             sliceItr->dvars.begin(),
                                             sliceItr->dvars.end());
                                 } else {
-                                    std::cout << std::boolalpha << "Is '" << var.first << "' a Map Entry? " << (profileMap.find(var.first) != profileMap.end())
-                                    << " | Is Spi '"<< Spi->first <<"' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
-                                    << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
+                                    if (verboseMode) {
+                                        std::cout << std::boolalpha << "Is '" << var.first << "' a Map Entry? " << (profileMap.find(var.first) != profileMap.end())
+                                        << " | Is Spi '"<< Spi->first <<"' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
+                                        << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
 
-                                    std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
-                                    std::cout << "[-] An Error has Occured in `ComputeInterprocedural`" << std::endl;
+                                        std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
+                                        std::cout << "[-] An Error has Occured in `ComputeInterprocedural`" << std::endl;
+                                    }
                                 }
                             }
                         }
@@ -1122,6 +1127,7 @@ private:
     std::vector<std::shared_ptr<ClassData>> classInfo;
     std::vector<std::shared_ptr<FunctionData>> functionInfo;
     FunctionSignatureData funcSigCollection;
+    bool verboseMode;
 };
 
 
