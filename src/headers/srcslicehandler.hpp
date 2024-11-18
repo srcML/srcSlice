@@ -718,6 +718,14 @@ public:
                 // and will attempt to insert potential:
                 // use/def/call data
                 std::shared_ptr<CallData> callData = std::any_cast<std::shared_ptr<CallData>>(exprElem);
+
+                // if the call came from some ptr or object we want to add the source variable use
+                if (callData->name->ToString().find('.') != std::string::npos) {
+                    GetFuncCallSource(callData, callData->name->ToString().find('.'), varDataGroup);
+                } else if (callData->name->ToString().find('-') != std::string::npos) {
+                    GetFuncCallSource(callData, callData->name->ToString().find('-'), varDataGroup);
+                }
+
                 ProcessFunctionCall(callData);
             }
         } // end of looping elements
@@ -870,6 +878,18 @@ public:
         } else {
             std::cout << "[*] There is no Slice of --> '" << varData->GetNameOfIdentifier() << "'" << std::endl;
         }
+    }
+
+    // Attempts to read in callData name such as 'vec.size' or 'strPtr->size' and extract the root-variable
+    // that eventually lead to the function call to mark it as a use
+    void GetFuncCallSource(std::shared_ptr<CallData> callData, int end, std::vector<std::shared_ptr<VariableData>>& varDataGroup) {
+        std::string srcName = callData->name->ToString().substr(0, end);
+        std::shared_ptr<VariableData> sourceVar = std::make_shared<VariableData>(srcName);
+
+        sourceVar->uses.insert(callData->lineNumber);
+        sourceVar->SetOriginLine(callData->lineNumber);
+
+        varDataGroup.push_back(sourceVar);
     }
 
     bool StringContainsCharacters(const std::string &str) {
