@@ -83,7 +83,7 @@ public:
         out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
         out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
 
-        out << "    \"dependentVariables\":[";
+        out << "    \"dependence\":[";
         for (auto dvar : profile.dvars) {
             if (dvar != *(--profile.dvars.end()))
                 out << "{\"" << dvar.first << "\":" << dvar.second << "},";
@@ -101,7 +101,7 @@ public:
         }
         out << "]," << std::endl;
 
-        out << "    \"calledFunctions\":[";
+        out << "    \"calls\":[";
         for (auto cfunc : profile.cfunctions) {
             if (cfunc != *(--profile.cfunctions.end()))
                 out << "{\"functionName\":\"" << cfunc.first << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"},";
@@ -127,15 +127,6 @@ public:
                 out << def;
         }
         out << "]" << std::endl;
-
-        // out << "    \"controlEdges\": [ ";
-        // for (auto edge : profile.controlEdges) {
-        //     if (edge != *(--profile.controlEdges.end()))
-        //         out << "[" << edge.first << ", " << edge.second << "], ";
-        //     else
-        //         out << "[" << edge.first << ", " << edge.second << "]";
-        // }
-        // out << " ]" << std::endl;
 
         return out;
     }
