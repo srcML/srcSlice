@@ -31,17 +31,6 @@ Make sure you include the `--recursive` as srcSlice includes submodule(s)
     * For a list of options run `srcslice [-h/--help]`
 
 ## :scroll: srcSlice Output
-<style>
-    .scrollable-item {
-        height: 300px; /* Adjust height for vertical scrolling */
-        overflow-y: auto; /* Enable vertical scrollbar */
-    }
-    pre {
-        /* inline CSS for rendering the code blocks*/
-        width: 600px; /* Adjust the width as needed */
-        overflow-x: auto; /* Add horizontal scroll if content exceeds width */
-    }
-</style>
 
 <table>
 <tr>
