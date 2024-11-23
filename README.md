@@ -59,39 +59,39 @@ Make sure you include the `--recursive` as srcSlice includes submodule(s)
 
 </td>
 <td>
-<div class="scrollable-item">
-
-* `Slice Identifier` -- Follows the format: "variableName--initialDeclarationLine--srcmlHash"
-    * srcml hash - SHA-1 hash generated based on the contents of the source-code file (srcml attribute)
-
-* `File` -- File-Path of the source code the slice variable originates from
-
-* `Language` -- Language of the source code file
-
-* `Namespace` -- List of namespaces the slice variable is contained in
-
-* `Class` -- Name of the class containing the slice variable
-
-* `Function` -- Name of the function containing the slice variable
-
-* `Type` -- Data-Type of the slice variable
-
-* `Name` -- Variable name of the slice variable
-
-* `Dependence` -- A list of variable-line pairs, each pair contains the name of the variable
-that is data-dependent of the slice variable and the line number where the relation was formed
-
-* `Aliases` -- A list of potential targets of a pointer or reference (the alias output may differ based on desired Points-To Analysis Algorithm chosen)
-    - Andersen's (more output, higher complexity)
-    - Steengaard's (less output, lower complexity)
-    - Others can be potentially supported
-
-* `Calls` -- A list of function calls where the slice variable is used as an argument (includes function name, parameter index, line of function definition)
-
-* `Use` -- A set of line numbers where the slice variable is used
-
-* `Definition` -- A set of line numbers where the slice variable is defined or redefined
-
+<div>
+<ul>
+    <li>
+        <strong>Slice Identifier</strong> -- Follows the format: "variableName--initialDeclarationLine--srcmlHash"
+        <ul>
+            <li>srcml hash - SHA-1 hash generated based on the contents of the source-code file (srcml attribute)</li>
+        </ul>
+    </li>
+    <li><strong>File</strong> -- File-Path of the source code the slice variable originates from</li>
+    <li><strong>Language</strong> -- Language of the source code file</li>
+    <li><strong>Namespace</strong> -- List of namespaces the slice variable is contained in</li>
+    <li><strong>Class</strong> -- Name of the class containing the slice variable</li>
+    <li><strong>Function</strong> -- Name of the function containing the slice variable</li>
+    <li><strong>Type</strong> -- Data-Type of the slice variable</li>
+    <li><strong>Name</strong> -- Variable name of the slice variable</li>
+    <li>
+        <strong>Dependence</strong> -- A list of variable-line pairs, each pair contains the name of the variable
+        that is data-dependent of the slice variable and the line number where the relation was formed
+    </li>
+    <li>
+        <strong>Aliases</strong> -- A list of potential targets of a pointer or reference (the alias output may differ based on desired Points-To Analysis Algorithm chosen)
+        <ul>
+            <li>Andersen's (more output, higher complexity)</li>
+            <li>Steengaard's (less output, lower complexity)</li>
+            <li>Others can be potentially supported</li>
+        </ul>
+    </li>
+    <li>
+        <strong>Calls</strong> -- A list of function calls where the slice variable is used as an argument (includes function name, parameter index, line of function definition)
+    </li>
+    <li><strong>Use</strong> -- A set of line numbers where the slice variable is used</li>
+    <li><strong>Definition</strong> -- A set of line numbers where the slice variable is defined or redefined</li>
+</ul>
 </div>
 </td>
 </tr>
