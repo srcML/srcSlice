@@ -581,6 +581,30 @@ public:
         }
     }
 
+    // Take large name strings and extract the root variable name
+    std::string ExtractName(std::string elementName) {
+        std::string varName;
+        /*
+            *itr.vec.size(); (*root).left
+            root->right; obj.data.type
+
+            'a' to 'z': 97 to 122
+            'A' to 'Z': 65 to 90
+        */
+        bool readIn = false;
+        for (const auto& c : elementName) {
+            bool isLower = (c >= 97 && c <= 122);
+            bool isUpper = (c >= 65 && c <= 90);
+            if (isLower || isUpper) {
+                if (!readIn) readIn = true; // signal we want to read in the first name found
+                varName += c;
+            } else {
+                if (readIn) break; // signal end of first name and break from the loop
+            }
+        }
+        return varName;
+    }
+
     std::vector<std::shared_ptr<VariableData>> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
         std::vector<std::shared_ptr<VariableData>> varDataGroup;
         std::string expr_op = "";
@@ -617,6 +641,7 @@ public:
 
                 // Only track valid variables
                 if (!invalidName) {
+                    varName = ExtractName(varName);
                     if (!lhsVar->isInitialized()) {
                         lhsVar->InitializeLHS(varName, lineNumber);
 
