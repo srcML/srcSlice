@@ -1,5 +1,13 @@
 # srcSlice
-## Lightweight Tool for Static Slicing
+
+## Description
+
+srcSlice is a fast, lightweight srcML tool for static slicing. srcSlice reads srcML
+output files and produces variable slices in JSON, these slices contain details
+such as where a variable is used and defined, passed into a function as an argument,
+function of origin, class it is contained in, variables that are data-dependent
+of it, and potential aliases
+
 Input: A srcML file of source code with `--position` and `--hash` options.
 srcML file can be a single unit (one source code file) or an archive (multiple source code files).
 
@@ -29,6 +37,29 @@ Make sure you include the `--recursive` as srcSlice includes submodule(s)
     * `./srcslice -i [outfile name]`
     * `./srcslice -i [outfile name] -o results.json`
     * For a list of options run `srcslice [-h/--help]`
+
+
+## Options
+
+`-h`, `--help`<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Display the srcslice help page
+
+`-v`, `--verbose`<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Output debugging info to stdout
+
+`-i` **inFile**, `--input`=**inFile**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Set the input srcML output file to read in *(when creating the srcML input file use the --position and --hash flags)*
+
+`-o` **outFile**, `--output`=**outFile**<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Write the output to file. By default, it writes to standard output
+
+## Examples
+
+**srcslice** -i quicksort.cpp.xml<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Generate variable slices and write output to standard output
+
+**srcslice** -i quicksort.cpp.xml -o slices.json<br>
+&nbsp;&nbsp;&nbsp;&nbsp;Generate variable slices and write output to **slices.json**
 
 ## :scroll: srcSlice Output
 
@@ -62,9 +93,9 @@ Make sure you include the `--recursive` as srcSlice includes submodule(s)
 <div>
 <ul>
     <li>
-        <strong>Slice Identifier</strong> -- Follows the format: "variableName--initialDeclarationLine--srcmlHash"
+        <strong>Slice Identifier</strong> -- Follows the format: "variableName--initialDeclarationLine--srcMLHash"
         <ul>
-            <li>srcml hash - SHA-1 hash generated based on the contents of the source-code file (srcml attribute)</li>
+            <li>srcML hash - SHA-1 hash generated based on the contents of the source-code file (srcML attribute)</li>
         </ul>
     </li>
     <li><strong>File</strong> -- File-Path of the source code the slice variable originates from</li>
@@ -97,7 +128,7 @@ Make sure you include the `--recursive` as srcSlice includes submodule(s)
 </tr>
 </table>
 
-## Example Output
+## Slice Output Example
 <table>
 <tr>
     <th>Source</th>
@@ -158,10 +189,10 @@ Make sure you include the `--recursive` as srcSlice includes submodule(s)
     "function":"main",
     "type":"int *",
     "name":"array",
-    "dependence":[{"temp":23}],
+    "dependence":[{"temp":21}],
     "aliases":[],
     "calls":[],
-    "use":[18,21,32],
+    "use":[18,21,22,32],
     "definition":[5,11,22,23,35]
 }
 ```
@@ -169,35 +200,3 @@ Make sure you include the `--recursive` as srcSlice includes submodule(s)
 </td>
 </tr>
 </table>
-
-## :closed_book: Manual
-
-## DESCRIPTION
-
-srcSlice is a fast, lightweight static slicing srcML tool. srcSlice reads srcml
-output files and produces variable slices in JSON, these slices contain details
-such as where a variable is used and defined, passed into a function as an argument,
-function of origin, class it is contained in, variables that are data-dependent
-of it, and potential aliases
-
-## OPTIONS
-
-`-h`, `--help`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Display the srcslice help page
-
-`-v`, `--verbose`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Output debugging info to stdout
-
-`-i` **inFile**, `--input`=**inFile**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Set the input srcml output file to read in *(when creating the srcml input file use the --position and --hash flags)*
-
-`-o` **outFile**, `--output`=**outFile**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Write the output to file. By default, it writes to standard output
-
-## EXAMPLES
-
-**srcslice** -i quicksort.cpp.xml<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Generate variable slices and write output to standard output
-
-**srcslice** -i quicksort.cpp.xml -o slices.json<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Generate variable slices and write output to **slices.json**
