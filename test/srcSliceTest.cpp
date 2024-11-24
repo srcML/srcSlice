@@ -44,14 +44,14 @@ std::string FetchSlices(const std::string cppSource, const char* fileName) {
     size_t currIndex = 0, sliceIndex = 0;
 
     output << "{" << std::endl;
-    for (auto profiles : profileMap) {
+    for (auto& profiles : profileMap) {
         ++currIndex;
         for (auto& slice : profiles.second)
         {
             if (slice.containsDeclaration)
             {
                 // write out the start of the json object
-                output << "\"slice_" << sliceIndex++ << "\" : {" << std::endl;
+                output << "\"slice_" << sliceIndex++ << "\":{" << std::endl;
 
                 // print out content of the SliceProfile
                 output << slice;
