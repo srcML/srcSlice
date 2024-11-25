@@ -22,6 +22,7 @@ public:
         lhsVarName = rhs.lhsVarName;
         rhsElems = rhs.rhsElems;
         lhs = rhs.lhs;
+        isAddrOf = rhs.isAddrOf;
         uses = rhs.uses;
         definitions = rhs.definitions;
         originLine = rhs.originLine;
@@ -38,6 +39,7 @@ public:
         lhsVarName.clear();
         rhsElems.clear();
         lhs = false;
+        isAddrOf = false;
         uses.clear();
         definitions.clear();
     }
@@ -66,6 +68,7 @@ public:
     std::vector<std::shared_ptr<VariableData>> rhsElems;
 
     bool lhs = false;
+    bool isAddrOf = false;
     unsigned int originLine;
     std::set<unsigned int> uses;
     std::set<unsigned int> definitions;
