@@ -134,8 +134,9 @@ public:
 
             std::vector<std::shared_ptr<VariableData>> varDataGroup;
 
-            if (localVar->init)
+            if (localVar->init) {
                 varDataGroup = ParseExpr(*localVar->init, localVar->init->lineNumber);
+            }
 
             // Collect pieces about the newly declared variable to use later when adding it into
             // our profileMap
@@ -213,6 +214,21 @@ public:
             // If we haven't seen this name before, add its slice profile
             for (auto& varData : varDataGroup) {
                 UpdateLHSSlices(varData);
+                // sliceProfileItr->second.back() is the LHS
+                if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
+                    if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
+                        if (sliceProfileItr->second.back().isPointer) {
+                            auto initRHS = profileMap.find(varData->GetNameOfIdentifier());
+                            // Check for pointer-2-pointer assignment or points-to-address assignment
+                            if (initRHS->second.back().isPointer || varData->isAddrOf) {
+                                sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                            }
+                        } else if (sliceProfileItr->second.back().isReference) {
+                            sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                        }
+                    }
+                    continue;
+                }
                 for (auto& dvarData : varData->rhsElems) {
                     std::string dvar = dvarData->GetNameOfIdentifier();
 
@@ -226,12 +242,6 @@ public:
                         updateDvarAtThisLocation->second.back().definitions.insert(dvarData->definitions.begin(), dvarData->definitions.end());
 
                         if (!StringContainsCharacters(declVarName)) continue;
-                        if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
-                            if ( declVarName != sliceProfileItr->second.back().variableName) {
-                                updateDvarAtThisLocation->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
-                            }
-                            continue;
-                        }
                         updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
                     } else {
                         auto sliceProf = SliceProfile(
@@ -356,7 +366,12 @@ public:
                         if (!StringContainsCharacters(lhsName)) continue;
                         if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
                             if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
-                                sliceProfileExprItr->second.back().aliases.insert(std::make_pair(lhsName, varData->originLine));
+                                if (sliceProfileLHSItr->second.back().isPointer) {
+                                    // Check for pointer-2-pointer assignment or points-to-address assignment
+                                    if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
+                                        sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                                    }
+                                }
                             }
                             continue;
                         }
@@ -386,7 +401,12 @@ public:
                         if (!StringContainsCharacters(lhsName)) continue;
                         if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
                             if ( lhsName != sliceProfileLHSItr->second.back().variableName ) {
-                                sliceProfileExprItr2.first->second.back().aliases.insert(std::make_pair(lhsName, varData->originLine));
+                                if (sliceProfileLHSItr->second.back().isPointer) {
+                                    // Check for pointer-2-pointer assignment or points-to-address assignment
+                                    if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
+                                        sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                                    }
+                                }
                             }
                             continue;
                         }
@@ -650,6 +670,10 @@ public:
                             lhsVar->definitions.insert(lineNumber);
                             lhsVar->uses.insert(lineNumber);
                         }
+
+                        if (expr_op == "&") {
+                            lhsVar->isAddrOf = true;
+                        }
                     } else {
                         std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(varName);
                         newRHSVar->uses.insert(lineNumber);
@@ -658,6 +682,10 @@ public:
                         // capture use-def chains for rhs var statements such as: a = ++i
                         if (expr_op == "++" || expr_op == "--") {
                             newRHSVar->definitions.insert(lineNumber);
+                        }
+
+                        if (expr_op == "&") {
+                            newRHSVar->isAddrOf = true;
                         }
 
                         lhsVar->lhs = true;
