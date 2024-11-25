@@ -192,7 +192,7 @@ Generate variable slices and write output to **slices.json**<br>
     "namespace":[],
     "class":"",
     "function":"main",
-    "type":"int *",
+    "type":"int*",
     "name":"array",
     "dependence":[{"temp":21}],
     "aliases":[],
