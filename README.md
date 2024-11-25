@@ -65,51 +65,73 @@ Generate variable slices and write output to **slices.json**<br>
 
 ## :scroll: srcSlice Output
 
-```json
-Follows the format: "variableName--initialDeclarationLine--srcMLHash"
-    srcML hash - SHA-1 hash generated based on the contents of the source-code file (srcML attribute)
-"Slice Identifier":{
-
-    File-Path of the source code the slice variable originates from
-    "file":"",
-
-    Language of the source code file
-    "language":"",
-
-    List of namespaces the slice variable is contained in
-    "namespace":[],
-
-    Name of the class containing the slice variable
-    "class":"",
-
-    Name of the function containing the slice variable
-    "function":"",
-
-    Data-Type of the slice variable
-    "type":"",
-
-    Variable name of the slice variable
-    "name":"",
-
-     A list of variable-line pairs, each pair contains the name of the variable that is data-dependent of the slice variable and the line number where the relation was formed
-    "dependence":[],
-
-    A list of potential targets of a pointer or reference (the alias output may differ based on desired Points-To Analysis Algorithm chosen)
-        Andersen's (more output, higher complexity)
-        Steengaard's (less output, lower complexity)
-        Others can be potentially supported
-    "aliases":[],
-
-    A list of function calls where the slice variable is used as an argument (includes function name, parameter index, line of function definition)
-    "calls":[],
-
-    A set of line numbers where the slice variable is used
-    "use":[],
-
-    A set of line numbers where the slice variable is defined or redefined
-    "definition":[]
-}
-```
+<table>
+  <thead>
+    <tr>
+      <th>Attribute</th>
+      <th>Description</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td><code>File</code></td>
+      <td>File path of the source code the slice variable originates from</td>
+    </tr>
+    <tr>
+      <td><code>Language</code></td>
+      <td>Language of the source code file</td>
+    </tr>
+    <tr>
+      <td><code>Namespace</code></td>
+      <td>List of namespaces the slice variable is contained in</td>
+    </tr>
+    <tr>
+      <td><code>Class</code></td>
+      <td>Name of the class containing the slice variable</td>
+    </tr>
+    <tr>
+      <td><code>Function</code></td>
+      <td>Name of the function containing the slice variable</td>
+    </tr>
+    <tr>
+      <td><code>Type</code></td>
+      <td>Data type of the slice variable</td>
+    </tr>
+    <tr>
+      <td><code>Name</code></td>
+      <td>Variable name of the slice variable</td>
+    </tr>
+    <tr>
+      <td><code>Dependence</code></td>
+      <td>
+        A list of variable-line pairs, each containing the name of the variable that 
+        is data-dependent on the slice variable and the line where it occurs
+      </td>
+    </tr>
+    <tr>
+      <td><code>Aliases</code></td>
+      <td>
+        A list of potential targets of a pointer or reference (may differ based on 
+        the Points-To Analysis Algorithm chosen: Andersen's, Steengaard's, etc.)
+      </td>
+    </tr>
+    <tr>
+      <td><code>Calls</code></td>
+      <td>
+        A list of function calls where the slice variable is used as an argument 
+        (includes function name, parameter index, and line of function definition)
+      </td>
+    </tr>
+    <tr>
+      <td><code>Use</code></td>
+      <td>A set of line numbers where the slice variable is used</td>
+    </tr>
+    <tr>
+      <td><code>Definition</code></td>
+      <td>A set of line numbers where the slice variable is defined or redefined</td>
+    </tr>
+  </tbody>
+</table>
 
 ## Slice Output Example
 <table>
