@@ -8,26 +8,27 @@ such as where a variable is used and defined, passed into a function as an argum
 function of origin, class it is contained in, variables that are data-dependent
 of it, and potential aliases.
 
-[Build srcSlice](#hammer_and_wrench-building-srcslice)<br>
+[Building srcSlice](#hammer_and_wrench-building-srcslice)<br>
 [Using srcSlice](#computer-using-srcslice)
 
 ## :hammer_and_wrench: Building srcSlice
 
-Install srcML Develop if not installed on your local machine<br>
-`git clone --recursive -b develop https://github.com/srcML/srcML.git`
+```bash
+# Install srcML Develop if not installed on your local machine
+git clone --recursive -b develop https://github.com/srcML/srcML.git
+```
+```bash
+# Clone srcSlice repository
+git clone --recursive https://github.com/srcML/srcSlice.git
 
-Clone srcSlice repository<br>
-`git clone --recursive https://github.com/srcML/srcSlice.git`
+# (This guide assumes the new directory is at the same directory tree level as the cloned directory)
+mkdir sliceBuild
+cd sliceBuild
 
-(This guide assumes the new directory is at the same directory tree level as the cloned directory)<br>
-`mkdir sliceBuild`
-
-`cd sliceBuild`
-
-Run cmake to create the build files and run make to build the executable<br>
-`cmake ../{cloned directory}`
-
-`make`
+# Run cmake to create the build files and run make to build the executable
+cmake ../srcSlice
+make
+```
 
 ## :computer: Using srcSlice
 Input: A srcML file of source code with `--position` and `--hash` options.
@@ -64,70 +65,51 @@ Generate variable slices and write output to **slices.json**<br>
 
 ## :scroll: srcSlice Output
 
-<table>
-<tr>
-<th>Slice Template</th>
-<th>Description</th>
-</tr>
-<tr>
-<td>
-
 ```json
+Follows the format: "variableName--initialDeclarationLine--srcMLHash"
+    srcML hash - SHA-1 hash generated based on the contents of the source-code file (srcML attribute)
 "Slice Identifier":{
+
+    File-Path of the source code the slice variable originates from
     "file":"",
+
+    Language of the source code file
     "language":"",
+
+    List of namespaces the slice variable is contained in
     "namespace":[],
+
+    Name of the class containing the slice variable
     "class":"",
+
+    Name of the function containing the slice variable
     "function":"",
+
+    Data-Type of the slice variable
     "type":"",
+
+    Variable name of the slice variable
     "name":"",
+
+     A list of variable-line pairs, each pair contains the name of the variable that is data-dependent of the slice variable and the line number where the relation was formed
     "dependence":[],
+
+    A list of potential targets of a pointer or reference (the alias output may differ based on desired Points-To Analysis Algorithm chosen)
+        Andersen's (more output, higher complexity)
+        Steengaard's (less output, lower complexity)
+        Others can be potentially supported
     "aliases":[],
+
+    A list of function calls where the slice variable is used as an argument (includes function name, parameter index, line of function definition)
     "calls":[],
+
+    A set of line numbers where the slice variable is used
     "use":[],
+
+    A set of line numbers where the slice variable is defined or redefined
     "definition":[]
 }
 ```
-
-</td>
-<td>
-<div>
-<ul>
-    <li>
-        <strong>Slice Identifier</strong> -- Follows the format: "variableName--initialDeclarationLine--srcMLHash"
-        <ul>
-            <li>srcML hash - SHA-1 hash generated based on the contents of the source-code file (srcML attribute)</li>
-        </ul>
-    </li>
-    <li><strong>File</strong> -- File-Path of the source code the slice variable originates from</li>
-    <li><strong>Language</strong> -- Language of the source code file</li>
-    <li><strong>Namespace</strong> -- List of namespaces the slice variable is contained in</li>
-    <li><strong>Class</strong> -- Name of the class containing the slice variable</li>
-    <li><strong>Function</strong> -- Name of the function containing the slice variable</li>
-    <li><strong>Type</strong> -- Data-Type of the slice variable</li>
-    <li><strong>Name</strong> -- Variable name of the slice variable</li>
-    <li>
-        <strong>Dependence</strong> -- A list of variable-line pairs, each pair contains the name of the variable
-        that is data-dependent of the slice variable and the line number where the relation was formed
-    </li>
-    <li>
-        <strong>Aliases</strong> -- A list of potential targets of a pointer or reference (the alias output may differ based on desired Points-To Analysis Algorithm chosen)
-        <ul>
-            <li>Andersen's (more output, higher complexity)</li>
-            <li>Steengaard's (less output, lower complexity)</li>
-            <li>Others can be potentially supported</li>
-        </ul>
-    </li>
-    <li>
-        <strong>Calls</strong> -- A list of function calls where the slice variable is used as an argument (includes function name, parameter index, line of function definition)
-    </li>
-    <li><strong>Use</strong> -- A set of line numbers where the slice variable is used</li>
-    <li><strong>Definition</strong> -- A set of line numbers where the slice variable is defined or redefined</li>
-</ul>
-</div>
-</td>
-</tr>
-</table>
 
 ## Slice Output Example
 <table>
