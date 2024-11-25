@@ -8,8 +8,8 @@ such as where a variable is used and defined, passed into a function as an argum
 function of origin, class it is contained in, variables that are data-dependent
 of it, and potential aliases.
 
-[Build srcSlice](#building-srcslice)<br>
-[Using srcSlice](#using-srcslice)
+[Build srcSlice](#hammer_and_wrench-building-srcslice)<br>
+[Using srcSlice](#computer-using-srcslice)
 
 ## :hammer_and_wrench: Building srcSlice
 
