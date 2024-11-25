@@ -6,60 +6,61 @@ srcSlice is a fast, lightweight srcML tool for static slicing. srcSlice reads sr
 output files and produces variable slices in JSON, these slices contain details
 such as where a variable is used and defined, passed into a function as an argument,
 function of origin, class it is contained in, variables that are data-dependent
-of it, and potential aliases
+of it, and potential aliases.
 
+[Build srcSlice](#building-srcslice)<br>
+[Using srcSlice](#using-srcslice)
+
+## :hammer_and_wrench: Building srcSlice
+
+Install srcML Develop if not installed on your local machine<br>
+`git clone --recursive -b develop https://github.com/srcML/srcML.git`
+
+Clone srcSlice repository<br>
+`git clone --recursive https://github.com/srcML/srcSlice.git`
+
+(This guide assumes the new directory is at the same directory tree level as the cloned directory)<br>
+`mkdir sliceBuild`
+
+`cd sliceBuild`
+
+Run cmake to create the build files and run make to build the executable<br>
+`cmake ../{cloned directory}`
+
+`make`
+
+## :computer: Using srcSlice
 Input: A srcML file of source code with `--position` and `--hash` options.
-srcML file can be a single unit (one source code file) or an archive (multiple source code files).
+srcML file can be a single unit (one source code file) or an archive (multiple source code files).<br>
+`srcml shell_sort.cpp -o shell_sort.cpp.xml --position --hash`
 
-Output: A JSON file containing the slice information about each variable contained in the input file.
-
-## :hammer_and_wrench: Installation & Build
-1. Install [srcML develop](https://github.com/srcML/srcML/tree/develop) if it is not installed on your local machine
-
-2. Clone the repository with `git clone --recursive` into the desired directory.
-Make sure you include the `--recursive` as srcSlice includes submodule(s)
-
-3. Outside of the cloned directory, create a new directory for the build.
-(This guide assumes the new directory is at the same directory tree level as the cloned directory)
-
-4. Enter the new directory (not the cloned one) and type `cmake ../{cloned directory}`
-
-5. After cmake runs, simply type `make` and all files should be built
-    * For a list of options for make run `make help`
-
-6. Once everything is built, you can find your executable at `./bin/srcslice`
-
-## :computer: To run srcSlice
-1. Create an output srcML file, `srcml [input file] -o [outfile name] --position --hash`
-    * You must include `--position` and `--hash` flags as srcSlice uses the extra data produced by these flags
-
-2. Locate your `srcslice` binary and execute
-    * `./srcslice -i [outfile name]`
-    * `./srcslice -i [outfile name] -o results.json`
-    * For a list of options run `srcslice [-h/--help]`
+Output: A JSON file containing the slice information about each variable contained in the input file.<br>
+`./srcslice -i shell_sort.cpp.xml -o results.json`
+`./srcslice --help`
 
 
 ## Options
 
-`-h`, `--help`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Display the srcslice help page
+Display the srcslice help page<br>
+`./srcslice --help`
 
-`-v`, `--verbose`<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Output debugging info to stdout
+Output debugging info to stdout<br>
+`./srcslice -i shell_sort.cpp.xml --verbose`
 
-`-i` **inFile**, `--input`=**inFile**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Set the input srcML output file to read in *(when creating the srcML input file use the --position and --hash flags)*
+Set the input srcML output file to read in<br>
+`./srcslice -i shell_sort.cpp.xml`
 
-`-o` **outFile**, `--output`=**outFile**<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Write the output to file. By default, it writes to standard output
+Write the output to file. By default, it writes to standard output<br>
+`./srcslice -i shell_sort.cpp.xml -o results.json`
 
 ## Examples
 
-**srcslice** -i quicksort.cpp.xml<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Generate variable slices and write output to standard output
+Generate variable slices and write output to standard output<br>
+`./srcslice -i shell_sort.cpp.xml`
 
-**srcslice** -i quicksort.cpp.xml -o slices.json<br>
-&nbsp;&nbsp;&nbsp;&nbsp;Generate variable slices and write output to **slices.json**
+Generate variable slices and write output to **slices.json**<br>
+`./srcslice -i shell_sort.cpp.xml -o slices.json`
+
 
 ## :scroll: srcSlice Output
 
