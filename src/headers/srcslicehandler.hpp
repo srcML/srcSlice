@@ -615,7 +615,9 @@ public:
         for (const auto& c : elementName) {
             bool isLower = (c >= 97 && c <= 122);
             bool isUpper = (c >= 65 && c <= 90);
-            if (isLower || isUpper) {
+            bool isNumber = (c >= 48 && c <= 57);
+            bool isUnderScore = (c == '_');
+            if (isLower || isUpper || isNumber || isUnderScore) { // myStr, mystr, MyStr2, my_str_2
                 if (!readIn) readIn = true; // signal we want to read in the first name found
                 varName += c;
             } else {
