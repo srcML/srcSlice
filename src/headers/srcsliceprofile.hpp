@@ -70,11 +70,11 @@ public:
         out << "    \"language\":\"" << profile.language << "\"," << std::endl;
         
         out << "    \"namespace\":[";
-        for (std::string nameSpace : profile.containingNameSpaces) {
+        for (std::string& nameSpace : profile.containingNameSpaces) {
             if (nameSpace != profile.containingNameSpaces.back())
-                out << "\"" << nameSpace << "\",";
+                out << "\"" << nameSpace.substr(0, nameSpace.find(' ')) << "\",";
             else
-                out << "\"" << nameSpace << "\"";
+                out << "\"" << nameSpace.substr(0, nameSpace.find(' ')) << "\"";
         }
         out << "]," << std::endl;
 
