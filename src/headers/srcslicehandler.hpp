@@ -57,7 +57,8 @@ public:
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
 
-    void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, std::string className, std::vector<std::string>& containingNamespaces, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, std::string className,
+                            std::vector<std::string>& containingNamespaces, const srcDispatch::srcSAXEventContext& ctx) {
         ProcessFunctionSignature(function_data, className, containingNamespaces, ctx);
         ProcessDeclStmts(function_data, nullptr, className, nullptr, ctx);
         ProcessExprStmts(function_data, className, ctx);
@@ -161,10 +162,12 @@ public:
             std::string declVarName = localVar->name->ToString();
             std::string declVarType = "";
 
-            // if a global is contained within a namespace the namespace is scoped to call
-            // that specific variable
-            for (const std::string& ns : containingNamespaces) {
-                declVarName.insert(0, ns.substr(0,ns.find(' '))+"::");
+            if (!classData) {
+                // if a global is contained within a namespace the namespace is scoped to call
+                // that specific variable
+                for (const std::string& ns : containingNamespaces) {
+                    declVarName.insert(0, ns.substr(0,ns.find(' '))+"::");
+                }
             }
 
             bool isPointer = false;
@@ -523,7 +526,8 @@ public:
         }
     }
 
-    void CollectConditionalData(std::vector<std::shared_ptr<ExpressionData>>* exprStmts, std::vector<std::shared_ptr<DeclData>>* declStmts, std::vector<std::any>& conditionals) {
+    void CollectConditionalData(std::vector<std::shared_ptr<ExpressionData>>* exprStmts, std::vector<std::shared_ptr<DeclData>>* declStmts,
+                                std::vector<std::any>& conditionals) {
         std::vector<std::shared_ptr<BlockData>> cntlBlocks;
 
         for (const auto& cntl : conditionals) {
@@ -919,7 +923,8 @@ public:
         }
     }
 
-    void ProcessFunctionSignature(std::shared_ptr<FunctionData> funcData, std::string className, std::vector<std::string>& containingNamespaces, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessFunctionSignature(std::shared_ptr<FunctionData> funcData, std::string className, std::vector<std::string>& containingNamespaces,
+                                    const srcDispatch::srcSAXEventContext& ctx) {
         std::string functionName = funcData->name->ToString();
         if (functionName.empty()) return;
         bool updateSignature = (functionName.find("::") != std::string::npos);
