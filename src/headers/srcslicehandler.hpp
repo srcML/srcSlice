@@ -50,6 +50,8 @@ public:
             ProcessClassData(policy->Data<ClassData>(), ctx);
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
             ProcessFunctionData(policy->Data<FunctionData>(), "", policy->Data<FunctionData>()->namespaces, ctx);
+        } else if (typeid(DeclTypePolicy) == typeid(*policy)) {
+            ProcessDeclStmts(nullptr, nullptr, "", policy->Data<std::vector<std::shared_ptr<DeclData>>>(), ctx);
         }
     }
 
@@ -57,7 +59,7 @@ public:
 
     void ProcessFunctionData(std::shared_ptr<FunctionData> function_data, std::string className, std::vector<std::string>& containingNamespaces, const srcDispatch::srcSAXEventContext& ctx) {
         ProcessFunctionSignature(function_data, className, containingNamespaces, ctx);
-        ProcessDeclStmts(function_data, nullptr, className, ctx);
+        ProcessDeclStmts(function_data, nullptr, className, nullptr, ctx);
         ProcessExprStmts(function_data, className, ctx);
     }
 
@@ -68,7 +70,7 @@ public:
             class_data->name->ToString();
         
         // Process Class Member Variables
-        ProcessDeclStmts(nullptr, class_data, className, ctx);
+        ProcessDeclStmts(nullptr, class_data, className, nullptr, ctx);
 
         // Process Class Contructors
         for (auto& funcVec : class_data->constructors) {// [ vect<func>, vect<func>, vect<func> ]
@@ -90,7 +92,9 @@ public:
         
     }
 
-    void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData,
+                            std::string className, std::shared_ptr<std::vector<std::shared_ptr<DeclData>>> potentialGlobals,
+                            const srcDispatch::srcSAXEventContext& ctx) {
         std::vector<std::shared_ptr<DeclData>> localGroup;
         std::vector<std::string> containingNamespaces;
 
@@ -133,6 +137,14 @@ public:
             containingNamespaces = classData->namespaces;
         }
 
+        // Look at potential globals that are captured
+        if (potentialGlobals) {
+            localGroup.insert(localGroup.end(), potentialGlobals->begin(), potentialGlobals->end());
+
+            // capture containing namespaces for potential globals
+            containingNamespaces = ctx.currentNamespaces;
+        }
+
         // loop through all the expression statements within Decl Statements
         for (const auto localVar : localGroup) {
             if (!localVar) continue;
@@ -148,6 +160,12 @@ public:
             // our profileMap
             std::string declVarName = localVar->name->ToString();
             std::string declVarType = "";
+
+            // if a global is contained within a namespace the namespace is scoped to call
+            // that specific variable
+            for (const std::string& ns : containingNamespaces) {
+                declVarName.insert(0, ns.substr(0,ns.find(' '))+"::");
+            }
 
             bool isPointer = false;
             bool isReference = false;
@@ -625,8 +643,8 @@ public:
             bool isLower = (c >= 97 && c <= 122);
             bool isUpper = (c >= 65 && c <= 90);
             bool isNumber = (c >= 48 && c <= 57);
-            bool isUnderScore = (c == '_');
-            if (isLower || isUpper || isNumber || isUnderScore) { // myStr, mystr, MyStr2, my_str_2
+            bool isSpecial = (c == '_') || (c == ':');
+            if (isLower || isUpper || isNumber || isSpecial) { // myStr, mystr, MyStr2, my_str_2, myNameSpace::varName
                 if (!readIn) readIn = true; // signal we want to read in the first name found
                 varName += c;
             } else {
