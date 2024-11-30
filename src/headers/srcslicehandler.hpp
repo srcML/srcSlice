@@ -38,11 +38,13 @@ public:
     }
 
     // Use string srcml buffer ctor of srcSAXController
-    SrcSliceHandler(const std::string sourceCodeStr, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
+    SrcSliceHandler(const std::string& sourceCodeStr, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
             : srcDispatch::PolicyDispatcher(listeners), verboseMode(false) {
         srcSAXController control(sourceCodeStr);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
+
+        ComputeInterprocedural();
     }
 
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
