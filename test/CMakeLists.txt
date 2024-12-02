@@ -15,16 +15,16 @@ find_package(srcML REQUIRED)
 link_directories(/opt/homebrew/lib/)
 
 add_executable(testPointer ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPointer.cpp)
-target_link_libraries(testPointer srcsax_static srcML::LibsrcML srcdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+target_link_libraries(testPointer srcsax_static srcML::LibsrcML srcdispatch ${LIBXML2_LIBRARIES} pthread)
 
 add_executable(testConditional ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testConditional.cpp)
-target_link_libraries(testConditional srcsax_static srcML::LibsrcML srcdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+target_link_libraries(testConditional srcsax_static srcML::LibsrcML srcdispatch ${LIBXML2_LIBRARIES} pthread)
 
 add_executable(testPassByReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPassByReference.cpp)
-target_link_libraries(testPassByReference srcsax_static srcML::LibsrcML srcdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+target_link_libraries(testPassByReference srcsax_static srcML::LibsrcML srcdispatch ${LIBXML2_LIBRARIES} pthread)
 
 add_executable(testPassByValue ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPassByValue.cpp)
-target_link_libraries(testPassByValue srcsax_static srcML::LibsrcML srcdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+target_link_libraries(testPassByValue srcsax_static srcML::LibsrcML srcdispatch ${LIBXML2_LIBRARIES} pthread)
 
 add_executable(testConstReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testConstReference.cpp)
-target_link_libraries(testConstReference srcsax_static srcML::LibsrcML srcdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+target_link_libraries(testConstReference srcsax_static srcML::LibsrcML srcdispatch ${LIBXML2_LIBRARIES} pthread)
