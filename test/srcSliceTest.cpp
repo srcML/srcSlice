@@ -3,9 +3,9 @@
 std::string StringToSrcML(std::string str, const char* fileName){ // Function by Cnewman
     struct srcml_archive* archive;
     struct srcml_unit* unit;
+    
     size_t size = 0;
-
-    char *ch = 0;
+    char* ch;
 
     archive = srcml_archive_create();
     srcml_archive_enable_option(archive, SRCML_OPTION_POSITION);
@@ -22,12 +22,15 @@ std::string StringToSrcML(std::string str, const char* fileName){ // Function by
     srcml_archive_close(archive);
     srcml_archive_free(archive);
 
+    // ensure the final char is null-terminator
     ch[size-1] = 0;
 
     // Copy the buffer content to a string so we
     // can deallocate the buffer created by:
     // `srcml_archive_write_open_memory`
-    std::string output(ch);
+    std::string output;
+    output.append(ch,size);
+
     srcml_memory_free(ch);
     
     return output;
