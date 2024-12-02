@@ -24,6 +24,9 @@
 cmake_minimum_required(VERSION 3.20)
 project(srcSlice)
 
+# enable ctest
+enable_testing()
+
 # find needed libraries
 find_package(LibXml2 REQUIRED)
 
