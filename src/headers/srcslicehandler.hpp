@@ -1116,6 +1116,27 @@ public:
 	    std::unordered_set <std::string> visited_func;
 
 	    for (auto& var : profileMap) {
+            // expand list of potential targets (aliases)
+            for (auto& sp : var.second) {
+                for (auto& alias : sp.aliases) {
+                    // Find the slice profile of the alias marked
+                    auto spi = profileMap.find(alias.first);
+                    if (spi != profileMap.end()) {
+                        // fingerprint the profile based on contained use
+                        for (auto aspi : spi->second) {
+                            auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
+                            if (usesItr != aspi.uses.end()) {
+                                // determine if the potential target is a pointer or reference
+                                if (aspi.isPointer || aspi.isReference) {
+                                    // push_back alias slice profile's aliases into the source slice aliases
+                                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+
             // Need to watch the Slices we attempt to dig into because we are collecting slices we have no interest in
             if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {
