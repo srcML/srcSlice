@@ -23,8 +23,7 @@ public:
             std::set<std::pair<int, int>> edges = {}, bool visit = false) :
             variableName(name), lineNumber(line), potentialAlias(alias),
             isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
-            dvars(dv), containsDeclaration(containsDecl), controlEdges(edges),
-            visited(visit) {
+            dvars(dv), containsDeclaration(containsDecl), visited(visit) {
         dereferenced = false;
         isPointer = false;
         isReference = false;
@@ -56,8 +55,6 @@ public:
     std::set<std::pair<std::string, unsigned int>> aliases;
 
     std::set<std::pair<std::string, std::pair<std::string, std::string>>> cfunctions;
-
-    std::set<std::pair<int, int>> controlEdges;
 
     bool visited;
 
