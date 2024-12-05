@@ -20,7 +20,7 @@ public:
             std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {},
             std::set<std::pair<std::string, std::pair<std::string, std::string>>> cFunc = {},
             std::set<std::pair<std::string, unsigned int>> dv = {}, bool containsDecl = false,
-            std::set<std::pair<int, int>> edges = {}, bool visit = false) :
+            bool visit = false) :
             variableName(name), lineNumber(line), potentialAlias(alias),
             isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
             dvars(dv), containsDeclaration(containsDecl), visited(visit) {
