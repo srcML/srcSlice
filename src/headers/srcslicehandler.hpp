@@ -230,33 +230,65 @@ public:
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
 
-                profileMap.insert(std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProf) }));
+                // point the iterator to the newly inserted profile element
+                sliceProfileItr = profileMap.insert(std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProf) })).first;
             }
-
-            // Do not remove, it will cause a segmentation fault
-            sliceProfileItr = profileMap.find(declVarName);
 
             sliceProfileItr->second.back().isReference = isReference;
             sliceProfileItr->second.back().isPointer = isPointer;
+
+            // This allows me to set the data type of the variable in its slice
+            // after its been set up from the logic above here
+            // Set the data-type of sliceprofile for decl vars inside of function bodies
+
+            sliceProfileItr->second.back().variableType = declVarType;
+
+            // Link the filepath the XML Originates
+            sliceProfileItr->second.back().file = ctx.currentFilePath;
+
+            // Link the file hash attribute
+            sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
+            
+            // Link the function this slice is located in
+            if (funcData) {
+                if (funcData->name)
+                    sliceProfileItr->second.back().function = funcData->name->ToString();
+            }
+                
+            // Link the class this slice is located in
+            if (classData) {
+                if (classData->name)
+                    sliceProfileItr->second.back().nameOfContainingClass = classData->name->ToString();
+            }
 
             // Look at the dvars and add this current variable to their dvar's lists.
             // If we haven't seen this name before, add its slice profile
             for (auto& varData : varDataGroup) {
                 UpdateLHSSlices(varData);
                 // sliceProfileItr->second.back() is the LHS
-                if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
-                    if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
-                        if (sliceProfileItr->second.back().isPointer) {
-                            auto initRHS = profileMap.find(varData->GetNameOfIdentifier());
-                            // Check for pointer-2-pointer assignment or points-to-address assignment
-                            if (initRHS->second.back().isPointer || varData->isAddrOf) {
-                                sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                if (sliceProfileItr != profileMap.end()) {
+                    auto initRHS = profileMap.find(varData->GetNameOfIdentifier());
+                    if (sliceProfileItr->second.back().potentialAlias) {
+                        if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
+                            // ensure aliases are within local-scope
+                            if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
+                                if (sliceProfileItr->second.back().isPointer) {
+                                    // Check for pointer-2-pointer assignment or points-to-address assignment
+                                    if (initRHS->second.back().isPointer || varData->isAddrOf) {
+                                        sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                                    }
+                                } else if (sliceProfileItr->second.back().isReference) {
+                                    sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                                }
                             }
-                        } else if (sliceProfileItr->second.back().isReference) {
-                            sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                        }
+                        continue;
+                    } else {
+                        // ensure dependencies are within local-scope
+                        if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
+                            initRHS->second.back().dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
                         }
                     }
-                    continue;
                 }
                 for (auto& dvarData : varData->rhsElems) {
                     std::string dvar = dvarData->GetNameOfIdentifier();
@@ -291,39 +323,20 @@ public:
                                                                                                     std::move(sliceProf)
                                                                                             }));
                         if (!StringContainsCharacters(declVarName)) continue;
-                        if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
-                            if ( declVarName != sliceProfileItr->second.back().variableName ) {
-                                newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
+
+                        // Ensure dependencies and aliases are within local-scope
+                        auto spi = profileMap.find(declVarName);
+                        if ( spi != profileMap.end() && (spi->second.back().function == newSliceProfileFromDeclDvars.first->second.back().function) ) {
+                            if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
+                                if ( declVarName != sliceProfileItr->second.back().variableName ) {
+                                    newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
+                                }
+                                continue;
                             }
-                            continue;
+                            newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
                         }
-                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
                     }
                 }
-            }
-
-            // This allows me to set the data type of the variable in its slice
-            // after its been set up from the logic above here
-            // Set the data-type of sliceprofile for decl vars inside of function bodies
-
-            sliceProfileItr->second.back().variableType = declVarType;
-
-            // Link the filepath the XML Originates
-            sliceProfileItr->second.back().file = ctx.currentFilePath;
-
-            // Link the file hash attribute
-            sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
-            
-            // Link the function this slice is located in
-            if (funcData) {
-                if (funcData->name)
-                    sliceProfileItr->second.back().function = funcData->name->ToString();
-            }
-                
-            // Link the class this slice is located in
-            if (classData) {
-                if (classData->name)
-                    sliceProfileItr->second.back().nameOfContainingClass = classData->name->ToString();
             }
         }
     }
@@ -396,26 +409,29 @@ public:
                                                                               rhsVarData->definitions.end());
 
                         if (!StringContainsCharacters(lhsName)) continue;
-                        if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
-                            if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
-                                if (sliceProfileLHSItr->second.back().isPointer) {
-                                    // Check for pointer-2-pointer assignment or points-to-address assignment
-                                    if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
-                                        sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+
+                        // ensure dependencies and aliases are within local-scope
+                        if ( sliceProfileLHSItr != profileMap.end() && (sliceProfileExprItr->second.back().function == sliceProfileLHSItr->second.back().function) ) {
+                            if (sliceProfileLHSItr->second.back().potentialAlias) {
+                                if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
+                                    if (sliceProfileLHSItr->second.back().isPointer) {
+                                        // Check for pointer-2-pointer assignment or points-to-address assignment
+                                        if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
+                                            sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                                        }
                                     }
                                 }
+                                continue;
                             }
-                            continue;
+                            
+                            // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                            // IE : abc = abc + i;
+                            if (!StringContainsCharacters(lhsName)) continue;
+                            if (!lhsName.empty() && sliceProfileExprItr->second.back().variableName != lhsName) {
+                                sliceProfileExprItr->second.back().dvars.insert(std::make_pair(lhsName, varData->originLine));
+                                continue;
+                            }
                         }
-                        
-                        // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
-                        // IE : abc = abc + i;
-                        if (!StringContainsCharacters(lhsName)) continue;
-                        if (!lhsName.empty() && sliceProfileExprItr->second.back().variableName != lhsName) {
-                            sliceProfileExprItr->second.back().dvars.insert(std::make_pair(lhsName, varData->originLine));
-                            continue;
-                        }
-
                     } else {
                         auto sliceProfileExprItr2 = profileMap.insert(std::make_pair(rhsName,
                                                                                         std::vector<SliceProfile>{
@@ -431,24 +447,30 @@ public:
                         sliceProfileExprItr2.first->second.back().language = ctx.currentFileLanguage;
 
                         if (!StringContainsCharacters(lhsName)) continue;
-                        if (sliceProfileLHSItr != profileMap.end() && sliceProfileLHSItr->second.back().potentialAlias) {
-                            if ( lhsName != sliceProfileLHSItr->second.back().variableName ) {
-                                if (sliceProfileLHSItr->second.back().isPointer) {
-                                    // Check for pointer-2-pointer assignment or points-to-address assignment
-                                    if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
-                                        sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+
+                        if (sliceProfileLHSItr != profileMap.end() && sliceProfileExprItr != profileMap.end()) {
+                            // ensure dependencies and aliases are within local-scope
+                            if (sliceProfileExprItr->second.back().function == sliceProfileLHSItr->second.back().function) {
+                                if (sliceProfileLHSItr->second.back().potentialAlias) {
+                                    if ( lhsName != sliceProfileLHSItr->second.back().variableName ) {
+                                        if (sliceProfileLHSItr->second.back().isPointer) {
+                                            // Check for pointer-2-pointer assignment or points-to-address assignment
+                                            if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
+                                                sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                                            }
+                                        }
                                     }
+                                    continue;
+                                }
+
+                                // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
+                                // IE : abc = abc + i;
+                                if (!StringContainsCharacters(lhsName)) continue;
+                                if (!lhsName.empty() && (lhsName != rhsName)) {
+                                    sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(lhsName, varData->originLine));
+                                    continue;
                                 }
                             }
-                            continue;
-                        }
-
-                        // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
-                        // IE : abc = abc + i;
-                        if (!StringContainsCharacters(lhsName)) continue;
-                        if (!lhsName.empty() && (lhsName != rhsName)) {
-                            sliceProfileExprItr2.first->second.back().dvars.insert(std::make_pair(lhsName, varData->originLine));
-                            continue;
                         }
                     }
                 }
@@ -706,6 +728,9 @@ public:
                             lhsVar->uses.insert(lineNumber);
                         }
 
+                        if (expr_op == ">>")
+                            lhsVar->definitions.insert(lineNumber);
+
                         if (expr_op == "&") {
                             lhsVar->isAddrOf = true;
                         }
@@ -785,6 +810,8 @@ public:
                     }
                 } else { // if the lhs has no rhs members
                     if (isAssignment(expr_op)) {
+                        // when LHS hits assignment it can start storing
+                        // RHS elements
                         lhsVar->lhs = true;
                         lhsVar->definitions.insert(lineNumber);
 
@@ -794,18 +821,26 @@ public:
                             lhsVar->uses.insert(lineNumber);
                             lhsVar->definitions.insert(lineNumber);
                         }
-                    } else if (expr_op == "++" || expr_op == "--" ) {
-                        lhsVar->uses.insert(lineNumber);
-                        lhsVar->definitions.insert(lineNumber);
-                    } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                        lhsVar->uses.insert(lineNumber);
-                    } else if (isLogical(expr_op)) {
-                        // anything within logical conditionals are uses
-                        // we also will need to redeclare the lhs variable
-                        lhsVar->uses.insert(lineNumber);
-                        varDataGroup.push_back(lhsVar);
-
-                        lhsVar = std::make_shared<VariableData>();
+                    } else {
+                        // when a LHS has no rhs elems and hits a non-assignment
+                        // it gets pushed back into the group and a new LHS gets
+                        // created ie. return a + b;
+                        if (expr_op == "++" || expr_op == "--" ) {
+                            lhsVar->uses.insert(lineNumber);
+                            lhsVar->definitions.insert(lineNumber);
+                        } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                            lhsVar->uses.insert(lineNumber);
+                        } else if (isLogical(expr_op)) {
+                            // anything within logical conditionals are uses
+                            // we also will need to redeclare the lhs variable
+                            lhsVar->uses.insert(lineNumber);
+                        } else if (expr_op == "<<") {
+                            lhsVar->uses.insert(lineNumber);
+                        }
+                        if (lhsVar->isInitialized() && expr_op != "&") {
+                            varDataGroup.push_back(lhsVar);
+                            lhsVar = std::make_shared<VariableData>();
+                        }
                     }
                 }
             } else if (exprElem.type() == typeid(std::shared_ptr<CallData>)) {
@@ -830,8 +865,10 @@ public:
         if (lhsVar->isInitialized()) {
             // For expressions with only a single variable name
             // where we never encounter an operator, ie `return x;`
-            if (lhsVar->rhsElems.size() == 0 || !lhsVar->lhs) {
-                lhsVar->uses.insert(lineNumber);
+            if (lhsVar->rhsElems.size() == 0 && !lhsVar->lhs) {
+                if (expr_op != ">>") { // dont add a use for exprs ie cin >> num;
+                    lhsVar->uses.insert(lineNumber);
+                }
             }
 
             // Ensure the final potential LHS-RHS pair is pushed into the
@@ -841,6 +878,16 @@ public:
             }
             varDataGroup.push_back(lhsVar);
         }
+
+        // if (!varDataGroup.empty())
+        //     std::cerr << "DEBUG PARSE EXPR OUTPUT" << std::endl;
+        // for (const auto& v : varDataGroup) {
+        //     std::cerr << v->GetNameOfIdentifier() << " { ";
+        //     for (const auto& r : v->rhsElems) {
+        //         std::cerr << r->GetNameOfIdentifier() << ", ";
+        //     }
+        //     std::cerr << " } " << std::endl;
+        // }
 
         return varDataGroup;
     }
@@ -1088,14 +1135,17 @@ public:
                                                             recursiveSpi->second.back().cfunctions.begin(),
                                                             recursiveSpi->second.back().cfunctions.end()
                                                     );
-                                                    profileMap.find(param->name->ToString())->second.back().aliases.insert(
-                                                            recursiveSpi->second.back().aliases.begin(),
-                                                            recursiveSpi->second.back().aliases.end()
-                                                    );
-                                                    profileMap.find(param->name->ToString())->second.back().dvars.insert(
-                                                            recursiveSpi->second.back().dvars.begin(),
-                                                            recursiveSpi->second.back().dvars.end()
-                                                    );
+                                                    // ensure dependencies and aliases are within local scope
+                                                    if (recursiveSpi->second.back().function == profileMap.find(param->name->ToString())->second.back().function) {
+                                                        profileMap.find(param->name->ToString())->second.back().aliases.insert(
+                                                                recursiveSpi->second.back().aliases.begin(),
+                                                                recursiveSpi->second.back().aliases.end()
+                                                        );
+                                                        profileMap.find(param->name->ToString())->second.back().dvars.insert(
+                                                                recursiveSpi->second.back().dvars.begin(),
+                                                                recursiveSpi->second.back().dvars.end()
+                                                        );
+                                                    }
                                                 }
                                             }
                                         }
@@ -1205,14 +1255,17 @@ public:
                                                 sliceItr->uses.end()
                                         );
 
-                                        profileMap.find(var.first)->second.back().aliases.insert(
-                                                sliceItr->aliases.begin(),
-                                                sliceItr->aliases.end()
-                                        );
-                                        profileMap.find(var.first)->second.back().dvars.insert(
-                                                sliceItr->dvars.begin(),
-                                                sliceItr->dvars.end()
-                                        );
+                                        // ensure dependencies and aliases are within local-scope
+                                        if (profileMap.find(var.first)->second.back().function == sliceItr->function) {
+                                            profileMap.find(var.first)->second.back().aliases.insert(
+                                                    sliceItr->aliases.begin(),
+                                                    sliceItr->aliases.end()
+                                            );
+                                            profileMap.find(var.first)->second.back().dvars.insert(
+                                                    sliceItr->dvars.begin(),
+                                                    sliceItr->dvars.end()
+                                            );
+                                        }
                                     } else {
                                         if (verboseMode) {
                                             std::cout << std::boolalpha << "Is '" << var.first << "' a Map Entry? " << (profileMap.find(var.first) != profileMap.end())
