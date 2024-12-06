@@ -14,7 +14,7 @@ of it, and potential aliases.
 ## :hammer_and_wrench: Building srcSlice
 
 ```bash
-# Install srcML Develop if not installed on your local machine
+# Install srcML Develop if not installed on your local machine, after running 'make' when building srcML run 'make install' to ensure cmake can find the srcML package when building srcSlice
 git clone --recursive -b develop https://github.com/srcML/srcML.git
 ```
 ```bash
