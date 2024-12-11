@@ -554,62 +554,67 @@ public:
                                 std::vector<std::any>& conditionals) {
         std::vector<std::shared_ptr<BlockData>> cntlBlocks;
 
+        // identify what conditional type we are viewing and handle logic accordingly
         for (const auto& cntl : conditionals) {
             if (cntl.type() == typeid(std::shared_ptr<IfStmtData>)) {
                 // Extract all of the block data from if statements
                 std::shared_ptr<IfStmtData> ifcntl = std::any_cast<std::shared_ptr<IfStmtData>>(cntl);
 
+                // ifstmts have three potential clauses (if-elseif-else)
                 for (const auto& clause : ifcntl->clauses) {
                     if (clause.type() == typeid(std::shared_ptr<IfData>)) {
-                        std::shared_ptr<IfData> data = std::any_cast<std::shared_ptr<IfData>>(clause);
+                        std::shared_ptr<IfData> ifData = std::any_cast<std::shared_ptr<IfData>>(clause);
 
-                        if (exprStmts) {
-                            exprStmts->push_back(data->condition);
+                        if (declStmts) {
+                            declStmts->insert(declStmts->end(), ifData->condition->decls.begin(), ifData->condition->decls.end());
                         }
 
-                        cntlBlocks.push_back(data->block);
+                        if (exprStmts) {
+                            exprStmts->push_back(ifData->condition->expr);
+                        }
+
+                        cntlBlocks.push_back(ifData->block);
                     } else if (clause.type() == typeid(std::shared_ptr<ElseIfData>)) {
-                        std::shared_ptr<ElseIfData> data = std::any_cast<std::shared_ptr<ElseIfData>>(clause);
+                        std::shared_ptr<ElseIfData> elseIfData = std::any_cast<std::shared_ptr<ElseIfData>>(clause);
 
-                        if (exprStmts) {
-                            exprStmts->push_back(data->condition);
+                        if (declStmts) {
+                            declStmts->insert(declStmts->end(), elseIfData->condition->decls.begin(), elseIfData->condition->decls.end());
                         }
 
-                        cntlBlocks.push_back(data->block);
+                        if (exprStmts) {
+                            exprStmts->push_back(elseIfData->condition->expr);
+                        }
+
+                        cntlBlocks.push_back(elseIfData->block);
                     } else if (clause.type() == typeid(std::shared_ptr<ElseData>)) {
-                        std::shared_ptr<ElseData> data = std::any_cast<std::shared_ptr<ElseData>>(clause);
-                        cntlBlocks.push_back(data->block);
+                        std::shared_ptr<ElseData> elseData = std::any_cast<std::shared_ptr<ElseData>>(clause);
+                        cntlBlocks.push_back(elseData->block);
                     }
                 }
             } else if (cntl.type() == typeid(std::shared_ptr<SwitchData>)) {
                 // Extract all of the block data from Switch statements
-                std::shared_ptr<SwitchData> switchcntl = std::any_cast<std::shared_ptr<SwitchData>>(cntl);
+                std::shared_ptr<SwitchData> switchData = std::any_cast<std::shared_ptr<SwitchData>>(cntl);
 
                 /*
                     Ensure we are getting the uses from the case lines
                     Ensure we capture data from the case blocks as well
                 */
 
-                if (exprStmts) {
-                    exprStmts->push_back(switchcntl->condition);
+                if (declStmts) {
+                    declStmts->insert(declStmts->end(), switchData->condition->decls.begin(), switchData->condition->decls.end());
                 }
 
-                cntlBlocks.push_back(switchcntl->block);
-            } else if (cntl.type() == typeid(std::shared_ptr<WhileData>)) {
-                // Extract all of the block data from While Loops
-                std::shared_ptr<WhileData> whilecntl = std::any_cast<std::shared_ptr<WhileData>>(cntl);
-
                 if (exprStmts) {
-                    exprStmts->push_back(whilecntl->condition);
+                    exprStmts->push_back(switchData->condition->expr);
                 }
 
-                cntlBlocks.push_back(whilecntl->block);
+                cntlBlocks.push_back(switchData->block);
             } else if (cntl.type() == typeid(std::shared_ptr<ForData>)) {
                 // Extract all of the block data from For Loops
-                std::shared_ptr<ForData> forcntl = std::any_cast<std::shared_ptr<ForData>>(cntl);
+                std::shared_ptr<ForData> forData = std::any_cast<std::shared_ptr<ForData>>(cntl);
 
                 if (declStmts != nullptr) {
-                    for (auto& initData : forcntl->control->init) {
+                    for (auto& initData : forData->control->init) {
                         if (initData.type() == typeid(std::shared_ptr<DeclData>)) {
                             std::shared_ptr<DeclData> forInitDecl = std::any_cast<std::shared_ptr<DeclData>>(initData);
                             declStmts->push_back(forInitDecl);
@@ -618,22 +623,36 @@ public:
                 }
 
                 if (exprStmts) {
-                    exprStmts->push_back(forcntl->control->condition);
+                    exprStmts->push_back(forData->control->condition->expr);
                 }
 
-                cntlBlocks.push_back(forcntl->block);
-            } else if (cntl.type() == typeid(std::shared_ptr<DoData>)) {
-                // Extract all of the block data from Do-While Loops
-                std::shared_ptr<DoData> dowhilecntl = std::any_cast<std::shared_ptr<DoData>>(cntl);
+                cntlBlocks.push_back(forData->block);
+            }  else if (cntl.type() == typeid(std::shared_ptr<WhileData>)) {
+                // Extract all of the block data from While Loops
+                std::shared_ptr<WhileData> whileData = std::any_cast<std::shared_ptr<WhileData>>(cntl);
+
+                // C++ do-while does not support decl-stmts within the conditional "()"
 
                 if (exprStmts) {
-                    exprStmts->push_back(dowhilecntl->condition);
+                    exprStmts->push_back(whileData->condition->expr);
                 }
 
-                cntlBlocks.push_back(dowhilecntl->block);
+                cntlBlocks.push_back(whileData->block);
+            } else if (cntl.type() == typeid(std::shared_ptr<DoData>)) {
+                // Extract all of the block data from Do-While Loops
+                std::shared_ptr<DoData> doWhileData = std::any_cast<std::shared_ptr<DoData>>(cntl);
+
+                // C++ do-while does not support decl-stmts within the conditional "()"
+
+                if (exprStmts) {
+                    exprStmts->push_back(doWhileData->condition->expr);
+                }
+
+                cntlBlocks.push_back(doWhileData->block);
             }
         }
 
+        // Capture the Expressions and Decl-Stmts from the conditonal blocks
         for (const auto& block : cntlBlocks) {
             if (!block) continue;
 
@@ -649,7 +668,7 @@ public:
                     exprStmts->insert(exprStmts->end(), block->returns.begin(), block->returns.end());
             }
 
-            // Recursive call to dive into nested conditionals
+            // Recursive call to step into nested conditionals
             if (block->conditionals.size() > 0) {
                 CollectConditionalData(exprStmts, declStmts, block->conditionals);
             }
