@@ -28,9 +28,10 @@ macro(add_unit_test TEST_FILE)
 endmacro()
 
 # ctest test items
+add_unit_test(testAliases.cpp)
 add_unit_test(testPointer.cpp)
 add_unit_test(testConditional.cpp)
-add_unit_test(testPassByReference.cpp)
+add_unit_test(testConditionDecl.cpp)
 add_unit_test(testPassByValue.cpp)
+add_unit_test(testPassByReference.cpp)
 add_unit_test(testConstReference.cpp)
-add_unit_test(testAliases.cpp)
