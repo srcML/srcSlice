@@ -71,7 +71,7 @@ public:
         std::string className = "";
         if (class_data->name)
             class_data->name->ToString();
-        
+
         // Process Class Member Variables
         ProcessDeclStmts(nullptr, class_data, className, nullptr, ctx);
 
@@ -86,13 +86,13 @@ public:
             for (auto& func : funcVec)
                 ProcessFunctionData(func, className, class_data->namespaces, ctx);
         }
-        
+
         // Process Operator Overloading
         for (auto& funcVec : class_data->operators) {// [ vect<func>, vect<func>, vect<func> ]
             for (auto& func : funcVec)
                 ProcessFunctionData(func, className, class_data->namespaces, ctx);
         }
-        
+
     }
 
     void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData,
@@ -130,7 +130,7 @@ public:
                 localGroup.insert(localGroup.end(), classData->fields[ClassData::PRIVATE].begin(), classData->fields[ClassData::PRIVATE].end());
             }
             localGroup.insert(localGroup.end(), classData->fields->begin(), classData->fields->end());
-            
+
             if (classData->name)
                 className = classData->name->ToString();
             else
@@ -203,7 +203,7 @@ public:
             if (sliceProfileItr != profileMap.end()) {
                 // Check if the new slice we potentially try to create has not already been made
                 // (we dont want to have duplicates of the same slice)
-                
+
                 // We may have variables of the same name, but each slice of the same name must be initially declared on different lines
                 if (sliceProfileItr->second.back().variableName != declVarName || sliceProfileItr->second.back().lineNumber != localVar->lineNumber) {
                     auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber, isPointer, true, std::set<unsigned int>{localVar->lineNumber});
@@ -248,13 +248,13 @@ public:
 
             // Link the file hash attribute
             sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
-            
+
             // Link the function this slice is located in
             if (funcData) {
                 if (funcData->name)
                     sliceProfileItr->second.back().function = funcData->name->ToString();
             }
-                
+
             // Link the class this slice is located in
             if (classData) {
                 if (classData->name)
@@ -344,14 +344,14 @@ public:
     void ProcessExprStmts(std::shared_ptr<FunctionData> funcData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
         std::vector<std::shared_ptr<ExpressionData>> exprStmts;
         std::vector<std::string> containingNamespaces;
-        
+
         // Capture general expressions
         if (funcData->block) {
             if (funcData->block->expr_stmts.size() > 0) {
                 exprStmts.insert(exprStmts.end(), funcData->block->expr_stmts.begin(), funcData->block->expr_stmts.end());
             }
         }
-        
+
         // Capture general Return expressions
         if (funcData->block) {
             if (funcData->block->returns.size() > 0) {
@@ -367,7 +367,7 @@ public:
         }
 
         if (funcData) containingNamespaces = funcData->namespaces;
-        
+
         // loop through all the expression statements
         for (auto itr = exprStmts.begin(); itr != exprStmts.end(); ++itr) {
             std::shared_ptr<ExpressionData> expr = *itr;
@@ -423,7 +423,7 @@ public:
                                 }
                                 continue;
                             }
-                            
+
                             // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                             // IE : abc = abc + i;
                             if (!StringContainsCharacters(lhsName)) continue;
@@ -747,8 +747,9 @@ public:
                             lhsVar->uses.insert(lineNumber);
                         }
 
-                        if (expr_op == ">>")
+                        if (expr_op == ">>") {
                             lhsVar->definitions.insert(lineNumber);
+                        }
 
                         if (expr_op == "&") {
                             lhsVar->isAddrOf = true;
@@ -789,7 +790,8 @@ public:
                         lhsVar = lhsStack.back();
                         lhsStack.pop_back();
                     }
-                } else if (!lhsVar->rhsElems.empty()) { // if the lhs has rhs members
+                } else if (!lhsVar->rhsElems.empty() || lhsVar->lhs) {
+                    // LHS HAS RHS MEMBERS OR LHS HAS BEEN MARKED AS A LHS
                     std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
 
                     if (isAssignment(expr_op)) {
@@ -827,7 +829,8 @@ public:
                         }
 
                     }
-                } else { // if the lhs has no rhs members
+                } else {
+                    // IF LHS HAS NO RHS MEMBERS
                     if (isAssignment(expr_op)) {
                         // when LHS hits assignment it can start storing
                         // RHS elements
@@ -898,8 +901,26 @@ public:
             varDataGroup.push_back(lhsVar);
         }
 
-        // if (!varDataGroup.empty())
+        // if (!varDataGroup.empty()) {
         //     std::cerr << "DEBUG PARSE EXPR OUTPUT" << std::endl;
+        //     std::cerr << expr << std::endl;
+        // }
+
+        // Debug use/def marking
+        // for (const auto& v : varDataGroup) {
+        //     std::cerr << v->GetNameOfIdentifier() << " USE { ";
+        //     for (const auto& line : v->uses) {
+        //         std::cerr << line << " ";
+        //     }
+        //     std::cerr << " } " << std::endl;
+
+        //     std::cerr << " DEF { ";
+        //     for (const auto& line : v->definitions) {
+        //         std::cerr << line << " ";
+        //     }
+        //     std::cerr << " } " << std::endl;
+        // }
+        // Debug RHS elem assignment
         // for (const auto& v : varDataGroup) {
         //     std::cerr << v->GetNameOfIdentifier() << " { ";
         //     for (const auto& r : v->rhsElems) {
@@ -944,7 +965,7 @@ public:
                     paramType = paramType.substr(paramType.find(' ')+1);
                 }
             }
-            
+
             // Record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
             auto sliceProfileItr = profileMap.find(paramName);
             // Just add new slice profile if name already exists. Otherwise, add new entry in map.
@@ -969,7 +990,7 @@ public:
                 sliceProf.nameOfContainingClass = className;
                 sliceProf.containingNameSpaces = containingNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
-                
+
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
 
@@ -1050,7 +1071,8 @@ public:
         return simpleFunctionName;
     }
 
-    // Use for inserting Uses and Defs for Slices in the LHS of an Expression Statement
+    // Used for inserting Uses and Defs for Slices in the LHS of an Expression Statement
+    // perform a map find and update the slice
     void UpdateLHSSlices(std::shared_ptr<VariableData> varData) {
         if (varData->GetNameOfIdentifier().empty()) return;
 
@@ -1109,7 +1131,7 @@ public:
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap() {
         return profileMap;
     }
-    
+
     auto ArgumentProfile(std::pair<std::string, std::shared_ptr<FunctionData>> func, int paramIndex, std::unordered_set<std::string>& visit_func) {
         auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name->ToString());
 
