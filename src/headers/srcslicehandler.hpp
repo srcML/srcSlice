@@ -412,7 +412,7 @@ public:
 
                         // ensure dependencies and aliases are within local-scope
                         if ( sliceProfileLHSItr != profileMap.end() && (sliceProfileExprItr->second.back().function == sliceProfileLHSItr->second.back().function) ) {
-                            if (sliceProfileLHSItr->second.back().potentialAlias) {
+                            if (sliceProfileLHSItr->second.back().potentialAlias && !varData->dereferenced) {
                                 if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
                                     if (sliceProfileLHSItr->second.back().isPointer) {
                                         // Check for pointer-2-pointer assignment or points-to-address assignment
@@ -753,6 +753,11 @@ public:
 
                         if (expr_op == "&") {
                             lhsVar->isAddrOf = true;
+                        } else if (expr_op == "*") {
+                            auto spi = profileMap.find(lhsVar->GetNameOfIdentifier());
+                            if (spi != profileMap.end() && spi->second.back().isPointer) {
+                                lhsVar->dereferenced = true;
+                            }
                         }
                     } else {
                         std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(varName);
@@ -766,6 +771,11 @@ public:
 
                         if (expr_op == "&") {
                             newRHSVar->isAddrOf = true;
+                        } else if (expr_op == "*") {
+                            auto spi = profileMap.find(newRHSVar->GetNameOfIdentifier());
+                            if (spi != profileMap.end() && spi->second.back().isPointer) {
+                                newRHSVar->dereferenced = true;
+                            }
                         }
 
                         lhsVar->lhs = true;
@@ -791,77 +801,81 @@ public:
                         lhsStack.pop_back();
                     }
                 } else if (!lhsVar->rhsElems.empty() || lhsVar->lhs) {
-                    // LHS HAS RHS MEMBERS OR LHS HAS BEEN MARKED AS A LHS
-                    std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
+                    if (lhsVar->isInitialized()) {
+                        // LHS HAS RHS MEMBERS OR LHS HAS BEEN MARKED AS A LHS
+                        std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
 
-                    if (isAssignment(expr_op)) {
-                        // When we encounter assignment while containing a group of RHS variables
-                        // we need to push this LHS-RHS pair into the vector we later return
-                        lhsVar->lhs = true;
-                        varDataGroup.push_back(lhsVar);
-                        lhsStack.push_back(lhsVar); // save reference to outter lhs
-                        lhsVar = std::make_shared<VariableData>();
+                        if (isAssignment(expr_op)) {
+                            // When we encounter assignment while containing a group of RHS variables
+                            // we need to push this LHS-RHS pair into the vector we later return
+                            lhsVar->lhs = true;
+                            varDataGroup.push_back(lhsVar);
+                            lhsStack.push_back(lhsVar); // save reference to outter lhs
+                            lhsVar = std::make_shared<VariableData>();
 
-                        // We need to set the new LHS variable to start creating a new
-                        // LHS-RHS pair group
-                        lhsVar->InitializeLHS(prevRHSPtr->GetNameOfIdentifier(), lineNumber);
-                        lhsVar->definitions.insert(lineNumber);
-
-                        // Coumpound Assignment is a classic Use-Def Chain
-                        // ie: int a = b += c; // b is used and defined by +=
-                        if (isCompoundAssignment(expr_op)) {
+                            // We need to set the new LHS variable to start creating a new
+                            // LHS-RHS pair group
+                            lhsVar->InitializeLHS(prevRHSPtr->GetNameOfIdentifier(), lineNumber);
                             lhsVar->definitions.insert(lineNumber);
-                            lhsVar->uses.insert(lineNumber);
-                        }
 
-                    } else {
-                        if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                            // We will have captured some RHS variable, if we encounter this block we've encountered
-                            // a use for the most recent RHS variable we've encountered
-                            if (prevRHSPtr != nullptr) {
-                                prevRHSPtr->uses.insert(lineNumber);
+                            // Coumpound Assignment is a classic Use-Def Chain
+                            // ie: int a = b += c; // b is used and defined by +=
+                            if (isCompoundAssignment(expr_op)) {
+                                lhsVar->definitions.insert(lineNumber);
+                                lhsVar->uses.insert(lineNumber);
                             }
-                        } else if (expr_op == "++" || expr_op == "--" ) {
-                            if (prevRHSPtr != nullptr) {
-                                prevRHSPtr->uses.insert(lineNumber);
-                                prevRHSPtr->definitions.insert(lineNumber);
-                            }
-                        }
 
+                        } else {
+                            if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                                // We will have captured some RHS variable, if we encounter this block we've encountered
+                                // a use for the most recent RHS variable we've encountered
+                                if (prevRHSPtr != nullptr) {
+                                    prevRHSPtr->uses.insert(lineNumber);
+                                }
+                            } else if (expr_op == "++" || expr_op == "--" ) {
+                                if (prevRHSPtr != nullptr) {
+                                    prevRHSPtr->uses.insert(lineNumber);
+                                    prevRHSPtr->definitions.insert(lineNumber);
+                                }
+                            }
+
+                        }
                     }
                 } else {
-                    // IF LHS HAS NO RHS MEMBERS
-                    if (isAssignment(expr_op)) {
-                        // when LHS hits assignment it can start storing
-                        // RHS elements
-                        lhsVar->lhs = true;
-                        lhsVar->definitions.insert(lineNumber);
+                    if (lhsVar->isInitialized()) {
+                        // IF LHS HAS NO RHS MEMBERS
+                        if (isAssignment(expr_op)) {
+                            // when LHS hits assignment it can start storing
+                            // RHS elements
+                            lhsVar->lhs = true;
+                            lhsVar->definitions.insert(lineNumber);
 
-                        // Coumpound Assignment is a classic Use-Def Chain
-                        // ie: n += 2;
-                        if (isCompoundAssignment(expr_op)) {
-                            lhsVar->uses.insert(lineNumber);
-                            lhsVar->definitions.insert(lineNumber);
-                        }
-                    } else {
-                        // when a LHS has no rhs elems and hits a non-assignment
-                        // it gets pushed back into the group and a new LHS gets
-                        // created ie. return a + b;
-                        if (expr_op == "++" || expr_op == "--" ) {
-                            lhsVar->uses.insert(lineNumber);
-                            lhsVar->definitions.insert(lineNumber);
-                        } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                            lhsVar->uses.insert(lineNumber);
-                        } else if (isLogical(expr_op)) {
-                            // anything within logical conditionals are uses
-                            // we also will need to redeclare the lhs variable
-                            lhsVar->uses.insert(lineNumber);
-                        } else if (expr_op == "<<") {
-                            lhsVar->uses.insert(lineNumber);
-                        }
-                        if (lhsVar->isInitialized() && expr_op != "&") {
-                            varDataGroup.push_back(lhsVar);
-                            lhsVar = std::make_shared<VariableData>();
+                            // Coumpound Assignment is a classic Use-Def Chain
+                            // ie: n += 2;
+                            if (isCompoundAssignment(expr_op)) {
+                                lhsVar->uses.insert(lineNumber);
+                                lhsVar->definitions.insert(lineNumber);
+                            }
+                        } else {
+                            // when a LHS has no rhs elems and hits a non-assignment
+                            // it gets pushed back into the group and a new LHS gets
+                            // created ie. return a + b;
+                            if (expr_op == "++" || expr_op == "--" ) {
+                                lhsVar->uses.insert(lineNumber);
+                                lhsVar->definitions.insert(lineNumber);
+                            } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                                lhsVar->uses.insert(lineNumber);
+                            } else if (isLogical(expr_op)) {
+                                // anything within logical conditionals are uses
+                                // we also will need to redeclare the lhs variable
+                                lhsVar->uses.insert(lineNumber);
+                            } else if (expr_op == "<<") {
+                                lhsVar->uses.insert(lineNumber);
+                            }
+                            if (lhsVar->isInitialized() && expr_op != "&") {
+                                varDataGroup.push_back(lhsVar);
+                                lhsVar = std::make_shared<VariableData>();
+                            }
                         }
                     }
                 }
@@ -906,7 +920,7 @@ public:
         //     std::cerr << expr << std::endl;
         // }
 
-        // Debug use/def marking
+        // // Debug use/def marking
         // for (const auto& v : varDataGroup) {
         //     std::cerr << v->GetNameOfIdentifier() << " USE { ";
         //     for (const auto& line : v->uses) {
@@ -920,7 +934,7 @@ public:
         //     }
         //     std::cerr << " } " << std::endl;
         // }
-        // Debug RHS elem assignment
+        // // Debug RHS elem assignment
         // for (const auto& v : varDataGroup) {
         //     std::cerr << v->GetNameOfIdentifier() << " { ";
         //     for (const auto& r : v->rhsElems) {

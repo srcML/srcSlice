@@ -23,6 +23,7 @@ public:
         rhsElems = rhs.rhsElems;
         lhs = rhs.lhs;
         isAddrOf = rhs.isAddrOf;
+        dereferenced = rhs.dereferenced;
         uses = rhs.uses;
         definitions = rhs.definitions;
         originLine = rhs.originLine;
@@ -40,6 +41,7 @@ public:
         rhsElems.clear();
         lhs = false;
         isAddrOf = false;
+        dereferenced = false;
         uses.clear();
         definitions.clear();
     }
@@ -69,6 +71,7 @@ public:
 
     bool lhs = false;
     bool isAddrOf = false;
+    bool dereferenced = false;
     unsigned int originLine;
     std::set<unsigned int> uses;
     std::set<unsigned int> definitions;
