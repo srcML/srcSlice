@@ -530,3 +530,79 @@ TEST_CASE( "Conditional Test 14", "[srcslice]" ) {
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
+
+TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
+    sourceCode = "int LinearSearch(int* array, int size, int key) {\n"
+                "    for (int i = 0; i < size; ++i) {\n"
+                "       if (array[i] == key)\n"
+                "            return i;\n"
+                "    }\n"
+                "    return -1;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"LinearSearch\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"i\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[2,3,4],\n"
+            "    \"definition\":[2]\n"
+            "},\n"
+            "\"slice_1\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"LinearSearch\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"key\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3],\n"
+            "    \"definition\":[1]\n"
+            "},\n"
+            "\"slice_2\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"LinearSearch\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"size\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[2],\n"
+            "    \"definition\":[1]\n"
+            "},\n"
+            "\"slice_3\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"LinearSearch\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"array\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3],\n"
+            "    \"definition\":[1]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Conditional Test 15", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
