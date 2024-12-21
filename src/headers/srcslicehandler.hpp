@@ -269,6 +269,14 @@ public:
                 if (sliceProfileItr != profileMap.end()) {
                     auto initRHS = profileMap.find(varData->GetNameOfIdentifier());
                     if (sliceProfileItr->second.back().potentialAlias) {
+                        // Aliases are formed from pointer-to-pointer or pointer-to-address assignments
+                        if (!initRHS->second.back().isPointer && !varData->isAddrOf) {
+                            // ensure dependencies are within local-scope
+                            if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
+                                initRHS->second.back().dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
+                            }
+                            continue;
+                        }
                         if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
                             // ensure aliases are within local-scope
                             if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
@@ -282,7 +290,6 @@ public:
                                 }
                             }
                         }
-                        continue;
                     } else {
                         // ensure dependencies are within local-scope
                         if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
@@ -411,14 +418,14 @@ public:
                         if (!StringContainsCharacters(lhsName)) continue;
 
                         // ensure dependencies and aliases are within local-scope
-                        if ( sliceProfileLHSItr != profileMap.end() && (sliceProfileExprItr->second.back().function == sliceProfileLHSItr->second.back().function) ) {
-                            if (sliceProfileLHSItr->second.back().potentialAlias && !varData->dereferenced) {
+                        if ( sliceProfileLHSItr != profileMap.end() &&
+                            (sliceProfileExprItr->second.back().function == sliceProfileLHSItr->second.back().function) ) {
+                            // Check for pointer-2-pointer assignment or points-to-address assignment
+                            if ( (sliceProfileLHSItr->second.back().potentialAlias && !varData->dereferenced) &&
+                                (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) ) {
                                 if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
                                     if (sliceProfileLHSItr->second.back().isPointer) {
-                                        // Check for pointer-2-pointer assignment or points-to-address assignment
-                                        if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
-                                            sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
-                                        }
+                                        sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
                                     }
                                 }
                                 continue;
@@ -677,6 +684,14 @@ public:
 
     // Take large name strings and extract the root variable name
     std::string ExtractName(std::string elementName) {
+        const std::string target = "std::";
+
+        // Check if the string starts with "std::"
+        if (elementName.rfind(target, 0) == 0) {
+            // Remove the prefix and set it to the result
+            elementName = elementName.substr(target.size());
+        }
+
         std::string varName;
         /*
             *itr.vec.size(); (*root).left
@@ -701,6 +716,19 @@ public:
         return varName;
     }
 
+    // Attempt to Recursively dig into potential nested indices in a RHS to form dependency relations with a LHS variable
+    void AppendIndices(std::shared_ptr<VariableData>& lhs, std::shared_ptr<VariableData>& varData) {
+        for (auto& rhs : varData->rhsElems) {
+            if (!rhs->indices.empty()) {
+                AppendIndices(lhs, rhs);
+                lhs->rhsElems.insert(lhs->rhsElems.end(), rhs->indices.begin(), rhs->indices.end());
+            }
+        }
+        if (!varData->indices.empty()) {
+            lhs->rhsElems.insert(lhs->rhsElems.end(), varData->indices.begin(), varData->indices.end());
+        }
+    }
+
     std::vector<std::shared_ptr<VariableData>> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
         std::vector<std::shared_ptr<VariableData>> varDataGroup;
         std::string expr_op = "";
@@ -708,83 +736,105 @@ public:
 
         std::vector<std::shared_ptr<VariableData>> lhsStack;
         bool groupCollect = false;
-        const char* keywords[] = {"this","auto","const","true","false","signed","unsigned","long","short","cout","cin","cerr","endl"};
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
-            bool invalidName = false;
-
             if (exprElem.type() == typeid(std::shared_ptr<NameData>)) {
                 std::shared_ptr<NameData> name = std::any_cast<std::shared_ptr<NameData>>(exprElem);
                 if (name->ToString().empty()) continue;
 
-                std::string varName = name->ToString();
-                std::string target = "std::";
+                std::string varName = ExtractName(name->ToString());
 
-                // Check if the string starts with "std::"
-                if (varName.rfind(target, 0) == 0) {
-                    // Remove the prefix and set it to the result
-                    varName = varName.substr(target.size());
-                }
+                if (!lhsVar->isInitialized()) {
+                    lhsVar->InitializeLHS(varName, lineNumber);
 
-                // Ignore the extracted name if its within the keywords array
-                for (const auto& w : keywords) {
-                    if (varName == w) {
-                        invalidName = true;
-                        break;
+                    // capture use-def chains for single statements such as: ++i
+                    if (expr_op == "++" || expr_op == "--") {
+                        lhsVar->definitions.insert(lineNumber);
+                        lhsVar->uses.insert(lineNumber);
                     }
-                }
 
-                // Only track valid variables
-                if (!invalidName) {
-                    varName = ExtractName(varName);
-                    if (!lhsVar->isInitialized()) {
-                        lhsVar->InitializeLHS(varName, lineNumber);
+                    if (expr_op == ">>") {
+                        lhsVar->definitions.insert(lineNumber);
+                    }
 
-                        // capture use-def chains for single statements such as: ++i
-                        if (expr_op == "++" || expr_op == "--") {
-                            lhsVar->definitions.insert(lineNumber);
-                            lhsVar->uses.insert(lineNumber);
+                    if (expr_op == "&") {
+                        lhsVar->isAddrOf = true;
+                    } else if (expr_op == "*") {
+                        auto spi = profileMap.find(lhsVar->GetNameOfIdentifier());
+                        if (spi != profileMap.end() && spi->second.back().isPointer) {
+                            lhsVar->dereferenced = true;
                         }
+                    }
 
-                        if (expr_op == ">>") {
-                            lhsVar->definitions.insert(lineNumber);
-                        }
+                    if (name->indices) {
+                        // Extract the expression within the index operator and push all
+                        // of the variable names as rhs of the lhs
+                        for (const auto& indexElem : name->indices->expr) {
+                            if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
+                                // Create the new index data reference
+                                std::shared_ptr<NameData> indexVar = std::any_cast<std::shared_ptr<NameData>>(indexElem);
+                                std::string indexVarName = ExtractName(indexVar->ToString());
 
-                        if (expr_op == "&") {
-                            lhsVar->isAddrOf = true;
-                        } else if (expr_op == "*") {
-                            auto spi = profileMap.find(lhsVar->GetNameOfIdentifier());
-                            if (spi != profileMap.end() && spi->second.back().isPointer) {
-                                lhsVar->dereferenced = true;
+                                std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
+
+                                // Set the meta-data
+                                newFalseRHS->uses.insert(lineNumber);
+                                newFalseRHS->SetOriginLine(lineNumber);
+
+                                // Push for later handling
+                                lhsVar->indices.push_back(newFalseRHS);
                             }
                         }
-                    } else {
-                        std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(varName);
-                        newRHSVar->uses.insert(lineNumber);
-                        newRHSVar->SetOriginLine(lineNumber);
+                    }
+                } else {
+                    std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(varName);
+                    newRHSVar->uses.insert(lineNumber);
+                    newRHSVar->SetOriginLine(lineNumber);
 
-                        // capture use-def chains for rhs var statements such as: a = ++i
-                        if (expr_op == "++" || expr_op == "--") {
-                            newRHSVar->definitions.insert(lineNumber);
+                    // capture use-def chains for rhs var statements such as: a = ++i
+                    if (expr_op == "++" || expr_op == "--") {
+                        newRHSVar->definitions.insert(lineNumber);
+                    }
+
+                    if (expr_op == "&") {
+                        newRHSVar->isAddrOf = true;
+                    } else if (expr_op == "*") {
+                        auto spi = profileMap.find(newRHSVar->GetNameOfIdentifier());
+                        if (spi != profileMap.end() && spi->second.back().isPointer) {
+                            newRHSVar->dereferenced = true;
                         }
+                    }
 
-                        if (expr_op == "&") {
-                            newRHSVar->isAddrOf = true;
-                        } else if (expr_op == "*") {
-                            auto spi = profileMap.find(newRHSVar->GetNameOfIdentifier());
-                            if (spi != profileMap.end() && spi->second.back().isPointer) {
-                                newRHSVar->dereferenced = true;
+                    lhsVar->lhs = true;
+                    lhsVar->AddRHS(newRHSVar);
+
+                    // Ensure that tracked lhs variables get assigned all of their
+                    // rhs vars in the expression
+                    for (auto& lhs : lhsStack)
+                        lhs->AddRHS(newRHSVar);
+
+                    if (name->indices) {
+                        // Extract the expression within the index operator and push all
+                        // of the variable names as rhs of the lhs
+                        for (const auto& indexElem : name->indices->expr) {
+                            if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
+                                // Create the new index data reference
+                                std::shared_ptr<NameData> indexVar = std::any_cast<std::shared_ptr<NameData>>(indexElem);
+                                std::string indexVarName = ExtractName(indexVar->ToString());
+
+                                std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
+
+                                // Set the meta-data
+                                newFalseRHS->uses.insert(lineNumber);
+                                newFalseRHS->SetOriginLine(lineNumber);
+
+                                // Push for later handling
+                                lhsVar->indices.push_back(newFalseRHS);
+                                for (auto& lhs : lhsStack)
+                                    lhs->indices.push_back(newFalseRHS);
                             }
                         }
-
-                        lhsVar->lhs = true;
-                        lhsVar->AddRHS(newRHSVar);
-
-                        // Ensure that tracked lhs variables get assigned all of their
-                        // rhs vars in the expression
-                        for (auto& lhs : lhsStack)
-                            lhs->AddRHS(newRHSVar);
                     }
                 }
             } else if (exprElem.type() == typeid(std::shared_ptr<OperatorData>)) {
@@ -915,6 +965,23 @@ public:
             varDataGroup.push_back(lhsVar);
         }
 
+        // Iterate all the collected variable data and push their indices into their rhsElems to form dependencies or aliases relations
+        for (auto& potentialLHS : varDataGroup) {
+            // iterate the rhs elems
+            for (auto& rhs : potentialLHS->rhsElems) {
+                // if the rhs elem contains indices we need to
+                // attempt a recursive search for all of them
+                if (!rhs->indices.empty()) {
+                    AppendIndices(potentialLHS, rhs);
+                }
+            }
+
+            if (!potentialLHS->indices.empty()) {
+                // push indices of the LHS
+                potentialLHS->rhsElems.insert(potentialLHS->rhsElems.end(), potentialLHS->indices.begin(), potentialLHS->indices.end());
+            }
+        }
+
         // if (!varDataGroup.empty()) {
         //     std::cerr << "DEBUG PARSE EXPR OUTPUT" << std::endl;
         //     std::cerr << expr << std::endl;
@@ -934,7 +1001,7 @@ public:
         //     }
         //     std::cerr << " } " << std::endl;
         // }
-        // // Debug RHS elem assignment
+        // Debug RHS elem assignment
         // for (const auto& v : varDataGroup) {
         //     std::cerr << v->GetNameOfIdentifier() << " { ";
         //     for (const auto& r : v->rhsElems) {

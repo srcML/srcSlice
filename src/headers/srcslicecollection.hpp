@@ -21,6 +21,7 @@ public:
     VariableData(const VariableData& rhs) {
         lhsVarName = rhs.lhsVarName;
         rhsElems = rhs.rhsElems;
+        indices = rhs.indices;
         lhs = rhs.lhs;
         isAddrOf = rhs.isAddrOf;
         dereferenced = rhs.dereferenced;
@@ -39,6 +40,7 @@ public:
     void clear(){
         lhsVarName.clear();
         rhsElems.clear();
+        indices.clear();
         lhs = false;
         isAddrOf = false;
         dereferenced = false;
@@ -68,6 +70,7 @@ public:
 
     std::string lhsVarName;
     std::vector<std::shared_ptr<VariableData>> rhsElems;
+    std::vector<std::shared_ptr<VariableData>> indices;
 
     bool lhs = false;
     bool isAddrOf = false;
