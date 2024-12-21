@@ -551,7 +551,7 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
             "    \"function\":\"LinearSearch\",\n"
             "    \"type\":\"int\",\n"
             "    \"name\":\"i\",\n"
-            "    \"dependence\":[],\n"
+            "    \"dependence\":[{\"array\":3}],\n"
             "    \"aliases\":[],\n"
             "    \"calls\":[],\n"
             "    \"use\":[2,3,4],\n"
