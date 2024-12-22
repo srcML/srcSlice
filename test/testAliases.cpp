@@ -185,3 +185,63 @@ TEST_CASE( "Aliases Test 3", "[srcslice]" ) {
 
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
+
+TEST_CASE( "Aliases Test 4", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int a = 3;\n"
+                "    int* x = &a;\n"
+                "    int** p = &x;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int**\",\n"
+            "    \"name\":\"p\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[{\"a\":3},{\"x\":4}],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[],\n"
+            "    \"definition\":[4]\n"
+            "},\n"
+            "\"slice_1\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"x\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[{\"a\":3}],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[4],\n"
+            "    \"definition\":[3]\n"
+            "},\n"
+            "\"slice_2\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3],\n"
+            "    \"definition\":[2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Aliases Test 4", input, output, sourceCode);
+
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
