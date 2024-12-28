@@ -606,3 +606,186 @@ TEST_CASE( "Conditional Test 15", "[srcslice]" ) {
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
+
+TEST_CASE( "Conditional Test 16", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int tmp = 0;\n"
+                "    if (tmp < 10) {\n"
+                "       if (tmp > 5) {\n"
+                "           std::cout << tmp << std::endl;\n"
+                "       }\n"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"tmp\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3,4,5],\n"
+            "    \"definition\":[2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Conditional Test 16", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 17", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int tmp = 0;\n"
+                "    if (tmp < 10) {\n"
+                "       if (tmp > 5) {\n"
+                "           std::cout << tmp << std::endl;\n"
+                "       } else {\n"
+                "           std::cout << tmp << std::endl;\n"
+                "       }\n"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"tmp\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3,4,5,7],\n"
+            "    \"definition\":[2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Conditional Test 17", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 18", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int tmp = 0;\n"
+                "    if (tmp < 10) {\n"
+                "       if (tmp > 5) {\n"
+                "           std::cout << tmp << std::endl;\n"
+                "       } else if (tmp <= 5) {\n"
+                "           std::cout << tmp << std::endl;\n"
+                "       }\n"
+                "    }\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"tmp\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3,4,5,6,7],\n"
+            "    \"definition\":[2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Conditional Test 18", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 19", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int tmp = 0;\n"
+                "    do {\n"
+                "        if (tmp >= 5) {\n"
+                "            std::cout << tmp << std::endl;\n"
+                "        }\n"
+                "        tmp++;\n"
+                "    } while (tmp < 10);\n"
+                "    std::cout << tmp << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"tmp\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[4,5,7,8,9],\n"
+            "    \"definition\":[2,7]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Conditional Test 19", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Conditional Test 20", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int tmp = 0;\n"
+                "    while (tmp < 10) {\n"
+                "        if (tmp >= 5) {\n"
+                "            std::cout << tmp << std::endl;\n"
+                "        }\n"
+                "        tmp++;\n"
+                "    }\n"
+                "    std::cout << tmp << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"tmp\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3,4,5,7,9],\n"
+            "    \"definition\":[2,7]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Conditional Test 20", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
