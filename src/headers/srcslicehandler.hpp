@@ -50,7 +50,7 @@ public:
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if(typeid(ClassPolicy) == typeid(*policy)) {
             ProcessClassData(policy->Data<ClassData>(), ctx);
-        } else if(typeid(FunctionPolicy) == typeid(*policy)) {
+        } else if(typeid(FunctionPolicy) == typeid(*policy)) { // triggers when encountering a free-like function
             ProcessFunctionData(policy->Data<FunctionData>(), "", policy->Data<FunctionData>()->namespaces, ctx);
         } else if (typeid(DeclTypePolicy) == typeid(*policy)) {
             ProcessDeclStmts(nullptr, nullptr, "", policy->Data<std::vector<std::shared_ptr<DeclData>>>(), ctx);
@@ -67,32 +67,34 @@ public:
     }
 
     void ProcessClassData(std::shared_ptr<ClassData> class_data, const srcDispatch::srcSAXEventContext& ctx) {
+        if (class_data) {
+            std::string className = "";
 
-        std::string className = "";
-        if (class_data->name)
-            class_data->name->ToString();
+            if (class_data->name) {
+                className = class_data->name->ToString();
+            }
 
-        // Process Class Member Variables
-        ProcessDeclStmts(nullptr, class_data, className, nullptr, ctx);
+            // Process Class Member Variables
+            ProcessDeclStmts(nullptr, class_data, className, nullptr, ctx);
 
-        // Process Class Contructors
-        for (auto& funcVec : class_data->constructors) {// [ vect<func>, vect<func>, vect<func> ]
-            for (auto& func : funcVec)
-                ProcessFunctionData(func, className, class_data->namespaces, ctx);
+            // Process Class Contructors
+            for (auto& funcVec : class_data->constructors) {// [ vect<func>, vect<func>, vect<func> ]
+                for (auto& func : funcVec)
+                    ProcessFunctionData(func, className, class_data->namespaces, ctx);
+            }
+
+            // Process Class Methods (Member Functions)
+            for (auto& funcVec : class_data->methods) {// [ vect<func>, vect<func>, vect<func> ]
+                for (auto& func : funcVec)
+                    ProcessFunctionData(func, className, class_data->namespaces, ctx);
+            }
+
+            // Process Operator Overloading
+            for (auto& funcVec : class_data->operators) {// [ vect<func>, vect<func>, vect<func> ]
+                for (auto& func : funcVec)
+                    ProcessFunctionData(func, className, class_data->namespaces, ctx);
+            }
         }
-
-        // Process Class Methods (Member Functions)
-        for (auto& funcVec : class_data->methods) {// [ vect<func>, vect<func>, vect<func> ]
-            for (auto& func : funcVec)
-                ProcessFunctionData(func, className, class_data->namespaces, ctx);
-        }
-
-        // Process Operator Overloading
-        for (auto& funcVec : class_data->operators) {// [ vect<func>, vect<func>, vect<func> ]
-            for (auto& func : funcVec)
-                ProcessFunctionData(func, className, class_data->namespaces, ctx);
-        }
-
     }
 
     void ProcessDeclStmts(std::shared_ptr<FunctionData> funcData, const std::shared_ptr<ClassData> classData,
@@ -133,8 +135,6 @@ public:
 
             if (classData->name)
                 className = classData->name->ToString();
-            else
-                className = "";
 
             // Get containing namespaces from classData
             containingNamespaces = classData->namespaces;
@@ -163,14 +163,6 @@ public:
             // our profileMap
             std::string declVarName = localVar->name->ToString();
             std::string declVarType = "";
-
-            if (!classData) {
-                // if a global is contained within a namespace the namespace is scoped to call
-                // that specific variable
-                for (const std::string& ns : containingNamespaces) {
-                    declVarName.insert(0, ns.substr(0,ns.find(' '))+"::");
-                }
-            }
 
             bool isPointer = false;
             bool isReference = false;
@@ -401,31 +393,31 @@ public:
                     std::string lhsName = varData->GetNameOfIdentifier();
                     std::string rhsName = rhsVarData->GetNameOfIdentifier();
 
-                    auto sliceProfileExprItr = profileMap.find(rhsName);
-                    auto sliceProfileLHSItr = profileMap.find(lhsName);
+                    SliceProfile* sliceProfileExprItr = FetchSliceProfile(rhsName, rhsVarData, funcData, className, containingNamespaces);
+                    SliceProfile* sliceProfileLHSItr = FetchSliceProfile(lhsName, rhsVarData, funcData, className, containingNamespaces);
 
                     //Just update definitions and uses if name already exists. Otherwise, add new name.
-                    if (sliceProfileExprItr != profileMap.end()) {
-                        sliceProfileExprItr->second.back().nameOfContainingClass = className;
-                        sliceProfileExprItr->second.back().containingNameSpaces = containingNamespaces;
-                        sliceProfileExprItr->second.back().language = ctx.currentFileLanguage;
+                    if (sliceProfileExprItr != nullptr) {
+                        sliceProfileExprItr->nameOfContainingClass = className;
+                        sliceProfileExprItr->containingNameSpaces = containingNamespaces;
+                        sliceProfileExprItr->language = ctx.currentFileLanguage;
 
-                        sliceProfileExprItr->second.back().uses.insert(rhsVarData->uses.begin(),
+                        sliceProfileExprItr->uses.insert(rhsVarData->uses.begin(),
                                                                        rhsVarData->uses.end());
-                        sliceProfileExprItr->second.back().definitions.insert(rhsVarData->definitions.begin(),
+                        sliceProfileExprItr->definitions.insert(rhsVarData->definitions.begin(),
                                                                               rhsVarData->definitions.end());
 
                         if (!StringContainsCharacters(lhsName)) continue;
 
                         // ensure dependencies and aliases are within local-scope
-                        if ( sliceProfileLHSItr != profileMap.end() &&
-                            (sliceProfileExprItr->second.back().function == sliceProfileLHSItr->second.back().function) ) {
+                        if ( sliceProfileLHSItr != nullptr &&
+                            (sliceProfileExprItr->function == sliceProfileLHSItr->function) ) {
                             // Check for pointer-2-pointer assignment or points-to-address assignment
-                            if ( (sliceProfileLHSItr->second.back().potentialAlias && !varData->dereferenced) &&
-                                (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) ) {
-                                if ( lhsName != sliceProfileExprItr->second.back().variableName ) {
-                                    if (sliceProfileLHSItr->second.back().isPointer) {
-                                        sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                            if ( (sliceProfileLHSItr->potentialAlias && !varData->dereferenced) &&
+                                (sliceProfileExprItr->isPointer || rhsVarData->isAddrOf) ) {
+                                if ( lhsName != sliceProfileExprItr->variableName ) {
+                                    if (sliceProfileLHSItr->isPointer) {
+                                        sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
                                     }
                                 }
                                 continue;
@@ -434,8 +426,8 @@ public:
                             // Only ever record a variable as being a dvar of itself if it was seen on both sides of =
                             // IE : abc = abc + i;
                             if (!StringContainsCharacters(lhsName)) continue;
-                            if (!lhsName.empty() && sliceProfileExprItr->second.back().variableName != lhsName) {
-                                sliceProfileExprItr->second.back().dvars.insert(std::make_pair(lhsName, varData->originLine));
+                            if (!lhsName.empty() && sliceProfileExprItr->variableName != lhsName) {
+                                sliceProfileExprItr->dvars.insert(std::make_pair(lhsName, varData->originLine));
                                 continue;
                             }
                         }
@@ -455,15 +447,15 @@ public:
 
                         if (!StringContainsCharacters(lhsName)) continue;
 
-                        if (sliceProfileLHSItr != profileMap.end() && sliceProfileExprItr != profileMap.end()) {
+                        if (sliceProfileLHSItr != nullptr && sliceProfileExprItr != nullptr) {
                             // ensure dependencies and aliases are within local-scope
-                            if (sliceProfileExprItr->second.back().function == sliceProfileLHSItr->second.back().function) {
-                                if (sliceProfileLHSItr->second.back().potentialAlias) {
-                                    if ( lhsName != sliceProfileLHSItr->second.back().variableName ) {
-                                        if (sliceProfileLHSItr->second.back().isPointer) {
+                            if (sliceProfileExprItr->function == sliceProfileLHSItr->function) {
+                                if (sliceProfileLHSItr->potentialAlias) {
+                                    if ( lhsName != sliceProfileLHSItr->variableName ) {
+                                        if (sliceProfileLHSItr->isPointer) {
                                             // Check for pointer-2-pointer assignment or points-to-address assignment
-                                            if (sliceProfileExprItr->second.back().isPointer || rhsVarData->isAddrOf) {
-                                                sliceProfileLHSItr->second.back().aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                                            if (sliceProfileExprItr->isPointer || rhsVarData->isAddrOf) {
+                                                sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
                                             }
                                         }
                                     }
@@ -1128,6 +1120,31 @@ public:
                     std::make_pair(functionName, std::vector<std::shared_ptr<FunctionData>>{funcData})
                     );
         }
+    }
+
+    // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
+    SliceProfile* FetchSliceProfile(std::string profileName, const std::shared_ptr<VariableData>& vd, const std::shared_ptr<FunctionData>& funcData,
+                                    const std::string& className, const std::vector<std::string>& containingNameSpaces) {
+        // Assuming this is used before ComputeInterProcedural occurs
+        auto spi = profileMap.find(profileName);
+        if (spi != profileMap.end()) {
+            // iterate the SliceProfile Vector and perform comparisons
+            for (auto& profile : spi->second) {
+                if (!profile.containsDeclaration) continue;
+
+                if (funcData)
+                    if (profile.function != funcData->name->ToString()) continue;
+                if (profile.nameOfContainingClass != className) continue;
+                if (profile.containingNameSpaces != containingNameSpaces) continue;
+
+                // Check if the numbers collected are less than the lineNumber (init def line)
+                if (profile.lineNumber > *(vd->uses.begin())) continue;
+                if (*(vd->definitions.begin()) > profile.lineNumber) continue;
+
+                return &profile;
+            }
+        }
+        return nullptr;
     }
 
     // Extract the function name within either a call or a complex function name
