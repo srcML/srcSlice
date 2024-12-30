@@ -259,22 +259,28 @@ public:
                 UpdateLHSSlices(varData);
                 // sliceProfileItr->second.back() is the LHS
                 if (sliceProfileItr != profileMap.end()) {
-                    auto initRHS = profileMap.find(varData->GetNameOfIdentifier());
+                    SliceProfile* initRHS = FetchSliceProfile(varData->GetNameOfIdentifier(), varData, funcData, className, containingNamespaces);
+
+                    if (initRHS == nullptr) {
+                        // std::cerr << "Slice Fetch Unsuccessful!" << std::endl;
+                        continue;
+                    }
+
                     if (sliceProfileItr->second.back().potentialAlias) {
                         // Aliases are formed from pointer-to-pointer or pointer-to-address assignments
-                        if (!initRHS->second.back().isPointer && !varData->isAddrOf) {
+                        if (!initRHS->isPointer && !varData->isAddrOf) {
                             // ensure dependencies are within local-scope
-                            if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
-                                initRHS->second.back().dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
+                            if (initRHS->function == sliceProfileItr->second.back().function) {
+                                initRHS->dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
                             }
                             continue;
                         }
                         if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
                             // ensure aliases are within local-scope
-                            if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
+                            if (initRHS->function == sliceProfileItr->second.back().function) {
                                 if (sliceProfileItr->second.back().isPointer) {
                                     // Check for pointer-2-pointer assignment or points-to-address assignment
-                                    if (initRHS->second.back().isPointer || varData->isAddrOf) {
+                                    if (initRHS->isPointer || varData->isAddrOf) {
                                         sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
                                     }
                                 } else if (sliceProfileItr->second.back().isReference) {
@@ -284,9 +290,7 @@ public:
                         }
                     } else {
                         // ensure dependencies are within local-scope
-                        if (initRHS->second.back().function == sliceProfileItr->second.back().function) {
-                            initRHS->second.back().dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
-                        }
+                        initRHS->dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
                     }
                 }
                 for (auto& dvarData : varData->rhsElems) {
@@ -1090,11 +1094,11 @@ public:
         std::string functionName = funcData->name->ToString();
         if (functionName.empty()) return;
         bool updateSignature = (functionName.find("::") != std::string::npos);
-        std::string scopeName = "";
+        // std::string scopeName = "";
 
         // Update a Signature Entry due to out-of-line definition
         if (updateSignature) {
-            scopeName = functionName.substr(0, functionName.find("::"));
+            // scopeName = functionName.substr(0, functionName.find("::"));
             functionName = functionName.substr(functionName.find_last_of("::")+1, -1);
         }
 
@@ -1124,14 +1128,26 @@ public:
 
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
     SliceProfile* FetchSliceProfile(std::string profileName, const std::shared_ptr<VariableData>& vd, const std::shared_ptr<FunctionData>& funcData,
-                                    const std::string& className, const std::vector<std::string>& containingNameSpaces) {
+                                    const std::string& className = "", const std::vector<std::string>& containingNameSpaces = {}) {
         // Assuming this is used before ComputeInterProcedural occurs
         auto spi = profileMap.find(profileName);
+        SliceProfile* potentialGlobal = nullptr;
+
         if (spi != profileMap.end()) {
             // iterate the SliceProfile Vector and perform comparisons
+            // When performing comparisons we prioritize local-scope variables over globals
             for (auto& profile : spi->second) {
                 if (!profile.containsDeclaration) continue;
 
+                // check if we marked a global, process profile if we are searching for a global
+                if (potentialGlobal == nullptr) {
+                    // globals do not hold data about source function/class/namespace
+                    if (profile.function.empty() && profile.nameOfContainingClass.empty() && profile.containingNameSpaces.empty()) {
+                        potentialGlobal = &profile;
+                    }
+                }
+
+                // perform standard finger printing checks
                 if (funcData)
                     if (profile.function != funcData->name->ToString()) continue;
                 if (profile.nameOfContainingClass != className) continue;
@@ -1143,6 +1159,10 @@ public:
 
                 return &profile;
             }
+
+            // if we found a global but no local function variables return the global
+            if (potentialGlobal != nullptr)
+                return &(*potentialGlobal);
         }
         return nullptr;
     }
