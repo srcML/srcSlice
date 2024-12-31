@@ -731,7 +731,7 @@ public:
         std::shared_ptr<VariableData> lhsVar = std::make_shared<VariableData>();
 
         std::vector<std::shared_ptr<VariableData>> lhsStack;
-        bool groupCollect = false;
+        bool groupCollect = false, trailingPrefix = false, trailingExtraction = false;
 
         // loop through each element within a specific expression statement
         for (const auto& exprElem : expr.expr) {
@@ -745,13 +745,10 @@ public:
                     lhsVar->InitializeLHS(varName, lineNumber);
 
                     // capture use-def chains for single statements such as: ++i
-                    if (expr_op == "++" || expr_op == "--") {
+                    if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
                         lhsVar->definitions.insert(lineNumber);
                         lhsVar->uses.insert(lineNumber);
-                    }
-
-                    if (expr_op == ">>") {
-                        lhsVar->definitions.insert(lineNumber);
+                        trailingPrefix = false;
                     }
 
                     if (expr_op == "&") {
@@ -760,7 +757,16 @@ public:
                         auto spi = profileMap.find(lhsVar->GetNameOfIdentifier());
                         if (spi != profileMap.end() && spi->second.back().isPointer) {
                             lhsVar->dereferenced = true;
+                            if (trailingExtraction) { // redefining a dereferenced ptr does not always use itself when redefining
+                                lhsVar->uses.erase(lineNumber);
+                            }
                         }
+                    }
+
+                    if (expr_op == ">>" || trailingExtraction) {
+                        lhsVar->definitions.insert(lineNumber);
+                        lhsVar->userModified = true;
+                        trailingExtraction = false;
                     }
 
                     if (name->indices) {
@@ -789,8 +795,9 @@ public:
                     newRHSVar->SetOriginLine(lineNumber);
 
                     // capture use-def chains for rhs var statements such as: a = ++i
-                    if (expr_op == "++" || expr_op == "--") {
+                    if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
                         newRHSVar->definitions.insert(lineNumber);
+                        trailingPrefix = false;
                     }
 
                     if (expr_op == "&") {
@@ -837,6 +844,14 @@ public:
                 std::shared_ptr<OperatorData> opData = std::any_cast<std::shared_ptr<OperatorData>>(exprElem);
                 expr_op = opData->op;
 
+                // Establish bool-switch to track previous operators for later
+                if (expr_op == ">>") {
+                    trailingExtraction = true;
+                } else if (expr_op == "++" || expr_op == "--" ) {
+                    trailingPrefix = true;
+                }
+
+                // Setup group handling
                 if (expr_op == "(") {
                     groupCollect = true;
                 } else if (expr_op == ")") {
@@ -846,7 +861,7 @@ public:
                         lhsVar = lhsStack.back();
                         lhsStack.pop_back();
                     }
-                } else if (!lhsVar->rhsElems.empty() || lhsVar->lhs) {
+                } else if (!lhsVar->rhsElems.empty() || lhsVar->lhs) { // standard handling
                     if (lhsVar->isInitialized()) {
                         // LHS HAS RHS MEMBERS OR LHS HAS BEEN MARKED AS A LHS
                         std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
@@ -879,6 +894,7 @@ public:
                                     prevRHSPtr->uses.insert(lineNumber);
                                 }
                             } else if (expr_op == "++" || expr_op == "--" ) {
+                                trailingPrefix = true;
                                 if (prevRHSPtr != nullptr) {
                                     prevRHSPtr->uses.insert(lineNumber);
                                     prevRHSPtr->definitions.insert(lineNumber);
@@ -907,6 +923,7 @@ public:
                             // it gets pushed back into the group and a new LHS gets
                             // created ie. return a + b;
                             if (expr_op == "++" || expr_op == "--" ) {
+                                trailingPrefix = true;
                                 lhsVar->uses.insert(lineNumber);
                                 lhsVar->definitions.insert(lineNumber);
                             } else if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
@@ -948,7 +965,8 @@ public:
             // For expressions with only a single variable name
             // where we never encounter an operator, ie `return x;`
             if (lhsVar->rhsElems.size() == 0 && !lhsVar->lhs) {
-                if (expr_op != ">>") { // dont add a use for exprs ie cin >> num;
+                if (expr_op != ">>" && !lhsVar->userModified) {
+                    // dont add a use for exprs ie cin >> num;
                     lhsVar->uses.insert(lineNumber);
                 }
             }
@@ -1127,9 +1145,9 @@ public:
     }
 
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
+    // Logic constructed for use BEFORE InterProcedural
     SliceProfile* FetchSliceProfile(std::string profileName, const std::shared_ptr<VariableData>& vd, const std::shared_ptr<FunctionData>& funcData,
                                     const std::string& className = "", const std::vector<std::string>& containingNameSpaces = {}) {
-        // Assuming this is used before ComputeInterProcedural occurs
         auto spi = profileMap.find(profileName);
         SliceProfile* potentialGlobal = nullptr;
 
