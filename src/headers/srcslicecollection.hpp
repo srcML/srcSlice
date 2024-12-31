@@ -75,6 +75,11 @@ public:
     bool lhs = false;
     bool isAddrOf = false;
     bool dereferenced = false;
+
+    // used concerning the user redefining data a pointer points-to
+    // but can be modified to be more expansive
+    bool userModified = false;
+    
     unsigned int originLine;
     std::set<unsigned int> uses;
     std::set<unsigned int> definitions;
