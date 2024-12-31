@@ -624,7 +624,7 @@ TEST_CASE( "Pointer Test 11", "[srcslice]" ) {
     sourceCode = "void printMatrix(int** matrix, int rows, int cols) {\n"
                 "    for (int i = 0; i < rows; ++i) {\n"
                 "        for (int j = 0; j < cols; ++j) {\n"
-                "            std::cout << matrix[i][j] << \" \";\n"
+                "            std::cout << matrix[i][j] << \" \";\n" // srcDispatch does not mark at least one of the index operators
                 "        }"
                 "        std::cout << std::endl;\n"
                 "    }\n"
@@ -797,6 +797,337 @@ TEST_CASE( "Pointer Test 12", "[srcslice]" ) {
 
     testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
     DebugOutput(testStatus, "Pointer Test 12", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 13", "[srcslice]" ) {
+    sourceCode = "void bar(int* ptr) {\n"
+                "    (*ptr)++;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[2],\n"
+            "    \"definition\":[1,2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 13", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 14", "[srcslice]" ) {
+    sourceCode = "void bar(int* ptr) {\n"
+                "    --(*ptr);\n" // ParseExpr not passing the def-use property of prefix operators to a dereferenced ptr
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[2],\n"
+            "    \"definition\":[1,2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 14", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 15", "[srcslice]" ) {
+    sourceCode = "void bar(int* ptr, int b) {\n"
+                "    (*ptr) += b;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"b\",\n"
+            "    \"dependence\":[{\"ptr\":2}],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[2],\n"
+            "    \"definition\":[1]\n"
+            "},\n"
+            "\"slice_1\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[2],\n"
+            "    \"definition\":[1,2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 15", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 16", "[srcslice]" ) {
+    sourceCode = "void bar(int* ptr) {\n"
+                "    std::cin >> (*ptr);\n" // ParseExpr not passing the def property of >> operator to a dereferenced ptr
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[],\n"
+            "    \"definition\":[1,2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 16", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 17", "[srcslice]" ) {
+    sourceCode = "void bar(int& num) {\n"
+                "    int* ptr = &num;\n"
+                "    std::cout << *ptr << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[{\"num\":2}],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3],\n"
+            "    \"definition\":[2]\n"
+            "},\n"
+            "\"slice_1\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"bar\",\n"
+            "    \"type\":\"int&\",\n"
+            "    \"name\":\"num\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[2],\n"
+            "    \"definition\":[1]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 17", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 18", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int a = 3;\n"
+                "    int* ptr = &a;\n"
+                "    int** mptr = &ptr;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[{\"a\":3}],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[4],\n"
+            "    \"definition\":[3]\n"
+            "},\n"
+            "\"slice_1\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int**\",\n"
+            "    \"name\":\"mptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[{\"a\":3},{\"ptr\":4}],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[],\n"
+            "    \"definition\":[4]\n"
+            "},\n"
+            "\"slice_2\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3],\n"
+            "    \"definition\":[2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 18", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 19", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int a = 3;\n"
+                "    int* ptr = &a;\n"
+                "    int** mptr = &ptr;\n"
+                "    **mptr = 5;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[{\"a\":3}],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[4],\n"
+            "    \"definition\":[3]\n"
+            "},\n"
+            "\"slice_1\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int**\",\n"
+            "    \"name\":\"mptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[{\"a\":3},{\"ptr\":4}],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[],\n"
+            "    \"definition\":[4,5]\n"
+            "},\n"
+            "\"slice_2\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int\",\n"
+            "    \"name\":\"a\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3],\n"
+            "    \"definition\":[2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 19", input, output, sourceCode);
+    
+    REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
+}
+
+TEST_CASE( "Pointer Test 20", "[srcslice]" ) {
+    sourceCode = "int main() {\n"
+                "    int* ptr = new int(42);\n"
+                "    std::cout << *ptr << std::endl;\n"
+                "}";
+
+    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+
+    output = "{\n"
+            "\"slice_0\":{\n"
+            "    \"file\":\"file.cpp\",\n"
+            "    \"language\":\"C++\",\n"
+            "    \"namespace\":[],\n"
+            "    \"class\":\"\",\n"
+            "    \"function\":\"main\",\n"
+            "    \"type\":\"int*\",\n"
+            "    \"name\":\"ptr\",\n"
+            "    \"dependence\":[],\n"
+            "    \"aliases\":[],\n"
+            "    \"calls\":[],\n"
+            "    \"use\":[3],\n"
+            "    \"definition\":[2]\n"
+            "}\n"
+            "}\n";
+
+    testStatus = (strcmp(input.c_str(), output.c_str()) == 0);
+    DebugOutput(testStatus, "Pointer Test 20", input, output, sourceCode);
     
     REQUIRE( strcmp(input.c_str(), output.c_str()) == 0 );
 }
