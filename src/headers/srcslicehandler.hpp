@@ -34,6 +34,9 @@ public:
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
 
+        // Handles Collecting Control-Edges
+        ComputeControlPaths();
+
         ComputeInterprocedural();
     }
 
@@ -43,6 +46,9 @@ public:
         srcSAXController control(sourceCodeStr);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
+        
+        // Handles Collecting Control-Edges
+        ComputeControlPaths();
 
         ComputeInterprocedural();
     }
@@ -381,8 +387,8 @@ public:
             for (const auto& data : expr->expr) {
                 if (data.type() == typeid(std::shared_ptr<NameData>)) {
                     std::shared_ptr<NameData> nameData = std::any_cast<std::shared_ptr<NameData>>(data);
-                    if (nameData->indices) {
-                        itr = exprStmts.insert(itr+1, nameData->indices); // set to iterator of newly inserted data
+                    if (!nameData->indices.empty()) {
+                        itr = exprStmts.insert(itr+1, nameData->indices.begin(), nameData->indices.end()); // set to iterator of newly inserted data
                         --itr;
                     }
                 }
@@ -576,6 +582,8 @@ public:
                             exprStmts->push_back(ifData->condition->expr);
                         }
 
+                        ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
+
                         cntlBlocks.push_back(ifData->block);
                     } else if (clause.type() == typeid(std::shared_ptr<ElseIfData>)) {
                         std::shared_ptr<ElseIfData> elseIfData = std::any_cast<std::shared_ptr<ElseIfData>>(clause);
@@ -588,9 +596,12 @@ public:
                             exprStmts->push_back(elseIfData->condition->expr);
                         }
 
+                        elseifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
+
                         cntlBlocks.push_back(elseIfData->block);
                     } else if (clause.type() == typeid(std::shared_ptr<ElseData>)) {
                         std::shared_ptr<ElseData> elseData = std::any_cast<std::shared_ptr<ElseData>>(clause);
+                        elsedata.push_back(std::make_pair(elseData->startLineNumber, elseData->endLineNumber));
                         cntlBlocks.push_back(elseData->block);
                     }
                 }
@@ -629,6 +640,9 @@ public:
                     exprStmts->push_back(forData->control->condition->expr);
                 }
 
+                loopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
+                forloopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
+
                 cntlBlocks.push_back(forData->block);
             }  else if (cntl.type() == typeid(std::shared_ptr<WhileData>)) {
                 // Extract all of the block data from While Loops
@@ -640,6 +654,9 @@ public:
                     exprStmts->push_back(whileData->condition->expr);
                 }
 
+                loopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
+                whileloopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
+
                 cntlBlocks.push_back(whileData->block);
             } else if (cntl.type() == typeid(std::shared_ptr<DoData>)) {
                 // Extract all of the block data from Do-While Loops
@@ -650,6 +667,9 @@ public:
                 if (exprStmts) {
                     exprStmts->push_back(doWhileData->condition->expr);
                 }
+
+                loopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
+                dowhileloopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
 
                 cntlBlocks.push_back(doWhileData->block);
             }
@@ -769,23 +789,25 @@ public:
                         trailingExtraction = false;
                     }
 
-                    if (name->indices) {
+                    if (!name->indices.empty()) {
                         // Extract the expression within the index operator and push all
                         // of the variable names as rhs of the lhs
-                        for (const auto& indexElem : name->indices->expr) {
-                            if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
-                                // Create the new index data reference
-                                std::shared_ptr<NameData> indexVar = std::any_cast<std::shared_ptr<NameData>>(indexElem);
-                                std::string indexVarName = ExtractName(indexVar->ToString());
+                        for (const auto& indexExpr : name->indices) {
+                            for (const auto& indexElem : indexExpr->expr) {
+                                if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
+                                    // Create the new index data reference
+                                    std::shared_ptr<NameData> indexVar = std::any_cast<std::shared_ptr<NameData>>(indexElem);
+                                    std::string indexVarName = ExtractName(indexVar->ToString());
 
-                                std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
+                                    std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
 
-                                // Set the meta-data
-                                newFalseRHS->uses.insert(lineNumber);
-                                newFalseRHS->SetOriginLine(lineNumber);
+                                    // Set the meta-data
+                                    newFalseRHS->uses.insert(lineNumber);
+                                    newFalseRHS->SetOriginLine(lineNumber);
 
-                                // Push for later handling
-                                lhsVar->indices.push_back(newFalseRHS);
+                                    // Push for later handling
+                                    lhsVar->indices.push_back(newFalseRHS);
+                                }
                             }
                         }
                     }
@@ -817,25 +839,27 @@ public:
                     for (auto& lhs : lhsStack)
                         lhs->AddRHS(newRHSVar);
 
-                    if (name->indices) {
+                    if (!name->indices.empty()) {
                         // Extract the expression within the index operator and push all
                         // of the variable names as rhs of the lhs
-                        for (const auto& indexElem : name->indices->expr) {
-                            if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
-                                // Create the new index data reference
-                                std::shared_ptr<NameData> indexVar = std::any_cast<std::shared_ptr<NameData>>(indexElem);
-                                std::string indexVarName = ExtractName(indexVar->ToString());
+                        for (const auto& indexExpr : name->indices) {
+                            for (const auto& indexElem : indexExpr->expr) {
+                                if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
+                                    // Create the new index data reference
+                                    std::shared_ptr<NameData> indexVar = std::any_cast<std::shared_ptr<NameData>>(indexElem);
+                                    std::string indexVarName = ExtractName(indexVar->ToString());
 
-                                std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
+                                    std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
 
-                                // Set the meta-data
-                                newFalseRHS->uses.insert(lineNumber);
-                                newFalseRHS->SetOriginLine(lineNumber);
+                                    // Set the meta-data
+                                    newFalseRHS->uses.insert(lineNumber);
+                                    newFalseRHS->SetOriginLine(lineNumber);
 
-                                // Push for later handling
-                                lhsVar->indices.push_back(newFalseRHS);
-                                for (auto& lhs : lhsStack)
-                                    lhs->indices.push_back(newFalseRHS);
+                                    // Push for later handling
+                                    lhsVar->indices.push_back(newFalseRHS);
+                                    for (auto& lhs : lhsStack)
+                                        lhs->indices.push_back(newFalseRHS);
+                                }
                             }
                         }
                     }
@@ -1268,6 +1292,182 @@ public:
         return profileMap;
     }
 
+    void ComputeControlPaths() {
+        for (std::pair<std::string, std::vector<SliceProfile>> var : profileMap) {
+            std::vector<int> sLines;
+            std::merge(var.second.back().definitions.begin(), var.second.back().definitions.end(),
+                       var.second.back().uses.begin(), var.second.back().uses.end(),
+                       std::inserter(sLines, sLines.begin()));
+
+            for (auto loop : loopdata) {
+                int predecessor = 0;
+                int falseSuccessor = 0;
+                int trueSuccessor = loop.second;
+                bool trueSuccessorExists = false;
+
+                for (auto sl : sLines) {
+                    if (sl <= loop.first) {
+                        predecessor = sl;
+                    }
+                    if (sl >= loop.first) {
+                        falseSuccessor = sl;
+                    }
+                    for (auto firstLine : sLines) {
+                        if (firstLine >= loop.first && firstLine <= loop.second && firstLine <= trueSuccessor) {
+                            trueSuccessor = firstLine;
+                            trueSuccessorExists = true;
+                        }
+                    }
+                }
+                if (predecessor < falseSuccessor) {
+                    if (trueSuccessorExists) {
+                        if (predecessor != trueSuccessor) {
+                            profileMap.find(var.first)->second.back().controlEdges.insert(
+                                    std::make_pair(predecessor, trueSuccessor));
+                        }
+                    }
+
+                    if (predecessor != falseSuccessor) {
+                        profileMap.find(var.first)->second.back().controlEdges.insert(
+                                std::make_pair(predecessor, falseSuccessor));
+                    }
+                }
+            }
+            int prevSL = 0;
+            for (int i = 0; i < sLines.size(); i++) {
+                if (i + 1 < sLines.size()) {
+                    bool outIf = true;
+                    bool outIfElse = true;
+                    bool outElse = true;
+
+                    bool outWhile = true;
+                    bool outDoWhile = true;
+                    bool outFor = true;
+
+                    for (auto ifblock : ifdata) {
+                        if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
+                            outIf = false;
+                            break;
+                        }
+                    }
+
+                    if (!outIf) {
+                        for (auto elseifblock : elseifdata) {
+                            if (sLines[i + 1] >= elseifblock.first && sLines[i + 1] <= elseifblock.second) {
+                                outIfElse = false;
+                                break;
+                            }
+                        }
+                    }
+                    if (!outIf) {
+                        for (auto elseblock : elsedata) {
+                            if (sLines[i + 1] >= elseblock.first && sLines[i + 1] <= elseblock.second) {
+                                outElse = false;
+                                break;
+                            }
+                        }
+                    }
+
+                    // if (!outFor) {
+                    //     for (auto forblock : forloopdata) {
+                    //         if (sLines[i + 1] >= forblock.first && sLines[i + 1] <= forblock.second) {
+                    //             outFor = false;
+                    //             break;
+                    //         }
+                    //     }
+                    // }
+                    // if (!outWhile) {
+                    //     for (auto whileblock : whileloopdata) {
+                    //         if (sLines[i + 1] >= whileblock.first && sLines[i + 1] <= whileblock.second) {
+                    //             outWhile = false;
+                    //             break;
+                    //         }
+                    //     }
+                    // }
+                    // if (!outDoWhile) {
+                    //     for (auto dowhileblock : dowhileloopdata) {
+                    //         if (sLines[i + 1] >= dowhileblock.first && sLines[i + 1] <= dowhileblock.second) {
+                    //             outDoWhile = false;
+                    //             break;
+                    //         }
+                    //     }
+                    // }
+
+                    if ((outIf || outIfElse || outElse) && sLines[i] != sLines[i + 1]) {
+                        if (sLines[i] != sLines[i + 1]) {
+                            bool invalidWhileJump = false;
+                            
+                            for (const auto& whileloopblock : whileloopdata) {
+                                //                  start of loop                         end of loop
+                                bool numOneInWhile = sLines[i] >= whileloopblock.first && sLines[i] <= whileloopblock.second;
+                                bool numTwoInWhile = sLines[i + 1] >= whileloopblock.first && sLines[i + 1] <= whileloopblock.second;
+
+                                // Track invalid jump from while loop, by checking if the first number
+                                // is contained in the while-loop and checking if the second number is
+                                // outside the while-loop
+                                if (numOneInWhile && !numTwoInWhile) {
+                                    invalidWhileJump = true;
+                                    break;
+                                }
+                            }
+
+                            if (!invalidWhileJump) {
+                                profileMap.find(var.first)->second.back().controlEdges.insert(
+                                        std::make_pair(sLines[i], sLines[i + 1])
+                                    );
+                                // std::cerr << "(" << sLines[i] << "," << sLines[i + 1] << ")" << std::endl;
+                            }
+                        }
+                    }
+                }
+                bool outControlBlock = true;
+                for (auto loop : loopdata) {
+                    if (sLines[i] >= loop.first && sLines[i] <= loop.second) {
+                        outControlBlock = false;
+                        break;
+                    }
+                }
+                if (outControlBlock) {
+                    for (auto ifblock : ifdata) {
+                        if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
+                            outControlBlock = false;
+                            break;
+                        }
+                    }
+                }
+                if (outControlBlock) {
+                    for (auto elseifblock : elseifdata) {
+                        if (sLines[i] >= elseifblock.first && sLines[i] <= elseifblock.second) {
+                            outControlBlock = false;
+                            break;
+                        }
+                    }
+                }
+                if (outControlBlock) {
+                    for (auto elseblock : elsedata) {
+                        if (sLines[i] >= elseblock.first && sLines[i] <= elseblock.second) {
+                            outControlBlock = false;
+                            break;
+                        }
+                    }
+                }
+                if (outControlBlock) {
+                    if (prevSL == 0) {
+                        prevSL = sLines[i];
+                    } else {
+                        if (prevSL != sLines[i]) {
+                            profileMap.find(var.first)->second.back().controlEdges.insert(
+                                    std::make_pair(prevSL, sLines[i])
+                                );
+                        }
+
+                        prevSL = 0;
+                    }
+                }
+            }
+        }
+    }
+
     auto ArgumentProfile(std::pair<std::string, std::shared_ptr<FunctionData>> func, int paramIndex, std::unordered_set<std::string>& visit_func) {
         auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name->ToString());
 
@@ -1472,6 +1672,16 @@ private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
     std::vector<std::shared_ptr<ClassData>> classInfo;
     std::vector<std::shared_ptr<FunctionData>> functionInfo;
+
+    std::vector<std::pair<int, int>> loopdata;
+    std::vector<std::pair<int, int>> forloopdata;
+    std::vector<std::pair<int, int>> whileloopdata;
+    std::vector<std::pair<int, int>> dowhileloopdata;
+
+    std::vector<std::pair<int, int>> ifdata;
+    std::vector<std::pair<int, int>> elseifdata;
+    std::vector<std::pair<int, int>> elsedata;
+
     FunctionSignatureData funcSigCollection;
     bool verboseMode;
 };

@@ -19,11 +19,11 @@ public:
             std::string name, int line, bool alias = 0, bool global = 0,
             std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {},
             std::set<std::pair<std::string, std::pair<std::string, std::string>>> cFunc = {},
-            std::set<std::pair<std::string, unsigned int>> dv = {}, bool containsDecl = false,
-            bool visit = false) :
+            std::set<std::pair<std::string, unsigned int>> dv = {}, std::set<std::pair<int, int>> edges = {},
+            bool containsDecl = false, bool visit = false) :
             variableName(name), lineNumber(line), potentialAlias(alias),
             isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
-            dvars(dv), containsDeclaration(containsDecl), visited(visit) {
+            dvars(dv), containsDeclaration(containsDecl), controlEdges(edges), visited(visit) {
         dereferenced = false;
         isPointer = false;
         isReference = false;
@@ -53,6 +53,7 @@ public:
 
     std::set<std::pair<std::string, unsigned int>> dvars;
     std::set<std::pair<std::string, unsigned int>> aliases;
+    std::set<std::pair<int, int>> controlEdges;
 
     std::set<std::pair<std::string, std::pair<std::string, std::string>>> cfunctions;
 
@@ -122,6 +123,15 @@ public:
                 out << def << ",";
             else
                 out << def;
+        }
+        out << "]," << std::endl;
+
+        out << "    \"controlEdges\":[";
+        for (auto edge : profile.controlEdges) {
+            if (edge != *(--profile.controlEdges.end()))
+                out << "[" << edge.first << "," << edge.second << "],";
+            else
+                out << "[" << edge.first << "," << edge.second << "]";
         }
         out << "]" << std::endl;
 
