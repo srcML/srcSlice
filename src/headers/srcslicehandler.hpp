@@ -1292,12 +1292,95 @@ public:
         return profileMap;
     }
 
+    void ComputeLoopPath(std::pair<int, int>& flowPath, SliceProfile& sp, int sLineOne, int sLineTwo) {
+        unsigned int closestSliceLine = 0;
+
+        // Scan While Loops
+        for (const auto& whileloopblock : whileloopdata) {
+            //                  start of loop                         end of loop
+            bool numOneInWhile = sLineOne >= whileloopblock.first && sLineOne <= whileloopblock.second;
+            bool numTwoInWhile = sLineTwo >= whileloopblock.first && sLineTwo <= whileloopblock.second;
+
+            // if BOTH sLines (slice lines) are not contained in this while loop block pair
+            // iterate the next block pair
+            if (!numOneInWhile && !numTwoInWhile) {
+                continue;
+            }
+
+            // Mark line where var.first is used in a loop
+            if (closestSliceLine == 0 && std::find(sp.uses.begin(), sp.uses.end(), whileloopblock.first) != sp.uses.end()) {
+                closestSliceLine = whileloopblock.first;
+
+                // Track invalid jump from while loop, by checking if the first number
+                // is contained in the while-loop and checking if the second number is
+                // outside the while-loop
+                if (numOneInWhile && !numTwoInWhile) {
+                    flowPath = std::make_pair(sLineOne, closestSliceLine);
+                    return;
+                }
+            }
+        }
+
+        // Scan For Loops
+        for (const auto& forloopblock : forloopdata) {
+            bool numOneInFor = sLineOne >= forloopblock.first && sLineOne <= forloopblock.second;
+            bool numTwoInFor = sLineTwo >= forloopblock.first && sLineTwo <= forloopblock.second;
+
+            if (!numOneInFor && !numTwoInFor) {
+                continue;
+            }
+
+            if (closestSliceLine == 0 && std::find(sp.uses.begin(), sp.uses.end(), forloopblock.first) != sp.uses.end()) {
+                closestSliceLine = forloopblock.first;
+                
+                if (numOneInFor && !numTwoInFor) {
+                    // Attempt to mark the flow path from the
+                    // sline closest to the end of the for-loop and
+                    // the sline closest to the for-loop condition
+                    sp.controlEdges.insert(std::make_pair(sLineOne, closestSliceLine));
+
+                    flowPath = std::make_pair(closestSliceLine, sLineTwo);
+                    return;
+                }
+            }
+        }
+
+        // Scan Do-While
+        for (const auto& dowhileblock : dowhileloopdata) {
+            bool numOneInFor = sLineOne >= dowhileblock.first && sLineOne <= dowhileblock.second;
+            bool numTwoInFor = sLineTwo >= dowhileblock.first && sLineTwo <= dowhileblock.second;
+
+            if (!numOneInFor && !numTwoInFor) {
+                continue;
+            }
+
+            // do-while condition is at the end
+            if (closestSliceLine == 0 && std::find(sp.uses.begin(), sp.uses.end(), dowhileblock.second) != sp.uses.end()) {
+                closestSliceLine = dowhileblock.second;
+
+                if (numOneInFor && !numTwoInFor) {
+                    // Start from the top of the do-while and increment until we hit the first sline in the loop
+                    int doWhileSLine = dowhileblock.first;
+                    while (std::find(sp.uses.begin(), sp.uses.end(), doWhileSLine) == sp.uses.end()) {
+                        ++doWhileSLine;
+                    }
+
+                    // Form edge from the sline in the do-while condition to first sline in the loop body
+                    sp.controlEdges.insert(std::make_pair(closestSliceLine, doWhileSLine));
+                    return;
+                }
+            }
+        }
+    }
+
     void ComputeControlPaths() {
         for (std::pair<std::string, std::vector<SliceProfile>> var : profileMap) {
             std::vector<int> sLines;
             std::merge(var.second.back().definitions.begin(), var.second.back().definitions.end(),
                        var.second.back().uses.begin(), var.second.back().uses.end(),
                        std::inserter(sLines, sLines.begin()));
+
+            // Remove-Erase Idiom
 
             for (auto loop : loopdata) {
                 int predecessor = 0;
@@ -1322,14 +1405,20 @@ public:
                 if (predecessor < falseSuccessor) {
                     if (trueSuccessorExists) {
                         if (predecessor != trueSuccessor) {
-                            profileMap.find(var.first)->second.back().controlEdges.insert(
-                                    std::make_pair(predecessor, trueSuccessor));
+                            if (predecessor != 0 && trueSuccessor != 0) {
+                                profileMap.find(var.first)->second.back().controlEdges.insert(
+                                        std::make_pair(predecessor, trueSuccessor)
+                                    );
+                            }
                         }
                     }
 
                     if (predecessor != falseSuccessor) {
-                        profileMap.find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(predecessor, falseSuccessor));
+                        if (predecessor != 0 && trueSuccessor != 0) {
+                            profileMap.find(var.first)->second.back().controlEdges.insert(
+                                    std::make_pair(predecessor, falseSuccessor)
+                                );
+                        }
                     }
                 }
             }
@@ -1339,10 +1428,6 @@ public:
                     bool outIf = true;
                     bool outIfElse = true;
                     bool outElse = true;
-
-                    bool outWhile = true;
-                    bool outDoWhile = true;
-                    bool outFor = true;
 
                     for (auto ifblock : ifdata) {
                         if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
@@ -1368,58 +1453,21 @@ public:
                         }
                     }
 
-                    // if (!outFor) {
-                    //     for (auto forblock : forloopdata) {
-                    //         if (sLines[i + 1] >= forblock.first && sLines[i + 1] <= forblock.second) {
-                    //             outFor = false;
-                    //             break;
-                    //         }
-                    //     }
-                    // }
-                    // if (!outWhile) {
-                    //     for (auto whileblock : whileloopdata) {
-                    //         if (sLines[i + 1] >= whileblock.first && sLines[i + 1] <= whileblock.second) {
-                    //             outWhile = false;
-                    //             break;
-                    //         }
-                    //     }
-                    // }
-                    // if (!outDoWhile) {
-                    //     for (auto dowhileblock : dowhileloopdata) {
-                    //         if (sLines[i + 1] >= dowhileblock.first && sLines[i + 1] <= dowhileblock.second) {
-                    //             outDoWhile = false;
-                    //             break;
-                    //         }
-                    //     }
-                    // }
-
                     if ((outIf || outIfElse || outElse) && sLines[i] != sLines[i + 1]) {
                         if (sLines[i] != sLines[i + 1]) {
-                            bool invalidWhileJump = false;
-                            
-                            for (const auto& whileloopblock : whileloopdata) {
-                                //                  start of loop                         end of loop
-                                bool numOneInWhile = sLines[i] >= whileloopblock.first && sLines[i] <= whileloopblock.second;
-                                bool numTwoInWhile = sLines[i + 1] >= whileloopblock.first && sLines[i + 1] <= whileloopblock.second;
+                            std::pair<int, int> flowPath = std::make_pair(sLines[i], sLines[i + 1]);
+                            ComputeLoopPath(flowPath, profileMap.find(var.first)->second.back(), sLines[i], sLines[i + 1]);
 
-                                // Track invalid jump from while loop, by checking if the first number
-                                // is contained in the while-loop and checking if the second number is
-                                // outside the while-loop
-                                if (numOneInWhile && !numTwoInWhile) {
-                                    invalidWhileJump = true;
-                                    break;
-                                }
-                            }
-
-                            if (!invalidWhileJump) {
-                                profileMap.find(var.first)->second.back().controlEdges.insert(
-                                        std::make_pair(sLines[i], sLines[i + 1])
-                                    );
-                                // std::cerr << "(" << sLines[i] << "," << sLines[i + 1] << ")" << std::endl;
+                            // For the while, do-while, and for: we should check if the var.first is used in the condition
+                            // if so, we form a connection from the line to the condition, if not allow the jump
+                            if (flowPath.first != 0 && flowPath.second != 0) {
+                                profileMap.find(var.first)->second.back().controlEdges.insert(flowPath);
+                                std::cerr << "(" << flowPath.first << "," << flowPath.second << ")" << std::endl;
                             }
                         }
                     }
                 }
+                
                 bool outControlBlock = true;
                 for (auto loop : loopdata) {
                     if (sLines[i] >= loop.first && sLines[i] <= loop.second) {
@@ -1456,9 +1504,11 @@ public:
                         prevSL = sLines[i];
                     } else {
                         if (prevSL != sLines[i]) {
-                            profileMap.find(var.first)->second.back().controlEdges.insert(
-                                    std::make_pair(prevSL, sLines[i])
-                                );
+                            if (prevSL != 0 && sLines[i] != 0) {
+                                profileMap.find(var.first)->second.back().controlEdges.insert(
+                                        std::make_pair(prevSL, sLines[i])
+                                    );
+                            }
                         }
 
                         prevSL = 0;
