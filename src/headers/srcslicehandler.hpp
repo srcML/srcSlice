@@ -33,8 +33,6 @@ public:
         srcSAXController control(filename);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
-
-        std::cerr << "PM SIZE -> " << profileMap.size() << std::endl;
         
         // Handles Collecting Control-Edges
         ComputeControlPaths();
@@ -57,14 +55,11 @@ public:
 
     void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if(typeid(ClassPolicy) == typeid(*policy)) {
-            std::cerr << "class data" << std::endl;
             ProcessClassData(policy->Data<ClassData>(), ctx);
         } else if(typeid(FunctionPolicy) == typeid(*policy)) {
-            std::cerr << "function data" << std::endl;
             ProcessFunctionData(policy->Data<FunctionData>(), "", policy->Data<FunctionData>()->namespaces, ctx);
         } else if (typeid(DeclTypePolicy) == typeid(*policy)) {
             ProcessDeclStmts(nullptr, nullptr, "", policy->Data<std::vector<std::shared_ptr<DeclData>>>(), ctx);
-            std::cerr << "global data" << std::endl;
         }
     }
 
@@ -619,6 +614,27 @@ public:
                     Ensure we are getting the uses from the case lines
                     Ensure we capture data from the case blocks as well
                 */
+
+                // Connect the use lines of switch cases to their corresponding control variables
+                std::vector<std::shared_ptr<NameData>> controlVariables;
+                for (const auto& exprElem : switchData->condition->expr->expr) {
+                    if (exprElem.type() == typeid(std::shared_ptr<NameData>)) {
+                        controlVariables.push_back(std::any_cast<std::shared_ptr<NameData>>(exprElem));
+                    }
+                }
+
+                for (const auto& switchCase : switchData->block->cases) {
+                    for (auto& ctrlVar : controlVariables) {
+                        // locate the slice profile of the ctrlVar and insert the uses
+                        auto sliceProfileItr = profileMap.find(ctrlVar->ToString());
+
+                        // might need to add finger-printing to minimize potential issue
+                        // of inserting data into the wrong slice
+                        if (sliceProfileItr != profileMap.end()) {
+                            sliceProfileItr->second.back().uses.insert(switchCase->lineNumber);
+                        }
+                    }
+                }
 
                 if (declStmts) {
                     declStmts->insert(declStmts->end(), switchData->condition->decls.begin(), switchData->condition->decls.end());
@@ -1301,18 +1317,11 @@ public:
     // Attempt to find other Forward Control-Flow paths
     std::set<std::pair<int,int>> FindOtherPaths(const std::vector<int>& sLines, int i) {
         std::set<std::pair<int,int>> otherPaths;
-        
+
         // index matching to connect potential flows from defined false-branch conditions?
         // potentially confirm this by checking if the endblock.start > ifblock.end:
-        // if the elseblock.start is contained inside the 
-        /*
-        std::cerr << "DEBUG" << std::endl;
-        for (auto ifblock : ifdata) {
-            for (auto elseblock : elsedata) {
-                std::cerr << "[*] " << ifblock.first << "," << ifblock.second << " --> " << elseblock.first << "," << elseblock.second << std::endl;
-            }    
-        }
-        */
+        // if the elseblock.start is contained inside the ifblock we are potential in a nesting
+        
 
         // Check if the current sLine is contained in a if-block
         for (auto ifblock : ifdata) {
@@ -1322,7 +1331,7 @@ public:
                 if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
                     // Attempt to mark a control-flow between the i,i+1 slines inside an if-block
                     if (sLines[i+1] >= ifblock.first && sLines[i+1] <= ifblock.second) {
-                        std::cerr << "[*] Found Immedient Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
+                        // std::cerr << "[*] Found Immedient Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
                         otherPaths.insert(
                             std::make_pair(sLines[i],sLines[i+1])
                         );
@@ -1364,7 +1373,7 @@ public:
 
             // if not contained within a conditional (body or condition/control)
             if (outControlBlock) {
-                std::cerr << "[*] Found Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                // std::cerr << "[*] Found Path --> " << sLines[i] << "," << sLines[k] << std::endl;
                 otherPaths.insert(
                     std::make_pair(sLines[i],sLines[k])
                 );
@@ -1447,13 +1456,11 @@ public:
                         // we are not out of the if
                         if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
                             // Attempt fetching other control-flows via helper function
-                            /*
                             std::set<std::pair<int, int>> otherPaths = FindOtherPaths(sLines, i);
                             profileMap.find(var.first)->second.back().controlEdges.insert(
                                 otherPaths.begin(),
                                 otherPaths.end()
                             );
-                            */
 
                             outIf = false;
                             break;
