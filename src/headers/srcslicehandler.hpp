@@ -1324,9 +1324,8 @@ public:
         return profileMap;
     }
 
-    // Attempt to find other Forward Control-Flow paths
-    std::set<std::pair<int,int>> FindOtherPaths(const std::vector<int>& sLines, const std::set<int>& ignoreLines) {
-        std::set<std::pair<int,int>> otherPaths;
+    // Component of function FindOtherPaths
+    void ComputerOuterPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines) {
         std::set<std::pair<int,int>> ifGroup;
 
         // Find all valid connections between if,else-if,and else blocks
@@ -1346,6 +1345,34 @@ public:
             }
         }
 
+        // Iterate sLines and find potential paths between
+        // sLines[i] and sLines[k], focusing on outter paths
+        for (int i = 0; i < sLines.size(); ++i) {
+            // iterate the remaining sLines to see
+            // if a path can be formed
+            for (int k = i+1; k < sLines.size(); ++k) {
+                for (const auto& lineRange : ifGroup) {
+                    // Finding the first sLine[k] that is >= lineRange.second
+                    if (sLines[i] == lineRange.first && sLines[k] >= lineRange.second) {
+                        // std::cerr << "Potential Outter-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                        otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
+
+                        // Increment outter-control i, so we can find the next outter path
+                        if (i < sLines.size()) {
+                            ++i;
+                        } else {
+                            // escape the entire loop
+                            k = i;
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    // Component of function FindOtherPaths
+    void ComputeExitPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines, const std::set<int>& ignoreLines) {
         // Iterate sLines and find potential paths between
         // sLines[i] and sLines[k], focusing on block exits
         for (int i = 0; i < sLines.size(); ++i) {
@@ -1407,36 +1434,23 @@ public:
                         // when we find the first sLines[k] that is not contained in the reduced sets
                         // form the connection and exit the loops
                         if (potentialExitEnd) {
-                            std::cerr << "Potential Exit-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                            // std::cerr << "Potential Exit-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                            otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
                             break;
                         }
                     }
                 }
             }
         }
+    }
 
-        // Iterate sLines and find potential paths between
-        // sLines[i] and sLines[k], focusing on outter paths
-        for (int i = 0; i < sLines.size(); ++i) {
-            // iterate the remaining sLines to see
-            // if a path can be formed
-            for (int k = i+1; k < sLines.size(); ++k) {
-                for (const auto& lineRange : ifGroup) {
-                    // Finding the first sLine[k] that is >= lineRange.second
-                    if (sLines[i] == lineRange.first && sLines[k] >= lineRange.second) {
-                        std::cerr << "Potential Outter-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
-                        // Increment outter-control i, so we can find the next outter path
-                        if (i < sLines.size()) {
-                            ++i;
-                        } else {
-                            // escape the entire loop
-                            k = i;
-                            break;
-                        }
-                    }
-                }
-            }
-        }
+    // Attempt to find other Forward Control-Flow paths | ComputeControlPaths Helper Function
+    std::set<std::pair<int,int>> FindOtherPaths(const std::vector<int>& sLines, const std::set<int>& ignoreLines) {
+        std::set<std::pair<int,int>> otherPaths;
+
+        // For each path we need to compute, there is a specific function for it
+        ComputeExitPaths(otherPaths, sLines, ignoreLines);
+        ComputerOuterPaths(otherPaths, sLines);
 
         return otherPaths;
     }
