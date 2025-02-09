@@ -1330,22 +1330,18 @@ public:
         std::set<std::pair<int,int>> ifGroup;
 
         // Find all valid connections between if,else-if,and else blocks
-        for (int i = 0; i < ifdata.size(); ++i) {
-            for (int k = 0; k < i; ++k) {
-                if (ifdata[i].second == elseifdata[k].first) {
-                    // std::cerr << "[*] If ---> Else-If :: " <<
-                    // ifdata[i].first << "," << elseifdata[k].first
-                    // << std::endl;
-                    ifGroup.insert(std::make_pair(ifdata[i].first, elseifdata[k].first));
+        for (const auto& ifblock : ifdata) {
+            // ensure we dont try indexing non-existing items
+            for (const auto& elseifblock : elseifdata) {
+                if (ifblock.second == elseifblock.first) {
+                    ifGroup.insert(std::make_pair(ifblock.first, elseifblock.first));
                 }
             }
 
-            for (int k = 0; k < i; ++k) {
-                if (ifdata[i].second == elsedata[k].first) {
-                    // std::cerr << "[*] If ----> Else   :: " <<
-                    // ifdata[i].first << "," << elsedata[k].first
-                    // << std::endl;
-                    ifGroup.insert(std::make_pair(ifdata[i].first, elsedata[k].first));
+            // ensure we dont try indexing non-existing items
+            for (const auto& elseblock : elsedata) {
+                if (ifblock.second == elseblock.first) {
+                    ifGroup.insert(std::make_pair(ifblock.first, elseblock.first));
                 }
             }
         }
