@@ -582,7 +582,9 @@ public:
                             exprStmts->push_back(ifData->condition->expr);
                         }
 
-                        ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
+                        // minimize duplicate entries
+                        if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(ifData->startLineNumber), (int)(ifData->endLineNumber)))
+                            ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
 
                         cntlBlocks.push_back(ifData->block);
                     } else if (clause.type() == typeid(std::shared_ptr<ElseIfData>)) {
@@ -596,13 +598,21 @@ public:
                             exprStmts->push_back(elseIfData->condition->expr);
                         }
 
-                        ifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
-                        // elseifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
+                        // minimize duplicate entries, pushed into ifdata for the ComputeControlPaths Algorithm
+                        if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
+                            ifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
+                        
+                        // track elseif block data for later usage
+                        if (elseifdata.size() == 0 || elseifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
+                            elseifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
 
                         cntlBlocks.push_back(elseIfData->block);
                     } else if (clause.type() == typeid(std::shared_ptr<ElseData>)) {
                         std::shared_ptr<ElseData> elseData = std::any_cast<std::shared_ptr<ElseData>>(clause);
-                        elsedata.push_back(std::make_pair(elseData->startLineNumber, elseData->endLineNumber));
+
+                        // minimize duplicate entries
+                        if (elsedata.size() == 0 || elsedata.back() != std::make_pair((int)(elseData->startLineNumber), (int)(elseData->endLineNumber)))
+                            elsedata.push_back(std::make_pair(elseData->startLineNumber, elseData->endLineNumber));
                         cntlBlocks.push_back(elseData->block);
                     }
                 }
@@ -1315,68 +1325,120 @@ public:
     }
 
     // Attempt to find other Forward Control-Flow paths
-    std::set<std::pair<int,int>> FindOtherPaths(const std::vector<int>& sLines, int i) {
+    std::set<std::pair<int,int>> FindOtherPaths(const std::vector<int>& sLines, const std::set<int>& ignoreLines) {
         std::set<std::pair<int,int>> otherPaths;
+        std::set<std::pair<int,int>> ifGroup;
 
-        // index matching to connect potential flows from defined false-branch conditions?
-        // potentially confirm this by checking if the endblock.start > ifblock.end:
-        // if the elseblock.start is contained inside the ifblock we are potential in a nesting
-        
+        // Find all valid connections between if,else-if,and else blocks
+        for (int i = 0; i < ifdata.size(); ++i) {
+            for (int k = 0; k < i; ++k) {
+                if (ifdata[i].second == elseifdata[k].first) {
+                    // std::cerr << "[*] If ---> Else-If :: " <<
+                    // ifdata[i].first << "," << elseifdata[k].first
+                    // << std::endl;
+                    ifGroup.insert(std::make_pair(ifdata[i].first, elseifdata[k].first));
+                }
+            }
 
-        // Check if the current sLine is contained in a if-block
-        for (auto ifblock : ifdata) {
-            // Check if there exists a next sLine
+            for (int k = 0; k < i; ++k) {
+                if (ifdata[i].second == elsedata[k].first) {
+                    // std::cerr << "[*] If ----> Else   :: " <<
+                    // ifdata[i].first << "," << elsedata[k].first
+                    // << std::endl;
+                    ifGroup.insert(std::make_pair(ifdata[i].first, elsedata[k].first));
+                }
+            }
+        }
+
+        // Iterate sLines and find potential paths between
+        // sLines[i] and sLines[k], focusing on block exits
+        for (int i = 0; i < sLines.size(); ++i) {
+            if (ignoreLines.find(sLines[i]) != ignoreLines.end()) continue;
+
             if (i+1 < sLines.size()) {
-                // Check if the current sLine and the next sLine are contained in the if-stmt
-                if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                    // Attempt to mark a control-flow between the i,i+1 slines inside an if-block
-                    if (sLines[i+1] >= ifblock.first && sLines[i+1] <= ifblock.second) {
-                        // std::cerr << "[*] Found Immedient Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
-                        otherPaths.insert(
-                            std::make_pair(sLines[i],sLines[i+1])
-                        );
+                std::pair<int,int> containedBlock(0,0);
+                // iterate if-data to see which if-block the current sLine is most likely contained in
+                for (const auto& ifblock : ifdata) {
+                    // check if the current sline is contained in the ifblock
+                    if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
+                        // std::cerr << sLines[i] << " contained in -> (" << ifblock.first << "," << ifblock.second << ")" << std::endl;
+
+                        // focus on the block with the smallest gap
+                        int containedBlockSize = containedBlock.second - containedBlock.first;
+                        int blockSize = ifblock.second - ifblock.first;
+                        // update the block we suspect the current sline is contained in if
+                        // either we have not initially updated the block, or we found a block
+                        // of smaller size containing sLines[i]
+                        if (containedBlock.first == 0 || (blockSize < containedBlockSize)) {
+                            containedBlock = ifblock;
+
+                            //std::cerr << "[*] Focusing on block -> (" <<
+                            //containedBlock.first << "," << containedBlock.second <<
+                            //") => " << sLines[i] << std::endl;
+                        }
+                    }
+                }
+
+                // if we have marked a ifdata block attempt to form a connection
+                if (containedBlock.first != 0) {
+                    // std::cerr << "[*] Block of Interest -> (" <<
+                    // containedBlock.first << "," << containedBlock.second <<
+                    // ") => " << sLines[i] << std::endl;
+
+                    // reduce the search area based on the block of interest
+                    for (int k = i+1; k < sLines.size(); ++k) {
+                        // find first sLines[k] that is not contained
+                        // in a reduce union of sets: ifdata, elseifdata, and elsedata
+                        bool potentialExitEnd = true;
+
+                        for (const auto& ifblock : ifdata) {
+                            // incase the block sLines[i] is nested in an if-block
+                            if (ifblock.first < containedBlock.first) continue;
+                            if (sLines[k] >= ifblock.first && sLines[k] <= ifblock.second) {
+                                potentialExitEnd = false;
+                                break;
+                            }
+                        }
+                        for (const auto& elseblock : elsedata) {
+                            // incase the block sLines[i] is nested in an else-block
+                            if (elseblock.first < containedBlock.first) continue;
+                            if (sLines[k] >= elseblock.first && sLines[k] <= elseblock.second) {
+                                potentialExitEnd = false;
+                                break;
+                            }
+                        }
+
+                        // when we find the first sLines[k] that is not contained in the reduced sets
+                        // form the connection and exit the loops
+                        if (potentialExitEnd) {
+                            std::cerr << "Potential Exit-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                            break;
+                        }
                     }
                 }
             }
         }
 
-        // Loop remaining sLines
-        for (int k = i+1; k < sLines.size(); ++k) {
-            // Focus exclusively on the slines in-front of the current (index i)
-            bool outControlBlock = true;
-            for (auto loop : loopdata) {
-                // check if contained within a: for-loop, while-loop, or do-while loop
-                if (sLines[k] >= loop.first && sLines[k] <= loop.second) {
-                    outControlBlock = false;
-                    break;
-                }
-            }
-
-            if (outControlBlock) {
-                // check if contained an if-block
-                for (auto ifblock : ifdata) {
-                    if (sLines[k] >= ifblock.first && sLines[k] <= ifblock.second) {
-                        outControlBlock = false;
-                        break;
+        // Iterate sLines and find potential paths between
+        // sLines[i] and sLines[k], focusing on outter paths
+        for (int i = 0; i < sLines.size(); ++i) {
+            // iterate the remaining sLines to see
+            // if a path can be formed
+            for (int k = i+1; k < sLines.size(); ++k) {
+                for (const auto& lineRange : ifGroup) {
+                    // Finding the first sLine[k] that is >= lineRange.second
+                    if (sLines[i] == lineRange.first && sLines[k] >= lineRange.second) {
+                        std::cerr << "Potential Outter-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                        // Increment outter-control i, so we can find the next outter path
+                        if (i < sLines.size()) {
+                            ++i;
+                        } else {
+                            // escape the entire loop
+                            k = i;
+                            break;
+                        }
                     }
                 }
-            }
-            if (outControlBlock) {
-                // check if contained an else-block
-                for (auto elseblock : elsedata) {
-                    if (sLines[k] >= elseblock.first && sLines[k] <= elseblock.second) {
-                        outControlBlock = false;
-                        break;
-                    }
-                }
-            }
-
-            // if not contained within a conditional (body or condition/control)
-            if (outControlBlock) {
-                // std::cerr << "[*] Found Path --> " << sLines[i] << "," << sLines[k] << std::endl;
-                otherPaths.insert(
-                    std::make_pair(sLines[i],sLines[k])
-                );
             }
         }
 
@@ -1398,6 +1460,8 @@ public:
             sLinesOrdered.insert(var.second.back().uses.begin(), var.second.back().uses.end());
             // Convert set into vector using vector ctor
             std::vector<int> sLines(sLinesOrdered.begin(), sLinesOrdered.end());
+            // Used in helper function
+            std::set<int> ignoreLines;
 
             // Handles controledges based from: for-loops, while-loops, do-while-loops
             for (auto loop : loopdata) {
@@ -1449,34 +1513,26 @@ public:
                     bool outIf = true;
                     // bool outElseIf = true;
                     bool outElse = true;
-
-                    // Check if the current sLine is contained in a if-block
+                    
                     for (auto ifblock : ifdata) {
-                        // if the current sline is contained within an if-block, we make that
-                        // we are not out of the if
                         if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                            // Attempt fetching other control-flows via helper function
-                            std::set<std::pair<int, int>> otherPaths = FindOtherPaths(sLines, i);
-                            profileMap.find(var.first)->second.back().controlEdges.insert(
-                                otherPaths.begin(),
-                                otherPaths.end()
-                            );
-
                             outIf = false;
                             break;
                         }
                     }
 
-                    // if (!outIf) {
-                    //     // when inside an if-block,
-                    //     // check if the next sline is contained within a else-if-block
-                    //     for (auto elseifblock : elseifdata) {
-                    //         if (sLines[i + 1] >= elseifblock.first && sLines[i + 1] <= elseifblock.second) {
-                    //             outElseIf = false;
-                    //             break;
-                    //         }
-                    //     }
-                    // }
+                    if (!outIf) {
+                        // when inside an if-block,
+                        // check if the next sline is contained within a else-if-block
+                        for (auto elseifblock : elseifdata) {
+                            if (sLines[i + 1] >= elseifblock.first && sLines[i + 1] <= elseifblock.second) {
+                                outElse = false;
+                                if (sLines[i] >= elseifblock.first && sLines[i] <= elseifblock.second)
+                                    outElse = true;
+                                break;
+                            }
+                        }
+                    }
 
                     if (!outIf) {
                         // when inside an if-block AND not inside a else-if-block,
@@ -1489,13 +1545,14 @@ public:
                         }
                     }
 
-                    // if we are outside an if or elseif or else AND both slines do not equal each other
+                    // if we are outside an if or else AND both slines do not equal each other
                     if ((outIf || outElse) && sLines[i] != sLines[i + 1]) {
                         // make sure we do not push a sline of 0 into the set
                         if (sLines[i] != 0 && sLines[i + 1] != 0) {
                             profileMap.find(var.first)->second.back().controlEdges.insert(
                                 std::make_pair(sLines[i], sLines[i + 1])
                             );
+                            ignoreLines.insert(sLines[i]);
                             // std::cerr << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
                         }
                     }
@@ -1550,6 +1607,7 @@ public:
                                 profileMap.find(var.first)->second.back().controlEdges.insert(
                                     std::make_pair(prevSL, sLines[i])
                                 );
+                                ignoreLines.insert(prevSL);
                                 // std::cerr << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
                                 loopPresent = false;
                             }
@@ -1558,6 +1616,13 @@ public:
                     }
                 }
             }
+
+            // Attempt fetching other control-flows via helper function
+            std::set<std::pair<int, int>> otherPaths = FindOtherPaths(sLines, ignoreLines);
+            profileMap.find(var.first)->second.back().controlEdges.insert(
+                otherPaths.begin(),
+                otherPaths.end()
+            );
         }
     }
 
