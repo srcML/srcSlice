@@ -1330,10 +1330,13 @@ public:
 
         // Find all valid connections between if,else-if,and else blocks
         for (const auto& ifblock : ifdata) {
+            bool isSingleIf = true;
+            
             // ensure we dont try indexing non-existing items
             for (const auto& elseifblock : elseifdata) {
                 if (ifblock.second == elseifblock.first) {
                     ifGroup.insert(std::make_pair(ifblock.first, elseifblock.first));
+                    isSingleIf = false;
                 }
             }
 
@@ -1341,8 +1344,14 @@ public:
             for (const auto& elseblock : elsedata) {
                 if (ifblock.second == elseblock.first) {
                     ifGroup.insert(std::make_pair(ifblock.first, elseblock.first));
+                    isSingleIf = false;
                 }
             }
+
+            // occurs when we have a single if statement that does not connect
+            // to any else-if or else statements
+            if (isSingleIf)
+                ifGroup.insert(std::make_pair(ifblock.first, ifblock.second));
         }
 
         // Iterate sLines and find potential paths between
