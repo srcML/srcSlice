@@ -1325,7 +1325,7 @@ public:
     }
 
     // Component of function FindOtherPaths
-    void ComputerOuterPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines) {
+    void ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines) {
         std::set<std::pair<int,int>> ifGroup;
 
         // Find all valid connections between if,else-if,and else blocks
@@ -1459,7 +1459,7 @@ public:
 
         // For each path we need to compute, there is a specific function for it
         ComputeExitPaths(otherPaths, sLines, ignoreLines);
-        ComputerOuterPaths(otherPaths, sLines);
+        ComputeOuterPaths(otherPaths, sLines);
 
         return otherPaths;
     }
