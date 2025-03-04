@@ -102,6 +102,15 @@ class ConditionalImpact {
             return (lsp.variableName == rsp.variableName && lsp.lineNumber == rsp.lineNumber);
         }
 
+        // Check if a slice profile is contained in the impact controls
+        bool Contains(SliceProfile& sp) {
+            for (const auto& controlVar : controls) {
+                if ( (controlVar->variableName == sp.variableName) && (controlVar->lineNumber == sp.lineNumber) )
+                    return true;
+            }
+            return false;
+        }
+
         void AddImpact(SliceProfile& sp) {
             if (impacts.size() == 0 || !Contains(*(impacts.back()), sp)) {
                 impacts.push_back(&sp);
@@ -114,10 +123,17 @@ class ConditionalImpact {
             }
         }
 
+        // check if the Impact Collection control contains impacts
         bool HasImpacts() { return !impacts.empty(); }
 
+        // determine if a local variable line is contained in this conditionals line range
         bool IsOfInterest(int line) {
             return (line >= conditionalRange.first && line <= conditionalRange.second);
+        }
+        
+        // check if this conditionals line range is nested within a given conditionalRange (cr)
+        bool IsNested(std::pair<int,int> cr) {
+            return cr.first < conditionalRange.first && cr.second > conditionalRange.second;
         }
         
         // start and end line range of conditional

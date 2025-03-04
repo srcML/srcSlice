@@ -664,9 +664,18 @@ public:
 
                 if (exprStmts) {
                     exprStmts->push_back(switchData->condition->expr);
+
+                    if (switchData->condition) {
+                        // mark impact control slices by parsing the expresssion
+                        FindImpactControls(switchData->condition->expr, std::make_pair(switchData->startLineNumber, switchData->endLineNumber));
+                    }
                 }
 
                 cntlBlocks.push_back(switchData->block);
+                if (switchData->block) {
+                    // Attempt to mark down impacts in for-loop block
+                    FindImpacts(switchData->block->expr_stmts);
+                }
             } else if (cntl.type() == typeid(std::shared_ptr<ForData>)) {
                 // Extract all of the block data from For Loops
                 std::shared_ptr<ForData> forData = std::any_cast<std::shared_ptr<ForData>>(cntl);
@@ -682,12 +691,22 @@ public:
 
                 if (exprStmts) {
                     exprStmts->push_back(forData->control->condition->expr);
+
+                    if (forData->control->condition) {
+                        // mark impact control slices by parsing the expresssion
+                        FindImpactControls(forData->control->condition->expr, std::make_pair(forData->startLineNumber, forData->endLineNumber));
+                    }
                 }
 
                 loopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
                 forloopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
 
                 cntlBlocks.push_back(forData->block);
+
+                if (forData->block) {
+                    // Attempt to mark down impacts in for-loop block
+                    FindImpacts(forData->block->expr_stmts);
+                }
             }  else if (cntl.type() == typeid(std::shared_ptr<WhileData>)) {
                 // Extract all of the block data from While Loops
                 std::shared_ptr<WhileData> whileData = std::any_cast<std::shared_ptr<WhileData>>(cntl);
@@ -696,12 +715,22 @@ public:
 
                 if (exprStmts) {
                     exprStmts->push_back(whileData->condition->expr);
+
+                    if (whileData->condition) {
+                        // mark impact control slices by parsing the expresssion
+                        FindImpactControls(whileData->condition->expr, std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
+                    }
                 }
 
                 loopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
                 whileloopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
 
                 cntlBlocks.push_back(whileData->block);
+
+                if (whileData->block) {
+                    // Attempt to mark down impacts in while-loop block
+                    FindImpacts(whileData->block->expr_stmts);
+                }
             } else if (cntl.type() == typeid(std::shared_ptr<DoData>)) {
                 // Extract all of the block data from Do-While Loops
                 std::shared_ptr<DoData> doWhileData = std::any_cast<std::shared_ptr<DoData>>(cntl);
@@ -710,12 +739,22 @@ public:
 
                 if (exprStmts) {
                     exprStmts->push_back(doWhileData->condition->expr);
+
+                    if (doWhileData->condition) {
+                        // mark impact control slices by parsing the expresssion
+                        FindImpactControls(doWhileData->condition->expr, std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
+                    }
                 }
 
                 loopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
                 dowhileloopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
 
                 cntlBlocks.push_back(doWhileData->block);
+
+                if (doWhileData->block) {
+                    // Attempt to mark down impacts in do_while-loop block
+                    FindImpacts(doWhileData->block->expr_stmts);
+                }
             }
         }
 
@@ -1383,7 +1422,7 @@ public:
                             impactData.AddImpact(isp);
                         }
     
-                        break; // no longer need to find the impact data of interest
+                        // break; // no longer need to find the impact data of interest
                     }
                 }
             }
@@ -1391,19 +1430,58 @@ public:
     }
 
     void ShowImpacts() {
+        ConnectImpacts();
+
+        // print impacts to stdout
         // iterate over the collected Conditional-Impacts
-        for (auto& impactData : conditionalImpacts) {
-            if (!impactData.HasImpacts()) continue;
+        // for (auto& impactData : conditionalImpacts) {
+        //     if (!impactData.HasImpacts()) continue;
             
-            // print controls and potential impacts
-            for (const auto& controls : impactData.controls) {
-                std::cout << controls->variableName << " ";
+        //     // print controls and potential impacts
+        //     for (const auto& controls : impactData.controls) {
+        //         std::cout << controls->variableName << ", ";
+        //     }
+        //     std::cout << ": { ";
+        //     for (const auto& potentialImpacts : impactData.impacts) {
+        //         std::cout << potentialImpacts->variableName << ", ";
+        //     }
+        //     std::cout << "}" << std::endl;
+        // }
+
+        // attach impacts to sliceprofile
+        for (auto& profileItr : profileMap) {
+            // iterate slice profile vector
+            for (auto& sp : profileItr.second) {
+                if (sp.containsDeclaration) {
+                    // match impacts to slices by looking at the control variable(s) and where
+                    // the impact takes place (ConditionalRange)
+                    for (auto& impactData : conditionalImpacts) {
+                        if (!impactData.HasImpacts()) continue;
+                        // if the impactData control contains the slice profile iterator
+                        // we need to append impacts data into the slice profile's impacts attribute
+                        if (impactData.Contains(sp)) {
+                            sp.impacts.insert(sp.impacts.end(), impactData.impacts.begin(), impactData.impacts.end());
+                        }
+                    }
+                }
             }
-            std::cout << ": { ";
-            for (const auto& potentialImpacts : impactData.impacts) {
-                std::cout << potentialImpacts->variableName << " ";
+        }
+    }
+
+    // Show connections between nested impacts
+    void ConnectImpacts() {
+        for (size_t i = 0; i < conditionalImpacts.size(); ++i) {
+            for (size_t k = i+1; k < conditionalImpacts.size(); ++k) {
+                // check if the impact[k] is nested in impact[i]
+                if (conditionalImpacts[k].IsNested(conditionalImpacts[i].conditionalRange)) {
+                    // append/insert impact[k] controls list into impact[i] impacts list
+                    conditionalImpacts[i].impacts.insert(
+                        conditionalImpacts[i].impacts.end(),
+                        conditionalImpacts[k].controls.begin(),
+                        conditionalImpacts[k].controls.end()
+                    );
+                }
             }
-            std::cout << "}" << std::endl;
         }
     }
 

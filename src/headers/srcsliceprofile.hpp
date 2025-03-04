@@ -63,6 +63,8 @@ public:
     bool conditionalUsesInserted = false;
     bool conditionalDefsInserted = false;
 
+    std::vector<SliceProfile*> impacts;
+
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;
         out << "    \"language\":\"" << profile.language << "\"," << std::endl;
@@ -132,6 +134,16 @@ public:
                 out << "[" << edge.first << "," << edge.second << "],";
             else
                 out << "[" << edge.first << "," << edge.second << "]";
+        }
+        out << "]" << std::endl;
+
+        // print slice profile names this slice impacts
+        out << "    \"impacts\":[";
+        for (auto impactItr = profile.impacts.begin(); impactItr != profile.impacts.end(); ++impactItr) {
+            if (impactItr+1 != profile.impacts.end())
+                out << "\"" << (*impactItr)->variableName << "-" << (*impactItr)->lineNumber << "\",";
+            else
+                out << "\"" << (*impactItr)->variableName << "-" << (*impactItr)->lineNumber << "\"";
         }
         out << "]" << std::endl;
 
