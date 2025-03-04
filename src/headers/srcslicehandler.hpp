@@ -353,6 +353,9 @@ public:
     }
 
     void ProcessExprStmts(std::shared_ptr<FunctionData> funcData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
+        // Maybe convert into std::vector<std::pair<std::string, std::shared_ptr<ExpressionData>>>, that way we can link expressions
+        // to belonging to conditional controls or conditional bodies to look into the results of initial ParseExpr,
+        // saving us from parsing the same exprs multiple times
         std::vector<std::shared_ptr<ExpressionData>> exprStmts;
         std::vector<std::string> containingNamespaces;
 
@@ -786,6 +789,8 @@ public:
         }
     }
 
+    // Look at comment chunk within ProcessExprStmts, maybe change return type to std::vector<std::pair<std::string, std::shared_ptr<VariableData>>>
+    // based on change idea from the comment refered in ProcessExprStmts
     std::vector<std::shared_ptr<VariableData>> ParseExpr(const ExpressionData& expr, const unsigned int& lineNumber) {
         std::vector<std::shared_ptr<VariableData>> varDataGroup;
         std::string expr_op = "";
@@ -1359,6 +1364,9 @@ public:
 
             varDataGroup = ParseExpr(*conditionalExpr, conditionalExpr->lineNumber);
             for (auto& localVar : varDataGroup) {
+                // variables that are impacted go through a change of state (redefined)
+                if (localVar->lhs == false) continue;
+
                 for (auto& impactData : conditionalImpacts) {
                     // std::cerr << std::boolalpha << "[*] Looking at impactData -> " << impactData.IsOfInterest(lineNumber) << std::endl;
                     // find the impact data collection thats of interest based on lineNumber
