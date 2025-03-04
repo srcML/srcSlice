@@ -112,19 +112,27 @@ class ConditionalImpact {
         }
 
         void AddImpact(SliceProfile& sp) {
-            if (impacts.size() == 0 || !Contains(*(impacts.back()), sp)) {
-                impacts.push_back(&sp);
+            // dont add slice profiles that dont have a declaration
+            if (!sp.containsDeclaration) return;
+
+            if (impacts.empty() || !Contains(*(impacts.back()), sp)) {
+                impacts.push_back(std::make_shared<SliceProfile>(sp));
             }
         }
 
         void AddControl(SliceProfile& sp) {
-            if (controls.size() == 0 || !Contains(*(controls.back()), sp)) {
-                controls.push_back(&sp);
+            // dont add slice profiles that dont have a declaration
+            if (!sp.containsDeclaration) return;
+
+            if (controls.empty() || !Contains(*(controls.back()), sp)) {
+                controls.push_back(std::make_shared<SliceProfile>(sp));
             }
         }
 
         // check if the Impact Collection control contains impacts
         bool HasImpacts() { return !impacts.empty(); }
+        // check if the Impact Collection has any controls
+        bool HasControls() { return !controls.empty(); }
 
         // determine if a local variable line is contained in this conditionals line range
         bool IsOfInterest(int line) {
@@ -139,9 +147,9 @@ class ConditionalImpact {
         // start and end line range of conditional
         std::pair<int,int> conditionalRange;
         // list of references to slice profiles the conditional potentially impacts
-        std::vector<SliceProfile*> impacts;
+        std::vector<std::shared_ptr<SliceProfile>> impacts;
         // list of control slices
-        std::vector<SliceProfile*> controls;
+        std::vector<std::shared_ptr<SliceProfile>> controls;
 };
 
 #endif

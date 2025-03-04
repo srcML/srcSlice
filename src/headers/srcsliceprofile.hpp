@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <memory>
 
 class SliceProfile {
 public:
@@ -63,7 +64,7 @@ public:
     bool conditionalUsesInserted = false;
     bool conditionalDefsInserted = false;
 
-    std::vector<SliceProfile*> impacts;
+    std::vector<std::shared_ptr<SliceProfile>> impacts;
 
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;

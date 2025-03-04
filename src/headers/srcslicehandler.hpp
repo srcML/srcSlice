@@ -37,9 +37,9 @@ public:
         // Handles Collecting Control-Edges
         ComputeControlPaths();
 
-        ComputeInterprocedural();
-
         ShowImpacts();
+
+        ComputeInterprocedural();
     }
 
     // Use string srcml buffer ctor of srcSAXController
@@ -51,6 +51,10 @@ public:
         
         // Handles Collecting Control-Edges
         ComputeControlPaths();
+
+        // Try to connect impacts before computing interprocedural
+        // so we can pair impacts from pass-by-ref
+        ShowImpacts();
 
         ComputeInterprocedural();
     }
@@ -1390,8 +1394,18 @@ public:
             auto spi = profileMap.find(lhsName);
             if (spi != profileMap.end()) {
                 SliceProfile& sp = spi->second.back();
-                conditionalImpacts.back().AddControl(sp);
+                if (sp.containsDeclaration) {
+                    // std::cerr << "[*] Adding Control -> " << sp.variableName << "-" << sp.lineNumber << " | " << conditionalExpr->lineNumber << std::endl;
+                    conditionalImpacts.back().AddControl(sp);
+                }
             }
+        }
+
+        // if we create a new impact but for some reason never populate it with
+        // a control, discard the emplaced impact collection
+        if (!conditionalImpacts.back().HasControls()) {
+            // std::cerr << "[*] Removed Empty Impact Collection. . ." << std::endl;
+            conditionalImpacts.pop_back();
         }
     }
 
@@ -1418,11 +1432,12 @@ public:
                         // std::cerr << "[*] Searching for -> " << localVarName << std::endl;
                         if (spi != profileMap.end()) {
                             SliceProfile& isp = spi->second.back();
-                            // std::cerr << "[*] " << localVarName << " | " << lineNumber << std::endl;
-                            impactData.AddImpact(isp);
+                            if (isp.containsDeclaration) {
+                                // std::cerr << "[*] Adding Impact -> " << isp.variableName << "-" << isp.lineNumber << " | ("
+                                // << impactData.conditionalRange.first << "," << impactData.conditionalRange.second << ")" << std::endl;
+                                impactData.AddImpact(isp);
+                            }
                         }
-    
-                        // break; // no longer need to find the impact data of interest
                     }
                 }
             }
@@ -1439,11 +1454,11 @@ public:
             
         //     // print controls and potential impacts
         //     for (const auto& controls : impactData.controls) {
-        //         std::cout << controls->variableName << ", ";
+        //         std::cout << controls->variableName << "-" << controls->lineNumber << ", ";
         //     }
         //     std::cout << ": { ";
         //     for (const auto& potentialImpacts : impactData.impacts) {
-        //         std::cout << potentialImpacts->variableName << ", ";
+        //         std::cout << potentialImpacts->variableName << "-" << potentialImpacts->lineNumber << ", ";
         //     }
         //     std::cout << "}" << std::endl;
         // }
@@ -1460,6 +1475,16 @@ public:
                         // if the impactData control contains the slice profile iterator
                         // we need to append impacts data into the slice profile's impacts attribute
                         if (impactData.Contains(sp)) {
+                            // std::cerr << "[*] Impact Containing (" << impactData.conditionalRange.first << ","
+                            // << impactData.conditionalRange.second << ") contains SP -> "
+                            // << sp.variableName <<"-" << sp.lineNumber << std::endl;
+
+                            // std::cout << "[*] " << sp.variableName << "-" << sp.lineNumber << " --> { ";
+                            // for (const auto& potentialImpacts : impactData.impacts) {
+                            //     std::cout << potentialImpacts->variableName << "-" << potentialImpacts->lineNumber << ", ";
+                            // }
+                            // std::cout << "}" << std::endl;
+
                             sp.impacts.insert(sp.impacts.end(), impactData.impacts.begin(), impactData.impacts.end());
                         }
                     }
@@ -1959,6 +1984,12 @@ public:
                                             profileMap.find(var.first)->second.back().definitions.insert(
                                                     sliceItr->definitions.begin(),
                                                     sliceItr->definitions.end());
+
+                                            // carry over the impacts from pass-by-reference
+                                            profileMap.find(var.first)->second.back().impacts.insert(
+                                                    profileMap.find(var.first)->second.back().impacts.end(),
+                                                    sliceItr->impacts.begin(),
+                                                    sliceItr->impacts.end());
                                         }
 
                                         // Parameter initial declaration def line is considered a use towards the argument
