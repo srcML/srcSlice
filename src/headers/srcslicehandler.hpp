@@ -38,6 +38,8 @@ public:
         ComputeControlPaths();
 
         ComputeInterprocedural();
+
+        ShowImpacts();
     }
 
     // Use string srcml buffer ctor of srcSAXController
@@ -404,7 +406,7 @@ public:
                     std::string rhsName = rhsVarData->GetNameOfIdentifier();
 
                     SliceProfile* sliceProfileExprItr = FetchSliceProfile(rhsName, rhsVarData, funcData, className, containingNamespaces);
-                    SliceProfile* sliceProfileLHSItr = FetchSliceProfile(lhsName, rhsVarData, funcData, className, containingNamespaces);
+                    SliceProfile* sliceProfileLHSItr = FetchSliceProfile(lhsName, varData, funcData, className, containingNamespaces);
 
                     //Just update definitions and uses if name already exists. Otherwise, add new name.
                     if (sliceProfileExprItr != nullptr) {
@@ -580,6 +582,9 @@ public:
 
                         if (exprStmts) {
                             exprStmts->push_back(ifData->condition->expr);
+
+                            // mark impact control slices by parsing the expresssion
+                            FindImpactControls(ifData->condition->expr, std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
                         }
 
                         // minimize duplicate entries
@@ -587,6 +592,10 @@ public:
                             ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
 
                         cntlBlocks.push_back(ifData->block);
+                        if (ifData->block) {
+                            // Attempt to mark down impacts in conditional blocks
+                            FindImpacts(ifData->block->expr_stmts);
+                        }
                     } else if (clause.type() == typeid(std::shared_ptr<ElseIfData>)) {
                         std::shared_ptr<ElseIfData> elseIfData = std::any_cast<std::shared_ptr<ElseIfData>>(clause);
 
@@ -1324,6 +1333,72 @@ public:
         return profileMap;
     }
 
+    // Attempt to find impacts within conditional controls
+    void FindImpactControls(std::shared_ptr<ExpressionData> conditionalExpr, std::pair<int,int> conditionalRange) {
+        std::vector<std::shared_ptr<VariableData>> varDataGroup;
+        varDataGroup = ParseExpr(*conditionalExpr, conditionalExpr->lineNumber);
+        conditionalImpacts.emplace_back(conditionalRange);
+
+        for (auto& varData : varDataGroup) {
+            std::string lhsName = varData->GetNameOfIdentifier();
+
+            // attempt to find the slice of the variable in the control
+            auto spi = profileMap.find(lhsName);
+            if (spi != profileMap.end()) {
+                SliceProfile& sp = spi->second.back();
+                conditionalImpacts.back().AddControl(sp);
+            }
+        }
+    }
+
+    // Attempt to find impacts within conditional bodies
+    void FindImpacts(std::vector<std::shared_ptr<ExpressionData>>& expressions) {
+        for (auto& conditionalExpr : expressions) {
+            std::vector<std::shared_ptr<VariableData>> varDataGroup;
+            int lineNumber = conditionalExpr->lineNumber;
+
+            varDataGroup = ParseExpr(*conditionalExpr, conditionalExpr->lineNumber);
+            for (auto& localVar : varDataGroup) {
+                for (auto& impactData : conditionalImpacts) {
+                    // std::cerr << std::boolalpha << "[*] Looking at impactData -> " << impactData.IsOfInterest(lineNumber) << std::endl;
+                    // find the impact data collection thats of interest based on lineNumber
+                    if (impactData.IsOfInterest(lineNumber)) {
+                        // find the SliceProfile of the variable we are impacting
+                        std::string localVarName = localVar->GetNameOfIdentifier();
+
+                        // attempt to find the slice of the variable in the control
+                        auto spi = profileMap.find(localVarName);
+                        // std::cerr << "[*] Searching for -> " << localVarName << std::endl;
+                        if (spi != profileMap.end()) {
+                            SliceProfile& isp = spi->second.back();
+                            // std::cerr << "[*] " << localVarName << " | " << lineNumber << std::endl;
+                            impactData.AddImpact(isp);
+                        }
+    
+                        break; // no longer need to find the impact data of interest
+                    }
+                }
+            }
+        }
+    }
+
+    void ShowImpacts() {
+        // iterate over the collected Conditional-Impacts
+        for (auto& impactData : conditionalImpacts) {
+            if (!impactData.HasImpacts()) continue;
+            
+            // print controls and potential impacts
+            for (const auto& controls : impactData.controls) {
+                std::cout << controls->variableName << " ";
+            }
+            std::cout << ": { ";
+            for (const auto& potentialImpacts : impactData.impacts) {
+                std::cout << potentialImpacts->variableName << " ";
+            }
+            std::cout << "}" << std::endl;
+        }
+    }
+
     // Component of function FindOtherPaths
     void ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines) {
         std::set<std::pair<int,int>> ifGroup;
@@ -1858,6 +1933,8 @@ private:
     std::vector<std::pair<int, int>> ifdata;
     std::vector<std::pair<int, int>> elseifdata;
     std::vector<std::pair<int, int>> elsedata;
+
+    std::vector<ConditionalImpact> conditionalImpacts;
 
     FunctionSignatureData funcSigCollection;
     bool verboseMode;

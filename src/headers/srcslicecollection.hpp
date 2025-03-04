@@ -91,4 +91,41 @@ struct FunctionSignatureData {
     std::unordered_map<std::string, std::vector<std::shared_ptr<FunctionData>>> functionSigMap;
 };
 
+class ConditionalImpact {
+    public:
+        ConditionalImpact(std::pair<int,int> cr): conditionalRange(cr) {};
+
+        // compare the left slice profile to a right slice profile
+        // and determine of they match
+        bool Contains(SliceProfile& lsp, SliceProfile& rsp) {
+            // compare the name and initial decl line number
+            return (lsp.variableName == rsp.variableName && lsp.lineNumber == rsp.lineNumber);
+        }
+
+        void AddImpact(SliceProfile& sp) {
+            if (impacts.size() == 0 || !Contains(*(impacts.back()), sp)) {
+                impacts.push_back(&sp);
+            }
+        }
+
+        void AddControl(SliceProfile& sp) {
+            if (controls.size() == 0 || !Contains(*(controls.back()), sp)) {
+                controls.push_back(&sp);
+            }
+        }
+
+        bool HasImpacts() { return !impacts.empty(); }
+
+        bool IsOfInterest(int line) {
+            return (line >= conditionalRange.first && line <= conditionalRange.second);
+        }
+        
+        // start and end line range of conditional
+        std::pair<int,int> conditionalRange;
+        // list of references to slice profiles the conditional potentially impacts
+        std::vector<SliceProfile*> impacts;
+        // list of control slices
+        std::vector<SliceProfile*> controls;
+};
+
 #endif
