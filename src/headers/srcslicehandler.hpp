@@ -1285,8 +1285,8 @@ public:
                 if (profile.containingNameSpaces != containingNameSpaces) continue;
 
                 // Check if the numbers collected are less than the lineNumber (init def line)
-                if (profile.lineNumber > *(vd->uses.begin())) continue;
-                if (*(vd->definitions.begin()) > profile.lineNumber) continue;
+                if (!(vd->uses.empty()) && *(vd->uses.begin()) < profile.lineNumber) continue;
+                if (!(vd->definitions.empty()) && *(vd->definitions.begin()) < profile.lineNumber) continue;
 
                 return &profile;
             }
