@@ -1684,14 +1684,29 @@ public:
                                                 auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
                                                 if (profileMap.find(param->name->ToString()) != profileMap.end() &&
                                                     profileMap.find(recursiveSpi->first) != profileMap.end()) {
-                                                    profileMap.find(param->name->ToString())->second.back().definitions.insert(
+                                                    // Uses and Defs need to reflect based on whether its pass by reference or pass by value
+                                                    if (!recursiveSpi->second.back().isReference && !recursiveSpi->second.back().isPointer) {
+                                                        // pass by value
+                                                        profileMap.find(param->name->ToString())->second.back().uses.insert(
                                                             recursiveSpi->second.back().definitions.begin(),
                                                             recursiveSpi->second.back().definitions.end()
-                                                    );
-                                                    profileMap.find(param->name->ToString())->second.back().uses.insert(
-                                                            recursiveSpi->second.back().uses.begin(),
-                                                            recursiveSpi->second.back().uses.end()
-                                                    );
+                                                        );
+                                                        profileMap.find(param->name->ToString())->second.back().uses.insert(
+                                                                recursiveSpi->second.back().uses.begin(),
+                                                                recursiveSpi->second.back().uses.end()
+                                                        );
+                                                    } else {
+                                                        // pass by reference
+                                                        profileMap.find(param->name->ToString())->second.back().definitions.insert(
+                                                            recursiveSpi->second.back().definitions.begin(),
+                                                            recursiveSpi->second.back().definitions.end()
+                                                        );
+                                                        profileMap.find(param->name->ToString())->second.back().uses.insert(
+                                                                recursiveSpi->second.back().uses.begin(),
+                                                                recursiveSpi->second.back().uses.end()
+                                                        );
+                                                    }
+
                                                     profileMap.find(param->name->ToString())->second.back().cfunctions.insert(
                                                             recursiveSpi->second.back().cfunctions.begin(),
                                                             recursiveSpi->second.back().cfunctions.end()
