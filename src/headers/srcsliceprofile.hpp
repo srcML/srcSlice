@@ -62,6 +62,7 @@ public:
     bool returnUsesInserted = false;
     bool conditionalUsesInserted = false;
     bool conditionalDefsInserted = false;
+    bool showControlEdges = false;
 
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;
@@ -124,16 +125,21 @@ public:
             else
                 out << def;
         }
-        out << "]," << std::endl;
 
-        out << "    \"controlEdges\":[";
-        for (auto edge : profile.controlEdges) {
-            if (edge != *(--profile.controlEdges.end()))
-                out << "[" << edge.first << "," << edge.second << "],";
-            else
-                out << "[" << edge.first << "," << edge.second << "]";
+        if (profile.showControlEdges) {
+            out << "]," << std::endl;
+
+            out << "    \"controlEdges\":[";
+            for (auto edge : profile.controlEdges) {
+                if (edge != *(--profile.controlEdges.end()))
+                    out << "[" << edge.first << "," << edge.second << "],";
+                else
+                    out << "[" << edge.first << "," << edge.second << "]";
+            }
+            out << "]" << std::endl;
+        } else {
+            out << "]" << std::endl;
         }
-        out << "]" << std::endl;
 
         return out;
     }

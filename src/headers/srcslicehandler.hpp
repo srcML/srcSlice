@@ -28,14 +28,14 @@ public:
     ~SrcSliceHandler() { };
 
     // Use literal string filename ctor of srcSAXController (srcslice cpp main)
-    SrcSliceHandler(const char* filename, bool v, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
-            : srcDispatch::PolicyDispatcher(listeners), verboseMode(v) {
+    SrcSliceHandler(const char* filename, bool v, bool ce, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
+            : srcDispatch::PolicyDispatcher(listeners), verboseMode(v), calculateControlEdges(ce) {
         srcSAXController control(filename);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
         
         // Handles Collecting Control-Edges
-        ComputeControlPaths();
+        if (calculateControlEdges) ComputeControlPaths();
 
         ComputeInterprocedural();
     }
@@ -210,6 +210,8 @@ public:
                     sliceProfile.containingNameSpaces = containingNamespaces;
                     sliceProfile.language = ctx.currentFileLanguage;
 
+                    sliceProfile.showControlEdges = calculateControlEdges;
+
                     sliceProfile.isPointer = isPointer;
                     sliceProfile.isReference = isReference;
 
@@ -222,6 +224,8 @@ public:
                 sliceProf.nameOfContainingClass = className;
                 sliceProf.containingNameSpaces = containingNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
+
+                sliceProf.showControlEdges = calculateControlEdges;
 
                 sliceProf.containsDeclaration = true;
 
@@ -326,6 +330,8 @@ public:
                         sliceProf.nameOfContainingClass = className;
                         sliceProf.containingNameSpaces = containingNamespaces;
                         sliceProf.language = ctx.currentFileLanguage;
+
+                        sliceProf.showControlEdges = calculateControlEdges;
 
                         auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
                                                                                             std::vector<SliceProfile>{
@@ -454,6 +460,8 @@ public:
                         sliceProfileExprItr2.first->second.back().nameOfContainingClass = className;
                         sliceProfileExprItr2.first->second.back().containingNameSpaces = containingNamespaces;
                         sliceProfileExprItr2.first->second.back().language = ctx.currentFileLanguage;
+
+                        sliceProfileExprItr2.first->second.back().showControlEdges = calculateControlEdges;
 
                         if (!StringContainsCharacters(lhsName)) continue;
 
@@ -1128,6 +1136,8 @@ public:
                 sliceProf.nameOfContainingClass = className;
                 sliceProf.containingNameSpaces = containingNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
+                
+                sliceProf.showControlEdges = calculateControlEdges;
 
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
@@ -1141,6 +1151,8 @@ public:
                 sliceProf.nameOfContainingClass = className;
                 sliceProf.containingNameSpaces = containingNamespaces;
                 sliceProf.language = ctx.currentFileLanguage;
+
+                sliceProf.showControlEdges = calculateControlEdges;
 
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
@@ -1468,11 +1480,6 @@ public:
     // we are not focusing on backwards-flows.
     void ComputeControlPaths() {
         for (std::pair<std::string, std::vector<SliceProfile>> var : profileMap) {
-            // std::vector<int> sLines;
-            // std::merge(var.second.back().definitions.begin(), var.second.back().definitions.end(),
-                       // var.second.back().uses.begin(), var.second.back().uses.end(),
-                       // std::inserter(sLines, sLines.begin()));
-
             // Collect the slice lines and put them in numerical order
             std::set<int> sLinesOrdered;
             sLinesOrdered.insert(var.second.back().definitions.begin(), var.second.back().definitions.end());
@@ -1860,7 +1867,7 @@ private:
     std::vector<std::pair<int, int>> elsedata;
 
     FunctionSignatureData funcSigCollection;
-    bool verboseMode;
+    bool verboseMode, calculateControlEdges;
 };
 
 
