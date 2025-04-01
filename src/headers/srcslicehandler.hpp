@@ -2,7 +2,6 @@
 #define SRCSLICEHANDLER
 
 #include <srcsliceprofile.hpp>
-#include <srcslicecollection.hpp>
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
@@ -497,13 +496,12 @@ public:
     }
 
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
-    void CreateSliceCallData(std::string functionName, int argIndex, int functionDefLine, SliceProfile& sliceProfile) {
-        auto sliceCallData = std::make_pair(
+    void CreateSliceCallData(std::string functionName, int argIndex, int functionDefLine, SliceProfile& sliceProfile, unsigned int functionCallLine) {
+        FunctionCallData sliceCallData = FunctionCallData(
             functionName, // function call name
-            std::make_pair(
-                std::to_string(argIndex), // arg index starting from 1 to n
-                std::to_string(functionDefLine) // function definition line number
-            )
+            argIndex, // arg index starting from 1 to n
+            functionDefLine, // function definition line number
+            functionCallLine // line where the function call occurs
         );
 
         sliceProfile.cfunctions.insert(sliceCallData);
@@ -550,16 +548,16 @@ public:
 
                             if (pos < funcSig->second.size()) {
                                 unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
-                                CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back());
+                                CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back(), funcCallData->lineNumber);
                             } else {
                                 if (verboseMode)
                                     std::cout << "[-] Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
-                                CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back());
+                                CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->lineNumber);
                             }
                         } else {
                             if (verboseMode)
                                 std::cout << "[-] No Function Signature Found for -> " << simpleFunctionName << std::endl;
-                            CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back());
+                            CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->lineNumber);
                         }
                     }
                 }
@@ -1662,26 +1660,26 @@ public:
                 } else {
                     if (profileMap.find(param->name->ToString())->second.back().cfunctions.size() > 0) {
                         for (auto& cfunc : profileMap.find(param->name->ToString())->second.back().cfunctions) {
-                            if (cfunc.first.compare(func.first) != 0) {
-                                auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.first);
+                            if (cfunc.functionName == func.first) {
+                                auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.functionName);
                                 if (funcGroup != funcSigCollection.functionSigMap.end()) {
                                     size_t pos = 0;
                                     std::shared_ptr<FunctionData> func = funcGroup->second[pos];
 
                                     // Attempt to fingerprint the right signature based on function call definition line and called function
                                     // def line data
-                                    while (cfunc.second.second != std::to_string(funcGroup->second[pos]->lineNumber)) {
+                                    while (cfunc.functionDefinition != funcGroup->second[pos]->lineNumber) {
                                         if (++pos >= funcGroup->second.size()) break;
                                     }
 
-                                    if (cfunc.first.compare(func->name->ToString()) == 0 && visit_func.find(cfunc.first) == visit_func.end()) {
-                                        visit_func.insert(cfunc.first);
+                                    if (cfunc.functionName == func->name->ToString() && visit_func.find(cfunc.functionName) == visit_func.end()) {
+                                        visit_func.insert(cfunc.functionName);
                                         // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                                        if (cfunc.first.compare(func->name->ToString()) == 0 && func->parameters.size() > 0 &&
-                                            std::atoi(cfunc.second.first.c_str()) - 1 < func->parameters.size()) {
-                                            if (func->parameters[std::atoi(cfunc.second.first.c_str()) - 1]->name != nullptr) {
+                                        if (cfunc.functionName == func->name->ToString() && func->parameters.size() > 0 &&
+                                        cfunc.parameterIndex < func->parameters.size()) {
+                                            if (func->parameters[cfunc.parameterIndex]->name != nullptr) {
                                                 // Only run this section if the parameter name can be extracted
-                                                auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visit_func);
+                                                auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.functionName, func), cfunc.parameterIndex - 1, visit_func);
                                                 if (profileMap.find(param->name->ToString()) != profileMap.end() &&
                                                     profileMap.find(recursiveSpi->first) != profileMap.end()) {
                                                     // Uses and Defs need to reflect based on whether its pass by reference or pass by value
@@ -1767,7 +1765,7 @@ public:
             if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {
                     for (auto& cfunc : var.second.back().cfunctions) {
-                        auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.first);
+                        auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.functionName);
 
                         if(funcGroup != funcSigCollection.functionSigMap.end()) {
                             size_t pos = 0;
@@ -1775,20 +1773,20 @@ public:
 
                             // Attempt to fingerprint the right signature based on function call definition line and called function
                             // def line data
-                            while (cfunc.second.second != std::to_string(funcGroup->second[pos]->lineNumber)) {
+                            while (cfunc.functionDefinition != funcGroup->second[pos]->lineNumber) {
                                 func = funcGroup->second[pos];
                                 if (++pos >= funcGroup->second.size()) break;
                             }
 
                             std::string simpleFunctionName = GetSimpleFunctionName(func->name->ToString());
+                            unsigned int ArgProfParam = cfunc.parameterIndex - 1;
 
                             // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                            if (cfunc.first.compare(simpleFunctionName) == 0 && func->parameters.size() > 0 &&
-                                std::atoi(cfunc.second.first.c_str()) - 1 < func->parameters.size() &&
-                                pos < funcGroup->second.size()) { //TODO fix for case: Overload
-                                if (func->parameters[std::atoi(cfunc.second.first.c_str()) - 1]->name != nullptr) {
+                            if (cfunc.functionName == simpleFunctionName && func->parameters.size() > 0 &&
+                                ArgProfParam < func->parameters.size() && pos < funcGroup->second.size()) { //TODO fix for case: Overload
+                                if (func->parameters[ArgProfParam]->name != nullptr) {
                                     // Only run this section if the parameter name can be extracted
-                                    auto Spi = ArgumentProfile(std::make_pair(cfunc.first, func), std::atoi(cfunc.second.first.c_str()) - 1, visited_func);
+                                    auto Spi = ArgumentProfile(std::make_pair(cfunc.functionName, func), ArgProfParam, visited_func);
                                     auto sliceItr = Spi->second.begin();
                                     std::string desiredVariableName = sliceItr->variableName;
 
@@ -1797,10 +1795,10 @@ public:
                                             if (sliceItr->variableName != desiredVariableName) {
                                                 continue;
                                             }
-                                            if (GetSimpleFunctionName(sliceItr->function) != cfunc.first) {
+                                            if (GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
                                                 continue;
                                             }
-                                            std::string parameterDeclLine = std::to_string(func->parameters[std::stoi(cfunc.second.first) - 1]->lineNumber);
+                                            std::string parameterDeclLine = std::to_string(func->parameters[ArgProfParam]->lineNumber);
                                             if (std::to_string(sliceItr->lineNumber) != parameterDeclLine) {
                                                 continue;
                                             }
@@ -1820,6 +1818,10 @@ public:
                                             profileMap.find(var.first)->second.back().definitions.insert(
                                                     sliceItr->definitions.begin(),
                                                     sliceItr->definitions.end());
+
+                                            // set the line where the function call occurs to show as a def instead of a use
+                                            profileMap.find(var.first)->second.back().uses.erase(cfunc.lineOfInvoke);
+                                            profileMap.find(var.first)->second.back().definitions.insert(cfunc.lineOfInvoke);
                                         }
 
                                         // Parameter initial declaration def line is considered a use towards the argument

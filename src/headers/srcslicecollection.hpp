@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <iostream>
 #include <fstream>
 #include <sstream>
 #include <FunctionPolicySingleEvent.hpp>
@@ -89,6 +90,54 @@ public:
 // like Slices in profileMap
 struct FunctionSignatureData {
     std::unordered_map<std::string, std::vector<std::shared_ptr<FunctionData>>> functionSigMap;
+};
+
+// Store meta-data about a function-call by tracking:
+// name of the function being called, line where the call is made, index of the parameter,
+// and the line where the function is potentially defined
+class FunctionCallData {
+public:
+    FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine):
+        functionName(funcName), parameterIndex(paramIndex), functionDefinition(funcDefLine), lineOfInvoke(invokeLine) {};
+
+    FunctionCallData(const FunctionCallData& rhs) {
+        functionName = rhs.functionName;
+        lineOfInvoke = rhs.lineOfInvoke;
+        parameterIndex = rhs.parameterIndex;
+        functionDefinition = rhs.functionDefinition;
+    };
+
+    bool operator==(const FunctionCallData& rhs) const {
+        if (functionName != rhs.functionName) return false;
+        if (lineOfInvoke != rhs.lineOfInvoke) return false;
+        if (parameterIndex != rhs.parameterIndex) return false;
+        if (functionDefinition != rhs.functionDefinition) return false;
+        return true;
+    }
+    bool operator!=(const FunctionCallData& rhs) const {
+        return !(*this == rhs);
+    }
+
+    bool operator<(const FunctionCallData& rhs) const {
+        if (functionName < rhs.functionName) return true;
+        if (lineOfInvoke < rhs.lineOfInvoke) return true;
+        if (parameterIndex < rhs.parameterIndex) return true;
+        if (functionDefinition < rhs.functionDefinition) return true;
+        return false;
+    }
+    bool operator>(const FunctionCallData& rhs) const {
+        return !(*this < rhs);
+    }
+
+    friend std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data) {
+        outStream << "[" << data.functionName << " | " << data.parameterIndex << " | " << data.functionDefinition << " | " << data.lineOfInvoke << "]";
+        return outStream;
+    }
+
+    std::string functionName;
+    unsigned int lineOfInvoke;
+    unsigned int parameterIndex;
+    unsigned int functionDefinition;
 };
 
 #endif

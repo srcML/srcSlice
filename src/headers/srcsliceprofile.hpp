@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <srcslicecollection.hpp> // contains FunctionCallData and other items
 
 class SliceProfile {
 public:
@@ -18,7 +19,7 @@ public:
     SliceProfile(
             std::string name, int line, bool alias = 0, bool global = 0,
             std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {},
-            std::set<std::pair<std::string, std::pair<std::string, std::string>>> cFunc = {},
+            std::set<FunctionCallData> cFunc = {},
             std::set<std::pair<std::string, unsigned int>> dv = {}, std::set<std::pair<int, int>> edges = {},
             bool containsDecl = false, bool visit = false) :
             variableName(name), lineNumber(line), potentialAlias(alias),
@@ -55,7 +56,7 @@ public:
     std::set<std::pair<std::string, unsigned int>> aliases;
     std::set<std::pair<int, int>> controlEdges;
 
-    std::set<std::pair<std::string, std::pair<std::string, std::string>>> cfunctions;
+    std::set<FunctionCallData> cfunctions;
 
     bool visited;
 
@@ -103,9 +104,9 @@ public:
         out << "    \"calls\":[";
         for (auto cfunc : profile.cfunctions) {
             if (cfunc != *(--profile.cfunctions.end()))
-                out << "{\"functionName\":\"" << cfunc.first << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"},";
+                out << "{\"functionName\":\"" << cfunc.functionName << "\",\"parameter\":\"" << cfunc.parameterIndex << "\",\"definitionLine\":\"" << cfunc.functionDefinition << "\"},";
             else
-                out << "{\"functionName\":\"" << cfunc.first << "\",\"parameter\":\"" << cfunc.second.first << "\",\"definitionLine\":\"" << cfunc.second.second << "\"}";
+                out << "{\"functionName\":\"" << cfunc.functionName << "\",\"parameter\":\"" << cfunc.parameterIndex << "\",\"definitionLine\":\"" << cfunc.functionDefinition << "\"}";
         }
         out << "]," << std::endl;
 
