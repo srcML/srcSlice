@@ -504,8 +504,6 @@ public:
             functionCallLine // line where the function call occurs
         );
 
-        std::cout << "[*] " << sliceProfile.variableName << " | " << sliceCallData << std::endl;
-
         sliceProfile.cfunctions.insert(sliceCallData);
     }
 
@@ -541,20 +539,58 @@ public:
                         // Get the collection of functions by name
                         auto funcSig = funcSigCollection.functionSigMap.find(simpleFunctionName);
                         if (funcSig != funcSigCollection.functionSigMap.end()) {
-                            size_t pos = 0;
-
-                            // Attempt to fingerprint the right signature based on function call parameter list size
-                            while (funcCallData->arguments.size() != funcSig->second[pos]->parameters.size()) {
-                                if (++pos >= funcSig->second.size()) break;
-                            }
-
-                            if (pos < funcSig->second.size()) {
-                                unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
+                            // if there is only one record of a function signature
+                            if (funcSig->second.size() == 1) {
+                                unsigned int funcLineDef = funcSig->second[0]->lineNumber;
                                 CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back(), funcCallData->lineNumber);
                             } else {
-                                if (verboseMode)
-                                    std::cout << "[-] Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
-                                CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->lineNumber);
+                                // if a function is overloaded
+                                size_t pos = 0;
+
+                                // If we have a signature with predefined parameters and another signature where the data-type
+                                // of the parameter differs, we need to check argc <= paramc AND dataType(arg[i]) == dataType(param[i])
+                                // we will have to derive the arg[i] to its corresponding slice, param[i] is a decldata so we can fetch its type
+                                for (pos; pos < funcSig->second.size(); ++pos) {
+                                    bool argumentInBounds = (argIndex-1 < funcSig->second[pos]->parameters.size());
+                                    if (!argumentInBounds) continue;
+
+                                    bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[pos]->parameters.size());
+                                    if (!validArgCount) continue;
+
+                                    std::string sliceDataType = sliceProfileItr->second.back().variableType;
+                                    std::string paramDataType = funcSig->second[pos]->parameters[argIndex-1]->type->ToString();
+                                    std::string filteredSliceDataType = "";
+                                    std::string filteredParamDataType = "";
+                                    
+                                    // For data-types like 'int *' or 'int &' only track everything before the space character from the type for comparison
+                                    filteredSliceDataType = sliceDataType.substr(0, sliceDataType.find(' '));
+                                    filteredParamDataType = paramDataType.substr(0, paramDataType.find(' '));
+
+                                    // For data-types like 'int*' only track everything before the astrisks character from the type for comparison
+                                    filteredSliceDataType = filteredSliceDataType.substr(0, filteredSliceDataType.find('*'));
+                                    filteredParamDataType = filteredParamDataType.substr(0, filteredParamDataType.find('*'));
+                                    // For data-types like 'int&' only track everything before the amp character from the type for comparison
+                                    filteredSliceDataType = filteredSliceDataType.substr(0, filteredSliceDataType.find('&'));
+                                    filteredParamDataType = filteredParamDataType.substr(0, filteredParamDataType.find('&'));
+
+                                    bool matchingTypes = (filteredParamDataType == filteredSliceDataType);
+                                    if (verboseMode) {
+                                        std::cerr << "[*] Parameter Filtered-Type -> " << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << std::endl;
+                                    }
+                                    if (!matchingTypes) continue;
+
+                                    // potentially valid function finger-print
+                                    break;
+                                }
+    
+                                if (pos < funcSig->second.size()) {
+                                    unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
+                                    CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back(), funcCallData->lineNumber);
+                                } else {
+                                    if (verboseMode)
+                                        std::cout << "[-] Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
+                                    CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->lineNumber);
+                                }
                             }
                         } else {
                             if (verboseMode)
