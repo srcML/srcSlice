@@ -36,11 +36,11 @@ std::string StringToSrcML(std::string str, const char* fileName){ // Function by
     return output;
 }
 
-std::string FetchSlices(const std::string cppSource, const char* fileName) {
+std::string FetchSlices(const std::string cppSource, const char* fileName, bool findControlEdges) {
     std::ostringstream output;
     std::string srcmlStr = StringToSrcML(cppSource, fileName);
 
-    SrcSliceHandler srcSliceHandler(srcmlStr);
+    SrcSliceHandler srcSliceHandler(srcmlStr, findControlEdges);
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap = srcSliceHandler.GetProfileMap();
 
     size_t totalElements = profileMap.size();

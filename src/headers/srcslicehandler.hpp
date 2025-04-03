@@ -40,14 +40,14 @@ public:
     }
 
     // Use string srcml buffer ctor of srcSAXController
-    SrcSliceHandler(const std::string& sourceCodeStr, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
-            : srcDispatch::PolicyDispatcher(listeners), verboseMode(false) {
+    SrcSliceHandler(const std::string& sourceCodeStr, bool ce, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
+            : srcDispatch::PolicyDispatcher(listeners), verboseMode(false), calculateControlEdges(ce) {
         srcSAXController control(sourceCodeStr);
         srcDispatch::srcDispatcherSingleEvent<UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
         
         // Handles Collecting Control-Edges
-        ComputeControlPaths();
+        if (calculateControlEdges) ComputeControlPaths();
 
         ComputeInterprocedural();
     }
@@ -503,6 +503,8 @@ public:
             functionDefLine, // function definition line number
             functionCallLine // line where the function call occurs
         );
+
+        std::cout << "[*] " << sliceProfile.variableName << " | " << sliceCallData << std::endl;
 
         sliceProfile.cfunctions.insert(sliceCallData);
     }
