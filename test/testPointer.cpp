@@ -9,7 +9,7 @@ TEST_CASE( "Pointer Test 1", "[srcslice]" ) {
                 "    std::string* strPtr;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "simplePointer.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simplePointer.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -41,7 +41,7 @@ TEST_CASE( "Pointer Test 2", "[srcslice]" ) {
                 "    strPtr = &key;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "simplePointerDef.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simplePointerDef.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -88,7 +88,7 @@ TEST_CASE( "Pointer Test 3", "[srcslice]" ) {
                 "    std::cout << *strPtr << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "simplePointerUse.cpp");
+    input = FetchSlices(sourceCode.c_str(), "simplePointerUse.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -137,7 +137,7 @@ TEST_CASE( "Pointer Test 4", "[srcslice]" ) {
                 "   updateValue(ptr1);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -204,7 +204,7 @@ TEST_CASE( "Pointer Test 5", "[srcslice]" ) {
                 "   swapPointers(ptr1, ptr2);\n" // 11
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -319,7 +319,7 @@ TEST_CASE( "Pointer Test 6", "[srcslice]" ) {
                 "   ptr = nullptr;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -351,7 +351,7 @@ TEST_CASE( "Pointer Test 7", "[srcslice]" ) {
                 "   }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -412,7 +412,7 @@ TEST_CASE( "Pointer Test 8", "[srcslice]" ) {
                 "   }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -478,7 +478,7 @@ TEST_CASE( "Pointer Test 9", "[srcslice]" ) {
                 "   }\n" // 10
                 "}"; // 11
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -567,7 +567,7 @@ TEST_CASE( "Pointer Test 10", "[srcslice]" ) {
                 "    delete[] matrix;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -630,7 +630,7 @@ TEST_CASE( "Pointer Test 11", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -720,7 +720,7 @@ TEST_CASE( "Pointer Test 12", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -806,7 +806,7 @@ TEST_CASE( "Pointer Test 13", "[srcslice]" ) {
                 "    (*ptr)++;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -836,7 +836,7 @@ TEST_CASE( "Pointer Test 14", "[srcslice]" ) {
                 "    --(*ptr);\n" // ParseExpr not passing the def-use property of prefix operators to a dereferenced ptr
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -866,7 +866,7 @@ TEST_CASE( "Pointer Test 15", "[srcslice]" ) {
                 "    (*ptr) += b;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -910,7 +910,7 @@ TEST_CASE( "Pointer Test 16", "[srcslice]" ) {
                 "    std::cin >> (*ptr);\n" // ParseExpr not passing the def property of >> operator to a dereferenced ptr
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -941,7 +941,7 @@ TEST_CASE( "Pointer Test 17", "[srcslice]" ) {
                 "    std::cout << *ptr << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -987,7 +987,7 @@ TEST_CASE( "Pointer Test 18", "[srcslice]" ) {
                 "    int** mptr = &ptr;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1048,7 +1048,7 @@ TEST_CASE( "Pointer Test 19", "[srcslice]" ) {
                 "    **mptr = 5;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1107,7 +1107,7 @@ TEST_CASE( "Pointer Test 20", "[srcslice]" ) {
                 "    std::cout << *ptr << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"

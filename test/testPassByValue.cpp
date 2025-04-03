@@ -8,7 +8,7 @@ TEST_CASE( "Pass-By-Value Test 1", "[srcslice]" ) {
     sourceCode = "int bar(int a) {\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -38,7 +38,7 @@ TEST_CASE( "Pass-By-Reference Test 2", "[srcslice]" ) {
                 "    a = 12;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -69,7 +69,7 @@ TEST_CASE( "Pass-By-Reference Test 3", "[srcslice]" ) {
                 "    std::cout << a << std::endl;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -98,7 +98,7 @@ TEST_CASE( "Pass-By-Reference Test 4", "[srcslice]" ) {
     sourceCode = "int bar(int a, int b) {\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -142,7 +142,7 @@ TEST_CASE( "Pass-By-Reference Test 5", "[srcslice]" ) {
                 "    b = 4;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -187,7 +187,7 @@ TEST_CASE( "Pass-By-Reference Test 6", "[srcslice]" ) {
                 "    std::cout << b << std::endl;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -233,7 +233,7 @@ TEST_CASE( "Pass-By-Reference Test 7", "[srcslice]" ) {
                 "    std::cout << b << std::endl;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -280,7 +280,7 @@ TEST_CASE( "Pass-By-Reference Test 8", "[srcslice]" ) {
                 "    std::cout << b << std::endl;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -329,7 +329,7 @@ TEST_CASE( "Pass-By-Reference Test 9", "[srcslice]" ) {
                 "    int r;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -392,7 +392,7 @@ TEST_CASE( "Pass-By-Reference Test 10", "[srcslice]" ) {
                 "    int r = a;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -455,7 +455,7 @@ TEST_CASE( "Pass-By-Reference Test 11", "[srcslice]" ) {
                 "    int r = a + b;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -519,7 +519,7 @@ TEST_CASE( "Pass-By-Reference Test 12", "[srcslice]" ) {
                 "    std::cout << r << std::endl;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -588,7 +588,7 @@ TEST_CASE( "Pass-By-Reference Test 13", "[srcslice]" ) {
                 "   bar(x,y);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -683,7 +683,7 @@ TEST_CASE( "Pass-By-Reference Test 14", "[srcslice]" ) {
                 "   }\n"
                 "};";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -749,7 +749,7 @@ TEST_CASE( "Pass-By-Reference Test 15", "[srcslice]" ) {
                 "   }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -810,7 +810,7 @@ TEST_CASE( "Pass-By-Reference Test 16", "[srcslice]" ) {
                 "    std::cout << \"Circle Area -> \" << area << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -881,7 +881,7 @@ TEST_CASE( "Pass-By-Reference Test 17", "[srcslice]" ) {
                 "   MyNameSpace::bar(x,y);\n" // 15
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -981,7 +981,7 @@ TEST_CASE( "Pass-By-Reference Test 18", "[srcslice]" ) {
                 "   MyNameSpace::bar(x,y);\n" // 16
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1091,7 +1091,7 @@ TEST_CASE( "Pass-By-Reference Test 19", "[srcslice]" ) {
                 "   }\n"
                 "};";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1165,7 +1165,7 @@ TEST_CASE( "Pass-By-Reference Test 20", "[srcslice]" ) {
                 "    std::cout << \"[*] Circumference -> \" << 2 * radius * PI << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1211,7 +1211,7 @@ TEST_CASE( "Pass-By-Reference Test 21", "[srcslice]" ) {
                 "    std::cout << \"[*] Circumference -> \" << 2 * radius * PI << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"

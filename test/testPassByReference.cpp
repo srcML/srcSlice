@@ -8,7 +8,7 @@ TEST_CASE( "Pass-By-Reference Test 1", "[srcslice]" ) {
     sourceCode = "void foo(int& a) {\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -38,7 +38,7 @@ TEST_CASE( "Pass-By-Reference Test 2", "[srcslice]" ) {
                 "    std::cout << a << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -69,7 +69,7 @@ TEST_CASE( "Pass-By-Reference Test 3", "[srcslice]" ) {
                 "    a = 8;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -98,7 +98,7 @@ TEST_CASE( "Pass-By-Reference Test 4", "[srcslice]" ) {
     sourceCode = "void foo(int& a, int& b) {\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -142,7 +142,7 @@ TEST_CASE( "Pass-By-Reference Test 5", "[srcslice]" ) {
                 "    b = 24;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -187,7 +187,7 @@ TEST_CASE( "Pass-By-Reference Test 6", "[srcslice]" ) {
                 "    std::cout << b << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -233,7 +233,7 @@ TEST_CASE( "Pass-By-Reference Test 7", "[srcslice]" ) {
                 "    std::cout << b << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -280,7 +280,7 @@ TEST_CASE( "Pass-By-Reference Test 8", "[srcslice]" ) {
                 "    std::cout << b << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -334,7 +334,7 @@ TEST_CASE( "Pass-By-Reference Test 9", "[srcslice]" ) {
                 "    int r = a;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -397,7 +397,7 @@ TEST_CASE( "Pass-By-Reference Test 10", "[srcslice]" ) {
                 "    int r = a + b;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -461,7 +461,7 @@ TEST_CASE( "Pass-By-Reference Test 11", "[srcslice]" ) {
                 "    std::cout << r << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -518,7 +518,7 @@ TEST_CASE( "Pass-By-Reference Test 12", "[srcslice]" ) {
     sourceCode = "void swap(int& a, int& b) {\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -562,7 +562,7 @@ TEST_CASE( "Pass-By-Reference Test 13", "[srcslice]" ) {
                 "    int temp;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -620,7 +620,7 @@ TEST_CASE( "Pass-By-Reference Test 14", "[srcslice]" ) {
                 "    int temp = a;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -679,7 +679,7 @@ TEST_CASE( "Pass-By-Reference Test 15", "[srcslice]" ) {
                 "    a = b;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -739,7 +739,7 @@ TEST_CASE( "Pass-By-Reference Test 16", "[srcslice]" ) {
                 "    b = temp;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -801,7 +801,7 @@ TEST_CASE( "Pass-By-Reference Test 17", "[srcslice]" ) {
                 "int main() {\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -864,7 +864,7 @@ TEST_CASE( "Pass-By-Reference Test 18", "[srcslice]" ) {
                 "    int bsd = 24;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -942,7 +942,7 @@ TEST_CASE( "Pass-By-Reference Test 19", "[srcslice]" ) {
                 "    int ssd = 7;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1035,7 +1035,7 @@ TEST_CASE( "Pass-By-Reference Test 20", "[srcslice]" ) {
                 "    swap(bsd, ssd);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1130,7 +1130,7 @@ TEST_CASE( "Pass-By-Reference Test 21", "[srcslice]" ) {
                 "    swap(bsd, ssd);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1240,7 +1240,7 @@ TEST_CASE( "Pass-By-Reference Test 22", "[srcslice]" ) {
                 "    swap(bsd, ssd);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1351,7 +1351,7 @@ TEST_CASE( "Pass-By-Reference Test 23", "[srcslice]" ) {
                 "    swap(bsd, ssd);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1463,7 +1463,7 @@ TEST_CASE( "Pass-By-Reference Test 24", "[srcslice]" ) {
                 "    swap(bsd, ssd);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1574,7 +1574,7 @@ TEST_CASE( "Pass-By-Reference Test 25", "[srcslice]" ) {
                 "    swap(bsd, ssd);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -1686,7 +1686,7 @@ TEST_CASE( "Pass-By-Reference Test 26", "[srcslice]" ) {
                 "    swap(bsd, ssd);\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"

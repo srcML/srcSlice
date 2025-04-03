@@ -8,7 +8,7 @@ TEST_CASE( "Const-Reference Test 1", "[srcslice]" ) {
     sourceCode = "int AddFive(const int& num) {\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -38,7 +38,7 @@ TEST_CASE( "Const-Reference Test 2", "[srcslice]" ) {
                 "    return num + 5;"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -67,7 +67,7 @@ TEST_CASE( "Const-Reference Test 3", "[srcslice]" ) {
     sourceCode = "std::string Concat(const std::string& left, const std::string& right) {\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -111,7 +111,7 @@ TEST_CASE( "Const-Reference Test 4", "[srcslice]" ) {
                 "    return left + right;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -156,7 +156,7 @@ TEST_CASE( "Const-Reference Test 5", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -202,7 +202,7 @@ TEST_CASE( "Const-Reference Test 6", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -248,7 +248,7 @@ TEST_CASE( "Const-Reference Test 7", "[srcslice]" ) {
                 "    }\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -295,7 +295,7 @@ TEST_CASE( "Const-Reference Test 8", "[srcslice]" ) {
                 "    std::cout << rdx + rdp << std::endl;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -346,7 +346,7 @@ TEST_CASE( "Const-Reference Test 9", "[srcslice]" ) {
                 "    int bsp = 3;\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -426,7 +426,7 @@ TEST_CASE( "Const-Reference Test 10", "[srcslice]" ) {
                 "    jar(reg, bsp);\n"
                 "}\n";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"

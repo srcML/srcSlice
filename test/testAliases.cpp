@@ -10,7 +10,7 @@ TEST_CASE( "Aliases Test 1", "[srcslice]" ) {
                 "    int* x = &a;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -57,7 +57,7 @@ TEST_CASE( "Aliases Test 2", "[srcslice]" ) {
                 "    x = &b;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -119,7 +119,7 @@ TEST_CASE( "Aliases Test 3", "[srcslice]" ) {
                 "    int* y = x;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -193,7 +193,7 @@ TEST_CASE( "Aliases Test 4", "[srcslice]" ) {
                 "    int** p = &x;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -252,7 +252,7 @@ TEST_CASE( "Aliases Test 5", "[srcslice]" ) {
                 "    int** p = &x;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -310,7 +310,7 @@ TEST_CASE( "Aliases Test 6", "[srcslice]" ) {
                 "    int* x = &a;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -354,7 +354,7 @@ TEST_CASE( "Aliases Test 7", "[srcslice]" ) {
                 "    int* ptr2 = ptr;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
@@ -398,7 +398,7 @@ TEST_CASE( "Aliases Test 8", "[srcslice]" ) {
                 "    int* ptr = &num;\n"
                 "}";
 
-    input = FetchSlices(sourceCode.c_str(), "file.cpp");
+    input = FetchSlices(sourceCode.c_str(), "file.cpp", false);
 
     output = "{\n"
             "\"slice_0\":{\n"
