@@ -713,7 +713,13 @@ public:
                 }
 
                 if (exprStmts) {
-                    exprStmts->push_back(forData->control->condition->expr);
+                    if (forData->control->condition) {
+                        exprStmts->push_back(forData->control->condition->expr);
+                    }
+
+                    for (auto& incrExpr : forData->control->incr) {
+                        exprStmts->push_back(incrExpr);
+                    }
                 }
 
                 loopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
