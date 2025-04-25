@@ -25,7 +25,7 @@ int main(int argc, char **argv)
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
         size_t totalElements = sliceProfileMap.size();
-        size_t currIndex = 0;
+        size_t currIndex = -1;
         std::ostringstream sliceOutput;
 
         if (!outputFile.empty()) {
@@ -68,7 +68,7 @@ int main(int argc, char **argv)
                     if (currIndex != totalElements)
                         sliceOutput << "}," << std::endl;
                     else
-                        sliceOutput << "}" << std::endl;
+                        sliceOutput << "}___" << std::endl;
                 }
             }
         }
