@@ -1815,11 +1815,14 @@ public:
                             size_t pos = 0;
                             std::shared_ptr<FunctionData> func = funcGroup->second[pos];
 
-                            // Attempt to fingerprint the right signature based on function call definition line and called function
+                            // Attempt to fingerprint the right signature based on
+                            // function call definition line and called function
                             // def line data
-                            while (cfunc.functionDefinition != funcGroup->second[pos]->lineNumber) {
-                                func = funcGroup->second[pos];
-                                if (++pos >= funcGroup->second.size()) break;
+                            for (pos = 0; pos < funcGroup->second.size(); ++pos) {
+                                if (cfunc.functionDefinition == funcGroup->second[pos]->lineNumber) {
+                                    func = funcGroup->second[pos];
+                                    break;
+                                }
                             }
 
                             std::string simpleFunctionName = GetSimpleFunctionName(func->name->ToString());
