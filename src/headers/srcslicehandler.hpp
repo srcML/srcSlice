@@ -35,6 +35,10 @@ public:
         
         // Handles Collecting Control-Edges
         if (calculateControlEdges) ComputeControlPaths();
+        
+        // populates Aliases attribute in slice profiles and
+        // performs crude interprocedural to connect use/def data
+        ComputeAliasInterprocedural();
 
         ComputeInterprocedural();
     }
@@ -510,6 +514,9 @@ public:
     void ProcessFunctionCall(std::shared_ptr<CallData> funcCallData) {
         std::string functionName = funcCallData->name->ToString();
 
+        // std::cerr << "[*] CALL-DATA --> " << *funcCallData << std::endl;
+        // std::cerr << " |____ ARGC --> " << funcCallData->arguments.size() << std::endl;
+
         int argIndex = 0;
         for (auto& arg : funcCallData->arguments) {
             ++argIndex;
@@ -517,6 +524,9 @@ public:
             // Extract the Variable Name from the expression contained within
             // the function call argument list index
             for (auto& exprElem : arg->expr) {
+                
+                // std::cerr << "      |____ CALL-DATA ELEM --> " << exprElem.type().name() << std::endl;
+
                 if (exprElem.type() == typeid(std::shared_ptr<NameData>)) {
                     std::shared_ptr<NameData> name = std::any_cast<std::shared_ptr<NameData>>(exprElem);
                     unsigned int argUseLineNumber = funcCallData->lineNumber;
@@ -598,6 +608,10 @@ public:
                             CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->lineNumber);
                         }
                     }
+                } else if (exprElem.type() == typeid(std::shared_ptr<CallData>)) {
+                    // std::cerr << "ARGUMENT IS A CALL-DATA" << std::endl;
+                    std::shared_ptr<CallData> nestedCallData = std::any_cast<std::shared_ptr<CallData>>(exprElem);
+                    ProcessFunctionCall(nestedCallData);
                 }
             }
         }
@@ -1780,10 +1794,73 @@ public:
         return Spi;
     }
 
+    // Need to track Aliases we have already read through
+    // InterProcedural from the normal call should also be reflected
+    // if a profile with alias(s) is used in function calls
+    void ComputeAliasInterprocedural() {
+	    std::unordered_set <std::string> visited_alias;
+
+	    for (auto& sliceGroup : profileMap) {
+            // expand list of potential targets (aliases)
+            for (auto& sp : sliceGroup.second) {
+                for (auto& alias : sp.aliases) {
+                    // view aliases of the slice profile
+                    auto spi = profileMap.find(alias.first);
+                    if (spi != profileMap.end()) {
+                        // fingerprint the profile based on contained use
+                        for (auto& aspi : spi->second) {
+                            auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
+                            if (usesItr != aspi.uses.end()) {
+                                // determine if the potential target is a pointer or reference
+                                if (aspi.isPointer || aspi.isReference) {
+                                    // push_back alias slice profile's aliases into the source slice aliases
+                                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
+
+                                    // Alias targets will inherit SOME of the cfunctions from their Alias representative
+                                    aspi.cfunctions.insert(sp.cfunctions.begin(), sp.cfunctions.end());
+
+                                    // check if the alias has been visited
+                                    if (visited_alias.find(aspi.variableName) == visited_alias.end()) {
+                                        // mark alias as visited so we dont review this alias entry again (circular dependence protection)
+                                        visited_alias.insert(aspi.variableName);
+
+                                        // logic is flawed concerning the differences between redefinition of the pointer
+                                        // and redefintion of the pointer reference (object pointer points-to)
+                                        for (auto& line : sp.uses) {
+                                            if (line >= *aspi.definitions.begin()) {
+                                                // std::cerr << "[*] Added Alias Uses:: " << line << " --> " << aspi.variableName << std::endl;
+                                                aspi.uses.insert(line);
+                                            }
+                                        }
+
+                                        for (auto& line : sp.definitions) {
+                                            if (line > *aspi.definitions.begin()) {
+                                                // std::cerr << "[*] Added Alias Defs:: " << line << " --> " << aspi.variableName << std::endl;
+                                                if (line != sp.lineNumber) {
+                                                    aspi.definitions.insert(line);
+                                                } else {
+                                                    // ensure the line where the aspi is defined that uses
+                                                    // sp is always marked as use of the sp
+                                                    aspi.uses.insert(line);
+                                                }
+                                            }
+                                        }
+                                    }
+                                }
+
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     void ComputeInterprocedural() {
 	    std::unordered_set <std::string> visited_func;
 
 	    for (auto& var : profileMap) {
+            /*
             // expand list of potential targets (aliases)
             for (auto& sp : var.second) {
                 for (auto& alias : sp.aliases) {
@@ -1791,7 +1868,7 @@ public:
                     auto spi = profileMap.find(alias.first);
                     if (spi != profileMap.end()) {
                         // fingerprint the profile based on contained use
-                        for (auto aspi : spi->second) {
+                        for (auto& aspi : spi->second) {
                             auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
                             if (usesItr != aspi.uses.end()) {
                                 // determine if the potential target is a pointer or reference
@@ -1804,6 +1881,7 @@ public:
                     }
                 }
             }
+            */
 
             // Need to watch the Slices we attempt to dig into because we are collecting slices we have no interest in
             if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
