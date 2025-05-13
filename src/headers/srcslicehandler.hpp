@@ -295,9 +295,11 @@ public:
                                     // Check for pointer-2-pointer assignment or points-to-address assignment
                                     if (initRHS->isPointer || varData->isAddrOf) {
                                         sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                                        sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
                                     }
                                 } else if (sliceProfileItr->second.back().isReference) {
                                     sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                                    sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
                                 }
                             }
                         }
@@ -437,6 +439,7 @@ public:
                                 if ( lhsName != sliceProfileExprItr->variableName ) {
                                     if (sliceProfileLHSItr->isPointer) {
                                         sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                                        sliceProfileLHSItr->currentPointerReference = rhsName;
                                     }
                                 }
                                 continue;
@@ -477,6 +480,7 @@ public:
                                             // Check for pointer-2-pointer assignment or points-to-address assignment
                                             if (sliceProfileExprItr->isPointer || rhsVarData->isAddrOf) {
                                                 sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
+                                                sliceProfileLHSItr->currentPointerReference = rhsName;
                                             }
                                         }
                                     }
@@ -507,6 +511,16 @@ public:
             functionDefLine, // function definition line number
             functionCallLine // line where the function call occurs
         );
+
+        if (sliceProfile.aliases.size() > 0) {
+            // if this profile contains aliases we need to find the profile of the pointers
+            // current reference to append this cfunc data
+            auto aliasReferenceProfile = profileMap.find(sliceProfile.currentPointerReference);
+            if (aliasReferenceProfile != profileMap.end()) {
+                // Alias targets will inherit SOME of the cfunctions from their Alias representative
+                aliasReferenceProfile->second.back().cfunctions.insert(sliceCallData);
+            }
+        }
 
         sliceProfile.cfunctions.insert(sliceCallData);
     }
@@ -828,6 +842,31 @@ public:
         return varName;
     }
 
+    bool IsPointerDereferenced(std::shared_ptr<NameData>& varNameElem) {
+        std::string opStr;
+        bool nameFound = false;
+
+        for(const std::any& name_element : varNameElem->names) {
+            if(name_element.type() == typeid(std::shared_ptr<NameData>)) {
+                // *ptr | ptr->
+                if (opStr == "*" || opStr == "->") {
+                    return true;
+                }
+
+                // we do not need to iterate all the name_elements
+                if (!nameFound) {
+                    nameFound = true;
+                } else {
+                    // ptr->data | we are focusing on ptr (first var name) and whether it gets dereferenced
+                    return false;
+                }
+            } else {
+                opStr = std::any_cast<std::shared_ptr<OperatorData>>(name_element)->op;
+            }
+        }
+        return false;
+    }
+
     // Attempt to Recursively dig into potential nested indices in a RHS to form dependency relations with a LHS variable
     void AppendIndices(std::shared_ptr<VariableData>& lhs, std::shared_ptr<VariableData>& varData) {
         for (auto& rhs : varData->rhsElems) {
@@ -859,6 +898,7 @@ public:
 
                 if (!lhsVar->isInitialized()) {
                     lhsVar->InitializeLHS(varName, lineNumber);
+                    lhsVar->uses.insert(lineNumber); // any variable in an expression is a use of said variable
 
                     // capture use-def chains for single statements such as: ++i
                     if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
@@ -877,6 +917,10 @@ public:
                                 lhsVar->uses.erase(lineNumber);
                             }
                         }
+                    }
+
+                    if (IsPointerDereferenced(name)) {
+                        lhsVar->dereferenced = true;
                     }
 
                     if (expr_op == ">>" || trailingExtraction) {
@@ -925,6 +969,10 @@ public:
                         if (spi != profileMap.end() && spi->second.back().isPointer) {
                             newRHSVar->dereferenced = true;
                         }
+                    }
+
+                    if (IsPointerDereferenced(name)) {
+                        newRHSVar->dereferenced = true;
                     }
 
                     lhsVar->lhs = true;
@@ -1342,8 +1390,44 @@ public:
         if (sliceProfileItr != profileMap.end()) {
             sliceProfileItr->second.back().uses.insert(varData->uses.begin(),
                                                        varData->uses.end());
-            sliceProfileItr->second.back().definitions.insert(varData->definitions.begin(),
-                                                              varData->definitions.end());
+
+            if (varData->dereferenced) {
+                auto aliasReferenceItr = profileMap.find(sliceProfileItr->second.back().currentPointerReference);
+
+                // Uses of the alias are uses of its reference
+                if (aliasReferenceItr != profileMap.end()) {
+                    // find the slice profile of the alias reference if one exists
+                    aliasReferenceItr->second.back().definitions.insert(varData->definitions.begin(),
+                                                                    varData->definitions.end());
+
+                    /*
+                    If in an expression an alias is dereferenced the alias's current reference
+                    is being used if there are no redefinitions occuring.
+
+                    If in an expression the alias appears in the lhs and rhs of an expression
+                    where a variable is redefined this is a use-def chain.
+                    */
+                    bool lhsIsInRhs = false;
+                    for (const auto& rhsElem : varData->rhsElems) {
+                        if (rhsElem->GetNameOfIdentifier() == varData->GetNameOfIdentifier()) {
+                            lhsIsInRhs = true;
+                            break;
+                        }
+                    }
+                    /*
+                        cout << *ptr << endl; // use only
+                        ptr->x = 23 // def only (state change of reference)
+                        ptr->x = ptr->y + z; // def-use chain
+                    */
+                    if (lhsIsInRhs || varData->definitions.size() == 0) {
+                        aliasReferenceItr->second.back().uses.insert(varData->uses.begin(),
+                                                       varData->uses.end());
+                    }
+                }
+            } else {
+                sliceProfileItr->second.back().definitions.insert(varData->definitions.begin(),
+                                                                varData->definitions.end());
+            }
         } else {
             if (verboseMode)
                 std::cout << "[*] There is no Slice of --> '" << varData->GetNameOfIdentifier() << "'" << std::endl;
@@ -1813,41 +1897,15 @@ public:
                             if (usesItr != aspi.uses.end()) {
                                 // determine if the potential target is a pointer or reference
                                 if (aspi.isPointer || aspi.isReference) {
-                                    // push_back alias slice profile's aliases into the source slice aliases
-                                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
-
-                                    // Alias targets will inherit SOME of the cfunctions from their Alias representative
-                                    aspi.cfunctions.insert(sp.cfunctions.begin(), sp.cfunctions.end());
-
                                     // check if the alias has been visited
                                     if (visited_alias.find(aspi.variableName) == visited_alias.end()) {
                                         // mark alias as visited so we dont review this alias entry again (circular dependence protection)
                                         visited_alias.insert(aspi.variableName);
 
-                                        // logic is flawed concerning the differences between redefinition of the pointer
-                                        // and redefintion of the pointer reference (object pointer points-to)
-                                        for (auto& line : sp.uses) {
-                                            if (line >= *aspi.definitions.begin()) {
-                                                // std::cerr << "[*] Added Alias Uses:: " << line << " --> " << aspi.variableName << std::endl;
-                                                aspi.uses.insert(line);
-                                            }
-                                        }
-
-                                        for (auto& line : sp.definitions) {
-                                            if (line > *aspi.definitions.begin()) {
-                                                // std::cerr << "[*] Added Alias Defs:: " << line << " --> " << aspi.variableName << std::endl;
-                                                if (line != sp.lineNumber) {
-                                                    aspi.definitions.insert(line);
-                                                } else {
-                                                    // ensure the line where the aspi is defined that uses
-                                                    // sp is always marked as use of the sp
-                                                    aspi.uses.insert(line);
-                                                }
-                                            }
-                                        }
+                                        // push_back alias slice profile's aliases into the source slice aliases
+                                        sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
                                     }
                                 }
-
                             }
                         }
                     }
@@ -1860,29 +1918,6 @@ public:
 	    std::unordered_set <std::string> visited_func;
 
 	    for (auto& var : profileMap) {
-            /*
-            // expand list of potential targets (aliases)
-            for (auto& sp : var.second) {
-                for (auto& alias : sp.aliases) {
-                    // Find the slice profile of the alias marked
-                    auto spi = profileMap.find(alias.first);
-                    if (spi != profileMap.end()) {
-                        // fingerprint the profile based on contained use
-                        for (auto& aspi : spi->second) {
-                            auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
-                            if (usesItr != aspi.uses.end()) {
-                                // determine if the potential target is a pointer or reference
-                                if (aspi.isPointer || aspi.isReference) {
-                                    // push_back alias slice profile's aliases into the source slice aliases
-                                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
-                                }
-                            }
-                        }
-                    }
-                }
-            }
-            */
-
             // Need to watch the Slices we attempt to dig into because we are collecting slices we have no interest in
             if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
                 if (!var.second.back().cfunctions.empty()) {

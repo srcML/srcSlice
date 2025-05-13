@@ -65,6 +65,8 @@ public:
     bool conditionalDefsInserted = false;
     bool showControlEdges = false;
 
+    std::string currentPointerReference;
+
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;
         out << "    \"language\":\"" << profile.language << "\"," << std::endl;
