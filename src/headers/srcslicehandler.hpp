@@ -171,6 +171,7 @@ public:
             // Collect pieces about the newly declared variable to use later when adding it into
             // our profileMap
             std::string declVarName = localVar->name->ToString();
+            declVarName = declVarName.substr(0, declVarName.find('[')); // remove index operator characters from variable names
             std::string declVarType = "";
 
             bool isPointer = false;
@@ -194,8 +195,9 @@ public:
                     declVarType = declVarType.substr(declVarType.find(' ')+1);
 
                     // attempt to mark raw-arrays for alias processing later
-                    if (localVar->name->indices.size() > 0) {
+                    if (localVar->name->indices && localVar->name->indices->size() > 0) {
                         isArray = true;
+                        declVarType += "[]";
                     }
                 } /* else if (type.second == TypeData::RVALUE) {
                 } else if (type.second == TypeData::SPECIFIER) {
@@ -409,8 +411,8 @@ public:
             for (const auto& data : expr->expr) {
                 if (data.type() == typeid(std::shared_ptr<NameData>)) {
                     std::shared_ptr<NameData> nameData = std::any_cast<std::shared_ptr<NameData>>(data);
-                    if (!nameData->indices.empty()) {
-                        itr = exprStmts.insert(itr+1, nameData->indices.begin(), nameData->indices.end()); // set to iterator of newly inserted data
+                    if (nameData->indices && !nameData->indices->empty()) {
+                        itr = exprStmts.insert(itr+1, nameData->indices->begin(), nameData->indices->end()); // set to iterator of newly inserted data
                         --itr;
                     }
                 }
@@ -944,10 +946,10 @@ public:
                         trailingExtraction = false;
                     }
 
-                    if (!name->indices.empty()) {
+                    if (name->indices && !name->indices->empty()) {
                         // Extract the expression within the index operator and push all
                         // of the variable names as rhs of the lhs
-                        for (const auto& indexExpr : name->indices) {
+                        for (const auto& indexExpr : *(name->indices)) {
                             for (const auto& indexElem : indexExpr->expr) {
                                 if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
                                     // Create the new index data reference
@@ -998,10 +1000,11 @@ public:
                     for (auto& lhs : lhsStack)
                         lhs->AddRHS(newRHSVar);
 
-                    if (!name->indices.empty()) {
+                    // Ensure the std::optional has a value before moving forward
+                    if (name->indices && !name->indices->empty()) {
                         // Extract the expression within the index operator and push all
                         // of the variable names as rhs of the lhs
-                        for (const auto& indexExpr : name->indices) {
+                        for (const auto& indexExpr : *(name->indices)) {
                             for (const auto& indexElem : indexExpr->expr) {
                                 if (indexElem.type() == typeid(std::shared_ptr<NameData>)) {
                                     // Create the new index data reference
@@ -1188,6 +1191,7 @@ public:
         for (auto& parameter : parameters) {
             if (!parameter->name) continue;
             std::string paramName = parameter->name->ToString();
+            paramName = paramName.substr(0, paramName.find('[')); // remove index operator from name of parameter
 
             // the Type string also includes the symbols along with data-type name
             // so this needs to be parsed out of the ToString() output
@@ -1213,8 +1217,9 @@ public:
                     paramType = paramType.substr(paramType.find(' ')+1);
 
                     // attempt to mark raw-arrays for alias processing later
-                    if (parameter->name->indices.size() > 0) {
+                    if (parameter->name->indices && parameter->name->indices->size() > 0) {
                         isArray = true;
+                        paramType += "[]";
                     }
                 } /* else if (type.second == TypeData::RVALUE) {
                 } else if (type.second == TypeData::SPECIFIER) {
