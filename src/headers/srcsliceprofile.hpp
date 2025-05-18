@@ -66,6 +66,7 @@ public:
     bool showControlEdges = false;
 
     std::string currentPointerReference;
+    bool isPotentialArray = false;
 
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"file\":\"" << profile.file << "\"," << std::endl;

@@ -175,6 +175,7 @@ public:
 
             bool isPointer = false;
             bool isReference = false;
+            bool isArray = false;
 
             // Extract just the Data-Type name without extra data
             for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
@@ -186,16 +187,19 @@ public:
                 } else if (type.second == TypeData::REFERENCE) {
                     isReference = true;
                     declVarType += "&";
-                } /* else if (type.second == TypeData::RVALUE) {
-                } else if (type.second == TypeData::SPECIFIER) {
                 } else if (type.second == TypeData::TYPENAME) {
-                } */
-
-                if (type.second == TypeData::TYPENAME) {
                     declVarType = std::any_cast<std::shared_ptr<NameData>>(type.first)->ToString();
+
                     // remove `std ` in `std string` if neccessary
                     declVarType = declVarType.substr(declVarType.find(' ')+1);
-                }
+
+                    // attempt to mark raw-arrays for alias processing later
+                    if (localVar->name->indices.size() > 0) {
+                        isArray = true;
+                    }
+                } /* else if (type.second == TypeData::RVALUE) {
+                } else if (type.second == TypeData::SPECIFIER) {
+                } */
             }
 
             auto sliceProfileItr = profileMap.find(declVarName);
@@ -217,6 +221,7 @@ public:
 
                     sliceProfile.isPointer = isPointer;
                     sliceProfile.isReference = isReference;
+                    sliceProfile.isPotentialArray = isArray;
 
                     sliceProfileItr->second.push_back(sliceProfile);
                     sliceProfileItr->second.back().containsDeclaration = true;
@@ -234,6 +239,7 @@ public:
 
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
+                sliceProf.isPotentialArray = isArray;
 
                 // point the iterator to the newly inserted profile element
                 sliceProfileItr = profileMap.insert(std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProf) })).first;
@@ -241,6 +247,7 @@ public:
 
             sliceProfileItr->second.back().isReference = isReference;
             sliceProfileItr->second.back().isPointer = isPointer;
+            sliceProfileItr->second.back().isPotentialArray = isArray;
 
             // This allows me to set the data type of the variable in its slice
             // after its been set up from the logic above here
@@ -295,11 +302,15 @@ public:
                                     // Check for pointer-2-pointer assignment or points-to-address assignment
                                     if (initRHS->isPointer || varData->isAddrOf) {
                                         sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
-                                        sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                                        if (!sliceProfileItr->second.back().isPotentialArray) {
+                                            sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                                        }
                                     }
                                 } else if (sliceProfileItr->second.back().isReference) {
                                     sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
-                                    sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                                    if (!sliceProfileItr->second.back().isPotentialArray) {
+                                        sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                                    }
                                 }
                             }
                         }
@@ -439,7 +450,9 @@ public:
                                 if ( lhsName != sliceProfileExprItr->variableName ) {
                                     if (sliceProfileLHSItr->isPointer) {
                                         sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
-                                        sliceProfileLHSItr->currentPointerReference = rhsName;
+                                        if (!sliceProfileLHSItr->isPotentialArray) {
+                                            sliceProfileLHSItr->currentPointerReference = rhsName;
+                                        }
                                     }
                                 }
                                 continue;
@@ -480,7 +493,9 @@ public:
                                             // Check for pointer-2-pointer assignment or points-to-address assignment
                                             if (sliceProfileExprItr->isPointer || rhsVarData->isAddrOf) {
                                                 sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
-                                                sliceProfileLHSItr->currentPointerReference = rhsName;
+                                                if (!sliceProfileLHSItr->isPotentialArray) {
+                                                    sliceProfileLHSItr->currentPointerReference = rhsName;
+                                                }
                                             }
                                         }
                                     }
@@ -1164,34 +1179,6 @@ public:
             }
         }
 
-        // if (!varDataGroup.empty()) {
-        //     std::cerr << "DEBUG PARSE EXPR OUTPUT" << std::endl;
-        //     std::cerr << expr << std::endl;
-        // }
-
-        // // Debug use/def marking
-        // for (const auto& v : varDataGroup) {
-        //     std::cerr << v->GetNameOfIdentifier() << " USE { ";
-        //     for (const auto& line : v->uses) {
-        //         std::cerr << line << " ";
-        //     }
-        //     std::cerr << " } " << std::endl;
-
-        //     std::cerr << " DEF { ";
-        //     for (const auto& line : v->definitions) {
-        //         std::cerr << line << " ";
-        //     }
-        //     std::cerr << " } " << std::endl;
-        // }
-        // Debug RHS elem assignment
-        // for (const auto& v : varDataGroup) {
-        //     std::cerr << v->GetNameOfIdentifier() << " { ";
-        //     for (const auto& r : v->rhsElems) {
-        //         std::cerr << r->GetNameOfIdentifier() << ", ";
-        //     }
-        //     std::cerr << " } " << std::endl;
-        // }
-
         return varDataGroup;
     }
 
@@ -1208,6 +1195,7 @@ public:
 
             bool isPointer = false;
             bool isReference = false;
+            bool isArray = false;
 
             for(std::size_t pos = 0; pos < parameter->type->types.size(); ++pos) {
                 const std::pair<std::any, TypeData::TypeType> & type = parameter->type->types[pos];
@@ -1217,16 +1205,20 @@ public:
                 } else if (type.second == TypeData::REFERENCE) {
                     isReference = true;
                     paramType += "&";
-                } /* else if (type.second == TypeData::RVALUE) {
-                } else if (type.second == TypeData::SPECIFIER) {
                 } else if (type.second == TypeData::TYPENAME) {
-                } */
+                    std::shared_ptr<NameData> nameData = std::any_cast<std::shared_ptr<NameData>>(type.first);
+                    paramType = nameData->ToString();
 
-                if (type.second == TypeData::TYPENAME) {
-                    paramType = std::any_cast<std::shared_ptr<NameData>>(type.first)->ToString();
                     // remove `std ` in `std string` if neccessary
                     paramType = paramType.substr(paramType.find(' ')+1);
-                }
+
+                    // attempt to mark raw-arrays for alias processing later
+                    if (parameter->name->indices.size() > 0) {
+                        isArray = true;
+                    }
+                } /* else if (type.second == TypeData::RVALUE) {
+                } else if (type.second == TypeData::SPECIFIER) {
+                } */
             }
 
             // Record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
@@ -1245,6 +1237,7 @@ public:
 
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
+                sliceProf.isPotentialArray = isArray;
 
                 sliceProfileItr->second.push_back(std::move(sliceProf));
             } else {
@@ -1260,6 +1253,7 @@ public:
 
                 sliceProf.isPointer = isPointer;
                 sliceProf.isReference = isReference;
+                sliceProf.isPotentialArray = isArray;
 
                 profileMap.insert(std::make_pair(paramName,
                                                   std::vector<SliceProfile>{std::move(sliceProf)}));
