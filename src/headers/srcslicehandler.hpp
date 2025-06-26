@@ -36,7 +36,6 @@ public:
         srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
         
-        /*
         // Handles Collecting Control-Edges
         if (calculateControlEdges) ComputeControlPaths();
         
@@ -45,7 +44,6 @@ public:
         ComputeAliasInterprocedural();
 
         ComputeInterprocedural();
-        */
     }
 
     // Use string srcml buffer ctor of srcSAXController
@@ -55,7 +53,6 @@ public:
         srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
         
-        /*
         // Handles Collecting Control-Edges
         if (calculateControlEdges) ComputeControlPaths();
         
@@ -64,7 +61,6 @@ public:
         ComputeAliasInterprocedural();
 
         ComputeInterprocedural();
-        */
     }
 
     std::vector<std::shared_ptr<srcDispatch::ClassData>> GetClassInfo() {
