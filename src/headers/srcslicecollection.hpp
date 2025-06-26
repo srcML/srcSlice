@@ -12,9 +12,10 @@
 #include <iostream>
 #include <fstream>
 #include <sstream>
-#include <FunctionPolicySingleEvent.hpp>
-#include <ClassPolicySingleEvent.hpp>
-#include <UnitPolicySingleEvent.hpp>
+
+#include <FunctionPolicy.hpp>
+#include <ClassPolicy.hpp>
+#include <UnitPolicy.hpp>
 
 class VariableData {
 public:
@@ -89,7 +90,7 @@ public:
 // Store Data about Function Signatures by grouping functions of the same name
 // like Slices in profileMap
 struct FunctionSignatureData {
-    std::unordered_map<std::string, std::vector<std::shared_ptr<FunctionData>>> functionSigMap;
+    std::unordered_map<std::string, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>> functionSigMap;
 };
 
 // Store meta-data about a function-call by tracking:
