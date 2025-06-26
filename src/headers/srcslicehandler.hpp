@@ -123,8 +123,8 @@ public:
         if (verboseMode) {
             std::cerr << "[*] Unit Collected" << std::endl;
         }
-        // unit = policy->Data<srcDispatch::UnitData>();
-        // ProcessUnit(ctx);
+        unit = policy->Data<srcDispatch::UnitData>();
+        ProcessUnit(ctx);
     }
 
     void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
