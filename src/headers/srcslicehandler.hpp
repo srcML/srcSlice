@@ -2,7 +2,6 @@
 #define SRCSLICEHANDLER
 
 #include <srcsliceprofile.hpp>
-#include <srcsliceprogress.hpp>
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
