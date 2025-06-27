@@ -5,7 +5,7 @@ int main(int argc, char **argv)
     // search for the output flag and set a marker
     std::string inputFile = "", outputFile = "";
     std::ofstream outFile;
-    bool debugMode = false, showControlEdges = false;
+    bool debugMode = false, feedbackMode = false, showControlEdges = false;
 
     CLI::App app{"srcSlice (srcML Slicing Tool)"};
     // Options hold extra data
@@ -16,11 +16,12 @@ int main(int argc, char **argv)
     app.add_option  ("-o, --output",  outputFile,            "Name of the JSON output file [Stdout is Default]")
         ->type_name("");
     app.add_flag    ("-v, --verbose", debugMode,             "Display Debug Info when Slicing");
+    app.add_flag    ("-p, --progress", feedbackMode,             "Display Feedback Progress Bars");
     
     CLI11_PARSE(app, argc, argv);
 
     try {
-        SrcSliceHandler srcSliceHandler(inputFile.c_str(), debugMode, showControlEdges);
+        SrcSliceHandler srcSliceHandler(inputFile.c_str(), debugMode, feedbackMode, showControlEdges);
 
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 

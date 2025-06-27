@@ -2,6 +2,7 @@
 #define SRCSLICEHANDLER
 
 #include <srcsliceprofile.hpp>
+#include <srcsliceprogress.hpp>
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
@@ -27,10 +28,36 @@ public:
     ~SrcSliceHandler(){};
 
     // Use literal string filename ctor of srcSAXController (srcslice cpp main)
-    SrcSliceHandler(const char* filename, bool v, bool ce) : verboseMode(v), calculateControlEdges(ce) {
+    SrcSliceHandler(const char* filename, bool v, bool p, bool ce) : verboseMode(v), calculateControlEdges(ce) {
         srcSAXController control(filename);
         srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
-        control.parse(&handler); // Start parsing
+        
+        // p -> progress display mode
+        if (p) {
+            // Save original buffers
+            auto* oldCoutBuf = std::cout.rdbuf();
+            auto* oldCerrBuf = std::cerr.rdbuf();
+
+            // Create custom buffers with callbacks
+            CallbackBuf cbOut(coutHandler);
+            CallbackBuf cbErr(cerrHandler);
+
+            // Redirect cout and cerr
+            std::cout.rdbuf(&cbOut);
+            std::cerr.rdbuf(&cbErr);
+            IdleBar idlebar; // used display how long the srcSAXController has been parsing
+
+            control.parse(&handler); // Start parsing
+
+            // Restore original buffers before exit
+            std::cout.rdbuf(oldCoutBuf);
+            std::cerr.rdbuf(oldCerrBuf);
+            idlebar.Finish();
+            idlebar.Status(); // used display how long the srcSAXController took parsing
+        } else {
+            control.parse(&handler); // Start parsing
+        }
+
         GenerateSlices();
     }
 
@@ -102,14 +129,10 @@ public:
     }
 
     void Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
-        if (verboseMode) {
-            std::cerr << "[*] " << __LINE__ << " | " << __FUNCTION__ << " : SRCSLICEHANDLER" << std::endl;
-        }
-
         std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
         if (unit) {
             if (verboseMode) {
-                std::cerr << "[*] Unit Collected" << std::endl;
+                std::cerr << "[*] Unit Captured!" << std::endl;
             }
             units.push_back(std::make_pair(SliceCtx(ctx), unit));
         }
