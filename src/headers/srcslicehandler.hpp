@@ -2,6 +2,7 @@
 #define SRCSLICEHANDLER
 
 #include <srcsliceprofile.hpp>
+#include <srcsliceprogress.hpp>
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
@@ -22,48 +23,27 @@
 #include <ClassPolicy.hpp>
 #include <UnitPolicy.hpp>
 
-class SrcSliceHandler
-        : public srcDispatch::EventListener,
-          public srcDispatch::PolicyDispatcher,
-          public srcDispatch::PolicyListener {
+class SrcSliceHandler : public srcDispatch::PolicyListener {
 public:
-    ~SrcSliceHandler() { };
+    ~SrcSliceHandler(){};
 
     // Use literal string filename ctor of srcSAXController (srcslice cpp main)
-    SrcSliceHandler(const char* filename, bool v, bool ce, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
-            : srcDispatch::PolicyDispatcher(listeners), verboseMode(v), calculateControlEdges(ce) {
+    SrcSliceHandler(const char* filename, bool v, bool ce) : verboseMode(v), calculateControlEdges(ce) {
         srcSAXController control(filename);
         srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
-        
-        // Handles Collecting Control-Edges
-        if (calculateControlEdges) ComputeControlPaths();
-        
-        // populates Aliases attribute in slice profiles and
-        // performs crude interprocedural to connect use/def data
-        ComputeAliasInterprocedural();
-
-        ComputeInterprocedural();
+        GenerateSlices();
     }
 
     // Use string srcml buffer ctor of srcSAXController
-    SrcSliceHandler(const std::string& sourceCodeStr, bool ce, std::initializer_list<srcDispatch::PolicyListener *> listeners = {})
-            : srcDispatch::PolicyDispatcher(listeners), verboseMode(false), calculateControlEdges(ce) {
+    SrcSliceHandler(const std::string& sourceCodeStr, bool ce) : verboseMode(false), calculateControlEdges(ce) {
         srcSAXController control(sourceCodeStr);
         srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
         control.parse(&handler); // Start parsing
-        
-        // Handles Collecting Control-Edges
-        if (calculateControlEdges) ComputeControlPaths();
-        
-        // populates Aliases attribute in slice profiles and
-        // performs crude interprocedural to connect use/def data
-        ComputeAliasInterprocedural();
-
-        ComputeInterprocedural();
+        GenerateSlices();
     }
 
-    std::vector<std::shared_ptr<srcDispatch::ClassData>> GetClassInfo() {
+    std::vector<std::shared_ptr<srcDispatch::ClassData>> GetClassInfo(std::shared_ptr<srcDispatch::UnitData>& unit) {
         std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>* deltaClasses = &(unit->classInfo);
 
         std::vector<std::shared_ptr<srcDispatch::ClassData>> classes;
@@ -76,7 +56,7 @@ public:
         return classes;
     }
 
-    std::vector<std::shared_ptr<srcDispatch::FunctionData>> GetFunctionInfo() {
+    std::vector<std::shared_ptr<srcDispatch::FunctionData>> GetFunctionInfo(std::shared_ptr<srcDispatch::UnitData>& unit) {
         std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>* deltaFunctions = &(unit->functionInfo);
 
         std::vector<std::shared_ptr<srcDispatch::FunctionData>> functions;
@@ -89,7 +69,7 @@ public:
         return functions;
     }
 
-    std::vector<std::shared_ptr<srcDispatch::DeclData>> GetDeclInfo() {
+    std::vector<std::shared_ptr<srcDispatch::DeclData>> GetDeclInfo(std::shared_ptr<srcDispatch::UnitData>& unit) {
         // make a reference to potential large vector
         std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclStmtData>>>* deltaDeclStmts = &(unit->declStmtInfo);
 
@@ -107,30 +87,39 @@ public:
         return decls;
     }
 
-    void ProcessUnit(const srcDispatch::srcSAXEventContext &ctx) {
-        // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
-        ProcessDeclStmts(nullptr, nullptr, nullptr, "", std::make_shared<std::vector<std::shared_ptr<srcDispatch::DeclData>>>(GetDeclInfo()), ctx);
-        
-        for (auto& classData : GetClassInfo()) {
-            ProcessClassData(classData, ctx);
-        }
-        for (auto& functionData : GetFunctionInfo()) {
-            ProcessFunctionData(functionData, "", functionData->namespaces, ctx);
+    void ProcessUnits() {
+        for (auto& unitPair : units) {
+            // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
+            ProcessDeclStmts(nullptr, nullptr, nullptr, "",
+                std::make_shared<std::vector<std::shared_ptr<srcDispatch::DeclData>>>(GetDeclInfo(unitPair.second)), unitPair.first);
+            
+            for (auto& classData : GetClassInfo(unitPair.second)) {
+                ProcessClassData(classData, unitPair.first);
+            }
+            for (auto& functionData : GetFunctionInfo(unitPair.second)) {
+                ProcessFunctionData(functionData, "", functionData->namespaces, unitPair.first);
+            }
         }
     }
 
-    void Notify(const PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
+    void Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override {
         if (verboseMode) {
-            std::cerr << "[*] Unit Collected" << std::endl;
+            std::cerr << "[*] " << __LINE__ << " | " << __FUNCTION__ << " : SRCSLICEHANDLER" << std::endl;
         }
-        unit = policy->Data<srcDispatch::UnitData>();
-        ProcessUnit(ctx);
+
+        std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
+        if (unit) {
+            if (verboseMode) {
+                std::cerr << "[*] Unit Collected" << std::endl;
+            }
+            units.push_back(std::make_pair(SliceCtx(ctx), unit));
+        }
     }
 
-    void NotifyWrite(const PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
+    void NotifyWrite(const srcDispatch::PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {}
 
     void ProcessFunctionData(std::shared_ptr<srcDispatch::FunctionData> function_data, std::string className,
-                            std::vector<std::string>& containingNamespaces, const srcDispatch::srcSAXEventContext& ctx) {
+                            std::vector<std::string>& containingNamespaces, const SliceCtx &ctx) {
         if (verboseMode) {
             std::cerr << "[*] " << __LINE__  << " Processing Function Name: " << function_data->name.ToString() << std::endl;
         }
@@ -140,7 +129,7 @@ public:
         ProcessExprStmts(function_data, function_data->block.GetElement(), className, ctx);
     }
 
-    void ProcessClassData(std::shared_ptr<srcDispatch::ClassData> class_data, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessClassData(std::shared_ptr<srcDispatch::ClassData> class_data, const SliceCtx &ctx) {
         if (class_data) {
             std::string className = "";
 
@@ -181,7 +170,7 @@ public:
 
     void ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData> funcData, std::shared_ptr<srcDispatch::BlockData> block, const std::shared_ptr<srcDispatch::ClassData> classData,
                             std::string className, std::shared_ptr<std::vector<std::shared_ptr<srcDispatch::DeclData>>> potentialGlobals,
-                            const srcDispatch::srcSAXEventContext& ctx) {
+                            const SliceCtx &ctx) {
         std::vector<std::shared_ptr<srcDispatch::DeclData>> localGroup;
         std::vector<std::string> containingNamespaces;
 
@@ -307,7 +296,7 @@ public:
             localGroup.insert(localGroup.end(), potentialGlobals->begin(), potentialGlobals->end());
 
             // capture containing namespaces for potential globals
-            containingNamespaces = ctx.currentNamespaces;
+            containingNamespaces = ctx.containingNamespaces;
         }
 
         // loop through all the expression statements within Decl Statements
@@ -530,7 +519,7 @@ public:
         }
     }
 
-    void ProcessInitLists(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::string className, const srcDispatch::srcSAXEventContext& ctx) {
+    void ProcessInitLists(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::string className, const SliceCtx &ctx) {
         if (!funcData) return;
 
         // process C++ initializer lists
@@ -581,7 +570,7 @@ public:
     }
 
     void ProcessExprStmts(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::shared_ptr<srcDispatch::BlockData> block,
-                            std::string className, const srcDispatch::srcSAXEventContext& ctx) {
+                            std::string className, const SliceCtx &ctx) {
         std::vector<std::shared_ptr<srcDispatch::ExpressionData>> exprStmts;
         std::vector<std::any> conditionals;
         std::vector<std::shared_ptr<srcDispatch::TryData>> tryBlocks;
@@ -666,7 +655,7 @@ public:
     }
 
     void UpdateSlices(std::vector<std::shared_ptr<VariableData>> varDataGroup, srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData,
-                        std::string className, const srcDispatch::srcSAXEventContext& ctx) {
+                        std::string className, const SliceCtx &ctx) {
         std::vector<std::string> containingNamespaces;
         if (funcData) containingNamespaces = funcData->namespaces;
 
@@ -901,7 +890,7 @@ public:
     // try blocks contain both exprs and decls, need to extract those decls and create slice profiles
     // for them, along with capturing expressions to update collected slices
     void CollectTryBlockData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
-                                std::string className, const srcDispatch::srcSAXEventContext& ctx) {
+                                std::string className, const SliceCtx &ctx) {
         for (auto& tryBlock : tryBlocks) {
             if (tryBlock->block) {
                 // Collect Decls and Exprs within the block of this Try-Block
@@ -1559,7 +1548,7 @@ public:
 
     void ProcessFunctionParameters(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters, const std::string& currentFunctionName,
                                     std::string className, std::vector<std::string>& containingNamespaces,
-                                    const srcDispatch::srcSAXEventContext& ctx) {
+                                    const SliceCtx &ctx) {
         for (auto& parameter : parameters) {
             if (!parameter->name) continue;
             std::string paramName = parameter->name.ToString();
@@ -1652,7 +1641,7 @@ public:
     }
 
     void ProcessFunctionSignature(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::string className, std::vector<std::string>& containingNamespaces,
-                                    const srcDispatch::srcSAXEventContext& ctx) {
+                                    const SliceCtx &ctx) {
         std::string functionName = funcData->name.ToString();
         
         if (functionName.empty()) return;
@@ -2392,12 +2381,21 @@ public:
         }
     }
 
-protected:
-    std::any DataInner() const override {
-        return (void *) 0; // export profile to listeners
+private:
+    void GenerateSlices() {
+        // after collecting all units we parse them
+        ProcessUnits();
+        
+        // Handles Collecting Control-Edges
+        if (calculateControlEdges) ComputeControlPaths();
+        
+        // populates Aliases attribute in slice profiles and
+        // performs crude interprocedural to connect use/def data
+        ComputeAliasInterprocedural();
+
+        ComputeInterprocedural();
     }
 
-private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
     std::vector<std::shared_ptr<srcDispatch::ClassData>> classInfo;
     std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> functionInfo;
@@ -2411,10 +2409,9 @@ private:
     std::vector<std::pair<int, int>> elseifdata;
     std::vector<std::pair<int, int>> elsedata;
 
-    std::shared_ptr<srcDispatch::UnitData> unit;
+    std::vector<std::pair<SliceCtx, std::shared_ptr<srcDispatch::UnitData>>> units;
     FunctionSignatureData funcSigCollection;
     bool verboseMode, calculateControlEdges;
 };
-
 
 #endif
