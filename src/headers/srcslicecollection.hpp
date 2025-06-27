@@ -13,6 +13,7 @@
 #include <fstream>
 #include <sstream>
 
+#include <srcSAXHandler.hpp>
 #include <FunctionPolicy.hpp>
 #include <ClassPolicy.hpp>
 #include <UnitPolicy.hpp>
@@ -139,6 +140,30 @@ public:
     unsigned int lineOfInvoke;
     unsigned int parameterIndex;
     unsigned int functionDefinition;
+};
+
+// Hold context data srcslice uses based off srcSAXEventContext without copying
+// the entirety of srcSAXEventContext
+class SliceCtx {
+public:
+    SliceCtx(const srcDispatch::srcSAXEventContext& ctx) {
+        currentFilePath = ctx.currentFilePath;
+        currentFileChecksum = ctx.currentFileChecksum;
+        currentFileLanguage = ctx.currentFileLanguage;
+        containingNamespaces = ctx.currentNamespaces;
+    }
+
+    SliceCtx(const SliceCtx& rhs) {
+        currentFilePath = rhs.currentFilePath;
+        currentFileChecksum = rhs.currentFileChecksum;
+        currentFileLanguage = rhs.currentFileLanguage;
+        containingNamespaces = rhs.containingNamespaces;
+    }
+
+    std::string currentFilePath;
+    std::string currentFileChecksum;
+    std::string currentFileLanguage;
+    std::vector<std::string> containingNamespaces;
 };
 
 #endif
