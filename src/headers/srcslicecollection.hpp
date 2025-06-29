@@ -20,56 +20,28 @@
 
 class VariableData {
 public:
-    VariableData(std::string name=""): lhsVarName(name){}
-    VariableData(const VariableData& rhs) {
-        lhsVarName = rhs.lhsVarName;
-        rhsElems = rhs.rhsElems;
-        indices = rhs.indices;
-        lhs = rhs.lhs;
-        isAddrOf = rhs.isAddrOf;
-        dereferenced = rhs.dereferenced;
-        uses = rhs.uses;
-        definitions = rhs.definitions;
-        originLine = rhs.originLine;
-    }
-    ~VariableData() {}
+    VariableData(std::string name="");
+    VariableData(const VariableData& rhs);
+    ~VariableData();
 
-    VariableData& operator=(VariableData rhs) {
-        std::swap(*this, rhs);
-        return *this;
-    }
+    VariableData& operator=(VariableData rhs);
 
     // Basic clean up of this struct to allow simple re-purposing
-    void clear(){
-        lhsVarName.clear();
-        rhsElems.clear();
-        indices.clear();
-        lhs = false;
-        isAddrOf = false;
-        dereferenced = false;
-        uses.clear();
-        definitions.clear();
-    }
+    void clear();
 
     // Name of an expression variable that may be a LHS/RHS var
     // potentially have none to many RHS variables the LHS uses
-    std::string GetNameOfIdentifier() const {
-        if (lhsVarName.empty()) return "";
-        return lhsVarName;
-    }
+    std::string GetNameOfIdentifier() const;
 
     // when the lhsVarName is not an empty string its considered initialized
-    bool isInitialized() { return !lhsVarName.empty(); }
+    bool isInitialized();
 
-    void InitializeLHS(std::string name, unsigned int line) { lhsVarName = name; originLine = line; }
+    void InitializeLHS(std::string name, unsigned int line);
 
-    void SetOriginLine(unsigned int line) { originLine = line; }
+    void SetOriginLine(unsigned int line);
 
-    void AddRHS(std::shared_ptr<VariableData> var) {
-        if (rhsElems.size() == 0 || rhsElems.back() != var)
-            rhsElems.push_back(var);
-    }
-    std::shared_ptr<VariableData> GetRecentRHS() { return rhsElems.size() > 0 ? rhsElems.back() : nullptr; }
+    void AddRHS(std::shared_ptr<VariableData> var);
+    std::shared_ptr<VariableData> GetRecentRHS();
 
     std::string lhsVarName;
     std::vector<std::shared_ptr<VariableData>> rhsElems;
@@ -99,42 +71,17 @@ struct FunctionSignatureData {
 // and the line where the function is potentially defined
 class FunctionCallData {
 public:
-    FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine):
-        functionName(funcName), parameterIndex(paramIndex), functionDefinition(funcDefLine), lineOfInvoke(invokeLine) {};
+    FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine);
 
-    FunctionCallData(const FunctionCallData& rhs) {
-        functionName = rhs.functionName;
-        lineOfInvoke = rhs.lineOfInvoke;
-        parameterIndex = rhs.parameterIndex;
-        functionDefinition = rhs.functionDefinition;
-    };
+    FunctionCallData(const FunctionCallData& rhs);
 
-    bool operator==(const FunctionCallData& rhs) const {
-        if (functionName != rhs.functionName) return false;
-        if (lineOfInvoke != rhs.lineOfInvoke) return false;
-        if (parameterIndex != rhs.parameterIndex) return false;
-        if (functionDefinition != rhs.functionDefinition) return false;
-        return true;
-    }
-    bool operator!=(const FunctionCallData& rhs) const {
-        return !(*this == rhs);
-    }
+    bool operator==(const FunctionCallData& rhs) const;
+    bool operator!=(const FunctionCallData& rhs) const;
 
-    bool operator<(const FunctionCallData& rhs) const {
-        if (functionName < rhs.functionName) return true;
-        if (lineOfInvoke < rhs.lineOfInvoke) return true;
-        if (parameterIndex < rhs.parameterIndex) return true;
-        if (functionDefinition < rhs.functionDefinition) return true;
-        return false;
-    }
-    bool operator>(const FunctionCallData& rhs) const {
-        return !(*this < rhs);
-    }
+    bool operator<(const FunctionCallData& rhs) const;
+    bool operator>(const FunctionCallData& rhs) const;
 
-    friend std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data) {
-        outStream << "[" << data.functionName << " | " << data.parameterIndex << " | " << data.functionDefinition << " | " << data.lineOfInvoke << "]";
-        return outStream;
-    }
+    friend std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data);
 
     std::string functionName;
     unsigned int lineOfInvoke;
@@ -146,19 +93,9 @@ public:
 // the entirety of srcSAXEventContext
 class SliceCtx {
 public:
-    SliceCtx(const srcDispatch::srcSAXEventContext& ctx) {
-        currentFilePath = ctx.currentFilePath;
-        currentFileChecksum = ctx.currentFileChecksum;
-        currentFileLanguage = ctx.currentFileLanguage;
-        containingNamespaces = ctx.currentNamespaces;
-    }
+    SliceCtx(const srcDispatch::srcSAXEventContext& ctx);
 
-    SliceCtx(const SliceCtx& rhs) {
-        currentFilePath = rhs.currentFilePath;
-        currentFileChecksum = rhs.currentFileChecksum;
-        currentFileLanguage = rhs.currentFileLanguage;
-        containingNamespaces = rhs.containingNamespaces;
-    }
+    SliceCtx(const SliceCtx& rhs);
 
     std::string currentFilePath;
     std::string currentFileChecksum;

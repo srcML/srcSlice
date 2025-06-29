@@ -2,7 +2,11 @@ file(GLOB DISPATCHER_SOURCE ../srcDispatch/*.cpp)
 file(GLOB DISPATCHER_HEADER ../srcDispatch/*.hpp)
 
 file(GLOB SRCSLICE_SOURCE
-    ../src/headers/srcslicehandler.hpp
+    ../src/headers/srcslice*.hpp
+    ../src/cpp/srcslicehandler.cpp
+    ../src/cpp/srcsliceprofile.cpp
+    ../src/cpp/srcslicecollection.cpp
+    ../src/cpp/srcsliceprogress.cpp
     )
    
 file(GLOB SRCSLICETEST_SOURCE
