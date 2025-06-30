@@ -171,10 +171,23 @@ void SrcSliceHandler::ProcessClassData(std::shared_ptr<srcDispatch::ClassData> c
     }
 }
 
-void GetTypeDetails(const std::shared_ptr<srcDispatch::DeclData> localVar, bool& isPointer, bool& isReference, bool& isArray) {
+// constructs data type based on local variable decldata and track whether the type is: pointer, reference, rvalue, etc
+std::string GetTypeDetails(const std::shared_ptr<srcDispatch::DeclData> localVar, bool& isPointer, bool& isReference, bool& isArray) {
+    std::string t;
+
     // Extract just the Data-Type name without extra data
     for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
         const auto type = localVar->type->types[pos];
+
+        if(type.second.GetElement() == srcDispatch::TypeData::POINTER) {
+            t += '*';
+        } else if(type.second.GetElement() == srcDispatch::TypeData::REFERENCE) {
+            t += '&';
+        } else if(type.second.GetElement() == srcDispatch::TypeData::RVALUE) {
+            t += "&&";
+        } else if(type.second.GetElement() == srcDispatch::TypeData::TYPENAME) {
+            t += type.first.ToString<std::shared_ptr<srcDispatch::NameData>>(srcDispatch::DiffOperation::NONE);
+        }
 
         if (type.second.GetElement() == srcDispatch::TypeData::POINTER) {
             isPointer = true;
@@ -187,6 +200,8 @@ void GetTypeDetails(const std::shared_ptr<srcDispatch::DeclData> localVar, bool&
             }
         }
     }
+
+    return t;
 }
 
 void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData> funcData, std::shared_ptr<srcDispatch::BlockData> block, const std::shared_ptr<srcDispatch::ClassData> classData,
@@ -353,11 +368,9 @@ void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData
         bool isArray = false;
 
         // Make a function to pull data-type
-        declVarType = localVar->type.ToString();
+        declVarType = GetTypeDetails(localVar, isPointer, isReference, isArray);
         // remove all spaces from type string
         declVarType.erase(std::remove(declVarType.begin(), declVarType.end(), ' '), declVarType.end());
-
-        GetTypeDetails(localVar, isPointer, isReference, isArray);
 
         auto sliceProfileItr = profileMap.find(declVarName);
 
@@ -1614,10 +1627,9 @@ void SrcSliceHandler::ProcessFunctionParameters(std::vector<srcDispatch::DeltaEl
         bool isArray = false;
 
         // Make a function to pull data-type
-        paramType = parameter->type.ToString();
+        paramType = GetTypeDetails(parameter.GetElement(), isPointer, isReference, isArray);
         // remove all spaces from type string
         paramType.erase(std::remove(paramType.begin(), paramType.end(), ' '), paramType.end());
-        GetTypeDetails(parameter.GetElement(), isPointer, isReference, isArray);
 
         // Record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
         auto sliceProfileItr = profileMap.find(paramName);
