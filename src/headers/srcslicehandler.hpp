@@ -154,7 +154,7 @@ private:
 
     std::vector<std::pair<SliceCtx, std::shared_ptr<srcDispatch::UnitData>>> units;
     FunctionSignatureData funcSigCollection;
-    bool verboseMode, calculateControlEdges;
+    bool verboseMode, calculateControlEdges, progressMode;
 };
 
 #endif

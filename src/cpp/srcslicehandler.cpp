@@ -1,37 +1,29 @@
 #include "srcslicehandler.hpp"
 
+// Create custom buffers with callbacks
+CallbackBuf cbOut(coutHandler);
+CallbackBuf cbErr(cerrHandler);
+
 // Use literal string filename ctor of srcSAXController (srcslice cpp main)
-SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce) : verboseMode(v), calculateControlEdges(ce) {
+SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce) : verboseMode(v), progressMode(p), calculateControlEdges(ce) {
     srcSAXController control(filename);
     srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
     
     // p -> progress display mode
     if (p) {
-        // Save original buffers
-        auto* oldCoutBuf = std::cout.rdbuf();
-        auto* oldCerrBuf = std::cerr.rdbuf();
-
-        // Create custom buffers with callbacks
-        CallbackBuf cbOut(coutHandler);
-        CallbackBuf cbErr(cerrHandler);
-
-        // Redirect cout and cerr
-        std::cout.rdbuf(&cbOut);
-        std::cerr.rdbuf(&cbErr);
+        // Save original buffers and Redirect cout and cerr
         IdleBar idlebar; // used display how long the srcSAXController has been parsing
 
         control.parse(&handler); // Start parsing
 
-        // Restore original buffers before exit
-        std::cout.rdbuf(oldCoutBuf);
-        std::cerr.rdbuf(oldCerrBuf);
-        idlebar.Finish();
-        idlebar.Status(); // used display how long the srcSAXController took parsing
+        // Restore original buffers
+        idlebar.Finish(); // used display how long the srcSAXController took parsing
+
+        GenerateSlices();
     } else {
         control.parse(&handler); // Start parsing
+        GenerateSlices();
     }
-
-    GenerateSlices();
 }
 
 // Use string srcml buffer ctor of srcSAXController
@@ -87,6 +79,12 @@ std::vector<std::shared_ptr<srcDispatch::DeclData>> SrcSliceHandler::GetDeclInfo
 }
 
 void SrcSliceHandler::ProcessUnits() {
+    ProgressBar* progressPtr = nullptr;
+    if (progressMode) {
+        // used display percentage of Units processed
+        progressPtr = new ProgressBar(units.size());
+    }
+
     for (auto& unitPair : units) {
         // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
         ProcessDeclStmts(nullptr, nullptr, nullptr, "",
@@ -98,6 +96,17 @@ void SrcSliceHandler::ProcessUnits() {
         for (auto& functionData : GetFunctionInfo(unitPair.second)) {
             ProcessFunctionData(functionData, "", functionData->namespaces, unitPair.first);
         }
+
+        if (progressMode) {
+            // increment progress bar
+            progressPtr->Increment();
+        }
+    }
+
+    if (progressMode) {
+        // perform final operation and clean up raw-pointer
+        progressPtr->Finish();
+        delete progressPtr;
     }
 }
 
@@ -105,6 +114,7 @@ void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const 
     std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
     if (unit) {
         if (verboseMode) {
+            std::cerr << "[*] " << __LINE__ << " | Executing " << __FUNCTION__ << ". . ." << std::endl;
             std::cerr << "[*] Unit Captured!" << std::endl;
         }
         units.push_back(std::make_pair(SliceCtx(ctx), unit));
@@ -117,9 +127,9 @@ void SrcSliceHandler::ProcessFunctionData(std::shared_ptr<srcDispatch::FunctionD
         std::cerr << "[*] " << __LINE__  << " Processing Function Name: " << function_data->name.ToString() << std::endl;
     }
     ProcessFunctionSignature(function_data, className, containingNamespaces, ctx);
-    ProcessDeclStmts(function_data, function_data->block.GetElement(), nullptr, className, nullptr, ctx);
+    ProcessDeclStmts(function_data, (function_data->block && function_data->block.GetElement()) ? function_data->block.GetElement() : nullptr, nullptr, className, nullptr, ctx);
     ProcessInitLists(function_data, className, ctx);
-    ProcessExprStmts(function_data, function_data->block.GetElement(), className, ctx);
+    ProcessExprStmts(function_data, (function_data->block && function_data->block.GetElement()) ? function_data->block.GetElement() : nullptr, className, ctx);
 }
 
 void SrcSliceHandler::ProcessClassData(std::shared_ptr<srcDispatch::ClassData> class_data, const SliceCtx &ctx) {
@@ -161,12 +171,29 @@ void SrcSliceHandler::ProcessClassData(std::shared_ptr<srcDispatch::ClassData> c
     }
 }
 
+void GetTypeDetails(const std::shared_ptr<srcDispatch::DeclData> localVar, bool& isPointer, bool& isReference, bool& isArray) {
+    // Extract just the Data-Type name without extra data
+    for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
+        const auto type = localVar->type->types[pos];
+
+        if (type.second.GetElement() == srcDispatch::TypeData::POINTER) {
+            isPointer = true;
+        } else if (type.second.GetElement() == srcDispatch::TypeData::REFERENCE) {
+            isReference = true;
+        } else if (type.second.GetElement() == srcDispatch::TypeData::TYPENAME) {
+            // attempt to mark raw-arrays for alias processing later
+            if (localVar->name && localVar->name->indices.size() > 0) {
+                isArray = true;
+            }
+        }
+    }
+}
+
 void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData> funcData, std::shared_ptr<srcDispatch::BlockData> block, const std::shared_ptr<srcDispatch::ClassData> classData,
                         std::string className, std::shared_ptr<std::vector<std::shared_ptr<srcDispatch::DeclData>>> potentialGlobals,
                         const SliceCtx &ctx) {
     std::vector<std::shared_ptr<srcDispatch::DeclData>> localGroup;
     std::vector<std::string> containingNamespaces;
-
     if (funcData) {
         // Get containing namespaces from functionData
         containingNamespaces = funcData->namespaces;
@@ -189,21 +216,25 @@ void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData
                         for (const auto& clause : ifStmtData->clauses) {
                             if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
                                 std::shared_ptr<srcDispatch::IfData> ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
-                                for (auto& elem : ifData->condition->conditions) {
-                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                        std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                                        if (initData) {
-                                            localGroup.push_back(initData);
+                                if (ifData && ifData->condition) {
+                                    for (auto& elem : ifData->condition->conditions) {
+                                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                            std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                            if (initData) {
+                                                localGroup.push_back(initData);
+                                            }
                                         }
                                     }
                                 }
                             } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
                                 std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
-                                for (auto& elem : elseIfData->condition->conditions) {
-                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                        std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                                        if (initData) {
-                                            localGroup.push_back(initData);
+                                if (elseIfData && elseIfData->condition) {
+                                    for (auto& elem : elseIfData->condition->conditions) {
+                                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                            std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                            if (initData) {
+                                                localGroup.push_back(initData);
+                                            }
                                         }
                                     }
                                 }
@@ -212,39 +243,47 @@ void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData
                     }
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
                     std::shared_ptr<srcDispatch::ForData> forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(stmt.GetElement());
-                    for (auto& initData : forData->control->init->inits) {
-                        if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            std::shared_ptr<srcDispatch::DeclData> initDeclData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
-                            if (initDeclData) {
-                                localGroup.push_back(initDeclData);
+                    if (forData && forData->control && forData->control->init) {
+                        for (auto& initData : forData->control->init->inits) {
+                            if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                std::shared_ptr<srcDispatch::DeclData> initDeclData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
+                                if (initDeclData) {
+                                    localGroup.push_back(initDeclData);
+                                }
                             }
                         }
                     }
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
                     std::shared_ptr<srcDispatch::SwitchData> switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(stmt.GetElement());
-                    for (const auto& elem : switchData->condition->conditions) {
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                            if (initData) {
-                                localGroup.push_back(initData);
+                    if (switchData && switchData->condition) {
+                        for (const auto& elem : switchData->condition->conditions) {
+                            if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                if (initData) {
+                                    localGroup.push_back(initData);
+                                }
                             }
                         }
                     }
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
                     // For Java we have try-with-resources, make slice profiles of the resources
                     std::shared_ptr<srcDispatch::TryData> tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
-                
-                    // catches have parameter lists with decldata
-                    for (auto& clause : tryData->clauses) {
-                        if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
-                            std::shared_ptr<srcDispatch::CatchData> catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
-                            for (auto& parameter : catchData->parameters) {
-                                if (parameter.GetElement()) {
-                                    localGroup.push_back(parameter.GetElement());
+                    if (tryData) {
+                        // catches have parameter lists with decldata
+                        for (auto& clause : tryData->clauses) {
+                            if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
+                                std::shared_ptr<srcDispatch::CatchData> catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
+                                if (catchData) {
+                                    for (auto& parameter : catchData->parameters) {
+                                        if (parameter.GetElement()) {
+                                            localGroup.push_back(parameter.GetElement());
+                                        }
+                                    }
                                 }
                             }
                         }
                     }
+                
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ThrowData>)) {
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::GotoData>)) {
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LabelData>)) {
@@ -315,30 +354,10 @@ void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData
 
         // Make a function to pull data-type
         declVarType = localVar->type.ToString();
+        // remove all spaces from type string
+        declVarType.erase(std::remove(declVarType.begin(), declVarType.end(), ' '), declVarType.end());
 
-        // Extract just the Data-Type name without extra data
-        /*for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
-            const auto type = localVar->type->types[pos];
-
-            if (type.second == Dispatch::TypeData::POINTER) {
-                isPointer = true;
-                declVarType += "*";
-            } else if (type.second == Dispatch::TypeData::REFERENCE) {
-                isReference = true;
-                declVarType += "&";
-            } else if (type.second == Dispatch::TypeData::TYPENAME) {
-                declVarType = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(type.first)->SimpleName();
-
-                // remove `std ` in `std string` if neccessary
-                declVarType = declVarType.substr(declVarType.find(' ')+1);
-
-                // attempt to mark raw-arrays for alias processing later
-                if (localVar->name && localVar->name->indices.size() > 0) {
-                    isArray = true;
-                    declVarType += "[]";
-                }
-            }
-        }*/
+        GetTypeDetails(localVar, isPointer, isReference, isArray);
 
         auto sliceProfileItr = profileMap.find(declVarName);
 
@@ -573,12 +592,16 @@ void SrcSliceHandler::ProcessExprStmts(srcDispatch::DeltaElement<std::shared_ptr
         for (auto& stmt : block->statements) {
             if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExprStmtData>)) {
                 auto exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
-                // Capture general expressions
-                exprStmts.push_back(exprstmt->expr.GetElement());
+                if (exprstmt && exprstmt->expr && exprstmt->expr.GetElement()) {
+                    // Capture general expressions
+                    exprStmts.push_back(exprstmt->expr.GetElement());
+                }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ReturnData>)) {
                 auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
-                // Capture general Return expressions
-                exprStmts.push_back(retstmt->expr.GetElement());
+                if (retstmt && retstmt->expr && retstmt->expr.GetElement()) {
+                    // Capture general Return expressions
+                    exprStmts.push_back(retstmt->expr.GetElement());
+                }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
                 conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
@@ -593,10 +616,12 @@ void SrcSliceHandler::ProcessExprStmts(srcDispatch::DeltaElement<std::shared_ptr
                 conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
                 auto tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
-                tryBlocks.push_back(tryData);
+                if (tryData) tryBlocks.push_back(tryData);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ThrowData>)) {
                 auto throwData = std::any_cast<std::shared_ptr<srcDispatch::ThrowData>>(stmt.GetElement());
-                exprStmts.push_back(throwData->expr.GetElement());
+                if (throwData && throwData->expr && throwData->expr.GetElement()) {
+                    exprStmts.push_back(throwData->expr.GetElement());
+                }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::GotoData>)) {
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LabelData>)) {
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
@@ -831,6 +856,8 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
                                 // Make a function to pull data-type
                                 std::string paramDataType = funcSig->second[pos]->parameters[argIndex-1]->type.ToString();
+                                // remove all spaces from type string
+                                paramDataType.erase(std::remove(paramDataType.begin(), paramDataType.end(), ' '), paramDataType.end());
 
                                 std::string filteredSliceDataType = "";
                                 std::string filteredParamDataType = "";
@@ -914,137 +941,164 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
             // Extract all of the block data from if statements
             std::shared_ptr<srcDispatch::IfStmtData> ifcntl = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(cntl);
 
-            // ifstmts have three potential clauses (if-elseif-else)
-            for (const auto& clause : ifcntl->clauses) {
-                if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
-                    std::shared_ptr<srcDispatch::IfData> ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
+            if (ifcntl) {
+                // ifstmts have three potential clauses (if-elseif-else)
+                for (const auto& clause : ifcntl->clauses) {
+                    if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
+                        std::shared_ptr<srcDispatch::IfData> ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
 
-                    for (auto& elem : ifData->condition->conditions) {
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            if (declStmts) {
-                                declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
+                        if (ifData) {
+                            if (ifData && ifData->condition) {
+                                for (auto& elem : ifData->condition->conditions) {
+                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                        if (declStmts) {
+                                            declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
+                                        }
+                                    } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                                        if (exprStmts) {
+                                            exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                                        }
+                                    }
+                                }
                             }
-                        } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                            if (exprStmts) {
-                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+
+                            // minimize duplicate entries
+                            if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(ifData->startLineNumber), (int)(ifData->endLineNumber)))
+                                ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
+
+                            if (ifData->block && ifData->block.GetElement()) cntlBlocks.push_back(ifData->block.GetElement());
+                        }
+                    } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
+                        std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
+
+                        if (elseIfData) {
+                            if (elseIfData && elseIfData->condition) {
+                                for (auto& elem : elseIfData->condition->conditions) {
+                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                        if (declStmts) {
+                                            declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
+                                        }
+                                    } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                                        if (exprStmts) {
+                                            exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                                        }
+                                    }
+                                }
                             }
+
+                            // minimize duplicate entries, pushed into ifdata for the ComputeControlPaths Algorithm
+                            if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
+                                ifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
+                            
+                            // track elseif block data for later usage
+                            if (elseifdata.size() == 0 || elseifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
+                                elseifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
+
+                            if (elseIfData->block && elseIfData->block.GetElement()) cntlBlocks.push_back(elseIfData->block.GetElement());
+                        }
+                    } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseData>)) {
+                        std::shared_ptr<srcDispatch::ElseData> elseData = std::any_cast<std::shared_ptr<srcDispatch::ElseData>>(clause.GetElement());
+
+                        if (elseData) {
+                            // minimize duplicate entries
+                            if (elsedata.size() == 0 || elsedata.back() != std::make_pair((int)(elseData->startLineNumber), (int)(elseData->endLineNumber)))
+                                elsedata.push_back(std::make_pair(elseData->startLineNumber, elseData->endLineNumber));
+
+                            if (elseData->block && elseData->block.GetElement()) cntlBlocks.push_back(elseData->block.GetElement());
                         }
                     }
-
-                    // minimize duplicate entries
-                    if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(ifData->startLineNumber), (int)(ifData->endLineNumber)))
-                        ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
-
-                    cntlBlocks.push_back(ifData->block.GetElement());
-                } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
-                    std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
-
-                    for (auto& elem : elseIfData->condition->conditions) {
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            if (declStmts) {
-                                declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                            }
-                        } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                            if (exprStmts) {
-                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                            }
-                        }
-                    }
-
-                    // minimize duplicate entries, pushed into ifdata for the ComputeControlPaths Algorithm
-                    if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
-                        ifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
-                    
-                    // track elseif block data for later usage
-                    if (elseifdata.size() == 0 || elseifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
-                        elseifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
-
-                    cntlBlocks.push_back(elseIfData->block.GetElement());
-                } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseData>)) {
-                    std::shared_ptr<srcDispatch::ElseData> elseData = std::any_cast<std::shared_ptr<srcDispatch::ElseData>>(clause.GetElement());
-
-                    // minimize duplicate entries
-                    if (elsedata.size() == 0 || elsedata.back() != std::make_pair((int)(elseData->startLineNumber), (int)(elseData->endLineNumber)))
-                        elsedata.push_back(std::make_pair(elseData->startLineNumber, elseData->endLineNumber));
-                    cntlBlocks.push_back(elseData->block.GetElement());
                 }
             }
         } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
             // Extract all of the block data from Switch statements
             std::shared_ptr<srcDispatch::SwitchData> switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(cntl);
 
-            /*
-                Ensure we are getting the uses from the case lines
-                Ensure we capture data from the case blocks as well
-            */
+            if (switchData) {
+                /*
+                    Ensure we are getting the uses from the case lines
+                    Ensure we capture data from the case blocks as well
+                */
 
-            // Connect the use lines of switch cases to their corresponding control variables
-            std::vector<std::shared_ptr<srcDispatch::NameData>> controlVariables;
-            // std::cerr << "[*] Switch Conditions Size: " << switchData->condition->conditions.size() << std::endl;
-            for (const auto& elem : switchData->condition->conditions) {
-                // std::cerr << "[*] Switch Condition Element: " << elem.GetElement().type().name() << std::endl;
+                // Connect the use lines of switch cases to their corresponding control variables
+                std::vector<std::shared_ptr<srcDispatch::NameData>> controlVariables;
 
-                if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                    if (exprStmts) {
-                        exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                    }
-                    
-                    std::shared_ptr<srcDispatch::ExpressionData> expr = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
-                    for (const auto& exprElem : expr->expr) {
-                        if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
-                            controlVariables.push_back(std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement()));
-                        }
-                    }
-                } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                    if (declStmts) {
-                        declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                    }
-                }
-            }
+                if (switchData->condition) {
+                    // std::cerr << "[*] Switch Conditions Size: " << switchData->condition->conditions.size() << std::endl;
+                    for (const auto& elem : switchData->condition->conditions) {
+                        // std::cerr << "[*] Switch Condition Element: " << elem.GetElement().type().name() << std::endl;
 
-            for (const auto& switchCase : switchData->block->cases) {
-                // std::cerr << "[*] Iterating over Switch Data Cases. . ." << std::endl;
-                // std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
-                for (auto& ctrlVar : controlVariables) {
-                    // std::cerr << "[*] Control Variable --> " << ctrlVar->SimpleName() << std::endl;
-
-                    // locate the slice profile of the ctrlVar and insert the uses
-                    auto sliceProfileItr = profileMap.find(ctrlVar->SimpleName());
-
-                    // might need to add finger-printing to minimize potential issue
-                    // of inserting data into the wrong slice
-                    if (sliceProfileItr != profileMap.end()) {
-                        // std::cerr << "[*] Adding Use for Switch Control Variable --> " << ctrlVar->SimpleName() << " | " << switchCase->expr->lineNumber << std::endl;
-                        sliceProfileItr->second.back().uses.insert(switchCase->expr->lineNumber);
-                    } else {
-                        if (verboseMode) {
-                            std::cerr << "[-] Could not find Slice Profile of: " << ctrlVar->SimpleName() << std::endl;
+                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                            if (exprStmts) {
+                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                            }
+                            
+                            std::shared_ptr<srcDispatch::ExpressionData> expr = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                            for (const auto& exprElem : expr->expr) {
+                                if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
+                                    controlVariables.push_back(std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement()));
+                                }
+                            }
+                        } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                            if (declStmts) {
+                                declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
+                            }
                         }
                     }
                 }
-            }
 
-            cntlBlocks.push_back(switchData->block.GetElement());
+                if (switchData->block) {
+                    for (const auto& switchCase : switchData->block->cases) {
+                        // std::cerr << "[*] Iterating over Switch Data Cases. . ." << std::endl;
+                        // std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
+                        for (auto& ctrlVar : controlVariables) {
+                            // std::cerr << "[*] Control Variable --> " << ctrlVar->SimpleName() << std::endl;
+
+                            // locate the slice profile of the ctrlVar and insert the uses
+                            auto sliceProfileItr = profileMap.find(ctrlVar->SimpleName());
+
+                            // might need to add finger-printing to minimize potential issue
+                            // of inserting data into the wrong slice
+                            if (sliceProfileItr != profileMap.end()) {
+                                // std::cerr << "[*] Adding Use for Switch Control Variable --> " << ctrlVar->SimpleName() << " | " << switchCase->expr->lineNumber << std::endl;
+                                sliceProfileItr->second.back().uses.insert(switchCase->expr->lineNumber);
+                            } else {
+                                if (verboseMode) {
+                                    std::cerr << "[-] Could not find Slice Profile of: " << ctrlVar->SimpleName() << std::endl;
+                                }
+                            }
+                        }
+                    }
+
+                    if (switchData->block.GetElement()) cntlBlocks.push_back(switchData->block.GetElement());
+                }
+
+            }
         } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
             // Extract all of the block data from For Loops
             std::shared_ptr<srcDispatch::ForData> forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(cntl);
 
-            for (auto& initData : forData->control->init->inits) {
-                if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                    if (declStmts) {
-                        declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement()));
-                    }
-                } else if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                    if (exprStmts) {
-                        exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(initData.GetElement()));
+            if (forData && forData->control && forData->control) {
+                if (forData->control->init) {
+                    for (auto& initData : forData->control->init->inits) {
+                        if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                            if (declStmts) {
+                                declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement()));
+                            }
+                        } else if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                            if (exprStmts) {
+                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(initData.GetElement()));
+                            }
+                        }
                     }
                 }
-            }
 
-            for (const auto& elem : forData->control->condition->conditions) {
-                if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                    if (exprStmts) {
-                        exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                if (forData->control->condition) {
+                    for (const auto& elem : forData->control->condition->conditions) {
+                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                            if (exprStmts) {
+                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                            }
+                        }
                     }
                 }
             }
@@ -1057,42 +1111,46 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
             // Extract all of the block data from While Loops
             std::shared_ptr<srcDispatch::WhileData> whileData = std::any_cast<std::shared_ptr<srcDispatch::WhileData>>(cntl);
 
-            // C++ do-while does not support decl-stmts within the conditional "()"
+            if (whileData) {
+                // C++ do-while does not support decl-stmts within the conditional "()"
 
-            if (exprStmts) {
-                for (const auto& elem : whileData->condition->conditions) {
-                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                        if (exprStmts) {
-                            exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                if (exprStmts && whileData->condition) {
+                    for (const auto& elem : whileData->condition->conditions) {
+                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                            if (exprStmts) {
+                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                            }
                         }
                     }
                 }
+
+                loopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
+                whileloopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
+
+                if (whileData->block && whileData->block.GetElement()) cntlBlocks.push_back(whileData->block.GetElement());
             }
-
-            loopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
-            whileloopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
-
-            cntlBlocks.push_back(whileData->block.GetElement());
         } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
             // Extract all of the block data from Do-While Loops
             std::shared_ptr<srcDispatch::DoData> doWhileData = std::any_cast<std::shared_ptr<srcDispatch::DoData>>(cntl);
 
-            // C++ do-while does not support decl-stmts within the conditional "()"
+            if (doWhileData) {
+                // C++ do-while does not support decl-stmts within the conditional "()"
 
-            if (exprStmts) {
-                for (const auto& elem : doWhileData->condition->conditions) {
-                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                        if (exprStmts) {
-                            exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                if (exprStmts && doWhileData->condition) {
+                    for (const auto& elem : doWhileData->condition->conditions) {
+                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                            if (exprStmts) {
+                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
+                            }
                         }
                     }
                 }
+
+                loopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
+                dowhileloopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
+
+                if (doWhileData->block && doWhileData->block.GetElement()) cntlBlocks.push_back(doWhileData->block.GetElement());
             }
-
-            loopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
-            dowhileloopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
-
-            cntlBlocks.push_back(doWhileData->block.GetElement());
         }
     }
 
@@ -1105,7 +1163,7 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
             if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExprStmtData>)) {
                 if (exprStmts) {
                     auto exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
-                    exprStmts->push_back(exprstmt->expr.GetElement());
+                    if (exprstmt && exprstmt->expr) exprStmts->push_back(exprstmt->expr.GetElement());
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
                 // locals
@@ -1557,29 +1615,9 @@ void SrcSliceHandler::ProcessFunctionParameters(std::vector<srcDispatch::DeltaEl
 
         // Make a function to pull data-type
         paramType = parameter->type.ToString();
-
-        /*for(std::size_t pos = 0; pos < parameter->type->types.size(); ++pos) {
-            const auto& type = (parameter->type->types[pos]);
-            if (type.second == Dispatch::TypeData::POINTER) {
-                isPointer = true;
-                paramType += "*";
-            } else if (type.second == Dispatch::TypeData::REFERENCE) {
-                isReference = true;
-                paramType += "&";
-            } else if (type.second == Dispatch::TypeData::TYPENAME) {
-                std::shared_ptr<srcDispatch::NameData> nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(type.first);
-                paramType = nameData->SimpleName();
-
-                // remove `std ` in `std string` if neccessary
-                paramType = paramType.substr(paramType.find(' ')+1);
-
-                // attempt to mark raw-arrays for alias processing later
-                if (parameter->name && !parameter->name->indices.empty()) {
-                    isArray = true;
-                    paramType += "[]";
-                }
-            }
-        }*/
+        // remove all spaces from type string
+        paramType.erase(std::remove(paramType.begin(), paramType.end(), ' '), paramType.end());
+        GetTypeDetails(parameter.GetElement(), isPointer, isReference, isArray);
 
         // Record parameter data-- this is done exact as it is done for decl_stmts except there's no initializer
         auto sliceProfileItr = profileMap.find(paramName);
@@ -1694,8 +1732,11 @@ SliceProfile* SrcSliceHandler::FetchSliceProfile(std::string profileName, const 
             }
 
             // perform standard finger printing checks
-            if (funcData)
-                if (profile.function != funcData->name.ToString()) continue;
+            if (funcData && funcData.GetElement()) {
+                if (funcData->name && funcData->name.GetElement()) {
+                    if (profile.function != funcData->name.ToString()) continue;
+                }
+            }
             if (profile.nameOfContainingClass != className) continue;
             if (profile.containingNameSpaces != containingNameSpaces) continue;
 
@@ -2146,7 +2187,14 @@ auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, srcDispatch::DeltaE
     auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name.ToString());
 
     for (auto& param : func.second->parameters) {
-        if (param->name) {
+        if (param && param.GetElement() && param->name && param->name.GetElement()) {
+            if (profileMap.find(param->name.ToString()) == profileMap.end()) {
+                if (verboseMode) {
+                    std::cerr << "[-] Could not find SliceProfile for parameter '" << param->name.ToString() << "' of function '" << func.first << "'" << std::endl;
+                }
+                continue;
+            }
+
             if (profileMap.find(param->name.ToString())->second.back().visited) {
                 return Spi;
             } else {
@@ -2297,71 +2345,77 @@ void SrcSliceHandler::ComputeInterprocedural() {
                             if (func->parameters[ArgProfParam]->name) {
                                 // Only run this section if the parameter name can be extracted
                                 auto Spi = ArgumentProfile(std::make_pair(cfunc.functionName, func), ArgProfParam, visited_func);
-                                auto sliceItr = Spi->second.begin();
-                                std::string desiredVariableName = sliceItr->variableName;
+                                if (Spi != profileMap.end()) {
+                                    auto sliceItr = Spi->second.begin();
+                                    std::string desiredVariableName = sliceItr->variableName;
 
-                                for (sliceItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
-                                    if (sliceItr->containsDeclaration) {
-                                        if (sliceItr->variableName != desiredVariableName) {
-                                            continue;
-                                        }
-                                        if (GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
-                                            continue;
-                                        }
-                                        std::string parameterDeclLine = std::to_string(func->parameters[ArgProfParam]->lineNumber);
-                                        if (std::to_string(sliceItr->lineNumber) != parameterDeclLine) {
-                                            continue;
-                                        }
+                                    for (sliceItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
+                                        if (sliceItr->containsDeclaration) {
+                                            if (sliceItr->variableName != desiredVariableName) {
+                                                continue;
+                                            }
+                                            if (GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
+                                                continue;
+                                            }
+                                            std::string parameterDeclLine = std::to_string(func->parameters[ArgProfParam]->lineNumber);
+                                            if (std::to_string(sliceItr->lineNumber) != parameterDeclLine) {
+                                                continue;
+                                            }
 
-                                        break;
+                                            break;
+                                        }
                                     }
-                                }
 
-                                if (profileMap.find(var.first) != profileMap.end() && profileMap.find(Spi->first) != profileMap.end() && sliceItr != Spi->second.end()) {
-                                    if (!sliceItr->isReference && !sliceItr->isPointer) {
-                                        // pass by value
+                                    if (profileMap.find(var.first) != profileMap.end() && profileMap.find(Spi->first) != profileMap.end() && sliceItr != Spi->second.end()) {
+                                        if (!sliceItr->isReference && !sliceItr->isPointer) {
+                                            // pass by value
+                                            profileMap.find(var.first)->second.back().uses.insert(
+                                                    sliceItr->definitions.begin(),
+                                                    sliceItr->definitions.end());
+                                        } else {
+                                            // pass by reference
+                                            profileMap.find(var.first)->second.back().definitions.insert(
+                                                    sliceItr->definitions.begin(),
+                                                    sliceItr->definitions.end());
+
+                                            // set the line where the function call occurs to show as a def instead of a use
+                                            profileMap.find(var.first)->second.back().uses.erase(cfunc.lineOfInvoke);
+                                            profileMap.find(var.first)->second.back().definitions.insert(cfunc.lineOfInvoke);
+                                        }
+
+                                        // Parameter initial declaration def line is considered a use towards the argument
+                                        profileMap.find(var.first)->second.back().definitions.erase(sliceItr->lineNumber);
+                                        profileMap.find(var.first)->second.back().uses.insert(sliceItr->lineNumber);
+
                                         profileMap.find(var.first)->second.back().uses.insert(
-                                                sliceItr->definitions.begin(),
-                                                sliceItr->definitions.end());
+                                                sliceItr->uses.begin(),
+                                                sliceItr->uses.end()
+                                        );
+
+                                        // ensure dependencies and aliases are within local-scope
+                                        if (profileMap.find(var.first)->second.back().function == sliceItr->function) {
+                                            profileMap.find(var.first)->second.back().aliases.insert(
+                                                    sliceItr->aliases.begin(),
+                                                    sliceItr->aliases.end()
+                                            );
+                                            profileMap.find(var.first)->second.back().dvars.insert(
+                                                    sliceItr->dvars.begin(),
+                                                    sliceItr->dvars.end()
+                                            );
+                                        }
                                     } else {
-                                        // pass by reference
-                                        profileMap.find(var.first)->second.back().definitions.insert(
-                                                sliceItr->definitions.begin(),
-                                                sliceItr->definitions.end());
+                                        if (verboseMode) {
+                                            std::cout << std::boolalpha << "Is '" << var.first << "' a Map Entry? " << (profileMap.find(var.first) != profileMap.end())
+                                            << " | Is Spi '"<< Spi->first <<"' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
+                                            << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
 
-                                        // set the line where the function call occurs to show as a def instead of a use
-                                        profileMap.find(var.first)->second.back().uses.erase(cfunc.lineOfInvoke);
-                                        profileMap.find(var.first)->second.back().definitions.insert(cfunc.lineOfInvoke);
-                                    }
-
-                                    // Parameter initial declaration def line is considered a use towards the argument
-                                    profileMap.find(var.first)->second.back().definitions.erase(sliceItr->lineNumber);
-                                    profileMap.find(var.first)->second.back().uses.insert(sliceItr->lineNumber);
-
-                                    profileMap.find(var.first)->second.back().uses.insert(
-                                            sliceItr->uses.begin(),
-                                            sliceItr->uses.end()
-                                    );
-
-                                    // ensure dependencies and aliases are within local-scope
-                                    if (profileMap.find(var.first)->second.back().function == sliceItr->function) {
-                                        profileMap.find(var.first)->second.back().aliases.insert(
-                                                sliceItr->aliases.begin(),
-                                                sliceItr->aliases.end()
-                                        );
-                                        profileMap.find(var.first)->second.back().dvars.insert(
-                                                sliceItr->dvars.begin(),
-                                                sliceItr->dvars.end()
-                                        );
+                                            std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
+                                            std::cerr << "[-] " << __LINE__  << " | An Error has Occured in `ComputeInterprocedural`" << std::endl;
+                                        }
                                     }
                                 } else {
                                     if (verboseMode) {
-                                        std::cout << std::boolalpha << "Is '" << var.first << "' a Map Entry? " << (profileMap.find(var.first) != profileMap.end())
-                                        << " | Is Spi '"<< Spi->first <<"' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
-                                        << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
-
-                                        std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
-                                        std::cerr << "[-] " << __LINE__  << " | An Error has Occured in `ComputeInterprocedural`" << std::endl;
+                                        std::cerr << "[-] " << __LINE__  << " | ArgumentProfile could not resolve SliceProfile for Call '" << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << std::endl;
                                     }
                                 }
                             }
