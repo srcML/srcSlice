@@ -123,8 +123,20 @@ IdleBar::~IdleBar() {
     std::cerr.rdbuf(oldCerrBuf);
 }
 
+void IdleBar::Reset() {
+    oldCoutBuf = std::cout.rdbuf();
+    oldCerrBuf = std::cerr.rdbuf();
+
+    actionFinished = false;
+
+    startTime = std::chrono::steady_clock::now();
+    // start the display thread that shows how far the progress of an action
+    // is near real-time
+    displayThread = std::thread(&IdleBar::Update, this);
+};
+
 // stdout buffers are set to normal destinations when this executes
-void IdleBar::Finish() {
+void IdleBar::Finish(std::string msg) {
     if (!actionFinished) {
         actionFinished = true;
         endTime = std::chrono::steady_clock::now();
@@ -138,7 +150,7 @@ void IdleBar::Finish() {
     endTime = std::chrono::steady_clock::now();
     double elapsed = std::chrono::duration<double>(endTime - startTime).count();
     printf("\r\033[2K");
-    std::cout << "final time elapsed    " << format_time(elapsed) << std::endl;
+    std::cout << "final time elapsed    " << format_time(elapsed) << " " << msg << std::endl;
 };
 
 // continuously ran and ensures progress bar only displays once

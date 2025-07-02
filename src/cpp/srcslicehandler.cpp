@@ -12,17 +12,31 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce) 
     // p -> progress display mode
     if (p) {
         // Save original buffers and Redirect cout and cerr
-        IdleBar idlebar; // used display how long the srcSAXController has been parsing
+        IdleBar idlebar;
 
         control.parse(&handler); // Start parsing
 
         // Restore original buffers
-        idlebar.Finish(); // used display how long the srcSAXController took parsing
+        idlebar.Finish("[srcSAXController Parse]");
 
-        GenerateSlices();
+        // reset and restart idle bar time display
+        idlebar.Reset();
+
+        // Handles Collecting Control-Edges
+        if (calculateControlEdges) ComputeControlPaths();
+        
+        // populates Aliases attribute in slice profiles and
+        // performs crude interprocedural to connect use/def data
+        ComputeAliasInterprocedural();
+        ComputeInterprocedural();
+
+        // Restore original buffers
+        idlebar.Finish("[srcSlice]");
     } else {
         control.parse(&handler); // Start parsing
-        GenerateSlices();
+        if (calculateControlEdges) ComputeControlPaths();
+        ComputeAliasInterprocedural();
+        ComputeInterprocedural();
     }
 }
 
@@ -31,7 +45,9 @@ SrcSliceHandler::SrcSliceHandler(const std::string& sourceCodeStr, bool ce) : ve
     srcSAXController control(sourceCodeStr);
     srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
     control.parse(&handler); // Start parsing
-    GenerateSlices();
+    if (calculateControlEdges) ComputeControlPaths();
+    ComputeAliasInterprocedural();
+    ComputeInterprocedural();
 }
 
 std::vector<std::shared_ptr<srcDispatch::ClassData>> SrcSliceHandler::GetClassInfo(std::shared_ptr<srcDispatch::UnitData>& unit) {
@@ -78,46 +94,27 @@ std::vector<std::shared_ptr<srcDispatch::DeclData>> SrcSliceHandler::GetDeclInfo
     return decls;
 }
 
-void SrcSliceHandler::ProcessUnits() {
-    ProgressBar* progressPtr = nullptr;
-    if (progressMode) {
-        // used display percentage of Units processed
-        progressPtr = new ProgressBar(units.size());
-    }
-
-    for (auto& unitPair : units) {
-        // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
-        ProcessDeclStmts(nullptr, nullptr, nullptr, "",
-            std::make_shared<std::vector<std::shared_ptr<srcDispatch::DeclData>>>(GetDeclInfo(unitPair.second)), unitPair.first);
-        
-        for (auto& classData : GetClassInfo(unitPair.second)) {
-            ProcessClassData(classData, unitPair.first);
-        }
-        for (auto& functionData : GetFunctionInfo(unitPair.second)) {
-            ProcessFunctionData(functionData, "", functionData->namespaces, unitPair.first);
-        }
-
-        if (progressMode) {
-            // increment progress bar
-            progressPtr->Increment();
-        }
-    }
-
-    if (progressMode) {
-        // perform final operation and clean up raw-pointer
-        progressPtr->Finish();
-        delete progressPtr;
-    }
-}
-
 void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) {
     std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
     if (unit) {
-        if (verboseMode) {
-            std::cerr << "[*] " << __LINE__ << " | Executing " << __FUNCTION__ << ". . ." << std::endl;
-            std::cerr << "[*] Unit Captured!" << std::endl;
+        printf("[*] Processing Unit: %s\n", ctx.currentFilePath.c_str());
+        auto startTime = std::chrono::steady_clock::now();
+
+        // process each unit recv to not clog memory by storing units in a container
+        // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
+        ProcessDeclStmts(nullptr, nullptr, nullptr, "",
+            std::make_shared<std::vector<std::shared_ptr<srcDispatch::DeclData>>>(GetDeclInfo(unit)), SliceCtx(ctx));
+        
+        for (auto& classData : GetClassInfo(unit)) {
+            ProcessClassData(classData, SliceCtx(ctx));
         }
-        units.push_back(std::make_pair(SliceCtx(ctx), unit));
+        for (auto& functionData : GetFunctionInfo(unit)) {
+            ProcessFunctionData(functionData, "", functionData->namespaces, SliceCtx(ctx));
+        }
+        
+        auto endTime = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(endTime - startTime).count();
+        printf("[+] Unit Processed! | Process Time -> %s\n\n", format_time(elapsed).c_str());
     }
 }
 
@@ -828,8 +825,7 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
             if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
                 std::shared_ptr<srcDispatch::NameData> name = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
                 unsigned int argUseLineNumber = funcCallData->lineNumber;
-
-                // Don't worry about exprElems with bad name ptrs
+                
                 if (!name) continue;
 
                 // Update an existing slices Call data
@@ -1457,42 +1453,47 @@ std::vector<std::shared_ptr<VariableData>> SrcSliceHandler::ParseExpr(const srcD
                 if (lhsVar->isInitialized()) {
                     // LHS HAS RHS MEMBERS OR LHS HAS BEEN MARKED AS A LHS
                     std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
-
-                    if (isAssignment(expr_op)) {
-                        // When we encounter assignment while containing a group of RHS variables
-                        // we need to push this LHS-RHS pair into the vector we later return
-                        lhsVar->lhs = true;
-                        varDataGroup.push_back(lhsVar);
-                        lhsStack.push_back(lhsVar); // save reference to outter lhs
-                        lhsVar = std::make_shared<VariableData>();
-
-                        // We need to set the new LHS variable to start creating a new
-                        // LHS-RHS pair group
-                        lhsVar->InitializeLHS(prevRHSPtr->GetNameOfIdentifier(), lineNumber);
-                        lhsVar->definitions.insert(lineNumber);
-
-                        // Coumpound Assignment is a classic Use-Def Chain
-                        // ie: int a = b += c; // b is used and defined by +=
-                        if (isCompoundAssignment(expr_op)) {
-                            lhsVar->definitions.insert(lineNumber);
-                            lhsVar->uses.insert(lineNumber);
+                    if (!prevRHSPtr) {
+                        if (verboseMode) {
+                            std::cerr << "[-] RHS does not exist." << std::endl;
                         }
-
                     } else {
-                        if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
-                            // We will have captured some RHS variable, if we encounter this block we've encountered
-                            // a use for the most recent RHS variable we've encountered
-                            if (prevRHSPtr != nullptr) {
-                                prevRHSPtr->uses.insert(lineNumber);
-                            }
-                        } else if (expr_op == "++" || expr_op == "--" ) {
-                            trailingPrefix = true;
-                            if (prevRHSPtr != nullptr) {
-                                prevRHSPtr->uses.insert(lineNumber);
-                                prevRHSPtr->definitions.insert(lineNumber);
-                            }
-                        }
+                        if (isAssignment(expr_op)) {
+                            // When we encounter assignment while containing a group of RHS variables
+                            // we need to push this LHS-RHS pair into the vector we later return
+                            lhsVar->lhs = true;
+                            varDataGroup.push_back(lhsVar);
+                            lhsStack.push_back(lhsVar); // save reference to outter lhs
+                            lhsVar = std::make_shared<VariableData>();
 
+                            // We need to set the new LHS variable to start creating a new
+                            // LHS-RHS pair group
+                            lhsVar->InitializeLHS(prevRHSPtr->GetNameOfIdentifier(), lineNumber);
+                            lhsVar->definitions.insert(lineNumber);
+
+                            // Coumpound Assignment is a classic Use-Def Chain
+                            // ie: int a = b += c; // b is used and defined by +=
+                            if (isCompoundAssignment(expr_op)) {
+                                lhsVar->definitions.insert(lineNumber);
+                                lhsVar->uses.insert(lineNumber);
+                            }
+
+                        } else {
+                            if (expr_op == "+" || expr_op == "-" || expr_op == "*" || expr_op == "/" || expr_op == "%") {
+                                // We will have captured some RHS variable, if we encounter this block we've encountered
+                                // a use for the most recent RHS variable we've encountered
+                                if (prevRHSPtr != nullptr) {
+                                    prevRHSPtr->uses.insert(lineNumber);
+                                }
+                            } else if (expr_op == "++" || expr_op == "--" ) {
+                                trailingPrefix = true;
+                                if (prevRHSPtr != nullptr) {
+                                    prevRHSPtr->uses.insert(lineNumber);
+                                    prevRHSPtr->definitions.insert(lineNumber);
+                                }
+                            }
+
+                        }
                     }
                 }
             } else {
@@ -2438,18 +2439,4 @@ void SrcSliceHandler::ComputeInterprocedural() {
             profileMap.find(var.first)->second.back().visited = true;
         }
     }
-}
-
-void SrcSliceHandler::GenerateSlices() {
-    // after collecting all units we parse them
-    ProcessUnits();
-    
-    // Handles Collecting Control-Edges
-    if (calculateControlEdges) ComputeControlPaths();
-    
-    // populates Aliases attribute in slice profiles and
-    // performs crude interprocedural to connect use/def data
-    ComputeAliasInterprocedural();
-
-    ComputeInterprocedural();
 }

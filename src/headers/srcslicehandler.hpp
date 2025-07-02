@@ -39,8 +39,6 @@ public:
 
     std::vector<std::shared_ptr<srcDispatch::DeclData>> GetDeclInfo(std::shared_ptr<srcDispatch::UnitData>& unit);
 
-    void ProcessUnits();
-
     void Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override;
 
     void NotifyWrite(const srcDispatch::PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {};
@@ -137,8 +135,6 @@ public:
     void ComputeInterprocedural();
 
 private:
-    void GenerateSlices();
-
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
     std::vector<std::shared_ptr<srcDispatch::ClassData>> classInfo;
     std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> functionInfo;

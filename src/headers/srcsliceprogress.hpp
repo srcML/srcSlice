@@ -59,7 +59,8 @@ class IdleBar {
 public:
     IdleBar();
     ~IdleBar();
-    void Finish();
+    void Finish(std::string msg="");
+    void Reset();
 private:
     void Update();
     void Log();
