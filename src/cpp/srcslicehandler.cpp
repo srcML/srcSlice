@@ -97,25 +97,24 @@ std::vector<std::shared_ptr<srcDispatch::DeclData>> SrcSliceHandler::GetDeclInfo
 void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) {
     std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
     if (unit) {
-        printf("[*] Collected Unit: %s\n", ctx.currentFilePath.c_str());
-        // printf("[*] Processing Unit: %s\n", ctx.currentFilePath.c_str());
-        // auto startTime = std::chrono::steady_clock::now();
+        printf("[*] Processing Unit: %s\n", ctx.currentFilePath.c_str());
+        auto startTime = std::chrono::steady_clock::now();
 
-        // // process each unit recv to not clog memory by storing units in a container
-        // // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
-        // ProcessDeclStmts(nullptr, nullptr, nullptr, "",
-        //     std::make_shared<std::vector<std::shared_ptr<srcDispatch::DeclData>>>(GetDeclInfo(unit)), SliceCtx(ctx));
+        // process each unit recv to not clog memory by storing units in a container
+        // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
+        ProcessDeclStmts(nullptr, nullptr, nullptr, "",
+            std::make_shared<std::vector<std::shared_ptr<srcDispatch::DeclData>>>(GetDeclInfo(unit)), SliceCtx(ctx));
         
-        // for (auto& classData : GetClassInfo(unit)) {
-        //     ProcessClassData(classData, SliceCtx(ctx));
-        // }
-        // for (auto& functionData : GetFunctionInfo(unit)) {
-        //     ProcessFunctionData(functionData, "", functionData->namespaces, SliceCtx(ctx));
-        // }
+        for (auto& classData : GetClassInfo(unit)) {
+            ProcessClassData(classData, SliceCtx(ctx));
+        }
+        for (auto& functionData : GetFunctionInfo(unit)) {
+            ProcessFunctionData(functionData, "", functionData->namespaces, SliceCtx(ctx));
+        }
         
-        // auto endTime = std::chrono::steady_clock::now();
-        // double elapsed = std::chrono::duration<double>(endTime - startTime).count();
-        // printf("[+] Unit Processed! | Process Time -> %s\n\n", format_time(elapsed).c_str());
+        auto endTime = std::chrono::steady_clock::now();
+        double elapsed = std::chrono::duration<double>(endTime - startTime).count();
+        printf("[+] Unit Processed! | Process Time -> %s\n\n", format_time(elapsed).c_str());
     }
 }
 
