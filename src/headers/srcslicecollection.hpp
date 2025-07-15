@@ -14,6 +14,7 @@
 #include <sstream>
 
 #include <srcSAXHandler.hpp>
+#include <srcDispatcher.hpp>
 #include <FunctionPolicy.hpp>
 #include <ClassPolicy.hpp>
 #include <UnitPolicy.hpp>
@@ -60,10 +61,34 @@ public:
     std::set<unsigned int> definitions;
 };
 
+// Hold context data srcslice uses based off srcSAXEventContext without copying
+// the entirety of srcSAXEventContext
+class SliceCtx {
+public:
+    SliceCtx(const srcDispatch::srcSAXEventContext& ctx);
+
+    SliceCtx(const SliceCtx& rhs);
+
+    std::string currentFilePath;
+    std::string currentFileChecksum;
+    std::string currentFileLanguage;
+    std::vector<std::string> containingNamespaces;
+};
+
 // Store Data about Function Signatures by grouping functions of the same name
 // like Slices in profileMap
-struct FunctionSignatureData {
-    std::unordered_map<std::string, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>> functionSigMap;
+class FunctionSignatureData {
+public:
+    FunctionSignatureData(){};
+    FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func, const SliceCtx& ctx);
+    int lineNumber;
+    std::string name;
+    std::string returnType;
+    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>> parameters;
+    std::string currentFilePath;
+    std::string currentFileChecksum;
+    std::string currentFileLanguage;
+    std::vector<std::string> containingNamespaces;
 };
 
 // Store meta-data about a function-call by tracking:
@@ -87,20 +112,6 @@ public:
     unsigned int lineOfInvoke;
     unsigned int parameterIndex;
     unsigned int functionDefinition;
-};
-
-// Hold context data srcslice uses based off srcSAXEventContext without copying
-// the entirety of srcSAXEventContext
-class SliceCtx {
-public:
-    SliceCtx(const srcDispatch::srcSAXEventContext& ctx);
-
-    SliceCtx(const SliceCtx& rhs);
-
-    std::string currentFilePath;
-    std::string currentFileChecksum;
-    std::string currentFileLanguage;
-    std::vector<std::string> containingNamespaces;
 };
 
 #endif

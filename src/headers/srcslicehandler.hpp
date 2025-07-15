@@ -31,46 +31,53 @@ public:
     SrcSliceHandler(const char* filename, bool v, bool p, bool ce);
 
     // Use string srcml buffer ctor of srcSAXController
-    SrcSliceHandler(const std::string& sourceCodeStr, bool ce);
-
-    std::vector<std::shared_ptr<srcDispatch::ClassData>> GetClassInfo(std::shared_ptr<srcDispatch::UnitData>& unit);
-
-    std::vector<std::shared_ptr<srcDispatch::FunctionData>> GetFunctionInfo(std::shared_ptr<srcDispatch::UnitData>& unit);
-
-    std::vector<std::shared_ptr<srcDispatch::DeclData>> GetDeclInfo(std::shared_ptr<srcDispatch::UnitData>& unit);
+    SrcSliceHandler(std::string& sourceCodeStr, bool ce);
 
     void Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override;
 
     void NotifyWrite(const srcDispatch::PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {};
 
-    void ProcessFunctionData(std::shared_ptr<srcDispatch::FunctionData> function_data, std::string className,
-                            std::vector<std::string>& containingNamespaces, const SliceCtx &ctx);
+    // Creates Initial SliceProfiles based off a list of decl statements
+    void ProcessDecls(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclStmtData>>>& declStmts, const SliceCtx& ctx);
+    // Creates Initial SliceProfiles for Function Parameters and Variables Declared within the function definition
+    void ProcessFunctions(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs, const SliceCtx& ctx);
+    // Process Class Data and create slices of Class Member Variables and process Member Functions
+    void ProcessClasses(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes, const SliceCtx& ctx);
 
-    void ProcessClassData(std::shared_ptr<srcDispatch::ClassData> class_data, const SliceCtx &ctx);
+    // Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
+    void ProcessDeclStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);
+    // Creates Initial SliceProfile based off DeclData
+    void CreateSliceProfile(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& deltaDeclData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
+    void ProcessInitLists(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    // Extract Expressions within a specified Block within a Function Definition
+    void ProcessExprStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);
+    // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
+    void ProcessExprStmt(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    // Update Slice Profiles based off Collected Variable Data post ParseExpr
+    void UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+                        std::string className, const SliceCtx& ctx);
+    // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
+    std::vector<std::shared_ptr<VariableData>>& ParseExpr(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr, const unsigned int& lineNumber);
+    // Get Type Details (isPtr, isRef, isArr, etc) based of a given DeclData
+    std::string GetTypeDetails(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& localVar, bool& isPointer, bool& isReference, bool& isArray);
+    // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
+    // for them, along with capturing expressions to update collected slices
+    void CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
+                                std::string className, const SliceCtx& ctx);
+    void CollectConditionalData(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
+                                std::vector<std::any>& conditionals);
+    // Given a list of Function Parameters create Initial SliceProfiles for each Parameter
+    void ProcessFunctionParameters(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters,
+                                    std::string currentFunctionName, std::string className, const SliceCtx& ctx);
+    // Create a Function Signature based off given Function Data
+    void ProcessFunctionSignature(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
 
-    void ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData> funcData, std::shared_ptr<srcDispatch::BlockData> block, const std::shared_ptr<srcDispatch::ClassData> classData,
-                            std::string className, std::shared_ptr<std::vector<std::shared_ptr<srcDispatch::DeclData>>> potentialGlobals,
-                            const SliceCtx &ctx);
-
-    void ProcessInitLists(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::string className, const SliceCtx &ctx);
-    void ProcessExprStmts(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::shared_ptr<srcDispatch::BlockData> block,
-                            std::string className, const SliceCtx &ctx);
-
-    void UpdateSlices(std::vector<std::shared_ptr<VariableData>> varDataGroup, srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData,
-                        std::string className, const SliceCtx &ctx);
 
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
     void CreateSliceCallData(std::string functionName, int argIndex, int functionDefLine, SliceProfile& sliceProfile, unsigned int functionCallLine);
 
-    void ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData> funcCallData);
-
-    // try blocks contain both exprs and decls, need to extract those decls and create slice profiles
-    // for them, along with capturing expressions to update collected slices
-    void CollectTryBlockData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
-                                std::string className, const SliceCtx &ctx);
-
-    void CollectConditionalData(std::vector<std::shared_ptr<srcDispatch::ExpressionData>>* exprStmts, std::vector<std::shared_ptr<srcDispatch::DeclData>>* declStmts,
-                                std::vector<std::any>& conditionals);
+    void ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>& funcCallData);
 
     // Take large name strings and extract the root variable name
     std::string ExtractName(std::string elementName);
@@ -80,53 +87,44 @@ public:
     // Attempt to Recursively dig into potential nested indices in a RHS to form dependency relations with a LHS variable
     void AppendIndices(std::shared_ptr<VariableData>& lhs, std::shared_ptr<VariableData>& varData);
 
-    std::vector<std::shared_ptr<VariableData>> ParseExpr(const srcDispatch::ExpressionData& expr, const unsigned int& lineNumber);
-
-    void ProcessFunctionParameters(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters, const std::string& currentFunctionName,
-                                    std::string className, std::vector<std::string>& containingNamespaces,
-                                    const SliceCtx &ctx);
-
-    void ProcessFunctionSignature(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::string className, std::vector<std::string>& containingNamespaces,
-                                    const SliceCtx &ctx);
-
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
     // Logic constructed for use BEFORE InterProcedural
-    SliceProfile* FetchSliceProfile(std::string profileName, const std::shared_ptr<VariableData>& vd, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
-                                    const std::string& className = "", const std::vector<std::string>& containingNameSpaces = {});
+    SliceProfile* FetchSliceProfile(std::string profileName, std::shared_ptr<VariableData>& vd, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+                                    std::string className = "", std::vector<std::string> containingNameSpaces = {});
 
     // Extract the function name within either a call or a complex function name
     std::string GetSimpleFunctionName(std::string funcName);
 
     // Used for inserting Uses and Defs for Slices in the LHS of an Expression Statement
     // perform a map find and update the slice
-    void UpdateLHSSlices(std::shared_ptr<VariableData> varData);
+    void UpdateLHSSlices(std::shared_ptr<VariableData>& varData);
 
-    bool StringContainsCharacters(const std::string &str);
+    bool StringContainsCharacters(std::string &str);
 
-    bool isAssignment(const std::string& expr_op);
+    bool isAssignment(std::string& expr_op);
 
-    bool isCompoundAssignment(const std::string& expr_op);
+    bool isCompoundAssignment(std::string& expr_op);
 
-    bool isLogical(const std::string& expr_op);
+    bool isLogical(std::string& expr_op);
 
-    bool isWhiteSpace(const std::string& str);
+    bool isWhiteSpace(std::string& str);
 
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap();
 
     // Component of function FindOtherPaths
-    void ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines);
+    void ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths, std::vector<int>& sLines);
 
     // Component of function FindOtherPaths
-    void ComputeExitPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines, const std::set<int>& ignoreLines);
+    void ComputeExitPaths(std::set<std::pair<int,int>>& otherPaths, std::vector<int>& sLines, std::set<int>& ignoreLines);
 
     // Attempt to find other Forward Control-Flow paths | ComputeControlPaths Helper Function
-    std::set<std::pair<int,int>> FindOtherPaths(const std::vector<int>& sLines, const std::set<int>& ignoreLines);
+    std::set<std::pair<int,int>> FindOtherPaths(std::vector<int>& sLines, std::set<int>& ignoreLines);
 
     // srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
     // we are not focusing on backwards-flows.
     void ComputeControlPaths();
 
-    auto ArgumentProfile(std::pair<std::string, srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> func, int paramIndex, std::unordered_set<std::string>& visit_func);
+    auto ArgumentProfile(std::pair<std::string, FunctionSignatureData> func, int paramIndex, std::unordered_set<std::string>& visit_func);
 
     // Need to track Aliases we have already read through
     // InterProcedural from the normal call should also be reflected
@@ -136,8 +134,6 @@ public:
 
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-    std::vector<std::shared_ptr<srcDispatch::ClassData>> classInfo;
-    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> functionInfo;
 
     std::vector<std::pair<int, int>> loopdata;
     std::vector<std::pair<int, int>> forloopdata;
@@ -148,8 +144,7 @@ private:
     std::vector<std::pair<int, int>> elseifdata;
     std::vector<std::pair<int, int>> elsedata;
 
-    std::vector<std::pair<SliceCtx, std::shared_ptr<srcDispatch::UnitData>>> units;
-    FunctionSignatureData funcSigCollection;
+    std::unordered_map<std::string, std::vector<FunctionSignatureData>> functionSigMap;
     bool verboseMode, calculateControlEdges, progressMode;
 };
 

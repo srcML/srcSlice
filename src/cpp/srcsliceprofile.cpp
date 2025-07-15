@@ -17,6 +17,38 @@ SliceProfile::SliceProfile(
     isReference = false;
 }
 
+SliceProfile::SliceProfile(const SliceProfile& rhs) {
+    lineNumber = rhs.lineNumber;
+    file = rhs.file;
+    function = rhs.function;
+    nameOfContainingClass = rhs.nameOfContainingClass;
+    containingNameSpaces = rhs.containingNameSpaces;
+    language = rhs.language;
+    checksum = rhs.checksum;
+    potentialAlias = rhs.potentialAlias;
+    dereferenced = rhs.dereferenced;
+    isGlobal = rhs.isGlobal;
+    containsDeclaration = rhs.containsDeclaration;
+    isPointer = rhs.isPointer;
+    isReference = rhs.isReference;
+    variableName = rhs.variableName;
+    variableType = rhs.variableType;
+    memberVariables = rhs.memberVariables;
+    definitions = rhs.definitions;
+    uses = rhs.uses;
+    dvars = rhs.dvars;
+    aliases = rhs.aliases;
+    controlEdges = rhs.controlEdges;
+    cfunctions = rhs.cfunctions;
+    visited = rhs.visited;
+    returnUsesInserted = rhs.returnUsesInserted;
+    conditionalUsesInserted = rhs.conditionalUsesInserted;
+    conditionalDefsInserted = rhs.conditionalDefsInserted;
+    showControlEdges = rhs.showControlEdges;
+    currentPointerReference = rhs.currentPointerReference;
+    isPotentialArray = rhs.isPotentialArray;
+}
+
 std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"file\":\"" << profile.file << "\"," << std::endl;
     out << "    \"language\":\"" << profile.language << "\"," << std::endl;

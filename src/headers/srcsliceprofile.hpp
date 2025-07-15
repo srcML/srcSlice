@@ -22,6 +22,8 @@ public:
             std::set<std::pair<std::string, unsigned int>> dv = {}, std::set<std::pair<int, int>> edges = {},
             bool containsDecl = false, bool visit = false);
 
+    SliceProfile(const SliceProfile& rhs);
+
     int lineNumber;
     std::string file;
     std::string function;

@@ -41,7 +41,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce) 
 }
 
 // Use string srcml buffer ctor of srcSAXController
-SrcSliceHandler::SrcSliceHandler(const std::string& sourceCodeStr, bool ce) : verboseMode(false), calculateControlEdges(ce) {
+SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, bool ce) : verboseMode(false), calculateControlEdges(ce) {
     srcSAXController control(sourceCodeStr);
     srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
     control.parse(&handler); // Start parsing
@@ -50,126 +50,23 @@ SrcSliceHandler::SrcSliceHandler(const std::string& sourceCodeStr, bool ce) : ve
     ComputeInterprocedural();
 }
 
-std::vector<std::shared_ptr<srcDispatch::ClassData>> SrcSliceHandler::GetClassInfo(std::shared_ptr<srcDispatch::UnitData>& unit) {
-    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>* deltaClasses = &(unit->classInfo);
-
-    std::vector<std::shared_ptr<srcDispatch::ClassData>> classes;
-    for (auto& deltaClass : *deltaClasses) {
-        // extract the decldata shared_ptr
-        if (deltaClass.GetElement()) {
-            classes.push_back(deltaClass.GetElement());
-        }
-    }
-    return classes;
-}
-
-std::vector<std::shared_ptr<srcDispatch::FunctionData>> SrcSliceHandler::GetFunctionInfo(std::shared_ptr<srcDispatch::UnitData>& unit) {
-    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>* deltaFunctions = &(unit->functionInfo);
-
-    std::vector<std::shared_ptr<srcDispatch::FunctionData>> functions;
-    for (auto& deltaFunc : *deltaFunctions) {
-        // extract the decldata shared_ptr
-        if (deltaFunc.GetElement()) {
-            functions.push_back(deltaFunc.GetElement());
-        }
-    }
-    return functions;
-}
-
-std::vector<std::shared_ptr<srcDispatch::DeclData>> SrcSliceHandler::GetDeclInfo(std::shared_ptr<srcDispatch::UnitData>& unit) {
-    // make a reference to potential large vector
-    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclStmtData>>>* deltaDeclStmts = &(unit->declStmtInfo);
-
-    std::vector<std::shared_ptr<srcDispatch::DeclData>> decls;
-    for (auto& deltaDeclStmt : *deltaDeclStmts) {
-        // extract the decldata shared_ptr
-        // and only push it if the element exists
-        if (deltaDeclStmt.GetElement()) {
-            for (auto& deltaDecl : deltaDeclStmt->decls) {
-                if (deltaDecl.GetElement())
-                    decls.push_back(deltaDecl.GetElement());
-            }
-        }
-    }
-    return decls;
-}
-
 void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) {
     std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
     if (unit) {
         printf("[*] Processing Unit: %s\n", ctx.currentFilePath.c_str());
-        auto startTime = std::chrono::steady_clock::now();
 
-        // process each unit recv to not clog memory by storing units in a container
-        // Process Global Decls | policy->Data<std::vector<std::shared_ptr<srcDispatch::DeclData>>>()
-        ProcessDeclStmts(nullptr, nullptr, nullptr, "",
-            std::make_shared<std::vector<std::shared_ptr<srcDispatch::DeclData>>>(GetDeclInfo(unit)), SliceCtx(ctx));
-        
-        for (auto& classData : GetClassInfo(unit)) {
-            ProcessClassData(classData, SliceCtx(ctx));
-        }
-        for (auto& functionData : GetFunctionInfo(unit)) {
-            ProcessFunctionData(functionData, "", functionData->namespaces, SliceCtx(ctx));
-        }
-        
-        auto endTime = std::chrono::steady_clock::now();
-        double elapsed = std::chrono::duration<double>(endTime - startTime).count();
-        printf("[+] Unit Processed! | Process Time -> %s\n\n", format_time(elapsed).c_str());
+        // Process Global Decls
+        ProcessDecls(unit->declStmtInfo, SliceCtx(ctx));
+        // Process Free Functions
+        ProcessFunctions(unit->functionInfo, SliceCtx(ctx));
+        // Process Classes
+        ProcessClasses(unit->classInfo, SliceCtx(ctx));
+
+        printf("[+] Unit Processed Successfully");
     }
 }
 
-void SrcSliceHandler::ProcessFunctionData(std::shared_ptr<srcDispatch::FunctionData> function_data, std::string className,
-                        std::vector<std::string>& containingNamespaces, const SliceCtx &ctx) {
-    if (verboseMode) {
-        std::cerr << "[*] " << __LINE__  << " Processing Function Name: " << function_data->name.ToString() << std::endl;
-    }
-    ProcessFunctionSignature(function_data, className, containingNamespaces, ctx);
-    ProcessDeclStmts(function_data, (function_data->block && function_data->block.GetElement()) ? function_data->block.GetElement() : nullptr, nullptr, className, nullptr, ctx);
-    ProcessInitLists(function_data, className, ctx);
-    ProcessExprStmts(function_data, (function_data->block && function_data->block.GetElement()) ? function_data->block.GetElement() : nullptr, className, ctx);
-}
-
-void SrcSliceHandler::ProcessClassData(std::shared_ptr<srcDispatch::ClassData> class_data, const SliceCtx &ctx) {
-    if (class_data) {
-        std::string className = "";
-
-        if (class_data->name) {
-            className = class_data->name.ToString();
-        }
-
-        // Process Class Member Variables
-        ProcessDeclStmts(nullptr, nullptr, class_data, className, nullptr, ctx);
-
-        // Process Class Contructors
-        for (auto& deltaFuncElem : class_data->constructors) {
-            ProcessFunctionData(deltaFuncElem.GetElement(), className, class_data->namespaces, ctx);
-        }
-        // Process Class Dtor
-        if (class_data->destructor && class_data->destructor.GetElement()) {
-            ProcessFunctionData(class_data->destructor.GetElement(), className, class_data->namespaces, ctx);
-        }
-
-        // Process Class Methods (Member Functions)
-        for (auto& deltaFuncElem : class_data->methods) {
-            ProcessFunctionData(deltaFuncElem.GetElement(), className, class_data->namespaces, ctx);
-        }
-
-        // Process Operator Overloading
-        for (auto& deltaFuncElem : class_data->operators) {
-            ProcessFunctionData(deltaFuncElem.GetElement(), className, class_data->namespaces, ctx);
-        }
-
-        // Process Nested Classes
-        for (auto& deltaClassElem : class_data->innerClasses) {
-            if (deltaClassElem.GetElement()) {
-                ProcessClassData(deltaClassElem.GetElement(), ctx);
-            }
-        }
-    }
-}
-
-// constructs data type based on local variable decldata and track whether the type is: pointer, reference, rvalue, etc
-std::string GetTypeDetails(const std::shared_ptr<srcDispatch::DeclData> localVar, bool& isPointer, bool& isReference, bool& isArray) {
+std::string SrcSliceHandler::GetTypeDetails(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& localVar, bool& isPointer, bool& isReference, bool& isArray) {
     std::string t;
 
     // Extract just the Data-Type name without extra data
@@ -201,51 +98,476 @@ std::string GetTypeDetails(const std::shared_ptr<srcDispatch::DeclData> localVar
     return t;
 }
 
-void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData> funcData, std::shared_ptr<srcDispatch::BlockData> block, const std::shared_ptr<srcDispatch::ClassData> classData,
-                        std::string className, std::shared_ptr<std::vector<std::shared_ptr<srcDispatch::DeclData>>> potentialGlobals,
-                        const SliceCtx &ctx) {
-    std::vector<std::shared_ptr<srcDispatch::DeclData>> localGroup;
+void SrcSliceHandler::ProcessDecls(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclStmtData>>>& deltaDeclStmts, const SliceCtx& ctx) {
+    // iterate the declstmts and review decldata
+    for (const auto& deltaDeclStmt : deltaDeclStmts) {
+        // validate data is safe to access
+        if (deltaDeclStmt && deltaDeclStmt.GetElement()) {
+            // iterate decldata collection
+            for (const auto& deltaDecl : deltaDeclStmt->decls) {
+                // validate data is safe to access
+                if (deltaDecl && deltaDecl.GetElement()) {
+                    if (!deltaDecl->name) continue;
+                    std::vector<std::shared_ptr<VariableData>> varDataGroup;
+
+                    if (deltaDecl->init) {
+                        varDataGroup = ParseExpr(deltaDecl->init, deltaDecl->init->startLineNumber.GetElement());
+                    }
+
+                    // Collect pieces about the newly declared variable to use later when adding it into
+                    // our profileMap
+                    std::string declVarName = deltaDecl->name.ToString();
+                    declVarName = declVarName.substr(0, declVarName.find('[')); // remove index operator characters from variable names
+                    std::string declVarType = "";
+
+                    bool isPointer = false;
+                    bool isReference = false;
+                    bool isArray = false;
+
+                    // Make a function to pull data-type
+                    declVarType = GetTypeDetails(deltaDecl.GetElement(), isPointer, isReference, isArray);
+                    // remove all spaces from type string
+                    declVarType.erase(std::remove(declVarType.begin(), declVarType.end(), ' '), declVarType.end());
+
+                    auto sliceProfileItr = profileMap.find(declVarName);
+
+                    //Just add new slice profile if name already exists. Otherwise, add new entry in map.
+                    if (sliceProfileItr != profileMap.end()) {
+                        // Check if the new slice we potentially try to create has not already been made
+                        // (we dont want to have duplicates of the same slice)
+
+                        // We may have variables of the same name, but each slice of the same name must be initially declared on different lines
+                        if (sliceProfileItr->second.back().variableName != declVarName || sliceProfileItr->second.back().lineNumber != deltaDecl->startLineNumber.GetElement()) {
+                            auto sliceProfile = SliceProfile(declVarName, deltaDecl->startLineNumber.GetElement(), isPointer, true, std::set<unsigned int>{deltaDecl->startLineNumber.GetElement()});
+
+                            sliceProfile.nameOfContainingClass = "";
+                            sliceProfile.containingNameSpaces = {}; // TODO: find a link for namespaces on globals
+                            sliceProfile.language = ctx.currentFileLanguage;
+
+                            sliceProfile.showControlEdges = calculateControlEdges;
+
+                            sliceProfile.isPointer = isPointer;
+                            sliceProfile.isReference = isReference;
+                            sliceProfile.isPotentialArray = isArray;
+
+                            sliceProfileItr->second.push_back(sliceProfile);
+                            sliceProfileItr->second.back().containsDeclaration = true;
+                        }
+                    } else {
+                        auto sliceProf = SliceProfile(declVarName, deltaDecl->startLineNumber.GetElement(), (isPointer), false, std::set<unsigned int>{deltaDecl->startLineNumber.GetElement()});
+
+                        sliceProf.nameOfContainingClass = "";
+                        sliceProf.containingNameSpaces = {}; // TODO: find a link for namespaces on globals
+                        sliceProf.language = ctx.currentFileLanguage;
+
+                        sliceProf.showControlEdges = calculateControlEdges;
+
+                        sliceProf.containsDeclaration = true;
+
+                        sliceProf.isPointer = isPointer;
+                        sliceProf.isReference = isReference;
+                        sliceProf.isPotentialArray = isArray;
+
+                        // point the iterator to the newly inserted profile element
+                        sliceProfileItr = profileMap.insert(std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProf) })).first;
+                    }
+
+                    sliceProfileItr->second.back().isReference = isReference;
+                    sliceProfileItr->second.back().isPointer = isPointer;
+                    sliceProfileItr->second.back().isPotentialArray = isArray;
+
+                    // This allows me to set the data type of the variable in its slice
+                    // after its been set up from the logic above here
+                    // Set the data-type of sliceprofile for decl vars inside of function bodies
+                    sliceProfileItr->second.back().variableType = declVarType;
+
+                    // Link the filepath the XML Originates
+                    sliceProfileItr->second.back().file = ctx.currentFilePath;
+
+                    // Link the file hash attribute
+                    sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
+
+                    // Look at the dvars and add this current variable to their dvar's lists.
+                    // If we haven't seen this name before, add its slice profile
+                    for (auto& varData : varDataGroup) {
+                        UpdateLHSSlices(varData);
+                        // sliceProfileItr->second.back() is the LHS
+                        if (sliceProfileItr != profileMap.end()) {
+                            std::shared_ptr<srcDispatch::FunctionData> nofunc;
+                            SliceProfile* initRHS = FetchSliceProfile(varData->GetNameOfIdentifier(), varData, nofunc);
+
+                            if (initRHS == nullptr) {
+                                if (verboseMode) std::cerr << "[-] " << __LINE__ << " | Slice fetch Unsuccessful" << std::endl;
+                                continue;
+                            }
+
+                            if (sliceProfileItr->second.back().potentialAlias) {
+                                // Aliases are formed from pointer-to-pointer or pointer-to-address assignments
+                                if (!initRHS->isPointer && !varData->isAddrOf) {
+                                    // ensure dependencies are within local-scope
+                                    if (initRHS->function == sliceProfileItr->second.back().function) {
+                                        initRHS->dvars.insert(std::make_pair(declVarName, deltaDecl->startLineNumber.GetElement()));
+                                    }
+                                    continue;
+                                }
+                                if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
+                                    // ensure aliases are within local-scope
+                                    if (initRHS->function == sliceProfileItr->second.back().function) {
+                                        if (sliceProfileItr->second.back().isPointer) {
+                                            // Check for pointer-2-pointer assignment or points-to-address assignment
+                                            if (initRHS->isPointer || varData->isAddrOf) {
+                                                sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                                                if (!sliceProfileItr->second.back().isPotentialArray) {
+                                                    sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                                                }
+                                            }
+                                        } else if (sliceProfileItr->second.back().isReference) {
+                                            sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                                            if (!sliceProfileItr->second.back().isPotentialArray) {
+                                                sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                                            }
+                                        }
+                                    }
+                                }
+                            } else {
+                                // ensure dependencies are within local-scope
+                                initRHS->dvars.insert(std::make_pair(declVarName, deltaDecl->startLineNumber.GetElement()));
+                            }
+                        }
+                        for (auto& dvarData : varData->rhsElems) {
+                            std::string dvar = dvarData->GetNameOfIdentifier();
+
+                            auto updateDvarAtThisLocation = profileMap.find(dvar);
+                            if (updateDvarAtThisLocation != profileMap.end()) {
+
+                                // Update the use/defs for already existing slices
+                                // ProcessExprStmts does not capture expr_stmts
+                                // contained within Decl_stmts
+                                updateDvarAtThisLocation->second.back().uses.insert(dvarData->uses.begin(), dvarData->uses.end());
+                                updateDvarAtThisLocation->second.back().definitions.insert(dvarData->definitions.begin(), dvarData->definitions.end());
+
+                                if (!StringContainsCharacters(declVarName)) continue;
+                                updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
+                            } else {
+                                auto sliceProf = SliceProfile(
+                                    dvar,
+                                    deltaDecl->startLineNumber.GetElement(),
+                                    false,
+                                    false,
+                                    std::set<unsigned int>{},
+                                    std::set<unsigned int>{deltaDecl->startLineNumber.GetElement()}
+                                );
+
+                                sliceProf.nameOfContainingClass = "";
+                                sliceProf.containingNameSpaces = {}; // TODO: find a link for namespaces on globals
+                                sliceProf.language = ctx.currentFileLanguage;
+
+                                sliceProf.showControlEdges = calculateControlEdges;
+
+                                auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar, std::vector<SliceProfile>{ std::move(sliceProf) }));
+                                if (!StringContainsCharacters(declVarName)) continue;
+
+                                // Ensure dependencies and aliases are within local-scope
+                                auto spi = profileMap.find(declVarName);
+                                if ( spi != profileMap.end() && (spi->second.back().function == newSliceProfileFromDeclDvars.first->second.back().function) ) {
+                                    if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
+                                        if ( declVarName != sliceProfileItr->second.back().variableName ) {
+                                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
+                                        }
+                                        continue;
+                                    }
+                                    newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
+
+void SrcSliceHandler::ProcessFunctions(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs, const SliceCtx& ctx) {
+    for (auto& func : funcs) {
+        if (verboseMode) {
+            std::cerr << "[*] " << __LINE__  << " Processing Function Name: " << func->name.ToString() << std::endl;
+        }
+        ProcessFunctionSignature(func, "", ctx);
+        if (func->block) ProcessDeclStmts(func, func->block, "", ctx);
+        ProcessInitLists(func, "", ctx);
+        if (func->block) ProcessExprStmts(func, func->block, "", ctx);
+    }
+}
+
+void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes, const SliceCtx& ctx) {
+    if (classes.empty()) return;
+    for (auto& classData : classes) {
+        if (verboseMode) {
+            std::cerr << "[*] " << __LINE__  << " Processing Class Name: " << classData->name.ToString() << std::endl;
+        }
+
+        // Process Class Member Variables
+        ProcessDecls(classData->fields, ctx);
+
+        // Process Class Contructors
+        for (auto& deltaFuncElem : classData->constructors) {
+            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+            ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+        }
+        // Process Class Dtor
+        if (classData->destructor && classData->destructor.GetElement()) {
+            ProcessFunctionSignature(classData->destructor, classData->name.ToString(), ctx);
+            if (classData->destructor->block) ProcessDeclStmts(classData->destructor, classData->destructor->block, classData->name.ToString(), ctx);
+            ProcessInitLists(classData->destructor, classData->name.ToString(), ctx);
+            if (classData->destructor->block) ProcessExprStmts(classData->destructor, classData->destructor->block, classData->name.ToString(), ctx);
+        }
+
+        // Process Class Methods (Member Functions)
+        for (auto& deltaFuncElem : classData->methods) {
+            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+            ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+        }
+
+        // Process Operator Overloading
+        for (auto& deltaFuncElem : classData->operators) {
+            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+            ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+        }
+
+        // Process Nested Classes
+        ProcessClasses(classData->innerClasses, SliceCtx(ctx));
+    }
+}
+
+void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& deltaDeclData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+                                            std::string className, const SliceCtx& ctx) {
+    if (!deltaDeclData) return;
+    if (!deltaDeclData->name) return;
+    if (deltaDeclData->name.ToString().empty()) return;
+
+    std::vector<std::shared_ptr<VariableData>> varDataGroup;
+
+    if (deltaDeclData->init) {
+        varDataGroup = ParseExpr(deltaDeclData->init, deltaDeclData->init->startLineNumber.GetElement());
+    }
+
+    // Collect pieces about the newly declared variable to use later when adding it into
+    // our profileMap
+    std::string declVarName = deltaDeclData->name.ToString();
+    declVarName = declVarName.substr(0, declVarName.find('[')); // remove index operator characters from variable names
+    std::string declVarType = "";
+
+    bool isPointer = false;
+    bool isReference = false;
+    bool isArray = false;
+
+    // Make a function to pull data-type
+    declVarType = GetTypeDetails(deltaDeclData, isPointer, isReference, isArray);
+    // remove all spaces from type string
+    declVarType.erase(std::remove(declVarType.begin(), declVarType.end(), ' '), declVarType.end());
+
+    auto sliceProfileItr = profileMap.find(declVarName);
+
+    //Just add new slice profile if name already exists. Otherwise, add new entry in map.
+    if (sliceProfileItr != profileMap.end()) {
+        // Check if the new slice we potentially try to create has not already been made
+        // (we dont want to have duplicates of the same slice)
+
+        // We may have variables of the same name, but each slice of the same name must be initially declared on different lines
+        if (sliceProfileItr->second.back().variableName != declVarName || sliceProfileItr->second.back().lineNumber != deltaDeclData->startLineNumber.GetElement()) {
+            SliceProfile sliceProfile = SliceProfile(declVarName, deltaDeclData->startLineNumber.GetElement(), isPointer, true, std::set<unsigned int>{deltaDeclData->startLineNumber.GetElement()});
+
+            sliceProfile.nameOfContainingClass = className;
+        
+            sliceProfile.language = ctx.currentFileLanguage;
+            sliceProfile.file = ctx.currentFilePath;
+            sliceProfile.checksum = ctx.currentFileChecksum;
+
+            sliceProfile.showControlEdges = calculateControlEdges;
+            sliceProfile.variableType = declVarType;
+
+            sliceProfile.isPointer = isPointer;
+            sliceProfile.isReference = isReference;
+            sliceProfile.isPotentialArray = isArray;
+
+            sliceProfileItr->second.push_back(sliceProfile);
+            sliceProfileItr->second.back().containsDeclaration = true;
+        }
+    } else {
+        SliceProfile sliceProfile = SliceProfile(declVarName, deltaDeclData->startLineNumber.GetElement(), (isPointer), false, std::set<unsigned int>{deltaDeclData->startLineNumber.GetElement()});
+
+        sliceProfile.nameOfContainingClass = className;
+
+        sliceProfile.language = ctx.currentFileLanguage;
+        sliceProfile.file = ctx.currentFilePath;
+        sliceProfile.checksum = ctx.currentFileChecksum;
+
+        sliceProfile.showControlEdges = calculateControlEdges;
+
+        sliceProfile.containsDeclaration = true;
+        sliceProfile.variableType = declVarType;
+
+        sliceProfile.isPointer = isPointer;
+        sliceProfile.isReference = isReference;
+        sliceProfile.isPotentialArray = isArray;
+
+        // point the iterator to the newly inserted profile element
+        sliceProfileItr = profileMap.insert(std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProfile) })).first;
+    }
+
+    if (funcData) {
+        // Link the function this slice is located in
+        if (funcData->name) {
+            sliceProfileItr->second.back().function = funcData->name.ToString();
+        }
+
+        // Use function data to attach contained namespaces
+        sliceProfileItr->second.back().containingNameSpaces = funcData->namespaces;
+    }
+
+    // Look at the dvars and add this current variable to their dvar's lists.
+    // If we haven't seen this name before, add its slice profile
+    for (auto& varData : varDataGroup) {
+        UpdateLHSSlices(varData);
+        // sliceProfileItr->second.back() is the LHS
+        if (sliceProfileItr != profileMap.end()) {
+            SliceProfile* initRHS = FetchSliceProfile(varData->GetNameOfIdentifier(), varData, funcData, className, funcData->namespaces);
+
+            if (initRHS == nullptr) {
+                // std::cerr << "Slice Fetch Unsuccessful!" << std::endl;
+                continue;
+            }
+
+            if (sliceProfileItr->second.back().potentialAlias) {
+                // Aliases are formed from pointer-to-pointer or pointer-to-address assignments
+                if (!initRHS->isPointer && !varData->isAddrOf) {
+                    // ensure dependencies are within local-scope
+                    if (initRHS->function == sliceProfileItr->second.back().function) {
+                        initRHS->dvars.insert(std::make_pair(declVarName, deltaDeclData->startLineNumber.GetElement()));
+                    }
+                    continue;
+                }
+                if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
+                    // ensure aliases are within local-scope
+                    if (initRHS->function == sliceProfileItr->second.back().function) {
+                        if (sliceProfileItr->second.back().isPointer) {
+                            // Check for pointer-2-pointer assignment or points-to-address assignment
+                            if (initRHS->isPointer || varData->isAddrOf) {
+                                sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                                if (!sliceProfileItr->second.back().isPotentialArray) {
+                                    sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                                }
+                            }
+                        } else if (sliceProfileItr->second.back().isReference) {
+                            sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
+                            if (!sliceProfileItr->second.back().isPotentialArray) {
+                                sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
+                            }
+                        }
+                    }
+                }
+            } else {
+                // ensure dependencies are within local-scope
+                initRHS->dvars.insert(std::make_pair(declVarName, deltaDeclData->startLineNumber.GetElement()));
+            }
+        }
+        for (auto& dvarData : varData->rhsElems) {
+            std::string dvar = dvarData->GetNameOfIdentifier();
+
+            auto updateDvarAtThisLocation = profileMap.find(dvar);
+            if (updateDvarAtThisLocation != profileMap.end()) {
+
+                // Update the use/defs for already existing slices
+                // ProcessExprStmts does not capture expr_stmts
+                // contained within Decl_stmts
+                updateDvarAtThisLocation->second.back().uses.insert(dvarData->uses.begin(), dvarData->uses.end());
+                updateDvarAtThisLocation->second.back().definitions.insert(dvarData->definitions.begin(), dvarData->definitions.end());
+
+                if (!StringContainsCharacters(declVarName)) continue;
+                updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
+            } else {
+                SliceProfile sliceProf = SliceProfile(
+                    dvar,
+                    deltaDeclData->startLineNumber.GetElement(),
+                    false,
+                    false,
+                    std::set<unsigned int>{},
+                    std::set<unsigned int>{deltaDeclData->startLineNumber.GetElement()}
+                );
+
+                sliceProf.nameOfContainingClass = className;
+                sliceProf.containingNameSpaces = funcData->namespaces;
+                sliceProf.language = ctx.currentFileLanguage;
+
+                sliceProf.showControlEdges = calculateControlEdges;
+
+                auto newSliceProfileFromDeclDvars = profileMap.insert( std::make_pair(dvar, std::vector<SliceProfile>{ std::move(sliceProf) }) );
+                if (!StringContainsCharacters(declVarName)) continue;
+
+                // Ensure dependencies and aliases are within local-scope
+                auto spi = profileMap.find(declVarName);
+                if ( spi != profileMap.end() && (spi->second.back().function == newSliceProfileFromDeclDvars.first->second.back().function) ) {
+                    if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
+                        if ( declVarName != sliceProfileItr->second.back().variableName ) {
+                            newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
+                        }
+                        continue;
+                    }
+                    newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
+                }
+            }
+        }
+    }
+}
+
+void SrcSliceHandler::ProcessDeclStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block,
+                                        std::string className, const SliceCtx& ctx) {
     std::vector<std::string> containingNamespaces;
     if (funcData) {
         // Get containing namespaces from functionData
         containingNamespaces = funcData->namespaces;
-
         if (block) {
-            for (auto& stmt : block->statements) {
+            for (const auto& stmt : block->statements) {
                 if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
                     // locals
-                    std::shared_ptr<srcDispatch::DeclStmtData> declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
+                    auto declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
                     if (declStmtData) {
                         for (auto& deltaDecl : declStmtData->decls) {
-                            if (deltaDecl.GetElement()) {
-                                localGroup.push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(deltaDecl.GetElement()));
+                            if (deltaDecl) {
+                                CreateSliceProfile(deltaDecl, funcData, className, ctx);
                             }
                         }
                     }
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                    std::shared_ptr<srcDispatch::IfStmtData> ifStmtData = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(stmt.GetElement());
+                    auto ifStmtData = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(stmt.GetElement());
                     if (ifStmtData) {
                         for (const auto& clause : ifStmtData->clauses) {
                             if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
-                                std::shared_ptr<srcDispatch::IfData> ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
+                                auto ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
                                 if (ifData && ifData->condition) {
                                     for (auto& elem : ifData->condition->conditions) {
                                         if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                            std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                            auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
                                             if (initData) {
-                                                localGroup.push_back(initData);
+                                                CreateSliceProfile(initData, funcData, className, ctx);
                                             }
                                         }
                                     }
                                 }
                             } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
-                                std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
+                                auto elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
                                 if (elseIfData && elseIfData->condition) {
                                     for (auto& elem : elseIfData->condition->conditions) {
                                         if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                            std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                            auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
                                             if (initData) {
-                                                localGroup.push_back(initData);
+                                                CreateSliceProfile(initData, funcData, className, ctx);
                                             }
                                         }
                                     }
@@ -254,51 +576,47 @@ void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData
                         }
                     }
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                    std::shared_ptr<srcDispatch::ForData> forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(stmt.GetElement());
+                    auto forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(stmt.GetElement());
                     if (forData && forData->control && forData->control->init) {
                         for (auto& initData : forData->control->init->inits) {
                             if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                std::shared_ptr<srcDispatch::DeclData> initDeclData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
+                                auto initDeclData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
                                 if (initDeclData) {
-                                    localGroup.push_back(initDeclData);
+                                    CreateSliceProfile(initDeclData, funcData, className, ctx);
                                 }
                             }
                         }
                     }
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                    std::shared_ptr<srcDispatch::SwitchData> switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(stmt.GetElement());
+                    auto switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(stmt.GetElement());
                     if (switchData && switchData->condition) {
                         for (const auto& elem : switchData->condition->conditions) {
                             if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                std::shared_ptr<srcDispatch::DeclData> initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
                                 if (initData) {
-                                    localGroup.push_back(initData);
+                                    CreateSliceProfile(initData, funcData, className, ctx);
                                 }
                             }
                         }
                     }
                 } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
                     // For Java we have try-with-resources, make slice profiles of the resources
-                    std::shared_ptr<srcDispatch::TryData> tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
+                    auto tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
                     if (tryData) {
                         // catches have parameter lists with decldata
                         for (auto& clause : tryData->clauses) {
                             if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
-                                std::shared_ptr<srcDispatch::CatchData> catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
+                                auto catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
                                 if (catchData) {
                                     for (auto& parameter : catchData->parameters) {
-                                        if (parameter.GetElement()) {
-                                            localGroup.push_back(parameter.GetElement());
+                                        if (parameter) {
+                                            CreateSliceProfile(parameter, funcData, className, ctx);
                                         }
                                     }
                                 }
                             }
                         }
                     }
-                
-                } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ThrowData>)) {
-                } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::GotoData>)) {
-                } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LabelData>)) {
                 } else {
                     if (verboseMode) {
                         std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
@@ -307,251 +625,19 @@ void SrcSliceHandler::ProcessDeclStmts(std::shared_ptr<srcDispatch::FunctionData
             }
         }
     }
-
-    /*
-        enum AccessSpecifier {
-        NONE      = 0,
-        PUBLIC    = 1,
-        PRIVATE   = 2,
-        PROTECTED = 3 
-    };
-    */
-
-    // Look at all declared members from each class field
-    if (classData) {
-        if (classData->name)
-            className = classData->name.ToString();
-
-        // Get containing namespaces from classData
-        containingNamespaces = classData->namespaces;
-
-        // Review decls of class fields
-        for (auto& deltaClassFields : classData->fields) {
-            for (auto& deltaDecl : deltaClassFields->decls) {
-                if (deltaDecl.GetElement()) {
-                    localGroup.push_back(deltaDecl.GetElement());
-                }
-            }
-        }
-    }
-
-    // Look at potential globals that are captured
-    if (potentialGlobals) {
-        localGroup.insert(localGroup.end(), potentialGlobals->begin(), potentialGlobals->end());
-
-        // capture containing namespaces for potential globals
-        containingNamespaces = ctx.containingNamespaces;
-    }
-
-    // loop through all the expression statements within Decl Statements
-    for (const auto localVar : localGroup) {
-        if (!localVar) continue;
-        if (!localVar->name) continue;
-
-        std::vector<std::shared_ptr<VariableData>> varDataGroup;
-
-        if (localVar->init) {
-            varDataGroup = ParseExpr(*localVar->init.GetElement(), localVar->init.GetElement()->lineNumber);
-        }
-
-        // Collect pieces about the newly declared variable to use later when adding it into
-        // our profileMap
-        std::string declVarName = localVar->name.ToString();
-        declVarName = declVarName.substr(0, declVarName.find('[')); // remove index operator characters from variable names
-        std::string declVarType = "";
-
-        bool isPointer = false;
-        bool isReference = false;
-        bool isArray = false;
-
-        // Make a function to pull data-type
-        declVarType = GetTypeDetails(localVar, isPointer, isReference, isArray);
-        // remove all spaces from type string
-        declVarType.erase(std::remove(declVarType.begin(), declVarType.end(), ' '), declVarType.end());
-
-        auto sliceProfileItr = profileMap.find(declVarName);
-
-        //Just add new slice profile if name already exists. Otherwise, add new entry in map.
-        if (sliceProfileItr != profileMap.end()) {
-            // Check if the new slice we potentially try to create has not already been made
-            // (we dont want to have duplicates of the same slice)
-
-            // We may have variables of the same name, but each slice of the same name must be initially declared on different lines
-            if (sliceProfileItr->second.back().variableName != declVarName || sliceProfileItr->second.back().lineNumber != localVar->lineNumber) {
-                auto sliceProfile = SliceProfile(declVarName, localVar->lineNumber, isPointer, true, std::set<unsigned int>{localVar->lineNumber});
-
-                sliceProfile.nameOfContainingClass = className;
-                sliceProfile.containingNameSpaces = containingNamespaces;
-                sliceProfile.language = ctx.currentFileLanguage;
-
-                sliceProfile.showControlEdges = calculateControlEdges;
-
-                sliceProfile.isPointer = isPointer;
-                sliceProfile.isReference = isReference;
-                sliceProfile.isPotentialArray = isArray;
-
-                sliceProfileItr->second.push_back(sliceProfile);
-                sliceProfileItr->second.back().containsDeclaration = true;
-            }
-        } else {
-            auto sliceProf = SliceProfile(declVarName, localVar->lineNumber, (isPointer), false, std::set<unsigned int>{localVar->lineNumber});
-
-            sliceProf.nameOfContainingClass = className;
-            sliceProf.containingNameSpaces = containingNamespaces;
-            sliceProf.language = ctx.currentFileLanguage;
-
-            sliceProf.showControlEdges = calculateControlEdges;
-
-            sliceProf.containsDeclaration = true;
-
-            sliceProf.isPointer = isPointer;
-            sliceProf.isReference = isReference;
-            sliceProf.isPotentialArray = isArray;
-
-            // point the iterator to the newly inserted profile element
-            sliceProfileItr = profileMap.insert(std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProf) })).first;
-        }
-
-        sliceProfileItr->second.back().isReference = isReference;
-        sliceProfileItr->second.back().isPointer = isPointer;
-        sliceProfileItr->second.back().isPotentialArray = isArray;
-
-        // This allows me to set the data type of the variable in its slice
-        // after its been set up from the logic above here
-        // Set the data-type of sliceprofile for decl vars inside of function bodies
-
-        sliceProfileItr->second.back().variableType = declVarType;
-
-        // Link the filepath the XML Originates
-        sliceProfileItr->second.back().file = ctx.currentFilePath;
-
-        // Link the file hash attribute
-        sliceProfileItr->second.back().checksum = ctx.currentFileChecksum;
-
-        // Link the function this slice is located in
-        if (funcData) {
-            if (funcData->name) {
-                sliceProfileItr->second.back().function = funcData->name.ToString();
-            }
-        }
-
-        // Link the class this slice is located in
-        if (classData) {
-            if (classData->name) {
-                sliceProfileItr->second.back().nameOfContainingClass = classData->name.ToString();
-            }
-        }
-
-        // Look at the dvars and add this current variable to their dvar's lists.
-        // If we haven't seen this name before, add its slice profile
-        for (auto& varData : varDataGroup) {
-            UpdateLHSSlices(varData);
-            // sliceProfileItr->second.back() is the LHS
-            if (sliceProfileItr != profileMap.end()) {
-                SliceProfile* initRHS = FetchSliceProfile(varData->GetNameOfIdentifier(), varData, funcData, className, containingNamespaces);
-
-                if (initRHS == nullptr) {
-                    // std::cerr << "Slice Fetch Unsuccessful!" << std::endl;
-                    continue;
-                }
-
-                if (sliceProfileItr->second.back().potentialAlias) {
-                    // Aliases are formed from pointer-to-pointer or pointer-to-address assignments
-                    if (!initRHS->isPointer && !varData->isAddrOf) {
-                        // ensure dependencies are within local-scope
-                        if (initRHS->function == sliceProfileItr->second.back().function) {
-                            initRHS->dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
-                        }
-                        continue;
-                    }
-                    if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
-                        // ensure aliases are within local-scope
-                        if (initRHS->function == sliceProfileItr->second.back().function) {
-                            if (sliceProfileItr->second.back().isPointer) {
-                                // Check for pointer-2-pointer assignment or points-to-address assignment
-                                if (initRHS->isPointer || varData->isAddrOf) {
-                                    sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
-                                    if (!sliceProfileItr->second.back().isPotentialArray) {
-                                        sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
-                                    }
-                                }
-                            } else if (sliceProfileItr->second.back().isReference) {
-                                sliceProfileItr->second.back().aliases.insert(std::make_pair(varData->GetNameOfIdentifier(), varData->originLine));
-                                if (!sliceProfileItr->second.back().isPotentialArray) {
-                                    sliceProfileItr->second.back().currentPointerReference = varData->GetNameOfIdentifier();
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    // ensure dependencies are within local-scope
-                    initRHS->dvars.insert(std::make_pair(declVarName, localVar->lineNumber));
-                }
-            }
-            for (auto& dvarData : varData->rhsElems) {
-                std::string dvar = dvarData->GetNameOfIdentifier();
-
-                auto updateDvarAtThisLocation = profileMap.find(dvar);
-                if (updateDvarAtThisLocation != profileMap.end()) {
-
-                    // Update the use/defs for already existing slices
-                    // ProcessExprStmts does not capture expr_stmts
-                    // contained within Decl_stmts
-                    updateDvarAtThisLocation->second.back().uses.insert(dvarData->uses.begin(), dvarData->uses.end());
-                    updateDvarAtThisLocation->second.back().definitions.insert(dvarData->definitions.begin(), dvarData->definitions.end());
-
-                    if (!StringContainsCharacters(declVarName)) continue;
-                    updateDvarAtThisLocation->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
-                } else {
-                    auto sliceProf = SliceProfile(
-                        dvar,
-                        localVar->lineNumber,
-                        false,
-                        false,
-                        std::set<unsigned int>{},
-                        std::set<unsigned int>{localVar->lineNumber}
-                    );
-
-                    sliceProf.nameOfContainingClass = className;
-                    sliceProf.containingNameSpaces = containingNamespaces;
-                    sliceProf.language = ctx.currentFileLanguage;
-
-                    sliceProf.showControlEdges = calculateControlEdges;
-
-                    auto newSliceProfileFromDeclDvars = profileMap.insert(std::make_pair(dvar,
-                                                                                        std::vector<SliceProfile>{
-                                                                                                std::move(sliceProf)
-                                                                                        }));
-                    if (!StringContainsCharacters(declVarName)) continue;
-
-                    // Ensure dependencies and aliases are within local-scope
-                    auto spi = profileMap.find(declVarName);
-                    if ( spi != profileMap.end() && (spi->second.back().function == newSliceProfileFromDeclDvars.first->second.back().function) ) {
-                        if (sliceProfileItr != profileMap.end() && sliceProfileItr->second.back().potentialAlias) {
-                            if ( declVarName != sliceProfileItr->second.back().variableName ) {
-                                newSliceProfileFromDeclDvars.first->second.back().aliases.insert(std::make_pair(declVarName, dvarData->originLine));
-                            }
-                            continue;
-                        }
-                        newSliceProfileFromDeclDvars.first->second.back().dvars.insert(std::make_pair(declVarName, dvarData->originLine));
-                    }
-                }
-            }
-        }
-    }
 }
 
-void SrcSliceHandler::ProcessInitLists(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::string className, const SliceCtx &ctx) {
+void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx) {
     if (!funcData) return;
 
     // process C++ initializer lists
-    for (auto& deltaCallData : funcData->memberInitList) {
-        std::vector<std::shared_ptr<srcDispatch::ExpressionData>> exprStmts;
+    for (const auto& deltaCallData : funcData->memberInitList) {
+        std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>> exprStmts;
 
         // Insert def line for the valid slice used in the initList
         std::string varName = deltaCallData->name.ToString();
         VariableData data(varName);
-        data.definitions.insert(deltaCallData->name->lineNumber);
+        data.definitions.insert(deltaCallData->name->startLineNumber.GetElement());
 
         // Find the slice for the "call-target"
         auto spi = profileMap.find(varName);
@@ -566,19 +652,19 @@ void SrcSliceHandler::ProcessInitLists(srcDispatch::DeltaElement<std::shared_ptr
         }
 
         // extract and parse expressions within init list call
-        for (auto& deltaArg : deltaCallData->arguments) {
-            if (deltaArg.GetElement()) {
-                exprStmts.push_back(deltaArg.GetElement());
+        for (const auto& deltaArg : deltaCallData->arguments) {
+            if (deltaArg) {
+                exprStmts.push_back(deltaArg);
 
                 // there is data-dependency between the call-target and the args
                 if (sp != nullptr) {
                     for (auto& deltaExprElem : deltaArg->expr) {
                         if (deltaExprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
-                            std::shared_ptr<srcDispatch::NameData> nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(deltaExprElem.GetElement());
+                            auto nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(deltaExprElem.GetElement());
                             if (nameData->SimpleName().empty()) continue;
 
                             std::string varName = ExtractName(nameData->SimpleName());
-                            sp->dvars.insert(std::make_pair(varName, deltaArg->lineNumber));
+                            sp->dvars.insert(std::make_pair(varName, deltaArg->startLineNumber.GetElement()));
                         }
                     }
                 }
@@ -586,16 +672,17 @@ void SrcSliceHandler::ProcessInitLists(srcDispatch::DeltaElement<std::shared_ptr
         }
 
         for (auto& expr : exprStmts) {
-            UpdateSlices(ParseExpr(*expr, expr->lineNumber), funcData, className, ctx);
+            std::vector<std::shared_ptr<VariableData>> pe = ParseExpr(expr, expr->startLineNumber.GetElement());
+            UpdateSlices(pe, funcData, className, ctx);
         }
     }
 }
 
-void SrcSliceHandler::ProcessExprStmts(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::shared_ptr<srcDispatch::BlockData> block,
-                        std::string className, const SliceCtx &ctx) {
-    std::vector<std::shared_ptr<srcDispatch::ExpressionData>> exprStmts;
-    std::vector<std::any> conditionals;
+void SrcSliceHandler::ProcessExprStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block,
+                                        std::string className, const SliceCtx& ctx) {
+    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>> exprStmts;
     std::vector<std::shared_ptr<srcDispatch::TryData>> tryBlocks;
+    std::vector<std::any> conditionals;
 
     // Capture Conditional expressions
     if (block) {
@@ -604,36 +691,34 @@ void SrcSliceHandler::ProcessExprStmts(srcDispatch::DeltaElement<std::shared_ptr
                 auto exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
                 if (exprstmt && exprstmt->expr && exprstmt->expr.GetElement()) {
                     // Capture general expressions
-                    exprStmts.push_back(exprstmt->expr.GetElement());
+                    exprStmts.push_back(exprstmt->expr);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ReturnData>)) {
                 auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
                 if (retstmt && retstmt->expr && retstmt->expr.GetElement()) {
                     // Capture general Return expressions
-                    exprStmts.push_back(retstmt->expr.GetElement());
+                    exprStmts.push_back(retstmt->expr);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                conditionals.push_back(stmt.GetElement());
+                conditionals.push_back(stmt);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                conditionals.push_back(stmt.GetElement());
+                conditionals.push_back(stmt);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CaseData>)) {
-                conditionals.push_back(stmt.GetElement());
+                conditionals.push_back(stmt);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
-                conditionals.push_back(stmt.GetElement());
+                conditionals.push_back(stmt);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                conditionals.push_back(stmt.GetElement());
+                conditionals.push_back(stmt);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
-                conditionals.push_back(stmt.GetElement());
+                conditionals.push_back(stmt);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
                 auto tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
                 if (tryData) tryBlocks.push_back(tryData);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ThrowData>)) {
-                auto throwData = std::any_cast<std::shared_ptr<srcDispatch::ThrowData>>(stmt.GetElement());
+                auto throwData = std::any_cast<std::shared_ptr<srcDispatch::ThrowData>>(stmt);
                 if (throwData && throwData->expr && throwData->expr.GetElement()) {
-                    exprStmts.push_back(throwData->expr.GetElement());
+                    exprStmts.push_back(throwData->expr);
                 }
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::GotoData>)) {
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LabelData>)) {
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
                 // ignore this when handling expressions
                 continue;
@@ -644,46 +729,48 @@ void SrcSliceHandler::ProcessExprStmts(srcDispatch::DeltaElement<std::shared_ptr
             }
         }
 
-        if (conditionals.size() > 0) {
+        if (!conditionals.empty()) {
             CollectConditionalData(&exprStmts, nullptr, conditionals);
         }
 
-        if (tryBlocks.size() > 0) {
+        if (!tryBlocks.empty()) {
             CollectTryBlockData(funcData, tryBlocks, className, ctx);
         }
-    }
 
-    // loop through all the expression statements
-    for (auto itr = exprStmts.begin(); itr != exprStmts.end(); ++itr) {
-        std::shared_ptr<srcDispatch::ExpressionData> expr = *itr;
-        if (expr) {
-            // Check if any NameData within an Express contains index operator expressions
-            // and insert those into the exprStmts vector
-            for (const auto& data : expr->expr) {
-                if (data.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
-                    std::shared_ptr<srcDispatch::NameData> nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(data.GetElement());
-                    if (nameData && nameData->indices.size() > 0) {
-                        // strip DeltaElement layer
-                        std::vector<std::shared_ptr<srcDispatch::ExpressionData>> indiceExprs;
-                        for (auto& deltaExpr : nameData->indices) {
-                            if (deltaExpr.GetElement()) {
-                                indiceExprs.push_back(deltaExpr.GetElement());
-                            }
-                        }
-
-                        itr = exprStmts.insert(itr+1, indiceExprs.begin(), indiceExprs.end()); // set to iterator of newly inserted data
-                        --itr;
-                    }
-                }
+        if (!exprStmts.empty()) {
+            for (const auto& expr : exprStmts) {
+                ProcessExprStmt(expr, funcData, className, ctx);
             }
-
-            UpdateSlices(ParseExpr(*expr, expr->lineNumber), funcData, className, ctx);
         }
     }
 }
 
-void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>> varDataGroup, srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData,
-                    std::string className, const SliceCtx &ctx) {
+void SrcSliceHandler::ProcessExprStmt(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+                        std::string className, const SliceCtx& ctx) {
+    if (expr) {
+        // Check if any NameData within an Express contains index operator expressions
+        // and insert those into the exprStmts vector
+        for (const auto& exprElem : expr->expr) {
+            if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
+                auto nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
+                if (nameData && nameData->indices.size() > 0) {
+                    for (auto& deltaIndexExpr : nameData->indices) {
+                        if (deltaIndexExpr) {
+                            std::vector<std::shared_ptr<VariableData>> pe = ParseExpr(expr, expr->startLineNumber.GetElement());
+                            UpdateSlices(pe, funcData, className, ctx);
+                        }
+                    }
+                }
+            }
+        }
+        
+        std::vector<std::shared_ptr<VariableData>> pe = ParseExpr(expr, expr->startLineNumber.GetElement());
+        UpdateSlices(pe, funcData, className, ctx);
+    }
+}
+
+void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+                    std::string className, const SliceCtx& ctx) {
     std::vector<std::string> containingNamespaces;
     if (funcData) containingNamespaces = funcData->namespaces;
 
@@ -745,7 +832,7 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>> va
                                                                                                 rhsVarData->uses)
                                                                                 }));
                 sliceProfileExprItr2.first->second.back().nameOfContainingClass = className;
-                sliceProfileExprItr2.first->second.back().containingNameSpaces = containingNamespaces;
+                sliceProfileExprItr2.first->second.back().containingNameSpaces = funcData->namespaces;
                 sliceProfileExprItr2.first->second.back().language = ctx.currentFileLanguage;
 
                 sliceProfileExprItr2.first->second.back().showControlEdges = calculateControlEdges;
@@ -806,7 +893,7 @@ void SrcSliceHandler::CreateSliceCallData(std::string functionName, int argIndex
     sliceProfile.cfunctions.insert(sliceCallData);
 }
 
-void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData> funcCallData) {
+void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>& funcCallData) {
     if (!funcCallData) return;
 
     std::string functionName = funcCallData->name.ToString();
@@ -824,7 +911,7 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
             // std::cerr << "      |____ CALL-DATA ELEM --> " << exprElem.type().name() << std::endl;
             if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
                 std::shared_ptr<srcDispatch::NameData> name = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
-                unsigned int argUseLineNumber = funcCallData->lineNumber;
+                unsigned int argUseLineNumber = funcCallData->startLineNumber.GetElement();
                 
                 if (!name) continue;
 
@@ -842,12 +929,12 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
                         std::string simpleFunctionName = GetSimpleFunctionName(functionName);
 
                         // Get the collection of functions by name
-                        auto funcSig = funcSigCollection.functionSigMap.find(simpleFunctionName);
-                        if (funcSig != funcSigCollection.functionSigMap.end()) {
+                        auto funcSig = functionSigMap.find(simpleFunctionName);
+                        if (funcSig != functionSigMap.end()) {
                             // if there is only one record of a function signature
                             if (funcSig->second.size() == 1) {
-                                unsigned int funcLineDef = funcSig->second[0]->lineNumber;
-                                CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back(), funcCallData->lineNumber);
+                                unsigned int funcLineDef = funcSig->second[0].lineNumber;
+                                CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back(), funcCallData->startLineNumber.GetElement());
                             } else {
                                 // if a function is overloaded
                                 size_t pos = 0;
@@ -856,16 +943,16 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
                                 // of the parameter differs, we need to check argc <= paramc AND dataType(arg[i]) == dataType(param[i])
                                 // we will have to derive the arg[i] to its corresponding slice, param[i] is a decldata so we can fetch its type
                                 for (pos; pos < funcSig->second.size(); ++pos) {
-                                    bool argumentInBounds = (argIndex-1 < funcSig->second[pos]->parameters.size());
+                                    bool argumentInBounds = (argIndex-1 < funcSig->second[pos].parameters.size());
                                     if (!argumentInBounds) continue;
 
-                                    bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[pos]->parameters.size());
+                                    bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[pos].parameters.size());
                                     if (!validArgCount) continue;
 
                                     std::string sliceDataType = sliceProfileItr->second.back().variableType;
 
                                     // Make a function to pull data-type
-                                    std::string paramDataType = funcSig->second[pos]->parameters[argIndex-1]->type.ToString();
+                                    std::string paramDataType = funcSig->second[pos].parameters[argIndex-1]->type.ToString();
                                     // remove all spaces from type string
                                     paramDataType.erase(std::remove(paramDataType.begin(), paramDataType.end(), ' '), paramDataType.end());
 
@@ -894,22 +981,22 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
                                 }
 
                                 if (pos < funcSig->second.size()) {
-                                    unsigned int funcLineDef = funcSig->second[pos]->lineNumber;
-                                    CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back(), funcCallData->lineNumber);
+                                    unsigned int funcLineDef = funcSig->second[pos].lineNumber;
+                                    CreateSliceCallData(simpleFunctionName, argIndex, funcLineDef, sliceProfileItr->second.back(), funcCallData->startLineNumber.GetElement());
                                 } else {
                                     if (verboseMode)
                                         std::cerr << "[-] " << __LINE__  << " | Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
-                                    CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->lineNumber);
+                                    CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->startLineNumber.GetElement());
                                 }
                             }
                         } else {
                             if (verboseMode)
                                 std::cerr << "[-] " << __LINE__  << " | No Function Signature Found for -> " << simpleFunctionName << std::endl;
-                            CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->lineNumber);
+                            CreateSliceCallData(simpleFunctionName, argIndex, 0, sliceProfileItr->second.back(), funcCallData->startLineNumber.GetElement());
                         }
                     }
-                }  catch (const std::logic_error& e) {
-                    std::cerr << "[-] Caught Logic Error: " << e.what() << std::endl;
+                }  catch (std::logic_error& e) {
+                    if (verboseMode) std::cerr << "[-] " << __LINE__  << " | Caught Logic Error: " << e.what() << std::endl;
                 }
             } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CallData>)) {
                 // std::cerr << "ARGUMENT IS A CALL-DATA" << std::endl;
@@ -922,29 +1009,29 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
 // try blocks contain both exprs and decls, need to extract those decls and create slice profiles
 // for them, along with capturing expressions to update collected slices
-void SrcSliceHandler::CollectTryBlockData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
-                            std::string className, const SliceCtx &ctx) {
+void SrcSliceHandler::CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
+                            std::string className, const SliceCtx& ctx) {
     for (auto& tryBlock : tryBlocks) {
         if (tryBlock->block) {
             // Collect Decls and Exprs within the block of this Try-Block
-            ProcessDeclStmts(funcData.GetElement(), tryBlock->block.GetElement(), nullptr, className, nullptr, ctx);
-            ProcessExprStmts(funcData, tryBlock->block.GetElement(), className, ctx);
+            ProcessDeclStmts(funcData, tryBlock->block, className, ctx);
+            ProcessExprStmts(funcData, tryBlock->block, className, ctx);
         }
 
         // Collect Decls and Exprs within the catch block
         for (auto& clause : tryBlock->clauses) {
             if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
-                std::shared_ptr<srcDispatch::CatchData> catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
+                auto catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
                 if (catchData->block) {
-                    ProcessDeclStmts(funcData.GetElement(), catchData->block.GetElement(), nullptr, className, nullptr, ctx);
-                    ProcessExprStmts(funcData, catchData->block.GetElement(), className, ctx);
+                    ProcessDeclStmts(funcData, catchData->block, className, ctx);
+                    ProcessExprStmts(funcData, catchData->block, className, ctx);
                 }
             }
         }
     }
 }
 
-void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDispatch::ExpressionData>>* exprStmts, std::vector<std::shared_ptr<srcDispatch::DeclData>>* declStmts,
+void SrcSliceHandler::CollectConditionalData(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
                             std::vector<std::any>& conditionals) {
     std::vector<std::shared_ptr<srcDispatch::BlockData>> cntlBlocks;
 
@@ -953,13 +1040,11 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
         if (cntl.type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
             // Extract all of the block data from if statements
             std::shared_ptr<srcDispatch::IfStmtData> ifcntl = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(cntl);
-
             if (ifcntl) {
                 // ifstmts have three potential clauses (if-elseif-else)
                 for (const auto& clause : ifcntl->clauses) {
                     if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
                         std::shared_ptr<srcDispatch::IfData> ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
-
                         if (ifData) {
                             if (ifData && ifData->condition) {
                                 for (auto& elem : ifData->condition->conditions) {
@@ -983,7 +1068,6 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
                         }
                     } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
                         std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
-
                         if (elseIfData) {
                             if (elseIfData && elseIfData->condition) {
                                 for (auto& elem : elseIfData->condition->conditions) {
@@ -1011,7 +1095,6 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
                         }
                     } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseData>)) {
                         std::shared_ptr<srcDispatch::ElseData> elseData = std::any_cast<std::shared_ptr<srcDispatch::ElseData>>(clause.GetElement());
-
                         if (elseData) {
                             // minimize duplicate entries
                             if (elsedata.size() == 0 || elsedata.back() != std::make_pair((int)(elseData->startLineNumber), (int)(elseData->endLineNumber)))
@@ -1025,7 +1108,6 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
         } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
             // Extract all of the block data from Switch statements
             std::shared_ptr<srcDispatch::SwitchData> switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(cntl);
-
             if (switchData) {
                 /*
                     Ensure we are getting the uses from the case lines
@@ -1073,10 +1155,10 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
                             // of inserting data into the wrong slice
                             if (sliceProfileItr != profileMap.end()) {
                                 // std::cerr << "[*] Adding Use for Switch Control Variable --> " << ctrlVar->SimpleName() << " | " << switchCase->expr->lineNumber << std::endl;
-                                sliceProfileItr->second.back().uses.insert(switchCase->expr->lineNumber);
+                                sliceProfileItr->second.back().uses.insert(switchCase->expr->startLineNumber.GetElement());
                             } else {
                                 if (verboseMode) {
-                                    std::cerr << "[-] Could not find Slice Profile of: " << ctrlVar->SimpleName() << std::endl;
+                                    std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << ctrlVar->SimpleName() << std::endl;
                                 }
                             }
                         }
@@ -1089,7 +1171,6 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
         } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
             // Extract all of the block data from For Loops
             std::shared_ptr<srcDispatch::ForData> forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(cntl);
-
             if (forData && forData->control && forData->control) {
                 if (forData->control->init) {
                     for (auto& initData : forData->control->init->inits) {
@@ -1123,7 +1204,6 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
         } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
             // Extract all of the block data from While Loops
             std::shared_ptr<srcDispatch::WhileData> whileData = std::any_cast<std::shared_ptr<srcDispatch::WhileData>>(cntl);
-
             if (whileData) {
                 // C++ do-while does not support decl-stmts within the conditional "()"
 
@@ -1145,7 +1225,6 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
         } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
             // Extract all of the block data from Do-While Loops
             std::shared_ptr<srcDispatch::DoData> doWhileData = std::any_cast<std::shared_ptr<srcDispatch::DoData>>(cntl);
-
             if (doWhileData) {
                 // C++ do-while does not support decl-stmts within the conditional "()"
 
@@ -1211,10 +1290,6 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
                 conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
                 conditionals.push_back(stmt.GetElement());
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ThrowData>)) {
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::GotoData>)) {
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LabelData>)) {
             } else {
                 if (verboseMode) {
                     std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
@@ -1231,7 +1306,7 @@ void SrcSliceHandler::CollectConditionalData(std::vector<std::shared_ptr<srcDisp
 
 // Take large name strings and extract the root variable name
 std::string SrcSliceHandler::ExtractName(std::string elementName) {
-    const std::string target = "std::";
+    std::string target = "std::";
 
     // Check if the string starts with "std::"
     if (elementName.rfind(target, 0) == 0) {
@@ -1301,8 +1376,10 @@ void SrcSliceHandler::AppendIndices(std::shared_ptr<VariableData>& lhs, std::sha
     }
 }
 
-std::vector<std::shared_ptr<VariableData>> SrcSliceHandler::ParseExpr(const srcDispatch::ExpressionData& expr, const unsigned int& lineNumber) {
-    std::vector<std::shared_ptr<VariableData>> varDataGroup;
+std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr, const unsigned int& lineNumber) {
+    static std::vector<std::shared_ptr<VariableData>> varDataGroup; // persists after function call return allowing us to return references and avoid copies
+    varDataGroup.clear(); // ensures upon each ParseExpr call we create a fresh vector (delete old data)
+
     std::string expr_op = "";
     std::shared_ptr<VariableData> lhsVar = std::make_shared<VariableData>();
 
@@ -1310,127 +1387,130 @@ std::vector<std::shared_ptr<VariableData>> SrcSliceHandler::ParseExpr(const srcD
     bool groupCollect = false, trailingPrefix = false, trailingExtraction = false;
 
     // loop through each element within a specific expression statement
-    for (const auto& exprElem : expr.expr) {
+    for (const auto& exprElem : expr->expr) {
         if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
-            std::shared_ptr<srcDispatch::NameData> name = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
-            if (name->SimpleName().empty()) continue;
-            std::string varName = ExtractName(name->SimpleName());
+            try {
+                std::shared_ptr<srcDispatch::NameData> name = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
+                if (!name || name->SimpleName().empty()) continue;
+                std::string varName = ExtractName(name->SimpleName());
+                
+                if (!lhsVar->isInitialized()) {
+                    lhsVar->InitializeLHS(varName, lineNumber);
+                    // any variable in an expression is a use of said variable
+                    // unless the expression follows the sequence of a redefinition
+                    // `VARIABLE_NAME =`
+                    // lhsVar->uses.insert(lineNumber);
 
-            if (!lhsVar->isInitialized()) {
-                lhsVar->InitializeLHS(varName, lineNumber);
-                // any variable in an expression is a use of said variable
-                // unless the expression follows the sequence of a redefinition
-                // `VARIABLE_NAME =`
-                // lhsVar->uses.insert(lineNumber);
-
-                // capture use-def chains for single statements such as: ++i
-                if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
-                    lhsVar->definitions.insert(lineNumber);
-                    lhsVar->uses.insert(lineNumber);
-                    trailingPrefix = false;
-                }
-
-                if (expr_op == "&") {
-                    lhsVar->isAddrOf = true;
-                } else if (expr_op == "*") {
-                    auto spi = profileMap.find(lhsVar->GetNameOfIdentifier());
-                    if (spi != profileMap.end() && spi->second.back().isPointer) {
-                        lhsVar->dereferenced = true;
-                        if (trailingExtraction) { // redefining a dereferenced ptr does not always use itself when redefining
-                            lhsVar->uses.erase(lineNumber);
-                        }
+                    // capture use-def chains for single statements such as: ++i
+                    if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
+                        lhsVar->definitions.insert(lineNumber);
+                        lhsVar->uses.insert(lineNumber);
+                        trailingPrefix = false;
                     }
-                }
 
-                if (IsPointerDereferenced(name)) {
-                    lhsVar->dereferenced = true;
-                }
-
-                if (expr_op == ">>" || trailingExtraction) {
-                    lhsVar->definitions.insert(lineNumber);
-                    lhsVar->userModified = true;
-                    trailingExtraction = false;
-                }
-
-                if (name && !name->indices.empty()) {
-                    // Extract the expression within the index operator and push all
-                    // of the variable names as rhs of the lhs
-                    for (const auto& indexExpr : name->indices) {
-                        for (const auto& indexElem : indexExpr->expr) {
-                            if (indexElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
-                                // Create the new index data reference
-                                std::shared_ptr<srcDispatch::NameData> indexVar = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(indexElem.GetElement());
-                                std::string indexVarName = ExtractName(indexVar->SimpleName());
-
-                                std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
-
-                                // Set the meta-data
-                                newFalseRHS->uses.insert(lineNumber);
-                                newFalseRHS->SetOriginLine(lineNumber);
-
-                                // Push for later handling
-                                lhsVar->indices.push_back(newFalseRHS);
+                    if (expr_op == "&") {
+                        lhsVar->isAddrOf = true;
+                    } else if (expr_op == "*") {
+                        auto spi = profileMap.find(lhsVar->GetNameOfIdentifier());
+                        if (spi != profileMap.end() && spi->second.back().isPointer) {
+                            lhsVar->dereferenced = true;
+                            if (trailingExtraction) { // redefining a dereferenced ptr does not always use itself when redefining
+                                lhsVar->uses.erase(lineNumber);
                             }
                         }
                     }
-                }
-            } else {
-                std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(varName);
-                newRHSVar->uses.insert(lineNumber);
-                newRHSVar->SetOriginLine(lineNumber);
 
-                // capture use-def chains for rhs var statements such as: a = ++i
-                if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
-                    newRHSVar->definitions.insert(lineNumber);
-                    trailingPrefix = false;
-                }
+                    if (IsPointerDereferenced(name)) {
+                        lhsVar->dereferenced = true;
+                    }
 
-                if (expr_op == "&") {
-                    newRHSVar->isAddrOf = true;
-                } else if (expr_op == "*") {
-                    auto spi = profileMap.find(newRHSVar->GetNameOfIdentifier());
-                    if (spi != profileMap.end() && spi->second.back().isPointer) {
+                    if (expr_op == ">>" || trailingExtraction) {
+                        lhsVar->definitions.insert(lineNumber);
+                        lhsVar->userModified = true;
+                        trailingExtraction = false;
+                    }
+
+                    if (name && !name->indices.empty()) {
+                        // Extract the expression within the index operator and push all
+                        // of the variable names as rhs of the lhs
+                        for (const auto& indexExpr : name->indices) {
+                            for (const auto& indexElem : indexExpr->expr) {
+                                if (indexElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
+                                    // Create the new index data reference
+                                    std::shared_ptr<srcDispatch::NameData> indexVar = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(indexElem.GetElement());
+                                    std::string indexVarName = ExtractName(indexVar->SimpleName());
+                                    std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
+
+                                    // Set the meta-data
+                                    newFalseRHS->uses.insert(lineNumber);
+                                    newFalseRHS->SetOriginLine(lineNumber);
+
+                                    // Push for later handling
+                                    lhsVar->indices.push_back(newFalseRHS);
+                                }
+                            }
+                        }
+                    }
+                } else {
+                    std::shared_ptr<VariableData> newRHSVar = std::make_shared<VariableData>(varName);
+                    newRHSVar->uses.insert(lineNumber);
+                    newRHSVar->SetOriginLine(lineNumber);
+
+                    // capture use-def chains for rhs var statements such as: a = ++i
+                    if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
+                        newRHSVar->definitions.insert(lineNumber);
+                        trailingPrefix = false;
+                    }
+
+                    if (expr_op == "&") {
+                        newRHSVar->isAddrOf = true;
+                    } else if (expr_op == "*") {
+                        auto spi = profileMap.find(newRHSVar->GetNameOfIdentifier());
+                        if (spi != profileMap.end() && spi->second.back().isPointer) {
+                            newRHSVar->dereferenced = true;
+                        }
+                    }
+
+                    if (IsPointerDereferenced(name)) {
                         newRHSVar->dereferenced = true;
                     }
-                }
 
-                if (IsPointerDereferenced(name)) {
-                    newRHSVar->dereferenced = true;
-                }
+                    lhsVar->lhs = true;
+                    lhsVar->AddRHS(newRHSVar);
 
-                lhsVar->lhs = true;
-                lhsVar->AddRHS(newRHSVar);
+                    // Ensure that tracked lhs variables get assigned all of their
+                    // rhs vars in the expression
+                    for (auto& lhs : lhsStack)
+                        lhs->AddRHS(newRHSVar);
 
-                // Ensure that tracked lhs variables get assigned all of their
-                // rhs vars in the expression
-                for (auto& lhs : lhsStack)
-                    lhs->AddRHS(newRHSVar);
+                    // Ensure the std::optional has a value before moving forward
+                    if (name && !name->indices.empty()) {
+                        // Extract the expression within the index operator and push all
+                        // of the variable names as rhs of the lhs
+                        for (const auto& indexExpr : name->indices) {
+                            for (const auto& indexElem : indexExpr->expr) {
+                                if (indexElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
+                                    // Create the new index data reference
+                                    std::shared_ptr<srcDispatch::NameData> indexVar = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(indexElem.GetElement());
+                                    std::string indexVarName = ExtractName(indexVar->SimpleName());
 
-                // Ensure the std::optional has a value before moving forward
-                if (name && !name->indices.empty()) {
-                    // Extract the expression within the index operator and push all
-                    // of the variable names as rhs of the lhs
-                    for (const auto& indexExpr : name->indices) {
-                        for (const auto& indexElem : indexExpr->expr) {
-                            if (indexElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
-                                // Create the new index data reference
-                                std::shared_ptr<srcDispatch::NameData> indexVar = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(indexElem.GetElement());
-                                std::string indexVarName = ExtractName(indexVar->SimpleName());
+                                    std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
 
-                                std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
+                                    // Set the meta-data
+                                    newFalseRHS->uses.insert(lineNumber);
+                                    newFalseRHS->SetOriginLine(lineNumber);
 
-                                // Set the meta-data
-                                newFalseRHS->uses.insert(lineNumber);
-                                newFalseRHS->SetOriginLine(lineNumber);
-
-                                // Push for later handling
-                                lhsVar->indices.push_back(newFalseRHS);
-                                for (auto& lhs : lhsStack)
-                                    lhs->indices.push_back(newFalseRHS);
+                                    // Push for later handling
+                                    lhsVar->indices.push_back(newFalseRHS);
+                                    for (auto& lhs : lhsStack)
+                                        lhs->indices.push_back(newFalseRHS);
+                                }
                             }
                         }
                     }
                 }
+            } catch (std::logic_error& e) {
+                if (verboseMode) std::cerr << "[-] Caught Logic Error: " << e.what() << std::endl;
             }
         } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::OperatorData>)) {
             std::shared_ptr<srcDispatch::OperatorData> opData = std::any_cast<std::shared_ptr<srcDispatch::OperatorData>>(exprElem.GetElement());
@@ -1567,8 +1647,8 @@ std::vector<std::shared_ptr<VariableData>> SrcSliceHandler::ParseExpr(const srcD
                 // when delimiter if found
                 std::string callTarget = callData->name.ToString().substr(0, endPosition);
                 std::shared_ptr<VariableData> sourceVar = std::make_shared<VariableData>(callTarget);
-                sourceVar->uses.insert(callData->lineNumber);
-                sourceVar->SetOriginLine(callData->lineNumber);
+                sourceVar->uses.insert(callData->startLineNumber.GetElement());
+                sourceVar->SetOriginLine(callData->startLineNumber.GetElement());
                 varDataGroup.push_back(sourceVar);
             }
 
@@ -1615,9 +1695,8 @@ std::vector<std::shared_ptr<VariableData>> SrcSliceHandler::ParseExpr(const srcD
     return varDataGroup;
 }
 
-void SrcSliceHandler::ProcessFunctionParameters(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters, const std::string& currentFunctionName,
-                                std::string className, std::vector<std::string>& containingNamespaces,
-                                const SliceCtx &ctx) {
+void SrcSliceHandler::ProcessFunctionParameters(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters,
+                                                std::string currentFunctionName, std::string className, const SliceCtx& ctx) {
     for (auto& parameter : parameters) {
         if (!parameter->name) continue;
         std::string paramName = parameter->name.ToString();
@@ -1640,12 +1719,13 @@ void SrcSliceHandler::ProcessFunctionParameters(std::vector<srcDispatch::DeltaEl
         auto sliceProfileItr = profileMap.find(paramName);
         // Just add new slice profile if name already exists. Otherwise, add new entry in map.
         if (sliceProfileItr != profileMap.end()) {
-            auto sliceProf = SliceProfile(paramName, parameter->lineNumber,
+            SliceProfile sliceProf = SliceProfile(paramName, parameter->startLineNumber.GetElement(),
                                             isPointer, true,
-                                            std::set<unsigned int>{parameter->lineNumber});
+                                            std::set<unsigned int>{parameter->startLineNumber.GetElement()});
+
             sliceProf.containsDeclaration = true;
             sliceProf.nameOfContainingClass = className;
-            sliceProf.containingNameSpaces = containingNamespaces;
+            sliceProf.containingNameSpaces = funcData->namespaces;
             sliceProf.language = ctx.currentFileLanguage;
             
             sliceProf.showControlEdges = calculateControlEdges;
@@ -1656,12 +1736,13 @@ void SrcSliceHandler::ProcessFunctionParameters(std::vector<srcDispatch::DeltaEl
 
             sliceProfileItr->second.push_back(std::move(sliceProf));
         } else {
-            auto sliceProf = SliceProfile(paramName, parameter->lineNumber,
+            SliceProfile sliceProf = SliceProfile(paramName, parameter->startLineNumber.GetElement(),
                                             isPointer, true,
-                                            std::set<unsigned int>{parameter->lineNumber});
+                                            std::set<unsigned int>{parameter->startLineNumber.GetElement()});
+
             sliceProf.containsDeclaration = true;
             sliceProf.nameOfContainingClass = className;
-            sliceProf.containingNameSpaces = containingNamespaces;
+            sliceProf.containingNameSpaces = funcData->namespaces;
             sliceProf.language = ctx.currentFileLanguage;
 
             sliceProf.showControlEdges = calculateControlEdges;
@@ -1670,8 +1751,7 @@ void SrcSliceHandler::ProcessFunctionParameters(std::vector<srcDispatch::DeltaEl
             sliceProf.isReference = isReference;
             sliceProf.isPotentialArray = isArray;
 
-            profileMap.insert(std::make_pair(paramName,
-                                                std::vector<SliceProfile>{std::move(sliceProf)}));
+            profileMap.insert(std::make_pair(paramName, std::vector<SliceProfile>{ std::move(sliceProf) }));
         }
 
         // Attempt to insert data-types for sliceprofiles found in function/ctor parameters
@@ -1688,49 +1768,45 @@ void SrcSliceHandler::ProcessFunctionParameters(std::vector<srcDispatch::DeltaEl
     }
 }
 
-void SrcSliceHandler::ProcessFunctionSignature(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> funcData, std::string className, std::vector<std::string>& containingNamespaces,
-                                const SliceCtx &ctx) {
+void SrcSliceHandler::ProcessFunctionSignature(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx) {
     std::string functionName = funcData->name.ToString();
-    
     if (functionName.empty()) return;
+
     bool updateSignature = (functionName.find("::") != std::string::npos);
-    // std::string scopeName = "";
 
     // Update a Signature Entry due to out-of-line definition
     if (updateSignature) {
-        // scopeName = functionName.substr(0, functionName.find("::"));
         functionName = functionName.substr(functionName.find_last_of("::")+1, -1);
     }
 
     // Process the parameters in a separate function
     auto& functionParameters = funcData->parameters;
-    ProcessFunctionParameters(functionParameters, funcData->name.ToString(), className, containingNamespaces, ctx);
-    auto funcSig = funcSigCollection.functionSigMap.find(functionName);
+    ProcessFunctionParameters(funcData, functionParameters, funcData->name.ToString(), className, ctx);
+    auto funcSig = functionSigMap.find(functionName);
 
-    if (funcSig != funcSigCollection.functionSigMap.end()) {
+    if (funcSig != functionSigMap.end()) {
         if (updateSignature) {
             for (auto& func : funcSig->second) {
-                if (func->parameters.size() == functionParameters.size()) {
-                    func = funcData;
+                if (func.parameters.size() == functionParameters.size()) {
+                    // Update marked signature
+                    func = FunctionSignatureData(funcData, ctx);
                     break;
                 }
             }
         } else {
             // overloaded function detected
-            funcSig->second.push_back(funcData);
+            funcSig->second.push_back({funcData, ctx});
         }
     } else {
         // Insert a new signature
-        funcSigCollection.functionSigMap.insert(
-                std::make_pair(functionName, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>{funcData})
-                );
+        functionSigMap[functionName].push_back({funcData, ctx});
     }
 }
 
 // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
 // Logic constructed for use BEFORE InterProcedural
-SliceProfile* SrcSliceHandler::FetchSliceProfile(std::string profileName, const std::shared_ptr<VariableData>& vd, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
-                                const std::string& className, const std::vector<std::string>& containingNameSpaces) {
+SliceProfile* SrcSliceHandler::FetchSliceProfile(std::string profileName, std::shared_ptr<VariableData>& vd, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+                                std::string className, std::vector<std::string> containingNameSpaces) {
     auto spi = profileMap.find(profileName);
     SliceProfile* potentialGlobal = nullptr;
 
@@ -1801,7 +1877,7 @@ std::string SrcSliceHandler::GetSimpleFunctionName(std::string funcName) {
 
 // Used for inserting Uses and Defs for Slices in the LHS of an Expression Statement
 // perform a map find and update the slice
-void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData> varData) {
+void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData>& varData) {
     if (varData->GetNameOfIdentifier().empty()) return;
 
     auto sliceProfileItr = profileMap.find(varData->GetNameOfIdentifier());
@@ -1854,7 +1930,7 @@ void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData> varData) {
     }
 }
 
-bool SrcSliceHandler::StringContainsCharacters(const std::string &str) {
+bool SrcSliceHandler::StringContainsCharacters(std::string &str) {
     for (char ch : str) {
         if (std::isalpha(ch)) {
             return true;
@@ -1863,20 +1939,20 @@ bool SrcSliceHandler::StringContainsCharacters(const std::string &str) {
     return false;
 }
 
-bool SrcSliceHandler::isAssignment(const std::string& expr_op) {
+bool SrcSliceHandler::isAssignment(std::string& expr_op) {
     return (expr_op == "=") || (expr_op == "+=") || (expr_op == "-=") || (expr_op == "*=") || (expr_op == "/=") || (expr_op == "%=");
 }
 
-bool SrcSliceHandler::isCompoundAssignment(const std::string& expr_op) {
+bool SrcSliceHandler::isCompoundAssignment(std::string& expr_op) {
     return (expr_op == "+=") || (expr_op == "-=") || (expr_op == "*=") || (expr_op == "/=") || (expr_op == "%=");
 }
 
-bool SrcSliceHandler::isLogical(const std::string& expr_op) {
+bool SrcSliceHandler::isLogical(std::string& expr_op) {
     return ( (expr_op == "<") || (expr_op == ">") || (expr_op == "<=") || (expr_op == ">=") || (expr_op == "==")
             || (expr_op == "!=") || (expr_op == "&&" || (expr_op == "||")) );
 }
 
-bool SrcSliceHandler::isWhiteSpace(const std::string& str) {
+bool SrcSliceHandler::isWhiteSpace(std::string& str) {
     return str.find_first_not_of(" \t\n\r") == std::string::npos;
 }
 
@@ -1885,7 +1961,7 @@ std::unordered_map<std::string, std::vector<SliceProfile>>& SrcSliceHandler::Get
 }
 
 // Component of function FindOtherPaths
-void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines) {
+void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths, std::vector<int>& sLines) {
     std::set<std::pair<int,int>> ifGroup;
 
     // Find all valid connections between if,else-if,and else blocks
@@ -1941,7 +2017,7 @@ void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths
 }
 
 // Component of function FindOtherPaths
-void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<int,int>>& otherPaths, const std::vector<int>& sLines, const std::set<int>& ignoreLines) {
+void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<int,int>>& otherPaths, std::vector<int>& sLines, std::set<int>& ignoreLines) {
     // Iterate sLines and find potential paths between
     // sLines[i] and sLines[k], focusing on block exits
     for (int i = 0; i < sLines.size(); ++i) {
@@ -2014,7 +2090,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<int,int>>& otherPaths,
 }
 
 // Attempt to find other Forward Control-Flow paths | ComputeControlPaths Helper Function
-std::set<std::pair<int,int>> SrcSliceHandler::FindOtherPaths(const std::vector<int>& sLines, const std::set<int>& ignoreLines) {
+std::set<std::pair<int,int>> SrcSliceHandler::FindOtherPaths(std::vector<int>& sLines, std::set<int>& ignoreLines) {
     std::set<std::pair<int,int>> otherPaths;
 
     // For each path we need to compute, there is a specific function for it
@@ -2200,14 +2276,13 @@ void SrcSliceHandler::ComputeControlPaths() {
     }
 }
 
-auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> func, int paramIndex, std::unordered_set<std::string>& visit_func) {
-    auto Spi = profileMap.find(func.second->parameters.at(paramIndex)->name.ToString());
-
-    for (auto& param : func.second->parameters) {
+auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, FunctionSignatureData> func, int paramIndex, std::unordered_set<std::string>& visit_func) {
+    auto Spi = profileMap.find(func.second.parameters.at(paramIndex)->name.ToString());
+    for (auto& param : func.second.parameters) {
         if (param && param.GetElement() && param->name && param->name.GetElement()) {
             if (profileMap.find(param->name.ToString()) == profileMap.end()) {
                 if (verboseMode) {
-                    std::cerr << "[-] Could not find SliceProfile for parameter '" << param->name.ToString() << "' of function '" << func.first << "'" << std::endl;
+                    std::cerr << "[-] " << __LINE__ << " | Could not find SliceProfile for parameter '" << param->name.ToString() << "' of function '" << func.first << "'" << std::endl;
                 }
                 continue;
             }
@@ -2218,25 +2293,24 @@ auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, srcDispatch::DeltaE
                 if (profileMap.find(param->name.ToString())->second.back().cfunctions.size() > 0) {
                     for (auto& cfunc : profileMap.find(param->name.ToString())->second.back().cfunctions) {
                         if (cfunc.functionName == func.first) {
-                            auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.functionName);
-                            if (funcGroup != funcSigCollection.functionSigMap.end()) {
+                            auto funcSigCollection = functionSigMap.find(cfunc.functionName);
+                            if (funcSigCollection != functionSigMap.end()) {
                                 size_t pos = 0;
-                                srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> func = funcGroup->second[pos];
 
                                 // Attempt to fingerprint the right signature based on function call definition line and called function
                                 // def line data
-                                while (cfunc.functionDefinition != funcGroup->second[pos]->lineNumber) {
-                                    if (++pos >= funcGroup->second.size()) break;
+                                while (cfunc.functionDefinition != funcSigCollection->second[pos].lineNumber) {
+                                    if (++pos >= funcSigCollection->second.size()) break;
                                 }
 
-                                if (cfunc.functionName == func->name.ToString() && visit_func.find(cfunc.functionName) == visit_func.end()) {
+                                if (cfunc.functionName == funcSigCollection->second[pos].name && visit_func.find(cfunc.functionName) == visit_func.end()) {
                                     visit_func.insert(cfunc.functionName);
                                     // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                                    if (cfunc.functionName == func->name.ToString() && func->parameters.size() > 0 &&
-                                    cfunc.parameterIndex < func->parameters.size()) {
-                                        if (func->parameters[cfunc.parameterIndex]->name) {
+                                    if (cfunc.functionName == funcSigCollection->second[pos].name && funcSigCollection->second[pos].parameters.size() > 0 &&
+                                    cfunc.parameterIndex < funcSigCollection->second[pos].parameters.size()) {
+                                        if (funcSigCollection->second[pos].parameters[cfunc.parameterIndex]->name) {
                                             // Only run this section if the parameter name can be extracted
-                                            auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.functionName, func), cfunc.parameterIndex - 1, visit_func);
+                                            auto recursiveSpi = ArgumentProfile(std::make_pair(cfunc.functionName, funcSigCollection->second[pos]), cfunc.parameterIndex - 1, visit_func);
                                             if (profileMap.find(param->name.ToString()) != profileMap.end() &&
                                                 profileMap.find(recursiveSpi->first) != profileMap.end()) {
                                                 // Uses and Defs need to reflect based on whether its pass by reference or pass by value
@@ -2297,6 +2371,7 @@ auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, srcDispatch::DeltaE
 // InterProcedural from the normal call should also be reflected
 // if a profile with alias(s) is used in function calls
 void SrcSliceHandler::ComputeAliasInterprocedural() {
+    std::cout << "[*] Computing Alias Interprocedural. . ." << std::endl;
     std::unordered_set <std::string> visited_alias;
 
     for (auto& sliceGroup : profileMap) {
@@ -2330,6 +2405,7 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
 }
 
 void SrcSliceHandler::ComputeInterprocedural() {
+    std::cout << "[*] Computing Interprocedural. . ." << std::endl;
     std::unordered_set <std::string> visited_func;
 
     for (auto& var : profileMap) {
@@ -2337,31 +2413,32 @@ void SrcSliceHandler::ComputeInterprocedural() {
         if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
             if (!var.second.back().cfunctions.empty()) {
                 for (auto& cfunc : var.second.back().cfunctions) {
-                    auto funcGroup = funcSigCollection.functionSigMap.find(cfunc.functionName);
+                    auto funcSigCollection = functionSigMap.find(cfunc.functionName);
 
-                    if(funcGroup != funcSigCollection.functionSigMap.end()) {
+                    if(funcSigCollection != functionSigMap.end()) {
                         size_t pos = 0;
-                        srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> func = funcGroup->second[pos];
 
                         // Attempt to fingerprint the right signature based on
                         // function call definition line and called function
                         // def line data
-                        for (pos = 0; pos < funcGroup->second.size(); ++pos) {
-                            if (cfunc.functionDefinition == funcGroup->second[pos]->lineNumber) {
-                                func = funcGroup->second[pos];
+                        for (pos = 0; pos < funcSigCollection->second.size(); ++pos) {
+                            if (cfunc.functionDefinition == funcSigCollection->second[pos].lineNumber) {
                                 break;
                             }
                         }
+                        
+                        if (pos >= funcSigCollection->second.size()) continue; // no signature could be found
+                        if (funcSigCollection->second[pos].name.empty()) continue; // the name is not usable in computation
 
-                        std::string simpleFunctionName = GetSimpleFunctionName(func->name.ToString());
+                        std::string simpleFunctionName = GetSimpleFunctionName(funcSigCollection->second[pos].name);
+
                         unsigned int ArgProfParam = cfunc.parameterIndex - 1;
-
                         // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                        if (cfunc.functionName == simpleFunctionName && func->parameters.size() > 0 &&
-                            ArgProfParam < func->parameters.size() && pos < funcGroup->second.size()) { //TODO fix for case: Overload
-                            if (func->parameters[ArgProfParam]->name) {
+                        if (cfunc.functionName == simpleFunctionName && funcSigCollection->second[pos].parameters.size() > 0 &&
+                            ArgProfParam < funcSigCollection->second[pos].parameters.size() && pos < funcSigCollection->second.size()) { //TODO fix for case: Overload
+                            if (funcSigCollection->second[pos].parameters[ArgProfParam]->name) {
                                 // Only run this section if the parameter name can be extracted
-                                auto Spi = ArgumentProfile(std::make_pair(cfunc.functionName, func), ArgProfParam, visited_func);
+                                auto Spi = ArgumentProfile(std::make_pair(cfunc.functionName, funcSigCollection->second[pos]), ArgProfParam, visited_func);
                                 if (Spi != profileMap.end()) {
                                     auto sliceItr = Spi->second.begin();
                                     std::string desiredVariableName = sliceItr->variableName;
@@ -2374,7 +2451,7 @@ void SrcSliceHandler::ComputeInterprocedural() {
                                             if (GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
                                                 continue;
                                             }
-                                            std::string parameterDeclLine = std::to_string(func->parameters[ArgProfParam]->lineNumber);
+                                            std::string parameterDeclLine = std::to_string(funcSigCollection->second[pos].parameters[ArgProfParam]->startLineNumber.GetElement());
                                             if (std::to_string(sliceItr->lineNumber) != parameterDeclLine) {
                                                 continue;
                                             }
