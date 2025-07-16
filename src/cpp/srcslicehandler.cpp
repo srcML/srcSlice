@@ -62,7 +62,7 @@ void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const 
         // Process Classes
         ProcessClasses(unit->classInfo, SliceCtx(ctx));
 
-        printf("[+] Unit Processed Successfully");
+        printf("[+] Unit Processed Successfully\n");
     }
 }
 
@@ -681,6 +681,7 @@ void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shar
 void SrcSliceHandler::ProcessExprStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block,
                                         std::string className, const SliceCtx& ctx) {
     std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>> exprStmts;
+    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>> declStmts;
     std::vector<std::shared_ptr<srcDispatch::TryData>> tryBlocks;
     std::vector<std::any> conditionals;
 
@@ -700,17 +701,17 @@ void SrcSliceHandler::ProcessExprStmts(const srcDispatch::DeltaElement<std::shar
                     exprStmts.push_back(retstmt->expr);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                conditionals.push_back(stmt);
+                conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                conditionals.push_back(stmt);
+                conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CaseData>)) {
-                conditionals.push_back(stmt);
+                conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
-                conditionals.push_back(stmt);
+                conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                conditionals.push_back(stmt);
+                conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
-                conditionals.push_back(stmt);
+                conditionals.push_back(stmt.GetElement());
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
                 auto tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
                 if (tryData) tryBlocks.push_back(tryData);
@@ -730,7 +731,7 @@ void SrcSliceHandler::ProcessExprStmts(const srcDispatch::DeltaElement<std::shar
         }
 
         if (!conditionals.empty()) {
-            CollectConditionalData(&exprStmts, nullptr, conditionals);
+            CollectConditionalData(&exprStmts, &declStmts, conditionals);
         }
 
         if (!tryBlocks.empty()) {
@@ -756,7 +757,7 @@ void SrcSliceHandler::ProcessExprStmt(const srcDispatch::DeltaElement<std::share
                 if (nameData && nameData->indices.size() > 0) {
                     for (auto& deltaIndexExpr : nameData->indices) {
                         if (deltaIndexExpr) {
-                            std::vector<std::shared_ptr<VariableData>> pe = ParseExpr(expr, expr->startLineNumber.GetElement());
+                            std::vector<std::shared_ptr<VariableData>> pe = ParseExpr(deltaIndexExpr, expr->startLineNumber.GetElement());
                             UpdateSlices(pe, funcData, className, ctx);
                         }
                     }
@@ -1243,6 +1244,12 @@ void SrcSliceHandler::CollectConditionalData(std::vector<srcDispatch::DeltaEleme
 
                 if (doWhileData->block && doWhileData->block.GetElement()) cntlBlocks.push_back(doWhileData->block.GetElement());
             }
+        } else {
+            if (verboseMode) {
+                if (verboseMode) {
+                    std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << cntl.type().name() << std::endl;
+                }
+            }
         }
     }
 
@@ -1399,7 +1406,6 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                     // any variable in an expression is a use of said variable
                     // unless the expression follows the sequence of a redefinition
                     // `VARIABLE_NAME =`
-                    // lhsVar->uses.insert(lineNumber);
 
                     // capture use-def chains for single statements such as: ++i
                     if (expr_op == "++" || expr_op == "--" || trailingPrefix) {
@@ -1426,6 +1432,7 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
 
                     if (expr_op == ">>" || trailingExtraction) {
                         lhsVar->definitions.insert(lineNumber);
+                        lhsVar->uses.erase(lineNumber);
                         lhsVar->userModified = true;
                         trailingExtraction = false;
                     }
@@ -1689,6 +1696,31 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
         if (!potentialLHS->indices.empty()) {
             // push indices of the LHS
             potentialLHS->rhsElems.insert(potentialLHS->rhsElems.end(), potentialLHS->indices.begin(), potentialLHS->indices.end());
+        }
+    }
+
+    if (verboseMode) {
+        for (const auto& v : varDataGroup) {
+            // Debug use/def marking
+            std::cerr << "LHS " << v->GetNameOfIdentifier() << std::endl;
+            std::cerr << "|____USE {";
+            for (const auto& line : v->uses) {
+                std::cerr << line << ",";
+            }
+            std::cerr << "}" << std::endl;
+
+            std::cerr << "|____DEF {";
+            for (const auto& line : v->definitions) {
+                std::cerr << line << ",";
+            }
+            std::cerr << "}" << std::endl;
+
+            // Debug RHS elem assignment
+            std::cerr << "|____RHS {";
+            for (const auto& r : v->rhsElems) {
+                std::cerr << r->GetNameOfIdentifier() << ",";
+            }
+            std::cerr << "}" << std::endl;
         }
     }
 
