@@ -731,7 +731,7 @@ void SrcSliceHandler::ProcessExprStmts(const srcDispatch::DeltaElement<std::shar
         }
 
         if (!conditionals.empty()) {
-            CollectConditionalData(&exprStmts, &declStmts, conditionals);
+            CollectConditionalData(funcData, &exprStmts, &declStmts, conditionals, ctx);
         }
 
         if (!tryBlocks.empty()) {
@@ -775,7 +775,7 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& v
     std::vector<std::string> containingNamespaces;
     if (funcData) containingNamespaces = funcData->namespaces;
 
-    for (auto& varData : varDataGroup) {
+    for (std::shared_ptr<VariableData>& varData : varDataGroup) {
         UpdateLHSSlices(varData);
         for (auto& rhsVarData : varData->rhsElems) {
             std::string lhsName = varData->GetNameOfIdentifier();
@@ -1032,8 +1032,8 @@ void SrcSliceHandler::CollectTryBlockData(const srcDispatch::DeltaElement<std::s
     }
 }
 
-void SrcSliceHandler::CollectConditionalData(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
-                            std::vector<std::any>& conditionals) {
+void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
+                            std::vector<std::any>& conditionals, const SliceCtx& ctx) {
     std::vector<std::shared_ptr<srcDispatch::BlockData>> cntlBlocks;
 
     // identify what conditional type we are viewing and handle logic accordingly
@@ -1258,6 +1258,10 @@ void SrcSliceHandler::CollectConditionalData(std::vector<srcDispatch::DeltaEleme
         if (!block) continue;
         std::vector<std::any> conditionals;
 
+        // capture decls nested within blocks of conditionals before parsing expressions
+        // within the block
+        ProcessDeclStmts(funcData, block, "", ctx);
+
         for (auto& stmt : block->statements) {
             if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExprStmtData>)) {
                 if (exprStmts) {
@@ -1306,7 +1310,7 @@ void SrcSliceHandler::CollectConditionalData(std::vector<srcDispatch::DeltaEleme
 
         // Recursive call to step into nested conditionals
         if (conditionals.size() > 0) {
-            CollectConditionalData(exprStmts, declStmts, conditionals);
+            CollectConditionalData(funcData, exprStmts, declStmts, conditionals, ctx);
         }
     }
 }
@@ -1393,11 +1397,17 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
     std::vector<std::shared_ptr<VariableData>> lhsStack;
     bool groupCollect = false, trailingPrefix = false, trailingExtraction = false;
 
+    int dereferenceCount = 0;
+    bool resetCount = false;
     // loop through each element within a specific expression statement
     for (const auto& exprElem : expr->expr) {
+        if (resetCount) dereferenceCount = 0;
+
         if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
             try {
                 std::shared_ptr<srcDispatch::NameData> name = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
+                resetCount = true;
+
                 if (!name || name->SimpleName().empty()) continue;
                 std::string varName = ExtractName(name->SimpleName());
                 
@@ -1419,6 +1429,7 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                     } else if (expr_op == "*") {
                         auto spi = profileMap.find(lhsVar->GetNameOfIdentifier());
                         if (spi != profileMap.end() && spi->second.back().isPointer) {
+                            lhsVar->dereferenceCount = dereferenceCount;
                             lhsVar->dereferenced = true;
                             if (trailingExtraction) { // redefining a dereferenced ptr does not always use itself when redefining
                                 lhsVar->uses.erase(lineNumber);
@@ -1523,6 +1534,10 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
             std::shared_ptr<srcDispatch::OperatorData> opData = std::any_cast<std::shared_ptr<srcDispatch::OperatorData>>(exprElem.GetElement());
             expr_op = opData->op.ToString();
 
+            if (expr_op == "*" && !resetCount) {
+                ++dereferenceCount;
+            }
+
             // Establish bool-switch to track previous operators for later
             if (expr_op == ">>") {
                 trailingExtraction = true;
@@ -1560,12 +1575,18 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                             // We need to set the new LHS variable to start creating a new
                             // LHS-RHS pair group
                             lhsVar->InitializeLHS(prevRHSPtr->GetNameOfIdentifier(), lineNumber);
-                            lhsVar->definitions.insert(lineNumber);
+
+                            // handling dereferenced pointers
+                            if (!lhsVar->dereferenced) {
+                                lhsVar->definitions.insert(lineNumber);
+                            } else {
+                                lhsVar->uses.insert(lineNumber);
+                            }
 
                             // Coumpound Assignment is a classic Use-Def Chain
                             // ie: int a = b += c; // b is used and defined by +=
                             if (isCompoundAssignment(expr_op)) {
-                                lhsVar->definitions.insert(lineNumber);
+                                if (!lhsVar->dereferenced) lhsVar->definitions.insert(lineNumber);
                                 lhsVar->uses.insert(lineNumber);
                             }
 
@@ -1594,13 +1615,20 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                         // when LHS hits assignment it can start storing
                         // RHS elements
                         lhsVar->lhs = true;
-                        lhsVar->definitions.insert(lineNumber);
+
+                        // handling dereferenced pointers
+                        if (!lhsVar->dereferenced) {
+                            lhsVar->definitions.insert(lineNumber);
+                        } else {
+                            // dereferenced ptrs is an use of the ptr
+                            lhsVar->uses.insert(lineNumber);
+                        }
 
                         // Coumpound Assignment is a classic Use-Def Chain
                         // ie: n += 2;
                         if (isCompoundAssignment(expr_op)) {
                             lhsVar->uses.insert(lineNumber);
-                            lhsVar->definitions.insert(lineNumber);
+                            if (!lhsVar->dereferenced) lhsVar->definitions.insert(lineNumber);
                         }
                     } else {
                         // when a LHS has no rhs elems and hits a non-assignment
@@ -1626,6 +1654,9 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                     }
                 }
             }
+
+            // (*ptr) * (*ptr) | we dont want closing symbols causing multiplication to be seen as dereference
+            if (expr_op != ")" && expr_op != "]" ) resetCount = false;
         } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CallData>)) {
             // This will read through the Call Args and attempt
             // to find the slice profile for the extracted arg
@@ -1660,6 +1691,8 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
             }
 
             ProcessFunctionCall(callData);
+        } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LiteralData>)) {
+            resetCount = true;
         }
     } // end of looping elements
 
@@ -1910,6 +1943,7 @@ std::string SrcSliceHandler::GetSimpleFunctionName(std::string funcName) {
 // Used for inserting Uses and Defs for Slices in the LHS of an Expression Statement
 // perform a map find and update the slice
 void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData>& varData) {
+    if (!varData) return;
     if (varData->GetNameOfIdentifier().empty()) return;
 
     auto sliceProfileItr = profileMap.find(varData->GetNameOfIdentifier());
@@ -1920,36 +1954,40 @@ void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData>& varData) {
                                                     varData->uses.end());
 
         if (varData->dereferenced) {
-            auto aliasReferenceItr = profileMap.find(sliceProfileItr->second.back().currentPointerReference);
+            auto nextAliasRef = profileMap.find(sliceProfileItr->second.back().currentPointerReference);
+            for (int aliasDepth = 0; aliasDepth < varData->dereferenceCount; ++aliasDepth) {
+                if (nextAliasRef != profileMap.end()) {
+                    // pre-insert uses towards alias reference
+                    nextAliasRef->second.back().uses.insert(varData->uses.begin(), varData->uses.end());
 
-            // Uses of the alias are uses of its reference
-            if (aliasReferenceItr != profileMap.end()) {
-                // find the slice profile of the alias reference if one exists
-                aliasReferenceItr->second.back().definitions.insert(varData->definitions.begin(),
-                                                                varData->definitions.end());
+                    if (varData->lhs || varData->userModified) {
+                        // assume if we are at the end of the chain and it is LHS
+                        // the bottom of the chain is being redefined
+                        if (aliasDepth == varData->dereferenceCount - 1) {
+                            nextAliasRef->second.back().definitions.insert(varData->uses.begin(), varData->uses.end());
+                            
+                            // check for possible def-use chain
+                            bool lhsIsInRhs = false;
+                            for (const auto& rhsElem : varData->rhsElems) {
+                                if (rhsElem->isInitialized() && rhsElem->GetNameOfIdentifier() == varData->GetNameOfIdentifier()) {
+                                    lhsIsInRhs = true;
+                                    break;
+                                }
+                            }
 
-                /*
-                If in an expression an alias is dereferenced the alias's current reference
-                is being used if there are no redefinitions occuring.
-
-                If in an expression the alias appears in the lhs and rhs of an expression
-                where a variable is redefined this is a use-def chain.
-                */
-                bool lhsIsInRhs = false;
-                for (const auto& rhsElem : varData->rhsElems) {
-                    if (rhsElem->GetNameOfIdentifier() == varData->GetNameOfIdentifier()) {
-                        lhsIsInRhs = true;
-                        break;
+                            // remove added use incase of pure redefintition
+                            if (!lhsIsInRhs) {
+                                for (const unsigned int& line : varData->uses) {
+                                    nextAliasRef->second.back().uses.erase(line);
+                                }
+                            }
+                        }
                     }
-                }
-                /*
-                    cout << *ptr << endl; // use only
-                    ptr->x = 23 // def only (state change of reference)
-                    ptr->x = ptr->y + z; // def-use chain
-                */
-                if (lhsIsInRhs || varData->definitions.size() == 0) {
-                    aliasReferenceItr->second.back().uses.insert(varData->uses.begin(),
-                                                    varData->uses.end());
+
+                    // perform a move down the alias chain
+                    nextAliasRef = profileMap.find(nextAliasRef->second.back().currentPointerReference);
+                } else {
+                    break;
                 }
             }
         } else {
@@ -2409,12 +2447,14 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
     for (auto& sliceGroup : profileMap) {
         // expand list of potential targets (aliases)
         for (auto& sp : sliceGroup.second) {
+            if (!sp.containsDeclaration) continue;
             for (auto& alias : sp.aliases) {
                 // view aliases of the slice profile
                 auto spi = profileMap.find(alias.first);
                 if (spi != profileMap.end()) {
                     // fingerprint the profile based on contained use
                     for (auto& aspi : spi->second) {
+                        if (!aspi.containsDeclaration) continue;
                         auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
                         if (usesItr != aspi.uses.end()) {
                             // determine if the potential target is a pointer or reference

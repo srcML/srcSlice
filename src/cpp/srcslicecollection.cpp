@@ -1,6 +1,10 @@
 #include "srcslicecollection.hpp"
 
-VariableData::VariableData(std::string name) { lhsVarName = name; }
+VariableData::VariableData(std::string name) {
+    dereferenceCount = 0;
+    lhsVarName = name;
+}
+
 VariableData::VariableData(const VariableData& rhs) {
     lhsVarName = rhs.lhsVarName;
     rhsElems = rhs.rhsElems;
@@ -11,7 +15,9 @@ VariableData::VariableData(const VariableData& rhs) {
     uses = rhs.uses;
     definitions = rhs.definitions;
     originLine = rhs.originLine;
+    dereferenceCount = 0;
 }
+
 VariableData::~VariableData() {}
 
 VariableData& VariableData::operator=(VariableData rhs) {
@@ -29,6 +35,7 @@ void VariableData::clear(){
     dereferenced = false;
     uses.clear();
     definitions.clear();
+    dereferenceCount = 0;
 }
 
 // Name of an expression variable that may be a LHS/RHS var

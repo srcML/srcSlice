@@ -57,6 +57,7 @@ public:
     bool userModified = false;
     
     unsigned int originLine;
+    int dereferenceCount;
     std::set<unsigned int> uses;
     std::set<unsigned int> definitions;
 };

@@ -65,8 +65,8 @@ public:
     // for them, along with capturing expressions to update collected slices
     void CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
                                 std::string className, const SliceCtx& ctx);
-    void CollectConditionalData(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
-                                std::vector<std::any>& conditionals);
+    void CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
+                                std::vector<std::any>& conditionals, const SliceCtx& ctx);
     // Given a list of Function Parameters create Initial SliceProfiles for each Parameter
     void ProcessFunctionParameters(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters,
                                     std::string currentFunctionName, std::string className, const SliceCtx& ctx);
