@@ -97,7 +97,7 @@ public:
 // and the line where the function is potentially defined
 class FunctionCallData {
 public:
-    FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine);
+    FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine, bool ignore_ = false);
 
     FunctionCallData(const FunctionCallData& rhs);
 
@@ -113,6 +113,7 @@ public:
     unsigned int lineOfInvoke;
     unsigned int parameterIndex;
     unsigned int functionDefinition;
+    bool ignore;
 };
 
 #endif

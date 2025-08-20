@@ -69,14 +69,15 @@ FunctionSignatureData::FunctionSignatureData(srcDispatch::DeltaElement<std::shar
     containingNamespaces = ctx.containingNamespaces;
 }
 
-FunctionCallData::FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine):
-        functionName(funcName), parameterIndex(paramIndex), functionDefinition(funcDefLine), lineOfInvoke(invokeLine) {};
+FunctionCallData::FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine, bool ignore_):
+        functionName(funcName), parameterIndex(paramIndex), functionDefinition(funcDefLine), lineOfInvoke(invokeLine), ignore(ignore_) {};
 
 FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
     functionName = rhs.functionName;
     lineOfInvoke = rhs.lineOfInvoke;
     parameterIndex = rhs.parameterIndex;
     functionDefinition = rhs.functionDefinition;
+    ignore = rhs.ignore;
 };
 
 bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
@@ -84,6 +85,7 @@ bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
     if (lineOfInvoke != rhs.lineOfInvoke) return false;
     if (parameterIndex != rhs.parameterIndex) return false;
     if (functionDefinition != rhs.functionDefinition) return false;
+    if (ignore != rhs.ignore) return false;
     return true;
 }
 bool FunctionCallData::operator!=(const FunctionCallData& rhs) const {
@@ -95,6 +97,7 @@ bool FunctionCallData::operator<(const FunctionCallData& rhs) const {
     if (lineOfInvoke < rhs.lineOfInvoke) return true;
     if (parameterIndex < rhs.parameterIndex) return true;
     if (functionDefinition < rhs.functionDefinition) return true;
+    if (ignore == false && rhs.ignore == true) return true;
     return false;
 }
 bool FunctionCallData::operator>(const FunctionCallData& rhs) const {

@@ -56,11 +56,11 @@ void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const 
         printf("[*] Processing Unit: %s\n", ctx.currentFilePath.c_str());
 
         // Process Global Decls
-        ProcessDecls(unit->declStmtInfo, SliceCtx(ctx));
+        ProcessDecls(unit->declStmts, SliceCtx(ctx));
         // Process Free Functions
-        ProcessFunctions(unit->functionInfo, SliceCtx(ctx));
+        ProcessFunctions(unit->functions, SliceCtx(ctx));
         // Process Classes
-        ProcessClasses(unit->classInfo, SliceCtx(ctx));
+        ProcessClasses(unit->classes, SliceCtx(ctx));
 
         printf("[+] Unit Processed Successfully\n");
     }
@@ -873,6 +873,7 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& v
 }
 
 // Use collected function call data to push a new cfunctions entry into a referenced slice profile
+// call data gets passed into aliases if needed
 void SrcSliceHandler::CreateSliceCallData(std::string functionName, int argIndex, int functionDefLine, SliceProfile& sliceProfile, unsigned int functionCallLine) {
     FunctionCallData sliceCallData = FunctionCallData(
         functionName, // function call name
@@ -881,17 +882,22 @@ void SrcSliceHandler::CreateSliceCallData(std::string functionName, int argIndex
         functionCallLine // line where the function call occurs
     );
 
+    // push the cfunc data into the argument SliceProfile
+    sliceProfile.cfunctions.insert(sliceCallData);
+
+    // attempt to mark the cfunc towards the currentPointerReference
     if (sliceProfile.aliases.size() > 0) {
         // if this profile contains aliases we need to find the profile of the pointers
         // current reference to append this cfunc data
         auto aliasReferenceProfile = profileMap.find(sliceProfile.currentPointerReference);
         if (aliasReferenceProfile != profileMap.end()) {
             // Alias targets will inherit SOME of the cfunctions from their Alias representative
+            sliceCallData.ignore = true; // hidden metadata to tell InterProcedural to not process this cfunctions element
             aliasReferenceProfile->second.back().cfunctions.insert(sliceCallData);
+            // Alias targets are used within function calls by default as it is an expression
+            aliasReferenceProfile->second.back().uses.insert(functionCallLine);
         }
     }
-
-    sliceProfile.cfunctions.insert(sliceCallData);
 }
 
 void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>& funcCallData) {
@@ -2485,6 +2491,7 @@ void SrcSliceHandler::ComputeInterprocedural() {
         if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
             if (!var.second.back().cfunctions.empty()) {
                 for (auto& cfunc : var.second.back().cfunctions) {
+                    if (cfunc.ignore) continue; // if a cfunc ignore flag is enabled skip this index and continue
                     auto funcSigCollection = functionSigMap.find(cfunc.functionName);
 
                     if(funcSigCollection != functionSigMap.end()) {
@@ -2543,10 +2550,6 @@ void SrcSliceHandler::ComputeInterprocedural() {
                                             profileMap.find(var.first)->second.back().definitions.insert(
                                                     sliceItr->definitions.begin(),
                                                     sliceItr->definitions.end());
-
-                                            // set the line where the function call occurs to show as a def instead of a use
-                                            profileMap.find(var.first)->second.back().uses.erase(cfunc.lineOfInvoke);
-                                            profileMap.find(var.first)->second.back().definitions.insert(cfunc.lineOfInvoke);
                                         }
 
                                         // Parameter initial declaration def line is considered a use towards the argument
