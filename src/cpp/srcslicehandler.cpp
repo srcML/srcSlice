@@ -661,9 +661,10 @@ void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shar
                     for (auto& deltaExprElem : deltaArg->expr) {
                         if (deltaExprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
                             auto nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(deltaExprElem.GetElement());
-                            if (nameData->SimpleName().empty()) continue;
+                            srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(nameData);
+                            if (deltaName.ToString().empty()) continue;
 
-                            std::string varName = ExtractName(nameData->SimpleName());
+                            std::string varName = ExtractName(deltaName.ToString());
                             sp->dvars.insert(std::make_pair(varName, deltaArg->startLineNumber.GetElement()));
                         }
                     }
@@ -924,7 +925,8 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
                 try {
                     // Update an existing slices Call data
-                    auto sliceProfileItr = profileMap.find(name->SimpleName());
+                    srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(name);
+                    auto sliceProfileItr = profileMap.find(deltaName.ToString());
                     if (sliceProfileItr != profileMap.end()) {
                         // variable is used within a function call, even if a signature or fingerprint
                         // cannot be located
@@ -933,6 +935,7 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
                         // increment or decrement operators with the argument expression
                         sliceProfileItr->second.back().uses.insert(argUseLineNumber);
 
+                        // std::cerr << "[*] original function call -> " << functionName << std::endl;
                         std::string simpleFunctionName = GetSimpleFunctionName(functionName);
 
                         // Get the collection of functions by name
@@ -1153,19 +1156,17 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
                         // std::cerr << "[*] Iterating over Switch Data Cases. . ." << std::endl;
                         // std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
                         for (auto& ctrlVar : controlVariables) {
-                            // std::cerr << "[*] Control Variable --> " << ctrlVar->SimpleName() << std::endl;
-
+                            srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(ctrlVar);
                             // locate the slice profile of the ctrlVar and insert the uses
-                            auto sliceProfileItr = profileMap.find(ctrlVar->SimpleName());
+                            auto sliceProfileItr = profileMap.find(deltaName.ToString());
 
                             // might need to add finger-printing to minimize potential issue
                             // of inserting data into the wrong slice
                             if (sliceProfileItr != profileMap.end()) {
-                                // std::cerr << "[*] Adding Use for Switch Control Variable --> " << ctrlVar->SimpleName() << " | " << switchCase->expr->lineNumber << std::endl;
                                 sliceProfileItr->second.back().uses.insert(switchCase->expr->startLineNumber.GetElement());
                             } else {
                                 if (verboseMode) {
-                                    std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << ctrlVar->SimpleName() << std::endl;
+                                    std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << deltaName.ToString() << std::endl;
                                 }
                             }
                         }
@@ -1414,8 +1415,10 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                 std::shared_ptr<srcDispatch::NameData> name = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
                 resetCount = true;
 
-                if (!name || name->SimpleName().empty()) continue;
-                std::string varName = ExtractName(name->SimpleName());
+                srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(name);
+
+                if (!name || deltaName.ToString().empty()) continue;
+                std::string varName = ExtractName(deltaName.ToString());
                 
                 if (!lhsVar->isInitialized()) {
                     lhsVar->InitializeLHS(varName, lineNumber);
@@ -1462,7 +1465,8 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                                 if (indexElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
                                     // Create the new index data reference
                                     std::shared_ptr<srcDispatch::NameData> indexVar = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(indexElem.GetElement());
-                                    std::string indexVarName = ExtractName(indexVar->SimpleName());
+                                    srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(indexVar);
+                                    std::string indexVarName = ExtractName(deltaName.ToString());
                                     std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
 
                                     // Set the meta-data
@@ -1516,7 +1520,8 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                                 if (indexElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
                                     // Create the new index data reference
                                     std::shared_ptr<srcDispatch::NameData> indexVar = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(indexElem.GetElement());
-                                    std::string indexVarName = ExtractName(indexVar->SimpleName());
+                                    srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(indexVar);
+                                    std::string indexVarName = ExtractName(deltaName.ToString());
 
                                     std::shared_ptr<VariableData> newFalseRHS = std::make_shared<VariableData>(indexVarName);
 
