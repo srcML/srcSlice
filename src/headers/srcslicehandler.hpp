@@ -43,6 +43,10 @@ public:
     void ProcessFunctions(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs, const SliceCtx& ctx);
     // Process Class Data and create slices of Class Member Variables and process Member Functions
     void ProcessClasses(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes, const SliceCtx& ctx);
+    // Process Signatures from Free-Functions and Class Methods
+    void ProcessSignatures(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs,
+                            std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes,
+                            const SliceCtx& ctx);
 
     // Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
     void ProcessDeclStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);

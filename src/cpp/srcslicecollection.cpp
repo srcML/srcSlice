@@ -58,11 +58,12 @@ void VariableData::AddRHS(std::shared_ptr<VariableData> var) {
 }
 std::shared_ptr<VariableData> VariableData::GetRecentRHS() { return rhsElems.size() > 0 ? rhsElems.back() : nullptr; }
 
-FunctionSignatureData::FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func, const SliceCtx& ctx) {
+FunctionSignatureData::FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func, std::string className, const SliceCtx& ctx) {
     lineNumber = func->startLineNumber.GetElement();
     name = func->name.ToString();
     returnType = func->returnType.ToString();
     parameters = func->parameters;
+    containingClass = className;
     currentFilePath = ctx.currentFilePath;
     currentFileChecksum = ctx.currentFileChecksum;
     currentFileLanguage = ctx.currentFileLanguage;

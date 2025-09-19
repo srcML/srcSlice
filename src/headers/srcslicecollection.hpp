@@ -81,11 +81,12 @@ public:
 class FunctionSignatureData {
 public:
     FunctionSignatureData(){};
-    FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func, const SliceCtx& ctx);
+    FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func, std::string className, const SliceCtx& ctx);
     int lineNumber;
     std::string name;
     std::string returnType;
     std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>> parameters;
+    std::string containingClass;
     std::string currentFilePath;
     std::string currentFileChecksum;
     std::string currentFileLanguage;

@@ -53,16 +53,20 @@ SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, bool ce) : verboseM
 void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) {
     std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
     if (unit) {
-        printf("[*] Processing Unit: %s\n", ctx.currentFilePath.c_str());
-
+        if (verboseMode) printf("[*] Processing Unit: %s\n", ctx.currentFilePath.c_str());
+        
+        SliceCtx sctx(ctx);
+        
         // Process Global Decls
-        ProcessDecls(unit->declStmts, SliceCtx(ctx));
+        ProcessDecls(unit->declStmts, sctx);
+        // Capture Function Signatures
+        ProcessSignatures(unit->functions, unit->classes, sctx);
         // Process Free Functions
-        ProcessFunctions(unit->functions, SliceCtx(ctx));
+        ProcessFunctions(unit->functions, sctx);
         // Process Classes
-        ProcessClasses(unit->classes, SliceCtx(ctx));
-
-        printf("[+] Unit Processed Successfully\n");
+        ProcessClasses(unit->classes, sctx);
+        
+        if (verboseMode) printf("[+] Unit Processed Successfully\n");
     }
 }
 
@@ -287,12 +291,51 @@ void SrcSliceHandler::ProcessDecls(std::vector<srcDispatch::DeltaElement<std::sh
     }
 }
 
+void SrcSliceHandler::ProcessSignatures(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs,
+                                        std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes,
+                                        const SliceCtx& ctx) {
+    if (verboseMode) {
+        std::cerr << "[*] " << __LINE__  << " Processing Signatures" << std::endl;
+    }
+
+    // Fetch Signatures from Free-Functions
+    for (auto& func : funcs) {
+        ProcessFunctionSignature(func, "", ctx);
+    }
+
+    // Fetch Signatures from Classes
+    for (auto& classData : classes) {
+        // Process Class Contructors
+        for (auto& deltaFuncElem : classData->constructors) {
+            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+        }
+
+        // Process Class Dtor
+        if (classData->destructor && classData->destructor.GetElement()) {
+            ProcessFunctionSignature(classData->destructor, classData->name.ToString(), ctx);
+        }
+
+        // Process Class Methods (Member Functions)
+        for (auto& deltaFuncElem : classData->methods) {
+            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+        }
+
+        // Process Operator Overloading
+        for (auto& deltaFuncElem : classData->operators) {
+            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+        }
+
+        // Process Nested Classes
+        ProcessClasses(classData->innerClasses, SliceCtx(ctx));
+    }
+}
+
 void SrcSliceHandler::ProcessFunctions(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs, const SliceCtx& ctx) {
     for (auto& func : funcs) {
         if (verboseMode) {
             std::cerr << "[*] " << __LINE__  << " Processing Function Name: " << func->name.ToString() << std::endl;
         }
-        ProcessFunctionSignature(func, "", ctx);
+        // ProcessFunctionSignature(func, "", ctx);
         if (func->block) ProcessDeclStmts(func, func->block, "", ctx);
         ProcessInitLists(func, "", ctx);
         if (func->block) ProcessExprStmts(func, func->block, "", ctx);
@@ -311,14 +354,14 @@ void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::
 
         // Process Class Contructors
         for (auto& deltaFuncElem : classData->constructors) {
-            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+            // ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
             if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
             ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
             if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
         }
         // Process Class Dtor
         if (classData->destructor && classData->destructor.GetElement()) {
-            ProcessFunctionSignature(classData->destructor, classData->name.ToString(), ctx);
+            // ProcessFunctionSignature(classData->destructor, classData->name.ToString(), ctx);
             if (classData->destructor->block) ProcessDeclStmts(classData->destructor, classData->destructor->block, classData->name.ToString(), ctx);
             ProcessInitLists(classData->destructor, classData->name.ToString(), ctx);
             if (classData->destructor->block) ProcessExprStmts(classData->destructor, classData->destructor->block, classData->name.ToString(), ctx);
@@ -326,7 +369,7 @@ void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::
 
         // Process Class Methods (Member Functions)
         for (auto& deltaFuncElem : classData->methods) {
-            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+            // ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
             if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
             ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
             if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
@@ -334,7 +377,7 @@ void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::
 
         // Process Operator Overloading
         for (auto& deltaFuncElem : classData->operators) {
-            ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
+            // ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
             if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
             ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
             if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
@@ -935,8 +978,30 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
                         // increment or decrement operators with the argument expression
                         sliceProfileItr->second.back().uses.insert(argUseLineNumber);
 
-                        // std::cerr << "[*] original function call -> " << functionName << std::endl;
                         std::string simpleFunctionName = GetSimpleFunctionName(functionName);
+                        std::string potentialContainingClass = "";
+
+                        // function accessed from class
+                        if ((functionName.find_last_of(".") != std::string::npos)) {
+                            std::string callSrc = functionName.substr(0, functionName.find_last_of("."));
+                            auto spi = profileMap.find(callSrc);
+                            if (spi != profileMap.end()) {
+                                // types are classes
+                                potentialContainingClass = spi->second.back().variableType;
+                            }
+                        } else {
+                            // function calls can be invoked via myObj.foo() or ptr->bar()
+                            if ((functionName.find_last_of("->") != std::string::npos)) {
+                                std::string callSrc = functionName.substr(0, functionName.find_last_of("."));
+                                auto spi = profileMap.find(callSrc);
+                                if (spi != profileMap.end()) {
+                                    // strip the * char(s) from the type
+                                    std::string ptrType = spi->second.back().variableType;
+                                    
+                                    potentialContainingClass = ptrType.substr(0, ptrType.find_first_of("*"));
+                                }
+                            }
+                        }
 
                         // Get the collection of functions by name
                         auto funcSig = functionSigMap.find(simpleFunctionName);
@@ -958,6 +1023,12 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
                                     bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[pos].parameters.size());
                                     if (!validArgCount) continue;
+
+                                    if (!potentialContainingClass.empty()) {
+                                        // check if the call data has the matching class name
+                                        bool matchingClass = (funcSig->second[pos].containingClass == potentialContainingClass);
+                                        if (!matchingClass) continue;
+                                    }
 
                                     std::string sliceDataType = sliceProfileItr->second.back().variableType;
 
@@ -1865,17 +1936,17 @@ void SrcSliceHandler::ProcessFunctionSignature(srcDispatch::DeltaElement<std::sh
             for (auto& func : funcSig->second) {
                 if (func.parameters.size() == functionParameters.size()) {
                     // Update marked signature
-                    func = FunctionSignatureData(funcData, ctx);
+                    func = FunctionSignatureData(funcData, className, ctx);
                     break;
                 }
             }
         } else {
             // overloaded function detected
-            funcSig->second.push_back({funcData, ctx});
+            funcSig->second.push_back({funcData, className, ctx});
         }
     } else {
         // Insert a new signature
-        functionSigMap[functionName].push_back({funcData, ctx});
+        functionSigMap[functionName].push_back({funcData, className, ctx});
     }
 }
 
