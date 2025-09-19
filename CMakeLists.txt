@@ -50,6 +50,13 @@ add_subdirectory(src)
 add_subdirectory(test)
 add_subdirectory(srcDispatch)
 
+# custom make target to strictly test srcSlice test suite
+add_custom_target(test_srcslice
+    COMMAND ${CMAKE_CTEST_COMMAND} -L srcslice # only run ctest testcases with the srcslice label attached
+    WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+    DEPENDS build_srcslice_tests # ensure srcslice tests are built
+)
+
 # Download the CLI11 parser into directory named "external".
 set(CMAKE_EXTERNAL_SOURCE_DIR ${CMAKE_SOURCE_DIR}/external) # Creates folder if doesn't exists.
 # Name of file is needed since content of file itself are being downloaded.

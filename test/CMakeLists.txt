@@ -28,8 +28,23 @@ macro(add_unit_test TEST_FILE)
     target_link_libraries(${TEST_NAME} srcsax_static srcML::LibsrcML srcdispatch ${LIBXML2_LIBRARIES} pthread)
 
     add_test(NAME ${TEST_NAME} COMMAND $<TARGET_FILE:${TEST_NAME}>)
+    # add special label to test
+    set_tests_properties(${TEST_NAME} PROPERTIES
+        LABELS "srcslice"
+    )
     set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 endmacro()
+
+# dependency target that checks if the following testcases are built
+add_custom_target(build_srcslice_tests
+    DEPENDS testAliases
+    testPointer
+    testConditional
+    testConditionDecl
+    testPassByValue
+    testPassByReference
+    testConstReference
+)
 
 # ctest test items
 add_unit_test(testAliases.cpp)
