@@ -336,10 +336,8 @@ void SrcSliceHandler::ProcessFunctions(std::vector<srcDispatch::DeltaElement<std
         if (verboseMode) {
             std::cerr << "[*] " << __LINE__  << " Processing Function Name: " << func->name.ToString() << std::endl;
         }
-        // ProcessFunctionSignature(func, "", ctx);
-        if (func->block) ProcessDeclStmts(func, func->block, "", ctx);
         ProcessInitLists(func, "", ctx);
-        if (func->block) ProcessExprStmts(func, func->block, "", ctx);
+        if (func->block) ProcessStmts(func, func->block, "", ctx);
     }
 }
 
@@ -355,33 +353,25 @@ void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::
 
         // Process Class Contructors
         for (auto& deltaFuncElem : classData->constructors) {
-            // ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
-            if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
             ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
-            if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
         }
         // Process Class Dtor
         if (classData->destructor && classData->destructor.GetElement()) {
-            // ProcessFunctionSignature(classData->destructor, classData->name.ToString(), ctx);
-            if (classData->destructor->block) ProcessDeclStmts(classData->destructor, classData->destructor->block, classData->name.ToString(), ctx);
             ProcessInitLists(classData->destructor, classData->name.ToString(), ctx);
-            if (classData->destructor->block) ProcessExprStmts(classData->destructor, classData->destructor->block, classData->name.ToString(), ctx);
+            if (classData->destructor->block) ProcessStmts(classData->destructor, classData->destructor->block, classData->name.ToString(), ctx);
         }
 
         // Process Class Methods (Member Functions)
         for (auto& deltaFuncElem : classData->methods) {
-            // ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
-            if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
             ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
-            if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
         }
 
         // Process Operator Overloading
         for (auto& deltaFuncElem : classData->operators) {
-            // ProcessFunctionSignature(deltaFuncElem, classData->name.ToString(), ctx);
-            if (deltaFuncElem->block) ProcessDeclStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
             ProcessInitLists(deltaFuncElem, classData->name.ToString(), ctx);
-            if (deltaFuncElem->block) ProcessExprStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
+            if (deltaFuncElem->block) ProcessStmts(deltaFuncElem, deltaFuncElem->block, classData->name.ToString(), ctx);
         }
 
         // Process Nested Classes
@@ -490,6 +480,7 @@ void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::sh
 
             // check if we are able to apply uses towards ptr-references
             if (!initRHS->currentPointerReference.empty() && !initRHS->ignorePtrRef) {
+                std::cerr << "[*] " << initRHS->variableName << " | " << initRHS->currentPointerReference << std::endl;
                 // apply uses across the sequence of references from aliases
                 auto aspi = profileMap.find(initRHS->currentPointerReference);
 
@@ -594,106 +585,6 @@ void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::sh
     }
 }
 
-void SrcSliceHandler::ProcessDeclStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block,
-                                        std::string className, const SliceCtx& ctx) {
-    std::vector<std::string> containingNamespaces;
-    if (funcData) {
-        // Get containing namespaces from functionData
-        containingNamespaces = funcData->namespaces;
-        if (block) {
-            for (const auto& stmt : block->statements) {
-                if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
-                    // locals
-                    auto declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
-                    if (declStmtData) {
-                        for (auto& deltaDecl : declStmtData->decls) {
-                            if (deltaDecl) {
-                                CreateSliceProfile(deltaDecl, funcData, className, ctx);
-                            }
-                        }
-                    }
-                } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                    auto ifStmtData = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(stmt.GetElement());
-                    if (ifStmtData) {
-                        for (const auto& clause : ifStmtData->clauses) {
-                            if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
-                                auto ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
-                                if (ifData && ifData->condition) {
-                                    for (auto& elem : ifData->condition->conditions) {
-                                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                            auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                                            if (initData) {
-                                                CreateSliceProfile(initData, funcData, className, ctx);
-                                            }
-                                        }
-                                    }
-                                }
-                            } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
-                                auto elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
-                                if (elseIfData && elseIfData->condition) {
-                                    for (auto& elem : elseIfData->condition->conditions) {
-                                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                            auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                                            if (initData) {
-                                                CreateSliceProfile(initData, funcData, className, ctx);
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                    auto forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(stmt.GetElement());
-                    if (forData && forData->control && forData->control->init) {
-                        for (auto& initData : forData->control->init->inits) {
-                            if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                auto initDeclData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
-                                if (initDeclData) {
-                                    CreateSliceProfile(initDeclData, funcData, className, ctx);
-                                }
-                            }
-                        }
-                    }
-                } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                    auto switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(stmt.GetElement());
-                    if (switchData && switchData->condition) {
-                        for (const auto& elem : switchData->condition->conditions) {
-                            if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                                if (initData) {
-                                    CreateSliceProfile(initData, funcData, className, ctx);
-                                }
-                            }
-                        }
-                    }
-                } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
-                    // For Java we have try-with-resources, make slice profiles of the resources
-                    auto tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
-                    if (tryData) {
-                        // catches have parameter lists with decldata
-                        for (auto& clause : tryData->clauses) {
-                            if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
-                                auto catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
-                                if (catchData) {
-                                    for (auto& parameter : catchData->parameters) {
-                                        if (parameter) {
-                                            CreateSliceProfile(parameter, funcData, className, ctx);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                } else {
-                    if (verboseMode) {
-                        std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
-                    }
-                }
-            }
-        }
-    }
-}
 
 void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx) {
     if (!funcData) return;
@@ -747,69 +638,141 @@ void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shar
     }
 }
 
-void SrcSliceHandler::ProcessExprStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block,
-                                        std::string className, const SliceCtx& ctx) {
-    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>> exprStmts;
-    std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>> declStmts;
-    std::vector<std::shared_ptr<srcDispatch::TryData>> tryBlocks;
-    std::vector<std::any> conditionals;
+void SrcSliceHandler::ProcessStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block,
+                                    std::string className, const SliceCtx& ctx) {
+    std::vector<std::string> containingNamespaces;
 
     // Capture Conditional expressions
-    if (block) {
+    if (funcData && block) {
+        containingNamespaces = funcData->namespaces;
+
         for (auto& stmt : block->statements) {
             if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExprStmtData>)) {
                 auto exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
                 if (exprstmt && exprstmt->expr && exprstmt->expr.GetElement()) {
                     // Capture general expressions
-                    exprStmts.push_back(exprstmt->expr);
+                    ProcessExprStmt(exprstmt->expr, funcData, className, ctx);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ReturnData>)) {
                 auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
                 if (retstmt && retstmt->expr && retstmt->expr.GetElement()) {
                     // Capture general Return expressions
-                    exprStmts.push_back(retstmt->expr);
+                    ProcessExprStmt(retstmt->expr, funcData, className, ctx);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                conditionals.push_back(stmt.GetElement());
+                // capture decls
+                auto ifStmtData = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(stmt.GetElement());
+                if (ifStmtData) {
+                    for (const auto& clause : ifStmtData->clauses) {
+                        if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
+                            auto ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
+                            if (ifData && ifData->condition) {
+                                for (auto& elem : ifData->condition->conditions) {
+                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                        auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                        if (initData) {
+                                            CreateSliceProfile(initData, funcData, className, ctx);
+                                        }
+                                    }
+                                }
+                            }
+                        } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
+                            auto elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
+                            if (elseIfData && elseIfData->condition) {
+                                for (auto& elem : elseIfData->condition->conditions) {
+                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                        auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                        if (initData) {
+                                            CreateSliceProfile(initData, funcData, className, ctx);
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+                }
+
+                // capture expressions
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                conditionals.push_back(stmt.GetElement());
+                // capture decls
+                auto switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(stmt.GetElement());
+                if (switchData && switchData->condition) {
+                    for (const auto& elem : switchData->condition->conditions) {
+                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                            auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                            if (initData) {
+                                CreateSliceProfile(initData, funcData, className, ctx);
+                            }
+                        }
+                    }
+                }
+
+                // capture expressions
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CaseData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                conditionals.push_back(stmt.GetElement());
+                // capture decls
+                auto forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(stmt.GetElement());
+                if (forData && forData->control && forData->control->init) {
+                    for (auto& initData : forData->control->init->inits) {
+                        if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                            auto initDeclData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
+                            if (initDeclData) {
+                                CreateSliceProfile(initDeclData, funcData, className, ctx);
+                            }
+                        }
+                    }
+                }
+
+                // capture expressions
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::TryData>)) {
+                // For Java we have try-with-resources, make slice profiles of the resources
                 auto tryData = std::any_cast<std::shared_ptr<srcDispatch::TryData>>(stmt.GetElement());
-                if (tryData) tryBlocks.push_back(tryData);
+
+                if (tryData) {
+                    // catches have parameter lists with decldata (capture decls)
+                    for (auto& clause : tryData->clauses) {
+                        if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
+                            auto catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
+                            if (catchData) {
+                                for (auto& parameter : catchData->parameters) {
+                                    if (parameter) {
+                                        CreateSliceProfile(parameter, funcData, className, ctx);
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    // capture expressions
+                    CollectTryBlockData(funcData, tryData, className, ctx);
+                }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ThrowData>)) {
                 auto throwData = std::any_cast<std::shared_ptr<srcDispatch::ThrowData>>(stmt);
                 if (throwData && throwData->expr && throwData->expr.GetElement()) {
-                    exprStmts.push_back(throwData->expr);
+                    ProcessExprStmt(throwData->expr, funcData, className, ctx);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
-                // ignore this when handling expressions
-                continue;
+                // local decls
+                auto declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
+                if (declStmtData) {
+                    for (auto& deltaDecl : declStmtData->decls) {
+                        if (deltaDecl) {
+                            CreateSliceProfile(deltaDecl, funcData, className, ctx);
+                        }
+                    }
+                }
             } else {
                 if (verboseMode) {
                     std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
                 }
-            }
-        }
-
-        if (!conditionals.empty()) {
-            CollectConditionalData(funcData, &exprStmts, &declStmts, conditionals, ctx);
-        }
-
-        if (!tryBlocks.empty()) {
-            CollectTryBlockData(funcData, tryBlocks, className, ctx);
-        }
-
-        if (!exprStmts.empty()) {
-            for (const auto& expr : exprStmts) {
-                ProcessExprStmt(expr, funcData, className, ctx);
             }
         }
     }
@@ -878,6 +841,7 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& v
                             if (sliceProfileLHSItr->isPointer) {
                                 sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
                                 if (!sliceProfileLHSItr->isPotentialArray) {
+                                    std::cerr << "|__ new ref: " << sliceProfileLHSItr->variableName << " -> " << rhsName << std::endl;
                                     sliceProfileLHSItr->currentPointerReference = rhsName;
                                 }
                             }
@@ -1122,243 +1086,230 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
 // try blocks contain both exprs and decls, need to extract those decls and create slice profiles
 // for them, along with capturing expressions to update collected slices
-void SrcSliceHandler::CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
+void SrcSliceHandler::CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
                             std::string className, const SliceCtx& ctx) {
-    for (auto& tryBlock : tryBlocks) {
-        if (tryBlock->block) {
-            // Collect Decls and Exprs within the block of this Try-Block
-            ProcessDeclStmts(funcData, tryBlock->block, className, ctx);
-            ProcessExprStmts(funcData, tryBlock->block, className, ctx);
-        }
+    if (tryBlock->block) {
+        // Collect Decls and Exprs within the block of this Try-Block
+        ProcessStmts(funcData, tryBlock->block, className, ctx);
+    }
 
-        // Collect Decls and Exprs within the catch block
-        for (auto& clause : tryBlock->clauses) {
-            if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
-                auto catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
-                if (catchData->block) {
-                    ProcessDeclStmts(funcData, catchData->block, className, ctx);
-                    ProcessExprStmts(funcData, catchData->block, className, ctx);
-                }
+    // Collect Decls and Exprs within the catch block
+    for (auto& clause : tryBlock->clauses) {
+        if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CatchData>)) {
+            auto catchData = std::any_cast<std::shared_ptr<srcDispatch::CatchData>>(clause.GetElement());
+            if (catchData->block) {
+                ProcessStmts(funcData, catchData->block, className, ctx);
             }
         }
     }
 }
 
-void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
-                            std::vector<std::any>& conditionals, const SliceCtx& ctx) {
+void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+                                                std::any& cntl, const std::string& className, const SliceCtx& ctx) {
     std::vector<std::shared_ptr<srcDispatch::BlockData>> cntlBlocks;
 
     // identify what conditional type we are viewing and handle logic accordingly
-    for (const auto& cntl : conditionals) {
-        if (cntl.type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-            // Extract all of the block data from if statements
-            std::shared_ptr<srcDispatch::IfStmtData> ifcntl = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(cntl);
-            if (ifcntl) {
-                // ifstmts have three potential clauses (if-elseif-else)
-                for (const auto& clause : ifcntl->clauses) {
-                    if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
-                        std::shared_ptr<srcDispatch::IfData> ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
-                        if (ifData) {
-                            if (ifData && ifData->condition) {
-                                for (auto& elem : ifData->condition->conditions) {
-                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                        if (declStmts) {
-                                            declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                                        }
-                                    } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                                        if (exprStmts) {
-                                            exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                                        }
-                                    }
-                                }
-                            }
-
-                            // minimize duplicate entries
-                            if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(ifData->startLineNumber), (int)(ifData->endLineNumber)))
-                                ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
-
-                            if (ifData->block && ifData->block.GetElement()) cntlBlocks.push_back(ifData->block.GetElement());
-                        }
-                    } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
-                        std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
-                        if (elseIfData) {
-                            if (elseIfData && elseIfData->condition) {
-                                for (auto& elem : elseIfData->condition->conditions) {
-                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                        if (declStmts) {
-                                            declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                                        }
-                                    } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                                        if (exprStmts) {
-                                            exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                                        }
-                                    }
-                                }
-                            }
-
-                            // minimize duplicate entries, pushed into ifdata for the ComputeControlPaths Algorithm
-                            if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
-                                ifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
-                            
-                            // track elseif block data for later usage
-                            if (elseifdata.size() == 0 || elseifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
-                                elseifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
-
-                            if (elseIfData->block && elseIfData->block.GetElement()) cntlBlocks.push_back(elseIfData->block.GetElement());
-                        }
-                    } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseData>)) {
-                        std::shared_ptr<srcDispatch::ElseData> elseData = std::any_cast<std::shared_ptr<srcDispatch::ElseData>>(clause.GetElement());
-                        if (elseData) {
-                            // minimize duplicate entries
-                            if (elsedata.size() == 0 || elsedata.back() != std::make_pair((int)(elseData->startLineNumber), (int)(elseData->endLineNumber)))
-                                elsedata.push_back(std::make_pair(elseData->startLineNumber, elseData->endLineNumber));
-
-                            if (elseData->block && elseData->block.GetElement()) cntlBlocks.push_back(elseData->block.GetElement());
-                        }
-                    }
-                }
-            }
-        } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-            // Extract all of the block data from Switch statements
-            std::shared_ptr<srcDispatch::SwitchData> switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(cntl);
-            if (switchData) {
-                /*
-                    Ensure we are getting the uses from the case lines
-                    Ensure we capture data from the case blocks as well
-                */
-
-                // Connect the use lines of switch cases to their corresponding control variables
-                std::vector<std::shared_ptr<srcDispatch::NameData>> controlVariables;
-
-                if (switchData->condition) {
-                    // std::cerr << "[*] Switch Conditions Size: " << switchData->condition->conditions.size() << std::endl;
-                    for (const auto& elem : switchData->condition->conditions) {
-                        // std::cerr << "[*] Switch Condition Element: " << elem.GetElement().type().name() << std::endl;
-
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                            if (exprStmts) {
-                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                            }
-                            
-                            std::shared_ptr<srcDispatch::ExpressionData> expr = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
-                            for (const auto& exprElem : expr->expr) {
-                                if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
-                                    controlVariables.push_back(std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement()));
-                                }
-                            }
-                        } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            if (declStmts) {
-                                declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                            }
-                        }
-                    }
-                }
-
-                if (switchData->block) {
-                    for (const auto& switchCase : switchData->block->cases) {
-                        // std::cerr << "[*] Iterating over Switch Data Cases. . ." << std::endl;
-                        // std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
-                        for (auto& ctrlVar : controlVariables) {
-                            srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(ctrlVar);
-                            // locate the slice profile of the ctrlVar and insert the uses
-                            auto sliceProfileItr = profileMap.find(deltaName.ToString());
-
-                            // might need to add finger-printing to minimize potential issue
-                            // of inserting data into the wrong slice
-                            if (sliceProfileItr != profileMap.end()) {
-                                sliceProfileItr->second.back().uses.insert(switchCase->expr->startLineNumber.GetElement());
-                            } else {
-                                if (verboseMode) {
-                                    std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << deltaName.ToString() << std::endl;
+    if (cntl.type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
+        // Extract all of the block data from if statements
+        std::shared_ptr<srcDispatch::IfStmtData> ifcntl = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(cntl);
+        if (ifcntl) {
+            // ifstmts have three potential clauses (if-elseif-else)
+            for (const auto& clause : ifcntl->clauses) {
+                if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
+                    std::shared_ptr<srcDispatch::IfData> ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
+                    if (ifData) {
+                        if (ifData && ifData->condition) {
+                            for (auto& elem : ifData->condition->conditions) {
+                                if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                    // if (declStmts) {
+                                    //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
+                                    // }
+                                } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                                    std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                                    ProcessExprStmt(exprstmt, funcData, className, ctx);
                                 }
                             }
                         }
+
+                        // minimize duplicate entries
+                        if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(ifData->startLineNumber), (int)(ifData->endLineNumber)))
+                            ifdata.push_back(std::make_pair(ifData->startLineNumber, ifData->endLineNumber));
+
+                        if (ifData->block && ifData->block.GetElement()) cntlBlocks.push_back(ifData->block.GetElement());
                     }
-
-                    if (switchData->block.GetElement()) cntlBlocks.push_back(switchData->block.GetElement());
-                }
-
-            }
-        } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-            // Extract all of the block data from For Loops
-            std::shared_ptr<srcDispatch::ForData> forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(cntl);
-            if (forData && forData->control && forData->control) {
-                if (forData->control->init) {
-                    for (auto& initData : forData->control->init->inits) {
-                        if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            if (declStmts) {
-                                declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement()));
+                } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
+                    std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
+                    if (elseIfData) {
+                        if (elseIfData && elseIfData->condition) {
+                            for (auto& elem : elseIfData->condition->conditions) {
+                                if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                                    // if (declStmts) {
+                                    //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
+                                    // }
+                                } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                                    std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                                    ProcessExprStmt(exprstmt, funcData, className, ctx);
+                                }
                             }
-                        } else if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                            if (exprStmts) {
-                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(initData.GetElement()));
+                        }
+
+                        // minimize duplicate entries, pushed into ifdata for the ComputeControlPaths Algorithm
+                        if (ifdata.size() == 0 || ifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
+                            ifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
+                        
+                        // track elseif block data for later usage
+                        if (elseifdata.size() == 0 || elseifdata.back() != std::make_pair((int)(elseIfData->startLineNumber), (int)(elseIfData->endLineNumber)))
+                            elseifdata.push_back(std::make_pair(elseIfData->startLineNumber, elseIfData->endLineNumber));
+
+                        if (elseIfData->block && elseIfData->block.GetElement()) cntlBlocks.push_back(elseIfData->block.GetElement());
+                    }
+                } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseData>)) {
+                    std::shared_ptr<srcDispatch::ElseData> elseData = std::any_cast<std::shared_ptr<srcDispatch::ElseData>>(clause.GetElement());
+                    if (elseData) {
+                        // minimize duplicate entries
+                        if (elsedata.size() == 0 || elsedata.back() != std::make_pair((int)(elseData->startLineNumber), (int)(elseData->endLineNumber)))
+                            elsedata.push_back(std::make_pair(elseData->startLineNumber, elseData->endLineNumber));
+
+                        if (elseData->block && elseData->block.GetElement()) cntlBlocks.push_back(elseData->block.GetElement());
+                    }
+                }
+            }
+        }
+    } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
+        // Extract all of the block data from Switch statements
+        std::shared_ptr<srcDispatch::SwitchData> switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(cntl);
+        if (switchData) {
+            /*
+                Ensure we are getting the uses from the case lines
+                Ensure we capture data from the case blocks as well
+            */
+
+            // Connect the use lines of switch cases to their corresponding control variables
+            std::vector<std::shared_ptr<srcDispatch::NameData>> controlVariables;
+
+            if (switchData->condition) {
+                // std::cerr << "[*] Switch Conditions Size: " << switchData->condition->conditions.size() << std::endl;
+                for (const auto& elem : switchData->condition->conditions) {
+                    // std::cerr << "[*] Switch Condition Element: " << elem.GetElement().type().name() << std::endl;
+
+                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                        std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                        ProcessExprStmt(exprstmt, funcData, className, ctx);
+                        
+                        std::shared_ptr<srcDispatch::ExpressionData> expr = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                        for (const auto& exprElem : expr->expr) {
+                            if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
+                                controlVariables.push_back(std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement()));
+                            }
+                        }
+                    } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                        // if (declStmts) {
+                        //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
+                        // }
+                    }
+                }
+            }
+
+            if (switchData->block) {
+                for (const auto& switchCase : switchData->block->cases) {
+                    // std::cerr << "[*] Iterating over Switch Data Cases. . ." << std::endl;
+                    // std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
+                    for (auto& ctrlVar : controlVariables) {
+                        srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(ctrlVar);
+                        // locate the slice profile of the ctrlVar and insert the uses
+                        auto sliceProfileItr = profileMap.find(deltaName.ToString());
+
+                        // might need to add finger-printing to minimize potential issue
+                        // of inserting data into the wrong slice
+                        if (sliceProfileItr != profileMap.end()) {
+                            sliceProfileItr->second.back().uses.insert(switchCase->expr->startLineNumber.GetElement());
+                        } else {
+                            if (verboseMode) {
+                                std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << deltaName.ToString() << std::endl;
                             }
                         }
                     }
                 }
 
-                if (forData->control->condition) {
-                    for (const auto& elem : forData->control->condition->conditions) {
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                            if (exprStmts) {
-                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                            }
-                        }
+                if (switchData->block.GetElement()) cntlBlocks.push_back(switchData->block.GetElement());
+            }
+
+        }
+    } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
+        // Extract all of the block data from For Loops
+        std::shared_ptr<srcDispatch::ForData> forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(cntl);
+        if (forData && forData->control && forData->control) {
+            if (forData->control->init) {
+                for (auto& initData : forData->control->init->inits) {
+                    if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
+                        // if (declStmts) {
+                        //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement()));
+                        // }
+                    } else if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                        std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(initData.GetElement());
+                        ProcessExprStmt(exprstmt, funcData, className, ctx);
                     }
                 }
             }
 
-            loopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
-            forloopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
-
-            cntlBlocks.push_back(forData->block.GetElement());
-        } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
-            // Extract all of the block data from While Loops
-            std::shared_ptr<srcDispatch::WhileData> whileData = std::any_cast<std::shared_ptr<srcDispatch::WhileData>>(cntl);
-            if (whileData) {
-                // C++ do-while does not support decl-stmts within the conditional "()"
-
-                if (exprStmts && whileData->condition) {
-                    for (const auto& elem : whileData->condition->conditions) {
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                            if (exprStmts) {
-                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                            }
-                        }
+            if (forData->control->condition) {
+                for (const auto& elem : forData->control->condition->conditions) {
+                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                        std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                        ProcessExprStmt(exprstmt, funcData, className, ctx);
                     }
                 }
-
-                loopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
-                whileloopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
-
-                if (whileData->block && whileData->block.GetElement()) cntlBlocks.push_back(whileData->block.GetElement());
             }
-        } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
-            // Extract all of the block data from Do-While Loops
-            std::shared_ptr<srcDispatch::DoData> doWhileData = std::any_cast<std::shared_ptr<srcDispatch::DoData>>(cntl);
-            if (doWhileData) {
-                // C++ do-while does not support decl-stmts within the conditional "()"
+        }
 
-                if (exprStmts && doWhileData->condition) {
-                    for (const auto& elem : doWhileData->condition->conditions) {
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
-                            if (exprStmts) {
-                                exprStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement()));
-                            }
-                        }
+        loopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
+        forloopdata.push_back(std::make_pair(forData->startLineNumber, forData->endLineNumber));
+
+        cntlBlocks.push_back(forData->block.GetElement());
+    } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
+        // Extract all of the block data from While Loops
+        std::shared_ptr<srcDispatch::WhileData> whileData = std::any_cast<std::shared_ptr<srcDispatch::WhileData>>(cntl);
+        if (whileData) {
+            // C++ do-while does not support decl-stmts within the conditional "()"
+
+            if (whileData->condition) {
+                for (const auto& elem : whileData->condition->conditions) {
+                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                        std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                        ProcessExprStmt(exprstmt, funcData, className, ctx);
                     }
                 }
-
-                loopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
-                dowhileloopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
-
-                if (doWhileData->block && doWhileData->block.GetElement()) cntlBlocks.push_back(doWhileData->block.GetElement());
             }
-        } else {
+
+            loopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
+            whileloopdata.push_back(std::make_pair(whileData->startLineNumber, whileData->endLineNumber));
+
+            if (whileData->block && whileData->block.GetElement()) cntlBlocks.push_back(whileData->block.GetElement());
+        }
+    } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
+        // Extract all of the block data from Do-While Loops
+        std::shared_ptr<srcDispatch::DoData> doWhileData = std::any_cast<std::shared_ptr<srcDispatch::DoData>>(cntl);
+        if (doWhileData) {
+            // C++ do-while does not support decl-stmts within the conditional "()"
+
+            if (doWhileData->condition) {
+                for (const auto& elem : doWhileData->condition->conditions) {
+                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
+                        std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
+                        ProcessExprStmt(exprstmt, funcData, className, ctx);
+                    }
+                }
+            }
+
+            loopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
+            dowhileloopdata.push_back(std::make_pair(doWhileData->startLineNumber, doWhileData->endLineNumber));
+
+            if (doWhileData->block && doWhileData->block.GetElement()) cntlBlocks.push_back(doWhileData->block.GetElement());
+        }
+    } else {
+        if (verboseMode) {
             if (verboseMode) {
-                if (verboseMode) {
-                    std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << cntl.type().name() << std::endl;
-                }
+                std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << cntl.type().name() << std::endl;
             }
         }
     }
@@ -1370,57 +1321,49 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
 
         // capture decls nested within blocks of conditionals before parsing expressions
         // within the block
-        ProcessDeclStmts(funcData, block, "", ctx);
+        ProcessStmts(funcData, block, "", ctx);
 
         for (auto& stmt : block->statements) {
             if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExprStmtData>)) {
-                if (exprStmts) {
-                    auto exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
-                    if (exprstmt && exprstmt->expr) exprStmts->push_back(exprstmt->expr.GetElement());
-                }
+                std::shared_ptr<srcDispatch::ExprStmtData> exprstmtdata = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
+                ProcessExprStmt(exprstmtdata->expr, funcData, className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
                 // locals
                 std::shared_ptr<srcDispatch::DeclStmtData> declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
 
-                if (declStmts && declStmtData) {
-                    for (auto& deltaDecl : declStmtData->decls) {
-                        if (deltaDecl.GetElement()) {
-                            declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(deltaDecl.GetElement()));
-                        }
-                    }
-                }
+                // if (declStmts && declStmtData) {
+                //     for (auto& deltaDecl : declStmtData->decls) {
+                //         if (deltaDecl.GetElement()) {
+                //             declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(deltaDecl.GetElement()));
+                //         }
+                //     }
+                // }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ReturnData>)) {
                 // type of expression statement
-                if (exprStmts) {
-                    auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
-                    if (retstmt) {
-                        if (retstmt->expr && retstmt->expr.GetElement()) {
-                            exprStmts->push_back(retstmt->expr.GetElement());
-                        }
+                auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
+                if (retstmt) {
+                    if (retstmt->expr && retstmt->expr.GetElement()) {
+                        std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(retstmt->expr.GetElement());
+                        ProcessExprStmt(exprstmt, funcData, className, ctx);
                     }
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CaseData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
-                conditionals.push_back(stmt.GetElement());
+                CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else {
                 if (verboseMode) {
                     std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
                 }
             }
-        }
-
-        // Recursive call to step into nested conditionals
-        if (conditionals.size() > 0) {
-            CollectConditionalData(funcData, exprStmts, declStmts, conditionals, ctx);
         }
     }
 }

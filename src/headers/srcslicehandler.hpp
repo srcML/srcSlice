@@ -48,14 +48,19 @@ public:
                             std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes,
                             const SliceCtx& ctx);
 
-    // Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
-    void ProcessDeclStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);
+    // Moves over the sequence of statements and processes them in order
+    // |__ Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
+    // |__ Extract Expressions within a specified Block within a Function Definition
+    void ProcessStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);
+    
     // Creates Initial SliceProfile based off DeclData
     void CreateSliceProfile(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& deltaDeclData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
     // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
     void ProcessInitLists(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    
     // Extract Expressions within a specified Block within a Function Definition
     void ProcessExprStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);
+    
     // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
     void ProcessExprStmt(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
     // Update Slice Profiles based off Collected Variable Data post ParseExpr
@@ -67,10 +72,9 @@ public:
     std::string GetTypeDetails(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& localVar, bool& isPointer, bool& isReference, bool& isArray);
     // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
     // for them, along with capturing expressions to update collected slices
-    void CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<std::shared_ptr<srcDispatch::TryData>>& tryBlocks,
+    void CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
                                 std::string className, const SliceCtx& ctx);
-    void CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>>* exprStmts, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>* declStmts,
-                                std::vector<std::any>& conditionals, const SliceCtx& ctx);
+    void CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::any& cntl, const std::string& className, const SliceCtx& ctx);
     // Given a list of Function Parameters create Initial SliceProfiles for each Parameter
     void ProcessFunctionParameters(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters,
                                     std::string currentFunctionName, std::string className, const SliceCtx& ctx);

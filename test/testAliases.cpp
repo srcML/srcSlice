@@ -161,7 +161,7 @@ TEST_CASE( "Aliases Test 3", "[srcslice]" ) {
             "    \"dependence\":[],\n"
             "    \"aliases\":[],\n"
             "    \"calls\":[],\n"
-            "    \"use\":[5],\n"
+            "    \"use\":[5,6],\n"
             "    \"definition\":[3]\n"
             "},\n"
             "\"slice_3\":{\n"
@@ -235,7 +235,7 @@ TEST_CASE( "Aliases Test 4", "[srcslice]" ) {
             "    \"dependence\":[],\n"
             "    \"aliases\":[],\n"
             "    \"calls\":[],\n"
-            "    \"use\":[3],\n"
+            "    \"use\":[3,4],\n"
             "    \"definition\":[2]\n"
             "}\n"
             "}\n";
@@ -294,7 +294,7 @@ TEST_CASE( "Aliases Test 5", "[srcslice]" ) {
             "    \"dependence\":[],\n"
             "    \"aliases\":[],\n"
             "    \"calls\":[],\n"
-            "    \"use\":[2],\n"
+            "    \"use\":[2,3],\n"
             "    \"definition\":[1]\n"
             "}\n"
             "}\n";
