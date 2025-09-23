@@ -60,6 +60,7 @@ public:
     bool showControlEdges = false;
 
     std::string currentPointerReference;
+    bool ignorePtrRef = false;
     bool isPotentialArray = false;
 
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile);

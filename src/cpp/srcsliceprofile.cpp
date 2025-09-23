@@ -47,6 +47,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     showControlEdges = rhs.showControlEdges;
     currentPointerReference = rhs.currentPointerReference;
     isPotentialArray = rhs.isPotentialArray;
+    ignorePtrRef = rhs.ignorePtrRef;
 }
 
 std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {

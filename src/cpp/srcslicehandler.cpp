@@ -216,7 +216,8 @@ void SrcSliceHandler::ProcessDecls(std::vector<srcDispatch::DeltaElement<std::sh
                                 }
                                 if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
                                     // ensure aliases are within local-scope
-                                    if (initRHS->function == sliceProfileItr->second.back().function) {
+                                    if (initRHS->function == sliceProfileItr->second.back().function &&
+                                        !sliceProfileItr->second.back().ignorePtrRef) {
                                         if (sliceProfileItr->second.back().isPointer) {
                                             // Check for pointer-2-pointer assignment or points-to-address assignment
                                             if (initRHS->isPointer || varData->isAddrOf) {
@@ -487,6 +488,28 @@ void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::sh
                 continue;
             }
 
+            // check if we are able to apply uses towards ptr-references
+            if (!initRHS->currentPointerReference.empty() && !initRHS->ignorePtrRef) {
+                // apply uses across the sequence of references from aliases
+                auto aspi = profileMap.find(initRHS->currentPointerReference);
+
+                // move down the possible references list assuming ptr-ptr relation
+                while (aspi != profileMap.end()) {
+                    // insert uses across the references when possible
+                    SliceProfile& asp = aspi->second.back();
+                    asp.uses.insert(varData->uses.begin(), varData->uses.end());
+
+                    // check if the alias has a currentReference as well
+                    if (!asp.currentPointerReference.empty() && !asp.ignorePtrRef) {
+                        // point to the next aspi
+                        aspi = profileMap.find(asp.currentPointerReference);
+                    } else {
+                        // exit while-loop
+                        break;
+                    }
+                }
+            }
+
             if (sliceProfileItr->second.back().potentialAlias) {
                 // Aliases are formed from pointer-to-pointer or pointer-to-address assignments
                 if (!initRHS->isPointer && !varData->isAddrOf) {
@@ -498,7 +521,8 @@ void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::sh
                 }
                 if (varData->GetNameOfIdentifier() != sliceProfileItr->second.back().variableName) {
                     // ensure aliases are within local-scope
-                    if (initRHS->function == sliceProfileItr->second.back().function) {
+                    if (initRHS->function == sliceProfileItr->second.back().function &&
+                        !sliceProfileItr->second.back().ignorePtrRef) {
                         if (sliceProfileItr->second.back().isPointer) {
                             // Check for pointer-2-pointer assignment or points-to-address assignment
                             if (initRHS->isPointer || varData->isAddrOf) {
@@ -520,6 +544,7 @@ void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::sh
                 initRHS->dvars.insert(std::make_pair(declVarName, deltaDeclData->startLineNumber.GetElement()));
             }
         }
+
         for (auto& dvarData : varData->rhsElems) {
             std::string dvar = dvarData->GetNameOfIdentifier();
 
@@ -835,9 +860,10 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& v
                 sliceProfileExprItr->language = ctx.currentFileLanguage;
 
                 sliceProfileExprItr->uses.insert(rhsVarData->uses.begin(),
-                                                                rhsVarData->uses.end());
+                                                rhsVarData->uses.end());
+
                 sliceProfileExprItr->definitions.insert(rhsVarData->definitions.begin(),
-                                                                        rhsVarData->definitions.end());
+                                                        rhsVarData->definitions.end());
 
                 if (!StringContainsCharacters(lhsName)) continue;
 
@@ -846,7 +872,8 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& v
                     (sliceProfileExprItr->function == sliceProfileLHSItr->function) ) {
                     // Check for pointer-2-pointer assignment or points-to-address assignment
                     if ( (sliceProfileLHSItr->potentialAlias && !varData->dereferenced) &&
-                        (sliceProfileExprItr->isPointer || rhsVarData->isAddrOf) ) {
+                        (sliceProfileExprItr->isPointer || rhsVarData->isAddrOf) &&
+                        !sliceProfileLHSItr->ignorePtrRef) {
                         if ( lhsName != sliceProfileExprItr->variableName ) {
                             if (sliceProfileLHSItr->isPointer) {
                                 sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
@@ -889,7 +916,8 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& v
                     if (sliceProfileExprItr->function == sliceProfileLHSItr->function) {
                         if (sliceProfileLHSItr->potentialAlias) {
                             if ( lhsName != sliceProfileLHSItr->variableName ) {
-                                if (sliceProfileLHSItr->isPointer) {
+                                if (sliceProfileLHSItr->isPointer &&
+                                    !sliceProfileLHSItr->ignorePtrRef) {
                                     // Check for pointer-2-pointer assignment or points-to-address assignment
                                     if (sliceProfileExprItr->isPointer || rhsVarData->isAddrOf) {
                                         sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originLine));
@@ -942,6 +970,10 @@ void SrcSliceHandler::CreateSliceCallData(std::string functionName, int argIndex
             aliasReferenceProfile->second.back().uses.insert(functionCallLine);
         }
     }
+
+    // Once a pointer is passed into a function-call there is no way to determine
+    // if the object its pointing to has changed
+    if (sliceProfile.isPointer) sliceProfile.ignorePtrRef = true;
 }
 
 void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>& funcCallData) {
@@ -1522,9 +1554,12 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                     }
 
                     if (expr_op == ">>" || trailingExtraction) {
-                        lhsVar->definitions.insert(lineNumber);
-                        lhsVar->uses.erase(lineNumber);
-                        lhsVar->userModified = true;
+                        if (!lhsVar->dereferenced) {
+                            // >> (*ptr) | modifies the reference, not the ptr itself
+                            lhsVar->definitions.insert(lineNumber);
+                            lhsVar->uses.erase(lineNumber);
+                            lhsVar->userModified = true;
+                        }
                         trailingExtraction = false;
                     }
 
@@ -2032,11 +2067,12 @@ void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData>& varData) {
 
     // Just update definitions and uses if name already exists. Otherwise, add new name.
     if (sliceProfileItr != profileMap.end()) {
-        sliceProfileItr->second.back().uses.insert(varData->uses.begin(),
-                                                    varData->uses.end());
+        SliceProfile& sp = sliceProfileItr->second.back();
+
+        sp.uses.insert(varData->uses.begin(), varData->uses.end());
 
         if (varData->dereferenced) {
-            auto nextAliasRef = profileMap.find(sliceProfileItr->second.back().currentPointerReference);
+            auto nextAliasRef = profileMap.find(sp.currentPointerReference);
             for (int aliasDepth = 0; aliasDepth < varData->dereferenceCount; ++aliasDepth) {
                 if (nextAliasRef != profileMap.end()) {
                     // pre-insert uses towards alias reference
@@ -2069,12 +2105,13 @@ void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData>& varData) {
                     // perform a move down the alias chain
                     nextAliasRef = profileMap.find(nextAliasRef->second.back().currentPointerReference);
                 } else {
-                    break;
+                    // escape if we cannot find a valid profile entry
+                    return;
                 }
             }
         } else {
-            sliceProfileItr->second.back().definitions.insert(varData->definitions.begin(),
-                                                            varData->definitions.end());
+            sp.definitions.insert(varData->definitions.begin(),
+                                varData->definitions.end());
         }
     } else {
         if (verboseMode)
