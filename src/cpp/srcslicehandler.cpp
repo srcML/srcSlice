@@ -145,7 +145,7 @@ void SrcSliceHandler::ProcessDecls(std::vector<srcDispatch::DeltaElement<std::sh
                             auto sliceProfile = SliceProfile(declVarName, deltaDecl->startLineNumber.GetElement(), isPointer, true, std::set<unsigned int>{deltaDecl->startLineNumber.GetElement()});
 
                             sliceProfile.nameOfContainingClass = "";
-                            sliceProfile.containingNameSpaces = {}; // TODO: find a link for namespaces on globals
+                            sliceProfile.containingNameSpaces = {}; /*** @todo find a link for namespaces on globals */
                             sliceProfile.language = ctx.currentFileLanguage;
 
                             sliceProfile.showControlEdges = calculateControlEdges;
@@ -161,7 +161,7 @@ void SrcSliceHandler::ProcessDecls(std::vector<srcDispatch::DeltaElement<std::sh
                         auto sliceProf = SliceProfile(declVarName, deltaDecl->startLineNumber.GetElement(), (isPointer), false, std::set<unsigned int>{deltaDecl->startLineNumber.GetElement()});
 
                         sliceProf.nameOfContainingClass = "";
-                        sliceProf.containingNameSpaces = {}; // TODO: find a link for namespaces on globals
+                        sliceProf.containingNameSpaces = {}; /*** @todo find a link for namespaces on globals */
                         sliceProf.language = ctx.currentFileLanguage;
 
                         sliceProf.showControlEdges = calculateControlEdges;
@@ -264,7 +264,7 @@ void SrcSliceHandler::ProcessDecls(std::vector<srcDispatch::DeltaElement<std::sh
                                 );
 
                                 sliceProf.nameOfContainingClass = "";
-                                sliceProf.containingNameSpaces = {}; // TODO: find a link for namespaces on globals
+                                sliceProf.containingNameSpaces = {}; /*** @todo find a link for namespaces on globals */
                                 sliceProf.language = ctx.currentFileLanguage;
 
                                 sliceProf.showControlEdges = calculateControlEdges;
@@ -613,7 +613,9 @@ void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shar
         // extract and parse expressions within init list call
         for (const auto& deltaArg : deltaCallData->arguments) {
             if (deltaArg) {
-                exprStmts.push_back(deltaArg);
+                // process the argument of the initializer-list
+                std::vector<std::shared_ptr<VariableData>> pe = ParseExpr(deltaArg, deltaArg->startLineNumber.GetElement());
+                UpdateSlices(pe, funcData, className, ctx);
 
                 // there is data-dependency between the call-target and the args
                 if (sp != nullptr) {
@@ -629,11 +631,6 @@ void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shar
                     }
                 }
             }
-        }
-
-        for (auto& expr : exprStmts) {
-            std::vector<std::shared_ptr<VariableData>> pe = ParseExpr(expr, expr->startLineNumber.GetElement());
-            UpdateSlices(pe, funcData, className, ctx);
         }
     }
 }
@@ -1190,7 +1187,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
             if (switchData->condition) {
                 // std::cerr << "[*] Switch Conditions Size: " << switchData->condition->conditions.size() << std::endl;
                 for (const auto& elem : switchData->condition->conditions) {
-                    // std::cerr << "[*] Switch Condition Element: " << elem.GetElement().type().name() << std::endl;
+                    std::cerr << "[*] Switch Condition Element: " << elem.GetElement().type().name() << std::endl;
 
                     if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                         std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
@@ -1203,9 +1200,30 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
                             }
                         }
                     } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                        // if (declStmts) {
-                        //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                        // }
+                        std::shared_ptr<srcDispatch::DeclData> declData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+
+                        /***
+                            @todo
+                            - ensure switch condition following init-statement; expression, the init is not a control-variable
+                            - ensure switch condition following expression; init-statement, the init is a control-variable and the expression is not
+                        */
+
+                        // add the name of the decl var as a control variable of the switch
+                        // and add a use to the slice of the control-var
+                        if (controlVariables.empty()) {
+                            if (declData->name) {
+                                controlVariables.push_back(declData->name.GetElement());
+                            }
+
+                            auto switchCtrlSlice = profileMap.find(declData->name.ToString());
+                            if (switchCtrlSlice != profileMap.end()) {
+                                switchCtrlSlice->second.back().uses.insert(declData->startLineNumber.GetElement());
+                            } else {
+                                if (verboseMode) {
+                                    std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << declData->name.ToString() << std::endl;
+                                }
+                            }
+                        }
                     }
                 }
             }
@@ -1213,7 +1231,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
             if (switchData->block) {
                 for (const auto& switchCase : switchData->block->cases) {
                     // std::cerr << "[*] Iterating over Switch Data Cases. . ." << std::endl;
-                    // std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
+                    std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
                     for (auto& ctrlVar : controlVariables) {
                         srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(ctrlVar);
                         // locate the slice profile of the ctrlVar and insert the uses
@@ -1222,6 +1240,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
                         // might need to add finger-printing to minimize potential issue
                         // of inserting data into the wrong slice
                         if (sliceProfileItr != profileMap.end()) {
+                            std::cerr << "Adding switch case use line -> " << sliceProfileItr->second.back().variableName << " | " << switchCase->expr->startLineNumber.GetElement() << std::endl;
                             sliceProfileItr->second.back().uses.insert(switchCase->expr->startLineNumber.GetElement());
                         } else {
                             if (verboseMode) {
@@ -2568,9 +2587,13 @@ void SrcSliceHandler::ComputeInterprocedural() {
                         std::string simpleFunctionName = GetSimpleFunctionName(funcSigCollection->second[pos].name);
 
                         unsigned int ArgProfParam = cfunc.parameterIndex - 1;
+
                         // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
+                        
+                        /*** @todo look for potential issues with overload case */
+
                         if (cfunc.functionName == simpleFunctionName && funcSigCollection->second[pos].parameters.size() > 0 &&
-                            ArgProfParam < funcSigCollection->second[pos].parameters.size() && pos < funcSigCollection->second.size()) { //TODO fix for case: Overload
+                            ArgProfParam < funcSigCollection->second[pos].parameters.size() && pos < funcSigCollection->second.size()) {
                             if (funcSigCollection->second[pos].parameters[ArgProfParam]->name) {
                                 // Only run this section if the parameter name can be extracted
                                 auto Spi = ArgumentProfile(std::make_pair(cfunc.functionName, funcSigCollection->second[pos]), ArgProfParam, visited_func);
