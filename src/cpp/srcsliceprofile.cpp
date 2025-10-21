@@ -67,6 +67,8 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"function\":\"" << profile.function << "\"," << std::endl;
     out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
     out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
+    
+    out << "    \"initial\":\"" << profile.lineNumber << "\"," << std::endl;
 
     out << "    \"dependence\":[";
     for (auto dvar : profile.dvars) {
@@ -89,9 +91,17 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"calls\":[";
     for (auto cfunc : profile.cfunctions) {
         if (cfunc != *(--profile.cfunctions.end()))
-            out << "{\"functionName\":\"" << cfunc.functionName << "\",\"parameter\":\"" << cfunc.parameterIndex << "\",\"definitionLine\":\"" << cfunc.functionDefinition << "\"},";
+            out << "{\"functionName\":\"" << cfunc.functionName <<
+                    "\",\"parameter\":\"" << cfunc.parameterIndex <<
+                    "\",\"definitionLine\":\"" << cfunc.functionDefinition <<
+                    "\",\"invoke\":\"" << cfunc.lineOfInvoke <<
+                    "\"},";
         else
-            out << "{\"functionName\":\"" << cfunc.functionName << "\",\"parameter\":\"" << cfunc.parameterIndex << "\",\"definitionLine\":\"" << cfunc.functionDefinition << "\"}";
+            out << "{\"functionName\":\"" << cfunc.functionName <<
+                    "\",\"parameter\":\"" << cfunc.parameterIndex <<
+                    "\",\"definitionLine\":\"" << cfunc.functionDefinition <<
+                    "\",\"invoke\":\"" << cfunc.lineOfInvoke <<
+                    "\"}";
     }
     out << "]," << std::endl;
 
