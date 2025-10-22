@@ -68,7 +68,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
     out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
     
-    out << "    \"initial\":\"" << profile.lineNumber << "\"," << std::endl;
+    out << "    \"initial\":" << profile.lineNumber << "," << std::endl;
 
     out << "    \"dependence\":[";
     for (auto dvar : profile.dvars) {
