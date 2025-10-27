@@ -37,9 +37,9 @@ public:
     // when the lhsVarName is not an empty string its considered initialized
     bool isInitialized();
 
-    void InitializeLHS(std::string name, unsigned int line);
+    void InitializeLHS(std::string name, srcDispatch::DeltaElement<srcDispatch::Position> position);
 
-    void SetOriginLine(unsigned int line);
+    void SetOriginLine(srcDispatch::DeltaElement<srcDispatch::Position> position);
 
     void AddRHS(std::shared_ptr<VariableData> var);
     std::shared_ptr<VariableData> GetRecentRHS();
@@ -56,10 +56,10 @@ public:
     // but can be modified to be more expansive
     bool userModified = false;
     
-    unsigned int originLine;
+    srcDispatch::DeltaElement<srcDispatch::Position> originPosition;
     int dereferenceCount;
-    std::set<unsigned int> uses;
-    std::set<unsigned int> definitions;
+    std::set<srcDispatch::DeltaElement<srcDispatch::Position>> uses;
+    std::set<srcDispatch::DeltaElement<srcDispatch::Position>> definitions;
 };
 
 // Hold context data srcslice uses based off srcSAXEventContext without copying
@@ -81,8 +81,9 @@ public:
 class FunctionSignatureData {
 public:
     FunctionSignatureData(){};
-    FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func, std::string className, const SliceCtx& ctx);
-    int lineNumber;
+    FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
+                            std::string className, const SliceCtx& ctx);
+    srcDispatch::DeltaElement<srcDispatch::Position> position;
     std::string name;
     std::string returnType;
     std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>> parameters;
@@ -98,7 +99,10 @@ public:
 // and the line where the function is potentially defined
 class FunctionCallData {
 public:
-    FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine, bool ignore_ = false);
+    FunctionCallData(std::string funcName, unsigned int paramIndex,
+                    srcDispatch::DeltaElement<srcDispatch::Position> defPos,
+                    srcDispatch::DeltaElement<srcDispatch::Position> invokePos,
+                    bool ignore_ = false);
 
     FunctionCallData(const FunctionCallData& rhs);
 
@@ -111,9 +115,9 @@ public:
     friend std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data);
 
     std::string functionName;
-    unsigned int lineOfInvoke;
+    srcDispatch::DeltaElement<srcDispatch::Position> invokePosition;
     unsigned int parameterIndex;
-    unsigned int functionDefinition;
+    srcDispatch::DeltaElement<srcDispatch::Position> definitionPosition;
     bool ignore;
 };
 

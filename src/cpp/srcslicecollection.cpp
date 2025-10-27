@@ -14,7 +14,7 @@ VariableData::VariableData(const VariableData& rhs) {
     dereferenced = rhs.dereferenced;
     uses = rhs.uses;
     definitions = rhs.definitions;
-    originLine = rhs.originLine;
+    originPosition = rhs.originPosition;
     dereferenceCount = 0;
 }
 
@@ -48,18 +48,29 @@ std::string VariableData::GetNameOfIdentifier() const {
 // when the lhsVarName is not an empty string its considered initialized
 bool VariableData::isInitialized() { return !lhsVarName.empty(); }
 
-void VariableData::InitializeLHS(std::string name, unsigned int line) { lhsVarName = name; originLine = line; }
+void VariableData::InitializeLHS(std::string name,
+                                    srcDispatch::DeltaElement<srcDispatch::Position> position) {
+    lhsVarName = name;
+    originPosition = position;
+}
 
-void VariableData::SetOriginLine(unsigned int line) { originLine = line; }
+void VariableData::SetOriginLine(srcDispatch::DeltaElement<srcDispatch::Position> position) {
+    originPosition = position;
+}
 
 void VariableData::AddRHS(std::shared_ptr<VariableData> var) {
     if (rhsElems.size() == 0 || rhsElems.back() != var)
         rhsElems.push_back(var);
 }
-std::shared_ptr<VariableData> VariableData::GetRecentRHS() { return rhsElems.size() > 0 ? rhsElems.back() : nullptr; }
+std::shared_ptr<VariableData> VariableData::GetRecentRHS() {
+    return rhsElems.size() > 0 ? rhsElems.back() : nullptr;
+}
 
-FunctionSignatureData::FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func, std::string className, const SliceCtx& ctx) {
-    lineNumber = func->startLineNumber.GetElement();
+FunctionSignatureData::FunctionSignatureData(
+    srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
+    std::string className,
+    const SliceCtx& ctx) {
+    position = func->startPosition;
     name = func->name.ToString();
     returnType = func->returnType.ToString();
     parameters = func->parameters;
@@ -70,22 +81,27 @@ FunctionSignatureData::FunctionSignatureData(srcDispatch::DeltaElement<std::shar
     containingNamespaces = ctx.containingNamespaces;
 }
 
-FunctionCallData::FunctionCallData(std::string funcName, unsigned int paramIndex, unsigned int funcDefLine, unsigned int invokeLine, bool ignore_):
-        functionName(funcName), parameterIndex(paramIndex), functionDefinition(funcDefLine), lineOfInvoke(invokeLine), ignore(ignore_) {};
+FunctionCallData::FunctionCallData(std::string funcName, unsigned int paramIndex,
+                                    srcDispatch::DeltaElement<srcDispatch::Position> defPos,
+                                    srcDispatch::DeltaElement<srcDispatch::Position> invokePos,
+                                    bool ignore_
+                                ): functionName(funcName), parameterIndex(paramIndex),
+                                definitionPosition(defPos), invokePosition(invokePos),
+                                ignore(ignore_) {};
 
 FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
     functionName = rhs.functionName;
-    lineOfInvoke = rhs.lineOfInvoke;
+    invokePosition = rhs.invokePosition;
     parameterIndex = rhs.parameterIndex;
-    functionDefinition = rhs.functionDefinition;
+    definitionPosition = rhs.definitionPosition;
     ignore = rhs.ignore;
 };
 
 bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
     if (functionName != rhs.functionName) return false;
-    if (lineOfInvoke != rhs.lineOfInvoke) return false;
+    if (invokePosition != rhs.invokePosition) return false;
     if (parameterIndex != rhs.parameterIndex) return false;
-    if (functionDefinition != rhs.functionDefinition) return false;
+    if (definitionPosition != rhs.definitionPosition) return false;
     if (ignore != rhs.ignore) return false;
     return true;
 }
@@ -95,9 +111,9 @@ bool FunctionCallData::operator!=(const FunctionCallData& rhs) const {
 
 bool FunctionCallData::operator<(const FunctionCallData& rhs) const {
     if (functionName < rhs.functionName) return true;
-    if (lineOfInvoke < rhs.lineOfInvoke) return true;
+    if (invokePosition < rhs.invokePosition) return true;
     if (parameterIndex < rhs.parameterIndex) return true;
-    if (functionDefinition < rhs.functionDefinition) return true;
+    if (definitionPosition < rhs.definitionPosition) return true;
     if (ignore == false && rhs.ignore == true) return true;
     return false;
 }
@@ -106,7 +122,8 @@ bool FunctionCallData::operator>(const FunctionCallData& rhs) const {
 }
 
 std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data) {
-    outStream << "[" << data.functionName << " | " << data.parameterIndex << " | " << data.functionDefinition << " | " << data.lineOfInvoke << "]";
+    outStream << "[" << data.functionName << " | " << data.parameterIndex
+    << " | " << data.definitionPosition.ToString() << " | " << data.invokePosition.ToString() << "]";
     return outStream;
 }
 
