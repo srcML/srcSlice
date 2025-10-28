@@ -202,7 +202,7 @@ void SrcSliceHandler::ProcessDecls(DeclStmts& deltaDeclStmts, const SliceCtx& ct
                             SliceProfile* initRHS = FetchSliceProfile(varData->GetNameOfIdentifier(), varData, nofunc);
 
                             if (initRHS == nullptr) {
-                                if (verboseMode) std::cerr << "[-] " << __LINE__ << " | Slice fetch Unsuccessful" << std::endl;
+                                if (verboseMode) std::cout << "[-] " << __LINE__ << " | Slice fetch Unsuccessful" << std::endl;
                                 continue;
                             }
 
@@ -304,7 +304,7 @@ void SrcSliceHandler::ProcessSignatures(std::vector<srcDispatch::DeltaElement<st
                                         std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes,
                                         const SliceCtx& ctx) {
     if (verboseMode) {
-        std::cerr << "[*] " << __LINE__  << " Processing Signatures" << std::endl;
+        std::cout << "[*] " << __LINE__  << " Processing Signatures" << std::endl;
     }
 
     // Fetch Signatures from Free-Functions
@@ -342,7 +342,7 @@ void SrcSliceHandler::ProcessSignatures(std::vector<srcDispatch::DeltaElement<st
 void SrcSliceHandler::ProcessFunctions(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs, const SliceCtx& ctx) {
     for (auto& func : funcs) {
         if (verboseMode) {
-            std::cerr << "[*] " << __LINE__  << " Processing Function Name: " << func->name.ToString() << std::endl;
+            std::cout << "[*] " << __LINE__  << " Processing Function Name: " << func->name.ToString() << std::endl;
         }
         ProcessInitLists(func, "", ctx);
         if (func->block) ProcessStmts(func, func->block, "", ctx);
@@ -353,7 +353,7 @@ void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::
     if (classes.empty()) return;
     for (auto& classData : classes) {
         if (verboseMode) {
-            std::cerr << "[*] " << __LINE__  << " Processing Class Name: " << classData->name.ToString() << std::endl;
+            std::cout << "[*] " << __LINE__  << " Processing Class Name: " << classData->name.ToString() << std::endl;
         }
 
         // Process Class Member Variables
@@ -484,13 +484,11 @@ void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::sh
             SliceProfile* initRHS = FetchSliceProfile(varData->GetNameOfIdentifier(), varData, funcData, className, funcData->namespaces);
 
             if (initRHS == nullptr) {
-                // std::cerr << "Slice Fetch Unsuccessful!" << std::endl;
                 continue;
             }
 
             // check if we are able to apply uses towards ptr-references
             if (!initRHS->currentPointerReference.empty() && !initRHS->ignorePtrRef) {
-                std::cerr << "[*] " << initRHS->variableName << " | " << initRHS->currentPointerReference << std::endl;
                 // apply uses across the sequence of references from aliases
                 auto aspi = profileMap.find(initRHS->currentPointerReference);
 
@@ -782,7 +780,7 @@ void SrcSliceHandler::ProcessStmts(const srcDispatch::DeltaElement<std::shared_p
                 }
             } else {
                 if (verboseMode) {
-                    std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
+                    std::cout << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
                 }
             }
         }
@@ -852,7 +850,6 @@ void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& v
                             if (sliceProfileLHSItr->isPointer) {
                                 sliceProfileLHSItr->aliases.insert(std::make_pair(rhsName, rhsVarData->originPosition));
                                 if (!sliceProfileLHSItr->isPotentialArray) {
-                                    std::cerr << "|__ new ref: " << sliceProfileLHSItr->variableName << " -> " << rhsName << std::endl;
                                     sliceProfileLHSItr->currentPointerReference = rhsName;
                                 }
                             }
@@ -956,9 +953,6 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
     std::string functionName = funcCallData->name.ToString();
 
-    // std::cerr << "[*] CALL-DATA --> " << *funcCallData << std::endl;
-    // std::cerr << " |____ ARGC --> " << funcCallData->arguments.size() << std::endl;
-
     int argIndex = 0;
     for (auto& arg : funcCallData->arguments) {
         ++argIndex;
@@ -966,7 +960,6 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
         // Extract the Variable Name from the expression contained within
         // the function call argument list index
         for (auto& exprElem : arg->expr) {    
-            // std::cerr << "      |____ CALL-DATA ELEM --> " << exprElem.type().name() << std::endl;
             if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
                 std::shared_ptr<srcDispatch::NameData> name = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(exprElem.GetElement());
                 SlicePosition argumentPosition(funcCallData->startPosition, funcCallData->endPosition);
@@ -1060,7 +1053,7 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
                                     bool matchingTypes = (filteredParamDataType == filteredSliceDataType);
                                     if (verboseMode) {
-                                        std::cerr << "[-] " << __LINE__  << " | Parameter Filtered-Type -> " << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << std::endl;
+                                        std::cout << "[-] " << __LINE__  << " | Parameter Filtered-Type -> " << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << std::endl;
                                     }
                                     if (!matchingTypes) continue;
 
@@ -1073,21 +1066,20 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
                                     CreateSliceCallData(simpleFunctionName, argIndex, funcPos, sliceProfileItr->second.back(), argumentPosition);
                                 } else {
                                     if (verboseMode)
-                                        std::cerr << "[-] " << __LINE__  << " | Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
+                                        std::cout << "[-] " << __LINE__  << " | Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
                                     CreateSliceCallData(simpleFunctionName, argIndex, SlicePosition(), sliceProfileItr->second.back(), argumentPosition);
                                 }
                             }
                         } else {
                             if (verboseMode)
-                                std::cerr << "[-] " << __LINE__  << " | No Function Signature Found for -> " << simpleFunctionName << std::endl;
+                                std::cout << "[-] " << __LINE__  << " | No Function Signature Found for -> " << simpleFunctionName << std::endl;
                             CreateSliceCallData(simpleFunctionName, argIndex, SlicePosition(), sliceProfileItr->second.back(), argumentPosition);
                         }
                     }
                 }  catch (std::logic_error& e) {
-                    if (verboseMode) std::cerr << "[-] " << __LINE__  << " | Caught Logic Error: " << e.what() << std::endl;
+                    if (verboseMode) std::cout << "[-] " << __LINE__  << " | Caught Logic Error: " << e.what() << std::endl;
                 }
             } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CallData>)) {
-                // std::cerr << "ARGUMENT IS A CALL-DATA" << std::endl;
                 std::shared_ptr<srcDispatch::CallData> nestedCallData = std::any_cast<std::shared_ptr<srcDispatch::CallData>>(exprElem.GetElement());
                 ProcessFunctionCall(nestedCallData);
             }
@@ -1211,10 +1203,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
             std::vector<std::shared_ptr<srcDispatch::NameData>> controlVariables;
 
             if (switchData->condition) {
-                // std::cerr << "[*] Switch Conditions Size: " << switchData->condition->conditions.size() << std::endl;
                 for (const auto& elem : switchData->condition->conditions) {
-                    std::cerr << "[*] Switch Condition Element: " << elem.GetElement().type().name() << std::endl;
-
                     if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                         std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
                         ProcessExprStmt(exprstmt, funcData, className, ctx);
@@ -1246,7 +1235,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
                                 switchCtrlSlice->second.back().uses.insert(SlicePosition(declData->startPosition, declData->endPosition));
                             } else {
                                 if (verboseMode) {
-                                    std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << declData->name.ToString() << std::endl;
+                                    std::cout << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << declData->name.ToString() << std::endl;
                                 }
                             }
                         }
@@ -1256,8 +1245,6 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
 
             if (switchData->block) {
                 for (const auto& switchCase : switchData->block->cases) {
-                    // std::cerr << "[*] Iterating over Switch Data Cases. . ." << std::endl;
-                    std::cerr << "[*] Number of Switch Controls : " << controlVariables.size() << std::endl;
                     for (auto& ctrlVar : controlVariables) {
                         srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::NameData>> deltaName(ctrlVar);
                         // locate the slice profile of the ctrlVar and insert the uses
@@ -1269,7 +1256,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
                             sliceProfileItr->second.back().uses.insert(SlicePosition(switchCase->expr->startPosition, switchCase->expr->endPosition));
                         } else {
                             if (verboseMode) {
-                                std::cerr << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << deltaName.ToString() << std::endl;
+                                std::cout << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << deltaName.ToString() << std::endl;
                             }
                         }
                     }
@@ -1359,7 +1346,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
     } else {
         if (verboseMode) {
             if (verboseMode) {
-                std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << cntl.type().name() << std::endl;
+                std::cout << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << cntl.type().name() << std::endl;
             }
         }
     }
@@ -1411,7 +1398,7 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
                 CollectConditionalData(funcData, stmt.GetElement(), className, ctx);
             } else {
                 if (verboseMode) {
-                    std::cerr << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
+                    std::cout << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
                 }
             }
         }
@@ -1642,7 +1629,7 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                     }
                 }
             } catch (std::logic_error& e) {
-                if (verboseMode) std::cerr << "[-] Caught Logic Error: " << e.what() << std::endl;
+                if (verboseMode) std::cout << "[-] Caught Logic Error: " << e.what() << std::endl;
             }
         } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::OperatorData>)) {
             std::shared_ptr<srcDispatch::OperatorData> opData = std::any_cast<std::shared_ptr<srcDispatch::OperatorData>>(exprElem.GetElement());
@@ -1675,7 +1662,7 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
                     std::shared_ptr<VariableData> prevRHSPtr = lhsVar->GetRecentRHS();
                     if (!prevRHSPtr) {
                         if (verboseMode) {
-                            std::cerr << "[-] RHS does not exist." << std::endl;
+                            std::cout << "[-] RHS does not exist." << std::endl;
                         }
                     } else {
                         if (isAssignment(expr_op)) {
@@ -1779,7 +1766,7 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
             std::shared_ptr<srcDispatch::CallData> callData = std::any_cast<std::shared_ptr<srcDispatch::CallData>>(exprElem.GetElement());
 
             if (verboseMode) {
-                std::cerr << "[*] " << __LINE__  << " | Parsing For Targets: " << callData->name.ToString() << std::endl;
+                std::cout << "[*] " << __LINE__  << " | Parsing For Targets: " << callData->name.ToString() << std::endl;
             }
 
             size_t dotPosition = callData->name.ToString().find('.');
@@ -1852,25 +1839,25 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const src
     if (verboseMode) {
         for (const auto& v : varDataGroup) {
             // Debug use/def marking
-            std::cerr << "LHS " << v->GetNameOfIdentifier() << std::endl;
-            std::cerr << "|____USE {";
+            std::cout << "LHS " << v->GetNameOfIdentifier() << std::endl;
+            std::cout << "|____USE {";
             for (const auto& line : v->uses) {
-                std::cerr << line.ToString() << ",";
+                std::cout << line.ToString() << ",";
             }
-            std::cerr << "}" << std::endl;
+            std::cout << "}" << std::endl;
 
-            std::cerr << "|____DEF {";
+            std::cout << "|____DEF {";
             for (const auto& line : v->definitions) {
-                std::cerr << line.ToString() << ",";
+                std::cout << line.ToString() << ",";
             }
-            std::cerr << "}" << std::endl;
+            std::cout << "}" << std::endl;
 
             // Debug RHS elem assignment
-            std::cerr << "|____RHS {";
+            std::cout << "|____RHS {";
             for (const auto& r : v->rhsElems) {
-                std::cerr << r->GetNameOfIdentifier() << ",";
+                std::cout << r->GetNameOfIdentifier() << ",";
             }
-            std::cerr << "}" << std::endl;
+            std::cout << "}" << std::endl;
         }
     }
 
@@ -2118,7 +2105,7 @@ void SrcSliceHandler::UpdateLHSSlices(std::shared_ptr<VariableData>& varData) {
         }
     } else {
         if (verboseMode)
-            std::cerr << "[*] " << __LINE__ << " : " << __FUNCTION__ << " | There is no Slice of --> '" << varData->GetNameOfIdentifier() << "'" << std::endl;
+            std::cout << "[*] " << __LINE__ << " : " << __FUNCTION__ << " | There is no Slice of --> '" << varData->GetNameOfIdentifier() << "'" << std::endl;
     }
 }
 
@@ -2192,7 +2179,7 @@ void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePo
             for (const auto& lineRange : ifGroup) {
                 // Finding the first sLine[k] that is >= lineRange.second
                 if (sLines[i] == lineRange.first && sLines[k] >= lineRange.second) {
-                    // std::cerr << "Potential Outter-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                    // std::cout << "Potential Outter-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
                     otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
 
                     // Increment outter-control i, so we can find the next outter path
@@ -2224,7 +2211,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
             for (const auto& ifblock : ifdata) {
                 // check if the current sline is contained in the ifblock
                 if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                    // std::cerr << sLines[i] << " contained in -> (" << ifblock.first << "," << ifblock.second << ")" << std::endl;
+                    // std::cout << sLines[i] << " contained in -> (" << ifblock.first << "," << ifblock.second << ")" << std::endl;
 
                     // focus on the block with the smallest gap
                     int containedBlockSize = containedBlock.second - containedBlock.first;
@@ -2235,7 +2222,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
                     if (containedBlock.first == 0 || (blockSize < containedBlockSize)) {
                         containedBlock = ifblock;
 
-                        //std::cerr << "[*] Focusing on block -> (" <<
+                        //std::cout << "[*] Focusing on block -> (" <<
                         //containedBlock.first << "," << containedBlock.second <<
                         //") => " << sLines[i] << std::endl;
                     }
@@ -2244,7 +2231,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
 
             // if we have marked a ifdata block attempt to form a connection
             if (containedBlock.first != 0) {
-                // std::cerr << "[*] Block of Interest -> (" <<
+                // std::cout << "[*] Block of Interest -> (" <<
                 // containedBlock.first << "," << containedBlock.second <<
                 // ") => " << sLines[i] << std::endl;
 
@@ -2274,7 +2261,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
                     // when we find the first sLines[k] that is not contained in the reduced sets
                     // form the connection and exit the loops
                     if (potentialExitEnd) {
-                        // std::cerr << "Potential Exit-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
+                        // std::cout << "Potential Exit-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
                         otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
                         break;
                     }
@@ -2400,7 +2387,7 @@ void SrcSliceHandler::ComputeControlPaths() {
                             std::make_pair(sLines[i], sLines[i + 1])
                         );
                         ignoreLines.insert(sLines[i]);
-                        // std::cerr << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
+                        // std::cout << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
                     }
                 }
             }
@@ -2455,7 +2442,7 @@ void SrcSliceHandler::ComputeControlPaths() {
                                 std::make_pair(prevSL, sLines[i])
                             );
                             ignoreLines.insert(prevSL);
-                            // std::cerr << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
+                            // std::cout << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
                             loopPresent = false;
                         }
                     }
@@ -2480,7 +2467,7 @@ auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, FunctionSignatureDa
         if (param && param.GetElement() && param->name && param->name.GetElement()) {
             if (profileMap.find(param->name.ToString()) == profileMap.end()) {
                 if (verboseMode) {
-                    std::cerr << "[-] " << __LINE__ << " | Could not find SliceProfile for parameter '" << param->name.ToString() << "' of function '" << func.first << "'" << std::endl;
+                    std::cout << "[-] " << __LINE__ << " | Could not find SliceProfile for parameter '" << param->name.ToString() << "' of function '" << func.first << "'" << std::endl;
                 }
                 continue;
             }
@@ -2706,12 +2693,12 @@ void SrcSliceHandler::ComputeInterprocedural() {
                                             << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
 
                                             std::cout << "Tried Accessing Slice Variable :: " << var.first << std::endl;
-                                            std::cerr << "[-] " << __LINE__  << " | An Error has Occured in `ComputeInterprocedural`" << std::endl;
+                                            std::cout << "[-] " << __LINE__  << " | An Error has Occured in `ComputeInterprocedural`" << std::endl;
                                         }
                                     }
                                 } else {
                                     if (verboseMode) {
-                                        std::cerr << "[-] " << __LINE__  << " | ArgumentProfile could not resolve SliceProfile for Call '" << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << std::endl;
+                                        std::cout << "[-] " << __LINE__  << " | ArgumentProfile could not resolve SliceProfile for Call '" << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << std::endl;
                                     }
                                 }
                             }
