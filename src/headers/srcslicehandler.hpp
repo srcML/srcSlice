@@ -23,6 +23,15 @@
 #include <ClassPolicy.hpp>
 #include <UnitPolicy.hpp>
 
+// type aliasing
+typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclStmtData>>> DeclStmts;
+typedef srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>> DeclInfo;
+typedef srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>> ExprInfo;
+typedef srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>> FunctionInfo;
+typedef srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>> BlockInfo;
+typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> Functions;
+typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>> Classes;
+
 class SrcSliceHandler : public srcDispatch::PolicyListener {
 public:
     ~SrcSliceHandler(){};
@@ -38,52 +47,50 @@ public:
     void NotifyWrite(const srcDispatch::PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {};
 
     // Creates Initial SliceProfiles based off a list of decl statements
-    void ProcessDecls(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclStmtData>>>& declStmts, const SliceCtx& ctx);
+    void ProcessDecls(DeclStmts& declStmts, const SliceCtx& ctx);
     // Creates Initial SliceProfiles for Function Parameters and Variables Declared within the function definition
-    void ProcessFunctions(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs, const SliceCtx& ctx);
+    void ProcessFunctions(Functions& funcs, const SliceCtx& ctx);
     // Process Class Data and create slices of Class Member Variables and process Member Functions
-    void ProcessClasses(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes, const SliceCtx& ctx);
+    void ProcessClasses(Classes& classes, const SliceCtx& ctx);
     // Process Signatures from Free-Functions and Class Methods
-    void ProcessSignatures(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs,
-                            std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes,
-                            const SliceCtx& ctx);
+    void ProcessSignatures(Functions& funcs, Classes& classes, const SliceCtx& ctx);
 
     // Moves over the sequence of statements and processes them in order
     // |__ Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
     // |__ Extract Expressions within a specified Block within a Function Definition
-    void ProcessStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);
+    void ProcessStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className, const SliceCtx& ctx);
     
     // Creates Initial SliceProfile based off DeclData
-    void CreateSliceProfile(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& deltaDeclData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    void CreateSliceProfile(const DeclInfo& deltaDeclData, const FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
     // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
-    void ProcessInitLists(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    void ProcessInitLists(const FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
     
     // Extract Expressions within a specified Block within a Function Definition
-    void ProcessExprStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block, std::string className, const SliceCtx& ctx);
+    void ProcessExprStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className, const SliceCtx& ctx);
     
     // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
-    void ProcessExprStmt(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    void ProcessExprStmt(const ExprInfo& expr, const FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
     // Update Slice Profiles based off Collected Variable Data post ParseExpr
-    void UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+    void UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const FunctionInfo& funcData,
                         std::string className, const SliceCtx& ctx);
     // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
-    std::vector<std::shared_ptr<VariableData>>& ParseExpr(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr, const unsigned int& lineNumber);
+    std::vector<std::shared_ptr<VariableData>>& ParseExpr(const ExprInfo& expr, const SlicePosition& exprPos);
     // Get Type Details (isPtr, isRef, isArr, etc) based of a given DeclData
-    std::string GetTypeDetails(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& localVar, bool& isPointer, bool& isReference, bool& isArray);
+    std::string GetTypeDetails(const DeclInfo& localVar, bool& isPointer, bool& isReference, bool& isArray);
     // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
     // for them, along with capturing expressions to update collected slices
-    void CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
+    void CollectTryBlockData(const FunctionInfo& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
                                 std::string className, const SliceCtx& ctx);
-    void CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::any& cntl, const std::string& className, const SliceCtx& ctx);
+    void CollectConditionalData(const FunctionInfo& funcData, std::any& cntl, const std::string& className, const SliceCtx& ctx);
     // Given a list of Function Parameters create Initial SliceProfiles for each Parameter
-    void ProcessFunctionParameters(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters,
+    void ProcessFunctionParameters(const FunctionInfo& funcData, std::vector<DeclInfo>& parameters,
                                     std::string currentFunctionName, std::string className, const SliceCtx& ctx);
     // Create a Function Signature based off given Function Data
-    void ProcessFunctionSignature(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx);
+    void ProcessFunctionSignature(FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
 
 
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
-    void CreateSliceCallData(std::string functionName, int argIndex, int functionDefLine, SliceProfile& sliceProfile, unsigned int functionCallLine);
+    void CreateSliceCallData(std::string functionName, int argIndex, SlicePosition functionPosition, SliceProfile& sliceProfile, SlicePosition invokePosition);
 
     void ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>& funcCallData);
 
@@ -97,7 +104,7 @@ public:
 
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
     // Logic constructed for use BEFORE InterProcedural
-    SliceProfile* FetchSliceProfile(std::string profileName, std::shared_ptr<VariableData>& vd, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+    SliceProfile* FetchSliceProfile(std::string profileName, std::shared_ptr<VariableData>& vd, const FunctionInfo& funcData,
                                     std::string className = "", std::vector<std::string> containingNameSpaces = {});
 
     // Extract the function name within either a call or a complex function name
@@ -120,13 +127,13 @@ public:
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap();
 
     // Component of function FindOtherPaths
-    void ComputeOuterPaths(std::set<std::pair<int,int>>& otherPaths, std::vector<int>& sLines);
+    void ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths, std::vector<SlicePosition>& sLines);
 
     // Component of function FindOtherPaths
-    void ComputeExitPaths(std::set<std::pair<int,int>>& otherPaths, std::vector<int>& sLines, std::set<int>& ignoreLines);
+    void ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths, std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines);
 
     // Attempt to find other Forward Control-Flow paths | ComputeControlPaths Helper Function
-    std::set<std::pair<int,int>> FindOtherPaths(std::vector<int>& sLines, std::set<int>& ignoreLines);
+    std::set<std::pair<SlicePosition,SlicePosition>> FindOtherPaths(std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines);
 
     // srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
     // we are not focusing on backwards-flows.
@@ -143,14 +150,14 @@ public:
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
 
-    std::vector<std::pair<int, int>> loopdata;
-    std::vector<std::pair<int, int>> forloopdata;
-    std::vector<std::pair<int, int>> whileloopdata;
-    std::vector<std::pair<int, int>> dowhileloopdata;
+    std::vector<SlicePosition> loopdata;
+    std::vector<SlicePosition> forloopdata;
+    std::vector<SlicePosition> whileloopdata;
+    std::vector<SlicePosition> dowhileloopdata;
 
-    std::vector<std::pair<int, int>> ifdata;
-    std::vector<std::pair<int, int>> elseifdata;
-    std::vector<std::pair<int, int>> elsedata;
+    std::vector<SlicePosition> ifdata;
+    std::vector<SlicePosition> elseifdata;
+    std::vector<SlicePosition> elsedata;
 
     std::unordered_map<std::string, std::vector<FunctionSignatureData>> functionSigMap;
     bool verboseMode, calculateControlEdges, progressMode;

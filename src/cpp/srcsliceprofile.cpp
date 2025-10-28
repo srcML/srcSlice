@@ -4,21 +4,23 @@ SliceProfile::SliceProfile() : containsDeclaration(false), potentialAlias(false)
                     isGlobal(false) { isPointer = false; isReference = false; }
 
 SliceProfile::SliceProfile(
-        std::string name, int line, bool alias, bool global,
-        std::set<unsigned int> aDef, std::set<unsigned int> aUse,
+        std::string name, SlicePosition initial, bool alias, bool global,
+        std::set<SlicePosition> aDef, std::set<SlicePosition> aUse,
         std::set<FunctionCallData> cFunc,
-        std::set<std::pair<std::string, unsigned int>> dv, std::set<std::pair<int, int>> edges,
+        std::set<std::pair<std::string, SlicePosition>> dv,
+        std::set<std::pair<SlicePosition, SlicePosition>> edges,
         bool containsDecl, bool visit) :
-        variableName(name), lineNumber(line), potentialAlias(alias),
+        variableName(name), initialPosition(initial), potentialAlias(alias),
         isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
-        dvars(dv), containsDeclaration(containsDecl), controlEdges(edges), visited(visit) {
+        dvars(dv), containsDeclaration(containsDecl), controlEdges(edges),
+        visited(visit) {
     dereferenced = false;
     isPointer = false;
     isReference = false;
 }
 
 SliceProfile::SliceProfile(const SliceProfile& rhs) {
-    lineNumber = rhs.lineNumber;
+    initialPosition = rhs.initialPosition;
     file = rhs.file;
     function = rhs.function;
     nameOfContainingClass = rhs.nameOfContainingClass;
@@ -68,23 +70,23 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
     out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
     
-    out << "    \"initial\":" << profile.lineNumber << "," << std::endl;
+    out << "    \"initial\":" << profile.initialPosition.ToString() << "," << std::endl;
 
     out << "    \"dependence\":[";
     for (auto dvar : profile.dvars) {
         if (dvar != *(--profile.dvars.end()))
-            out << "{\"" << dvar.first << "\":" << dvar.second << "},";
+            out << "{\"" << dvar.first << "\":" << dvar.second.ToString() << "},";
         else
-            out << "{\"" << dvar.first << "\":" << dvar.second << "}";
+            out << "{\"" << dvar.first << "\":" << dvar.second.ToString() << "}";
     }
     out << "]," << std::endl;
 
     out << "    \"aliases\":[";
     for (auto alias : profile.aliases) {
         if (alias != *(--profile.aliases.end()))
-            out << "{\"" << alias.first << "\":" << alias.second << "},";
+            out << "{\"" << alias.first << "\":" << alias.second.ToString() << "},";
         else
-            out << "{\"" << alias.first << "\":" << alias.second << "}";
+            out << "{\"" << alias.first << "\":" << alias.second.ToString() << "}";
     }
     out << "]," << std::endl;
 
@@ -93,33 +95,35 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (cfunc != *(--profile.cfunctions.end()))
             out << "{\"functionName\":\"" << cfunc.functionName <<
                     "\",\"parameter\":\"" << cfunc.parameterIndex <<
-                    "\",\"definitionLine\":\"" << cfunc.functionDefinition <<
-                    "\",\"invoke\":\"" << cfunc.lineOfInvoke <<
+                    "\",\"definitionLine\":\"" << cfunc.definitionPosition.ToString() <<
+                    "\",\"invoke\":\"" << cfunc.invokePosition.ToString() <<
                     "\"},";
         else
             out << "{\"functionName\":\"" << cfunc.functionName <<
                     "\",\"parameter\":\"" << cfunc.parameterIndex <<
-                    "\",\"definitionLine\":\"" << cfunc.functionDefinition <<
-                    "\",\"invoke\":\"" << cfunc.lineOfInvoke <<
+                    "\",\"definitionLine\":\"" << cfunc.definitionPosition.ToString() <<
+                    "\",\"invoke\":\"" << cfunc.invokePosition.ToString() <<
                     "\"}";
     }
     out << "]," << std::endl;
 
+    // "use": [ { "start": "2:10", "end": "2:17" }, ... ]
     out << "    \"use\":[";
     for (auto use : profile.uses) {
         if (use != *(--profile.uses.end()))
-            out << use << ",";
+            out << use.ToString() << ",";
         else
-            out << use;
+            out << use.ToString();
     }
     out << "]," << std::endl;
 
+    // "definition": [ { "start": "2:10", "end": "2:17" }, ... ]
     out << "    \"definition\":[";
     for (auto def : profile.definitions) {
         if (def != *(--profile.definitions.end()))
-            out << def << ",";
+            out << def.ToString() << ",";
         else
-            out << def;
+            out << def.ToString();
     }
 
     if (profile.showControlEdges) {
@@ -128,9 +132,11 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "    \"controlEdges\":[";
         for (auto edge : profile.controlEdges) {
             if (edge != *(--profile.controlEdges.end()))
-                out << "[" << edge.first << "," << edge.second << "],";
+                out << "[" << edge.first.ToString() <<
+                "," << edge.second.ToString() << "],";
             else
-                out << "[" << edge.first << "," << edge.second << "]";
+                out << "[" << edge.first.ToString() <<
+                "," << edge.second.ToString() << "]";
         }
         out << "]" << std::endl;
     } else {

@@ -54,7 +54,7 @@ int main(int argc, char **argv)
                     // build json slice profile name
                     // variableName_initDefLine_checksum_numericalTagger
 
-                    std::string name(slice.variableName + '-' + std::to_string(slice.lineNumber) + '-' + slice.checksum);
+                    std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString() + '-' + slice.checksum);
                     ++sliceProfileNames[name]; // if the name exists in the map we will see the value increase
                     // if the numeric tag after substracting 1 is not 0 we need to include this tag
                     // in the slice name when we pipe to stdout

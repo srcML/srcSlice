@@ -1,5 +1,115 @@
 #include "srcslicecollection.hpp"
 
+SlicePosition::SlicePosition(){}
+SlicePosition::SlicePosition(
+                    srcDispatch::DeltaElement<srcDispatch::Position> start,
+                    srcDispatch::DeltaElement<srcDispatch::Position> end
+                ): start(start), end(end) {}
+
+SlicePosition::SlicePosition(const SlicePosition& position) {
+    start = position.start;
+    end = position.end;
+}
+
+// Creates a String of a JSON object, ie: {"start":"2:5", "end":"2:12"}
+std::string SlicePosition::ToString() const {
+    std::string s;
+
+    s += "{";
+    s += "\"start\":";
+    if (start) {
+        s += "\"" + start.GetElement().ToString() + "\"";
+    } else {
+        s += "\"-1\"";
+    }
+    s += ",";
+    s += "\"end\":";
+    if (end) {
+        s += "\"" + end.GetElement().ToString() + "\"";
+    } else {
+        s += "\"-1\"";
+    }
+    s += "}";
+
+    return s;
+}
+// produces a string used in JSON key creation, ie: argc-3-14-e12a342c...2a41
+// introducing line-col into key string helps keep keys unique when there are
+// multiple variables of the same name throughout a file
+std::string SlicePosition::ToNameString() const {
+    std::string s;
+
+    std::string lineStr = std::to_string(start.GetElement().GetLine());
+    std::string colStr = std::to_string(start.GetElement().GetColumn());
+    s += lineStr + "-" + colStr;
+
+    return s;
+}
+
+srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetStart() const {
+    return start;
+}
+srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetEnd() const {
+    return end;
+}
+
+SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
+    if (this == &rhs) return *this;
+
+    start = rhs.start;
+    end = rhs.end;
+    return *this;
+}
+bool SlicePosition::operator==(const SlicePosition& rhs) const {
+    bool validPositions = (start && end && rhs.start && rhs.end);
+    bool matchingRows = false;
+    bool matchingCols = false;
+
+    srcDispatch::Position lhsStart = start.GetElement();
+    srcDispatch::Position rhsStart = rhs.start.GetElement();
+
+    srcDispatch::Position lhsEnd = end.GetElement();
+    srcDispatch::Position rhsEnd = rhs.end.GetElement();
+
+    if (validPositions) {
+        matchingRows = lhsStart.GetLine() == rhsStart.GetLine();
+        matchingCols = lhsStart.GetColumn() == rhsStart.GetColumn();
+        bool matchingStarts = matchingRows && matchingCols;
+        
+        if (!matchingStarts) return false;
+
+        matchingRows = lhsEnd.GetLine() == rhsEnd.GetLine();
+        matchingCols = lhsEnd.GetColumn() == rhsEnd.GetColumn();
+        bool matchingEnds = matchingRows && matchingCols;
+        
+        if (!matchingEnds) return false;
+
+        return true;
+    }
+    return false;
+}
+bool SlicePosition::operator!=(const SlicePosition& rhs) const {
+    return !(*this == rhs);
+}
+bool SlicePosition::operator<(const SlicePosition& rhs) const {
+    bool validPositions = (start && rhs.start);
+    if (validPositions) {
+        srcDispatch::Position s1 = start.GetElement();
+        srcDispatch::Position s2 = rhs.start.GetElement();
+    
+        // line comparison
+        if (s1.GetLine() < s2.GetLine()) return true;
+        if (s1.GetLine() > s2.GetLine()) return false;
+
+        // same line number compare the columns
+        return s1.GetColumn() < s2.GetColumn();
+    }
+    return false;
+}
+bool SlicePosition::operator>(const SlicePosition& rhs) const {
+    return rhs < *this;
+}
+
 VariableData::VariableData(std::string name) {
     dereferenceCount = 0;
     lhsVarName = name;
@@ -48,13 +158,12 @@ std::string VariableData::GetNameOfIdentifier() const {
 // when the lhsVarName is not an empty string its considered initialized
 bool VariableData::isInitialized() { return !lhsVarName.empty(); }
 
-void VariableData::InitializeLHS(std::string name,
-                                    srcDispatch::DeltaElement<srcDispatch::Position> position) {
+void VariableData::InitializeLHS(std::string name, SlicePosition position) {
     lhsVarName = name;
     originPosition = position;
 }
 
-void VariableData::SetOriginLine(srcDispatch::DeltaElement<srcDispatch::Position> position) {
+void VariableData::SetOriginLine(SlicePosition position) {
     originPosition = position;
 }
 
@@ -70,7 +179,7 @@ FunctionSignatureData::FunctionSignatureData(
     srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
     std::string className,
     const SliceCtx& ctx) {
-    position = func->startPosition;
+    position = SlicePosition(func->startPosition, func->endPosition);
     name = func->name.ToString();
     returnType = func->returnType.ToString();
     parameters = func->parameters;
@@ -82,8 +191,8 @@ FunctionSignatureData::FunctionSignatureData(
 }
 
 FunctionCallData::FunctionCallData(std::string funcName, unsigned int paramIndex,
-                                    srcDispatch::DeltaElement<srcDispatch::Position> defPos,
-                                    srcDispatch::DeltaElement<srcDispatch::Position> invokePos,
+                                    SlicePosition defPos,
+                                    SlicePosition invokePos,
                                     bool ignore_
                                 ): functionName(funcName), parameterIndex(paramIndex),
                                 definitionPosition(defPos), invokePosition(invokePos),

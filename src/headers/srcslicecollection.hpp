@@ -19,6 +19,30 @@
 #include <ClassPolicy.hpp>
 #include <UnitPolicy.hpp>
 
+class SlicePosition {
+public:
+    SlicePosition();
+    SlicePosition(srcDispatch::DeltaElement<srcDispatch::Position> start,
+            srcDispatch::DeltaElement<srcDispatch::Position> end);
+
+    SlicePosition(const SlicePosition& position);
+    SlicePosition& operator=(SlicePosition rhs);
+
+    bool operator==(const SlicePosition& rhs) const;
+    bool operator!=(const SlicePosition& rhs) const;
+
+    bool operator<(const SlicePosition& rhs) const;
+    bool operator>(const SlicePosition& rhs) const;
+
+    std::string ToString() const;
+    std::string ToNameString() const;
+    srcDispatch::DeltaElement<srcDispatch::Position> GetStart() const;
+    srcDispatch::DeltaElement<srcDispatch::Position> GetEnd() const;
+private:
+    srcDispatch::DeltaElement<srcDispatch::Position> start;
+    srcDispatch::DeltaElement<srcDispatch::Position> end;
+};
+
 class VariableData {
 public:
     VariableData(std::string name="");
@@ -37,9 +61,9 @@ public:
     // when the lhsVarName is not an empty string its considered initialized
     bool isInitialized();
 
-    void InitializeLHS(std::string name, srcDispatch::DeltaElement<srcDispatch::Position> position);
+    void InitializeLHS(std::string name, SlicePosition position);
 
-    void SetOriginLine(srcDispatch::DeltaElement<srcDispatch::Position> position);
+    void SetOriginLine(SlicePosition position);
 
     void AddRHS(std::shared_ptr<VariableData> var);
     std::shared_ptr<VariableData> GetRecentRHS();
@@ -56,10 +80,10 @@ public:
     // but can be modified to be more expansive
     bool userModified = false;
     
-    srcDispatch::DeltaElement<srcDispatch::Position> originPosition;
     int dereferenceCount;
-    std::set<srcDispatch::DeltaElement<srcDispatch::Position>> uses;
-    std::set<srcDispatch::DeltaElement<srcDispatch::Position>> definitions;
+    SlicePosition originPosition;
+    std::set<SlicePosition> uses;
+    std::set<SlicePosition> definitions;
 };
 
 // Hold context data srcslice uses based off srcSAXEventContext without copying
@@ -83,7 +107,7 @@ public:
     FunctionSignatureData(){};
     FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
                             std::string className, const SliceCtx& ctx);
-    srcDispatch::DeltaElement<srcDispatch::Position> position;
+    SlicePosition position;
     std::string name;
     std::string returnType;
     std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>> parameters;
@@ -100,8 +124,8 @@ public:
 class FunctionCallData {
 public:
     FunctionCallData(std::string funcName, unsigned int paramIndex,
-                    srcDispatch::DeltaElement<srcDispatch::Position> defPos,
-                    srcDispatch::DeltaElement<srcDispatch::Position> invokePos,
+                    SlicePosition defPos,
+                    SlicePosition invokePos,
                     bool ignore_ = false);
 
     FunctionCallData(const FunctionCallData& rhs);
@@ -114,11 +138,11 @@ public:
 
     friend std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data);
 
-    std::string functionName;
-    srcDispatch::DeltaElement<srcDispatch::Position> invokePosition;
-    unsigned int parameterIndex;
-    srcDispatch::DeltaElement<srcDispatch::Position> definitionPosition;
+    SlicePosition invokePosition;
+    SlicePosition definitionPosition;
     bool ignore;
+    std::string functionName;
+    unsigned int parameterIndex;
 };
 
 #endif

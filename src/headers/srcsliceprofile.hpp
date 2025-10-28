@@ -16,15 +16,16 @@ public:
     SliceProfile();
 
     SliceProfile(
-            std::string name, int line, bool alias = 0, bool global = 0,
-            std::set<unsigned int> aDef = {}, std::set<unsigned int> aUse = {},
+            std::string name, SlicePosition line, bool alias = 0, bool global = 0,
+            std::set<SlicePosition> aDef = {}, std::set<SlicePosition> aUse = {},
             std::set<FunctionCallData> cFunc = {},
-            std::set<std::pair<std::string, unsigned int>> dv = {}, std::set<std::pair<int, int>> edges = {},
+            std::set<std::pair<std::string, SlicePosition>> dv = {},
+            std::set<std::pair<SlicePosition, SlicePosition>> edges = {},
             bool containsDecl = false, bool visit = false);
 
     SliceProfile(const SliceProfile& rhs);
 
-    int lineNumber;
+    SlicePosition initialPosition;
     std::string file;
     std::string function;
     std::string nameOfContainingClass;
@@ -43,12 +44,12 @@ public:
     std::string variableType;
     std::unordered_set<std::string> memberVariables;
 
-    std::set<unsigned int> definitions;
-    std::set<unsigned int> uses;
+    std::set<SlicePosition> definitions;
+    std::set<SlicePosition> uses;
 
-    std::set<std::pair<std::string, unsigned int>> dvars;
-    std::set<std::pair<std::string, unsigned int>> aliases;
-    std::set<std::pair<int, int>> controlEdges;
+    std::set<std::pair<std::string, SlicePosition>> dvars;
+    std::set<std::pair<std::string, SlicePosition>> aliases;
+    std::set<std::pair<SlicePosition, SlicePosition>> controlEdges;
 
     std::set<FunctionCallData> cfunctions;
 
