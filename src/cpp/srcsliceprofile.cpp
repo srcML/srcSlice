@@ -57,11 +57,13 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"language\":\"" << profile.language << "\"," << std::endl;
     
     out << "    \"namespace\":[";
+    bool first = true;
     for (std::string& nameSpace : profile.containingNameSpaces) {
-        if (nameSpace != profile.containingNameSpaces.back())
-            out << "\"" << nameSpace.substr(0, nameSpace.find(' ')) << "\",";
-        else
-            out << "\"" << nameSpace.substr(0, nameSpace.find(' ')) << "\"";
+        if (!first) {
+            out << ",";
+        }
+        out << "\"" << nameSpace.substr(0, nameSpace.find(' ')) << "\"";
+        first = false;
     }
     out << "]," << std::endl;
 
@@ -73,70 +75,76 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"initial\":" << profile.initialPosition.ToString() << "," << std::endl;
 
     out << "    \"dependence\":[";
+    first = true;
     for (auto dvar : profile.dvars) {
-        if (dvar != *(--profile.dvars.end()))
-            out << "{\"" << dvar.first << "\":" << dvar.second.ToString() << "},";
-        else
-            out << "{\"" << dvar.first << "\":" << dvar.second.ToString() << "}";
+        if (!first) {
+            out << ",";
+        }
+        out << "{\"" << dvar.first << "\":" << dvar.second.ToString() << "}";
+        first = false;
     }
     out << "]," << std::endl;
 
     out << "    \"aliases\":[";
+    first = true;
     for (auto alias : profile.aliases) {
-        if (alias != *(--profile.aliases.end()))
-            out << "{\"" << alias.first << "\":" << alias.second.ToString() << "},";
-        else
-            out << "{\"" << alias.first << "\":" << alias.second.ToString() << "}";
+        if (!first) {
+            out << ",";
+        }
+        out << "{\"" << alias.first << "\":" << alias.second.ToString() << "}";
+        first = false;
     }
     out << "]," << std::endl;
 
     out << "    \"calls\":[";
+    first = true;
     for (auto cfunc : profile.cfunctions) {
-        if (cfunc != *(--profile.cfunctions.end()))
-            out << "{\"functionName\":\"" << cfunc.functionName <<
-                    "\",\"parameter\":\"" << cfunc.parameterIndex <<
-                    "\",\"definitionLine\":\"" << cfunc.definitionPosition.ToString() <<
-                    "\",\"invoke\":\"" << cfunc.invokePosition.ToString() <<
-                    "\"},";
-        else
-            out << "{\"functionName\":\"" << cfunc.functionName <<
-                    "\",\"parameter\":\"" << cfunc.parameterIndex <<
-                    "\",\"definitionLine\":\"" << cfunc.definitionPosition.ToString() <<
-                    "\",\"invoke\":\"" << cfunc.invokePosition.ToString() <<
-                    "\"}";
+        if (!first) {
+            out << ",";
+        }
+        out << "{\"functionName\":\"" << cfunc.functionName <<
+                "\",\"parameter\":\"" << cfunc.parameterIndex <<
+                "\",\"definitionPosition\":" << cfunc.definitionPosition.ToString() <<
+                ",\"invoke\":" << cfunc.invokePosition.ToString() << "}";
+        first = false;
     }
     out << "]," << std::endl;
 
     // "use": [ { "start": "2:10", "end": "2:17" }, ... ]
     out << "    \"use\":[";
+    first = true;
     for (auto use : profile.uses) {
-        if (use != *(--profile.uses.end()))
-            out << use.ToString() << ",";
-        else
-            out << use.ToString();
+        if (!first) {
+            out << ",";
+        }
+        out << use.ToString();
+        first = false;
     }
     out << "]," << std::endl;
 
     // "definition": [ { "start": "2:10", "end": "2:17" }, ... ]
     out << "    \"definition\":[";
+    first = true;
     for (auto def : profile.definitions) {
-        if (def != *(--profile.definitions.end()))
-            out << def.ToString() << ",";
-        else
-            out << def.ToString();
+        if (!first) {
+            out << ",";
+        }
+        out << def.ToString();
+        first = false;
     }
 
     if (profile.showControlEdges) {
         out << "]," << std::endl;
 
         out << "    \"controlEdges\":[";
+        first = true;
         for (auto edge : profile.controlEdges) {
-            if (edge != *(--profile.controlEdges.end()))
-                out << "[" << edge.first.ToString() <<
-                "," << edge.second.ToString() << "],";
-            else
-                out << "[" << edge.first.ToString() <<
-                "," << edge.second.ToString() << "]";
+            if (!first) {
+                out << ",";
+            }
+            out << "[" << edge.first.ToString() <<
+            "," << edge.second.ToString() << "]";
+            first = false;
         }
         out << "]" << std::endl;
     } else {

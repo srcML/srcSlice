@@ -9,6 +9,7 @@
 #include <utility>
 #include <vector>
 #include <string>
+#include <iterator>
 #include <srcslicecollection.hpp> // contains FunctionCallData and other items
 
 class SliceProfile {
