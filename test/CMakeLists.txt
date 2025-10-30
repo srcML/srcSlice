@@ -15,6 +15,7 @@ file(GLOB SRCSLICETEST_SOURCE
     )
 
 find_package(srcML REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 link_directories(/opt/homebrew/lib/)
 
@@ -25,7 +26,15 @@ macro(add_unit_test TEST_FILE)
     string(SUBSTRING ${TEST_NAME_WITH_EXTENSION} 0 ${EXTENSION_BEGIN} TEST_NAME)
 
     add_executable(${TEST_NAME} ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} ${TEST_FILE})
-    target_link_libraries(${TEST_NAME} srcsax_static srcML::LibsrcML srcdispatch ${LIBXML2_LIBRARIES} pthread)
+    target_link_libraries(
+        ${TEST_NAME}
+        srcsax_static
+        srcML::LibsrcML
+        srcdispatch
+        ${LIBXML2_LIBRARIES}
+        pthread
+        nlohmann_json::nlohmann_json
+    )
 
     add_test(NAME ${TEST_NAME} COMMAND $<TARGET_FILE:${TEST_NAME}>)
     # add special label to test
@@ -36,21 +45,13 @@ macro(add_unit_test TEST_FILE)
 endmacro()
 
 # dependency target that checks if the following testcases are built
-add_custom_target(build_srcslice_tests
-    DEPENDS testAliases
-    testPointer
-    testConditional
-    testConditionDecl
-    testPassByValue
-    testPassByReference
-    testConstReference
+add_custom_target(build_srcslice_tests DEPENDS
+    testGeneral
+    #testAliases
+    #testPointer
 )
 
 # ctest test items
-add_unit_test(testAliases.cpp)
-add_unit_test(testPointer.cpp)
-add_unit_test(testConditional.cpp)
-add_unit_test(testConditionDecl.cpp)
-add_unit_test(testPassByValue.cpp)
-add_unit_test(testPassByReference.cpp)
-add_unit_test(testConstReference.cpp)
+add_unit_test(testGeneral.cpp)
+#add_unit_test(testAliases.cpp)
+#add_unit_test(testPointer.cpp)
