@@ -16,18 +16,12 @@ std::string SlicePosition::ToString() const {
     std::string s;
 
     s += "{";
-    s += "\"start\":";
-    if (start) {
+    if (start && end) {
+        s += "\"start\":";
         s += "\"" + start.GetElement().ToString() + "\"";
-    } else {
-        s += "\"-1\"";
-    }
-    s += ",";
-    s += "\"end\":";
-    if (end) {
+        s += ",";
+        s += "\"end\":";
         s += "\"" + end.GetElement().ToString() + "\"";
-    } else {
-        s += "\"-1\"";
     }
     s += "}";
 
