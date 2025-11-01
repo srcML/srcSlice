@@ -11,19 +11,15 @@ SlicePosition::SlicePosition(const SlicePosition& position) {
     end = position.end;
 }
 
-// Creates a String of a JSON object, ie: {"start":"2:5", "end":"2:12"}
+// Creates a String of a JSON object, ie: "2:12"
 std::string SlicePosition::ToString() const {
     std::string s;
 
-    s += "{";
-    if (start && end) {
-        s += "\"start\":";
-        s += "\"" + start.GetElement().ToString() + "\"";
-        s += ",";
-        s += "\"end\":";
-        s += "\"" + end.GetElement().ToString() + "\"";
+    s += "\"";
+    if (start) {
+        s += start->ToString();
     }
-    s += "}";
+    s += "\"";
 
     return s;
 }
@@ -33,8 +29,8 @@ std::string SlicePosition::ToString() const {
 std::string SlicePosition::ToNameString() const {
     std::string s;
 
-    std::string lineStr = std::to_string(start.GetElement().GetLine());
-    std::string colStr = std::to_string(start.GetElement().GetColumn());
+    std::string lineStr = std::to_string(start->GetLine());
+    std::string colStr = std::to_string(start->GetColumn());
     s += lineStr + "-" + colStr;
 
     return s;
@@ -56,29 +52,10 @@ SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
 }
 bool SlicePosition::operator==(const SlicePosition& rhs) const {
     bool validPositions = (start && end && rhs.start && rhs.end);
-    bool matchingRows = false;
-    bool matchingCols = false;
-
-    srcDispatch::Position lhsStart = start.GetElement();
-    srcDispatch::Position rhsStart = rhs.start.GetElement();
-
-    srcDispatch::Position lhsEnd = end.GetElement();
-    srcDispatch::Position rhsEnd = rhs.end.GetElement();
-
     if (validPositions) {
-        matchingRows = lhsStart.GetLine() == rhsStart.GetLine();
-        matchingCols = lhsStart.GetColumn() == rhsStart.GetColumn();
-        bool matchingStarts = matchingRows && matchingCols;
-        
-        if (!matchingStarts) return false;
-
-        matchingRows = lhsEnd.GetLine() == rhsEnd.GetLine();
-        matchingCols = lhsEnd.GetColumn() == rhsEnd.GetColumn();
-        bool matchingEnds = matchingRows && matchingCols;
-        
-        if (!matchingEnds) return false;
-
-        return true;
+        bool matchingStarts = start->GetLine() == rhs.start->GetLine() && start->GetColumn() == rhs.start->GetColumn();
+        bool matchingEnds = end->GetLine() == rhs.end->GetLine() && end->GetColumn() == rhs.end->GetColumn();
+        return matchingStarts && matchingEnds;
     }
     return false;
 }
@@ -88,15 +65,12 @@ bool SlicePosition::operator!=(const SlicePosition& rhs) const {
 bool SlicePosition::operator<(const SlicePosition& rhs) const {
     bool validPositions = (start && rhs.start);
     if (validPositions) {
-        srcDispatch::Position s1 = start.GetElement();
-        srcDispatch::Position s2 = rhs.start.GetElement();
-    
         // line comparison
-        if (s1.GetLine() < s2.GetLine()) return true;
-        if (s1.GetLine() > s2.GetLine()) return false;
+        if (start->GetLine() < rhs.start->GetLine()) return true;
+        if (start->GetLine() > rhs.start->GetLine()) return false;
 
         // same line number compare the columns
-        return s1.GetColumn() < s2.GetColumn();
+        return start->GetColumn() < rhs.start->GetColumn();
     }
     return false;
 }

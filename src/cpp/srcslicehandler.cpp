@@ -302,9 +302,7 @@ void SrcSliceHandler::ProcessDecls(DeclStmts& deltaDeclStmts, const SliceCtx& ct
     }
 }
 
-void SrcSliceHandler::ProcessSignatures(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs,
-                                        std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes,
-                                        const SliceCtx& ctx) {
+void SrcSliceHandler::ProcessSignatures(Functions& funcs, Classes& classes, const SliceCtx& ctx) {
     if (verboseMode) {
         std::cout << "[*] " << __LINE__  << " Processing Signatures" << std::endl;
     }
@@ -341,7 +339,7 @@ void SrcSliceHandler::ProcessSignatures(std::vector<srcDispatch::DeltaElement<st
     }
 }
 
-void SrcSliceHandler::ProcessFunctions(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>>& funcs, const SliceCtx& ctx) {
+void SrcSliceHandler::ProcessFunctions(Functions& funcs, const SliceCtx& ctx) {
     for (auto& func : funcs) {
         if (verboseMode) {
             std::cout << "[*] " << __LINE__  << " Processing Function Name: " << func->name.ToString() << std::endl;
@@ -351,7 +349,7 @@ void SrcSliceHandler::ProcessFunctions(std::vector<srcDispatch::DeltaElement<std
     }
 }
 
-void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>>& classes, const SliceCtx& ctx) {
+void SrcSliceHandler::ProcessClasses(Classes& classes, const SliceCtx& ctx) {
     if (classes.empty()) return;
     for (auto& classData : classes) {
         if (verboseMode) {
@@ -389,7 +387,7 @@ void SrcSliceHandler::ProcessClasses(std::vector<srcDispatch::DeltaElement<std::
     }
 }
 
-void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>& deltaDeclData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+void SrcSliceHandler::CreateSliceProfile(const DeclInfo& deltaDeclData, const FunctionInfo& funcData,
                                             std::string className, const SliceCtx& ctx) {
     if (!deltaDeclData) return;
     if (!deltaDeclData->name) return;
@@ -598,12 +596,12 @@ void SrcSliceHandler::CreateSliceProfile(const srcDispatch::DeltaElement<std::sh
 }
 
 
-void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::string className, const SliceCtx& ctx) {
+void SrcSliceHandler::ProcessInitLists(const FunctionInfo& funcData, std::string className, const SliceCtx& ctx) {
     if (!funcData) return;
 
     // process C++ initializer lists
     for (const auto& deltaCallData : funcData->memberInitList) {
-        std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>> exprStmts;
+        std::vector<ExprInfo> exprStmts;
         
         SlicePosition callPos(deltaCallData->startPosition, deltaCallData->endPosition);
 
@@ -651,7 +649,7 @@ void SrcSliceHandler::ProcessInitLists(const srcDispatch::DeltaElement<std::shar
     }
 }
 
-void SrcSliceHandler::ProcessStmts(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>>& block,
+void SrcSliceHandler::ProcessStmts(const FunctionInfo& funcData, const BlockInfo& block,
                                     std::string className, const SliceCtx& ctx) {
     std::vector<std::string> containingNamespaces;
 
@@ -791,8 +789,7 @@ void SrcSliceHandler::ProcessStmts(const srcDispatch::DeltaElement<std::shared_p
     }
 }
 
-void SrcSliceHandler::ProcessExprStmt(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr,
-                                        const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+void SrcSliceHandler::ProcessExprStmt(const ExprInfo& expr, const FunctionInfo& funcData,
                                         std::string className, const SliceCtx& ctx) {
     if (expr) {
         // Check if any NameData within an Express contains index operator expressions
@@ -816,7 +813,7 @@ void SrcSliceHandler::ProcessExprStmt(const srcDispatch::DeltaElement<std::share
     }
 }
 
-void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+void SrcSliceHandler::UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const FunctionInfo& funcData,
                     std::string className, const SliceCtx& ctx) {
     std::vector<std::string> containingNamespaces;
     if (funcData) containingNamespaces = funcData->namespaces;
@@ -1097,7 +1094,7 @@ void SrcSliceHandler::ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>
 
 // try blocks contain both exprs and decls, need to extract those decls and create slice profiles
 // for them, along with capturing expressions to update collected slices
-void SrcSliceHandler::CollectTryBlockData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
+void SrcSliceHandler::CollectTryBlockData(const FunctionInfo& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
                             std::string className, const SliceCtx& ctx) {
     if (tryBlock->block) {
         // Collect Decls and Exprs within the block of this Try-Block
@@ -1115,7 +1112,7 @@ void SrcSliceHandler::CollectTryBlockData(const srcDispatch::DeltaElement<std::s
     }
 }
 
-void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+void SrcSliceHandler::CollectConditionalData(const FunctionInfo& funcData,
                                                 std::any& cntl, const std::string& className, const SliceCtx& ctx) {
     std::vector<std::shared_ptr<srcDispatch::BlockData>> cntlBlocks;
 
@@ -1298,6 +1295,12 @@ void SrcSliceHandler::CollectConditionalData(const srcDispatch::DeltaElement<std
                         std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
                         ProcessExprStmt(exprstmt, funcData, className, ctx);
                     }
+                }
+            }
+
+            if (forData->control->incr) {
+                for (const auto& expr : forData->control->incr->exprs) {
+                    ProcessExprStmt(expr, funcData, className, ctx);
                 }
             }
         }
@@ -1486,9 +1489,7 @@ void SrcSliceHandler::AppendIndices(std::shared_ptr<VariableData>& lhs, std::sha
     }
 }
 
-std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(
-        const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ExpressionData>>& expr,
-        const SlicePosition& exprPos) {
+std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(const ExprInfo& expr, const SlicePosition& exprPos) {
     static std::vector<std::shared_ptr<VariableData>> varDataGroup; // persists after function call return allowing us to return references and avoid copies
     varDataGroup.clear(); // ensures upon each ParseExpr call we create a fresh vector (delete old data)
 
@@ -1875,7 +1876,7 @@ std::vector<std::shared_ptr<VariableData>>& SrcSliceHandler::ParseExpr(
     return varDataGroup;
 }
 
-void SrcSliceHandler::ProcessFunctionParameters(const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData, std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>>>& parameters,
+void SrcSliceHandler::ProcessFunctionParameters(const FunctionInfo& funcData, std::vector<DeclInfo>& parameters,
                                                 std::string currentFunctionName, std::string className, const SliceCtx& ctx) {
     for (auto& parameter : parameters) {
         if (!parameter->name) continue;
@@ -1950,8 +1951,7 @@ void SrcSliceHandler::ProcessFunctionParameters(const srcDispatch::DeltaElement<
     }
 }
 
-void SrcSliceHandler::ProcessFunctionSignature(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
-                                                std::string className, const SliceCtx& ctx) {
+void SrcSliceHandler::ProcessFunctionSignature(FunctionInfo& funcData, std::string className, const SliceCtx& ctx) {
     std::string functionName = funcData->name.ToString();
     if (functionName.empty()) return;
 
@@ -1988,7 +1988,7 @@ void SrcSliceHandler::ProcessFunctionSignature(srcDispatch::DeltaElement<std::sh
 
 // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
 // Logic constructed for use BEFORE InterProcedural
-SliceProfile* SrcSliceHandler::FetchSliceProfile(std::string profileName, std::shared_ptr<VariableData>& vd, const srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& funcData,
+SliceProfile* SrcSliceHandler::FetchSliceProfile(std::string profileName, std::shared_ptr<VariableData>& vd, const FunctionInfo& funcData,
                                 std::string className, std::vector<std::string> containingNameSpaces) {
     auto spi = profileMap.find(profileName);
     SliceProfile* potentialGlobal = nullptr;
