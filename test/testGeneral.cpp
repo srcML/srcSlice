@@ -26,12 +26,12 @@ TEST_CASE( "General Test 1", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":[{"start":"2:9","end":"2:9"}]
+        "definition":["2:9"]
     }
     })"_json;
 
@@ -55,12 +55,12 @@ TEST_CASE( "General Test 2", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:13","end":"3:13"}],
-        "definition":[{"start":"2:9","end":"2:9"}]
+        "use":["3:13"],
+        "definition":["2:9"]
     }
     })"_json;
 
@@ -84,12 +84,12 @@ TEST_CASE( "General Test 3", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":[{"start":"2:9","end":"2:9"},{"start":"3:5","end":"3:5"}]
+        "definition":["2:9","3:5"]
     }
     })"_json;
 
@@ -113,12 +113,12 @@ TEST_CASE( "General Test 4", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"bar","parameter":"1","definitionPosition":{},"invoke":{"start":"3:5","end":"3:10"}}],
-        "use":[{"start":"3:9","end":"3:9"}],
-        "definition":[{"start":"2:9","end":"2:9"}]
+        "calls":[{"functionName":"bar","parameter":"1","definitionPosition":"","invoke":"3:5"}],
+        "use":["3:9"],
+        "definition":["2:9"]
     }
     })"_json;
 
@@ -143,12 +143,12 @@ TEST_CASE( "General Test 5", "[srcslice]" ) {
         "function":"Fuzz",
         "type":"int",
         "name":"a",
-        "initial":{"start":"3:13","end":"3:13"},
+        "initial":"3:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":[{"start":"3:13","end":"3:13"}]
+        "definition":["3:13"]
     }
     })"_json;
 
@@ -172,12 +172,12 @@ TEST_CASE( "General Test 6", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
-        "dependence":[{"b":{"start":"3:13","end":"3:13"}}],
+        "initial":"2:9",
+        "dependence":[{"b":"3:13"}],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:13","end":"3:13"}],
-        "definition":[{"start":"2:9","end":"2:9"}]
+        "use":["3:13"],
+        "definition":["2:9"]
     },
     "b-3-9":{
         "file":"file.cpp",
@@ -187,12 +187,12 @@ TEST_CASE( "General Test 6", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":{"start":"3:9","end":"3:9"},
+        "initial":"3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":[{"start":"3:9","end":"3:9"}]
+        "definition":["3:9"]
     }
     })"_json;
 
@@ -216,12 +216,12 @@ TEST_CASE( "General Test 7", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:7","end":"3:7"}],
-        "definition":[{"start":"2:9","end":"2:9"},{"start":"3:7","end":"3:7"}]
+        "use":["3:7"],
+        "definition":["2:9","3:7"]
     }
     })"_json;
 
@@ -245,12 +245,12 @@ TEST_CASE( "General Test 8", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:5","end":"3:5"}],
-        "definition":[{"start":"2:9","end":"2:9"},{"start":"3:5","end":"3:5"}]
+        "use":["3:5"],
+        "definition":["2:9","3:5"]
     }
     })"_json;
 
@@ -274,12 +274,12 @@ TEST_CASE( "General Test 9", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:5","end":"3:5"}],
-        "definition":[{"start":"2:9","end":"2:9"},{"start":"3:5","end":"3:5"}]
+        "use":["3:5"],
+        "definition":["2:9","3:5"]
     }
     })"_json;
 
@@ -303,12 +303,12 @@ TEST_CASE( "General Test 10", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"2:9","end":"2:9"},
+        "initial":"2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":[{"start":"2:9","end":"2:9"},{"start":"3:12","end":"3:12"}]
+        "definition":["2:9","3:12"]
     }
     })"_json;
 
@@ -335,12 +335,12 @@ namespace mynamespace {
         "function":"jar",
         "type":"int",
         "name":"a",
-        "initial":{"start":"4:13","end":"4:13"},
+        "initial":"4:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":[{"start":"4:13","end":"4:13"}]
+        "definition":["4:13"]
     }
     })"_json;
 
@@ -381,12 +381,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"6:9","end":"6:9"},
+        "initial":"6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":{"start":"2:1","end":"4:1"},"invoke":{"start":"7:5","end":"7:10"}}],
-        "use":[{"start":"2:13","end":"2:13"},{"start":"3:12","end":"3:12"},{"start":"7:9","end":"7:9"}],
-        "definition":[{"start":"6:9","end":"6:9"}]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
+        "use":["2:13","3:12","7:9"],
+        "definition":["6:9"]
     },
     "b-2-13":{
         "file":"file.cpp",
@@ -396,12 +396,12 @@ int main() {
         "function":"foo",
         "type":"int",
         "name":"b",
-        "initial":{"start":"2:13","end":"2:13"},
+        "initial":"2:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:12","end":"3:12"}],
-        "definition":[{"start":"2:13","end":"2:13"}]
+        "use":["3:12"],
+        "definition":["2:13"]
     }
     })"_json;
 
@@ -431,12 +431,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"6:9","end":"6:9"},
+        "initial":"6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":{"start":"2:1","end":"4:1"},"invoke":{"start":"7:5","end":"7:10"}}],
-        "use":[{"start":"2:14","end":"2:14"},{"start":"3:12","end":"3:12"},{"start":"7:9","end":"7:9"}],
-        "definition":[{"start":"6:9","end":"6:9"}]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
+        "use":["2:14","3:12","7:9"],
+        "definition":["6:9"]
     },
     "b-2-14":{
         "file":"file.cpp",
@@ -446,12 +446,12 @@ int main() {
         "function":"foo",
         "type":"int&",
         "name":"b",
-        "initial":{"start":"2:14","end":"2:14"},
+        "initial":"2:14",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:12","end":"3:12"}],
-        "definition":[{"start":"2:14","end":"2:14"}]
+        "use":["3:12"],
+        "definition":["2:14"]
     }
     })"_json;
 
@@ -481,12 +481,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"6:9","end":"6:9"},
+        "initial":"6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":{"start":"2:1","end":"4:1"},"invoke":{"start":"7:5","end":"7:10"}}],
-        "use":[{"start":"2:15","end":"2:15"},{"start":"3:5","end":"3:5"},{"start":"7:9","end":"7:9"}],
-        "definition":[{"start":"3:5","end":"3:5"},{"start":"6:9","end":"6:9"}]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
+        "use":["2:15","3:5","7:9"],
+        "definition":["3:5","6:9"]
     },
     "b-2-15":{
         "file":"file.cpp",
@@ -496,12 +496,12 @@ int main() {
         "function":"foo",
         "type":"int&",
         "name":"b",
-        "initial":{"start":"2:15","end":"2:15"},
+        "initial":"2:15",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:5","end":"3:5"}],
-        "definition":[{"start":"2:15","end":"2:15"},{"start":"3:5","end":"3:5"}]
+        "use":["3:5"],
+        "definition":["2:15","3:5"]
     }
     })"_json;
 
@@ -531,12 +531,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"6:9","end":"6:9"},
+        "initial":"6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":{"start":"2:1","end":"4:1"},"invoke":{"start":"7:5","end":"7:11"}}],
-        "use":[{"start":"2:15","end":"2:15"},{"start":"3:14","end":"3:14"},{"start":"7:10","end":"7:10"}],
-        "definition":[{"start":"6:9","end":"6:9"}]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
+        "use":["2:15","3:14","7:10"],
+        "definition":["6:9"]
     },
     "b-2-15":{
         "file":"file.cpp",
@@ -546,12 +546,12 @@ int main() {
         "function":"foo",
         "type":"int*",
         "name":"b",
-        "initial":{"start":"2:15","end":"2:15"},
+        "initial":"2:15",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:14","end":"3:14"}],
-        "definition":[{"start":"2:15","end":"2:15"}]
+        "use":["3:14"],
+        "definition":["2:15"]
     }
     })"_json;
 
@@ -582,12 +582,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":{"start":"6:9","end":"6:9"},
+        "initial":"6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":{"start":"2:1","end":"4:1"},"invoke":{"start":"7:5","end":"7:11"}}],
-        "use":[{"start":"2:15","end":"2:15"},{"start":"3:6","end":"3:6"},{"start":"7:10","end":"7:10"}],
-        "definition":[{"start":"6:9","end":"6:9"}]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
+        "use":["2:15","3:6","7:10"],
+        "definition":["6:9"]
     },
     "b-2-15":{
         "file":"file.cpp",
@@ -597,14 +597,189 @@ int main() {
         "function":"foo",
         "type":"int*",
         "name":"b",
-        "initial":{"start":"2:15","end":"2:15"},
+        "initial":"2:15",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":[{"start":"3:6","end":"3:6"}],
-        "definition":[{"start":"2:15","end":"2:15"}]
+        "use":["3:6"],
+        "definition":["2:15"]
     }
     })"_json;
 
     REQUIRE( CompareJson("General Test 16", produced, expected) );
+    std::cout << OK << " Passed!" << std::endl;
+}
+
+
+
+
+/**
+ * @section Conditional Slicing Cases
+ * Tests Slicing basic conditionals
+ */
+
+TEST_CASE( "General Test 17", "[srcslice]" ) {
+    std::cout << INFO << " Testing Conditional Slicing" << std::endl;
+
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    for (int i = 0; i < 10; ++i) {
+        std::cout << i << std::endl;
+    }
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "i-3-14":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"i",
+        "initial":"3:14",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["3:21","3:31","4:22"],
+        "definition":["3:14","3:31"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson("General Test 17", produced, expected) );
+}
+
+TEST_CASE( "General Test 18", "[srcslice]" ) {
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
+    if (a < 10) { cout << a << endl; }
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["4:9","4:27"],
+        "definition":["3:9"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson("General Test 18", produced, expected) );
+}
+
+TEST_CASE( "General Test 19", "[srcslice]" ) {
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
+    while (a < 10) { ++a; }
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["4:12","4:24"],
+        "definition":["3:9","4:24"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson("General Test 19", produced, expected) );
+}
+
+TEST_CASE( "General Test 20", "[srcslice]" ) {
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
+    do { ++a; } while (a < 10);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["4:12","4:24"],
+        "definition":["3:9","4:12"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson("General Test 20", produced, expected) );
+}
+
+TEST_CASE( "General Test 21", "[srcslice]" ) {
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
+    switch (a) {
+        case 0:
+            cout << a << endl;
+        break;
+        default:
+            a = -1;
+        break;
+    }
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["4:13","5:14","6:21"],
+        "definition":["3:9","9:13"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson("General Test 21", produced, expected) );
 }
