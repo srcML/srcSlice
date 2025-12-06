@@ -19,8 +19,8 @@ public:
     SliceProfile(
             std::string name, SlicePosition line, bool alias = 0, bool global = 0,
             std::set<SlicePosition> aDef = {}, std::set<SlicePosition> aUse = {},
-            std::set<FunctionCallData> cFunc = {},
-            std::set<std::pair<std::string, SlicePosition>> dv = {},
+            std::vector<FunctionCallData> cFunc = {},
+            std::vector<std::pair<std::string, SlicePosition>> dv = {},
             std::set<std::pair<SlicePosition, SlicePosition>> edges = {},
             bool containsDecl = false, bool visit = false);
 
@@ -33,13 +33,15 @@ public:
     std::vector<std::string> containingNameSpaces;
     std::string language;
     std::string checksum;
-    bool potentialAlias;
-    bool dereferenced;
+    bool potentialAlias = false;
+    bool dereferenced = false;
 
-    bool isGlobal;
-    bool containsDeclaration;
+    bool isGlobal = false;
+    bool classMemberVar = false;
+    bool containsDeclaration = false;
 
-    bool isPointer = false, isReference = false;
+    bool isPointer = false;
+    bool isReference = false;
 
     std::string variableName;
     std::string variableType;
@@ -48,13 +50,17 @@ public:
     std::set<SlicePosition> definitions;
     std::set<SlicePosition> uses;
 
-    std::set<std::pair<std::string, SlicePosition>> dvars;
-    std::set<std::pair<std::string, SlicePosition>> aliases;
+    std::vector<std::pair<std::string, SlicePosition>> dvars;
+    void insertDvar(std::string name, SlicePosition& sp);
+    std::vector<std::pair<std::string, SlicePosition>> aliases;
+    void insertAlias(std::string name, SlicePosition& sp);
+    std::vector<FunctionCallData> cfunctions;
+    void insertCfunction(FunctionCallData& fcd);
+
     std::set<std::pair<SlicePosition, SlicePosition>> controlEdges;
 
-    std::set<FunctionCallData> cfunctions;
-
-    bool visited;
+    bool visited = false;
+    bool updated = false;
 
     bool returnUsesInserted = false;
     bool conditionalUsesInserted = false;

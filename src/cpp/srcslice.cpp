@@ -86,6 +86,7 @@ int main(int argc, char **argv)
 
         // write to either stdout or output file
         if (!outputFile.empty()) {
+            std::cout << "Writing to :: " << outputFile << std::endl;
             outFile << stream2string;
         } else {
             std::cout << stream2string;

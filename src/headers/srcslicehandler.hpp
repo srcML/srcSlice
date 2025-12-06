@@ -47,32 +47,32 @@ public:
     void NotifyWrite(const srcDispatch::PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {};
 
     // Creates Initial SliceProfiles based off a list of decl statements
-    void ProcessDecls(DeclStmts& declStmts, const SliceCtx& ctx);
+    void ProcessDecls(DeclStmts& declStmts, std::string className = "");
     // Creates Initial SliceProfiles for Function Parameters and Variables Declared within the function definition
-    void ProcessFunctions(Functions& funcs, const SliceCtx& ctx);
+    void ProcessFunctions(Functions& funcs);
     // Process Class Data and create slices of Class Member Variables and process Member Functions
-    void ProcessClasses(Classes& classes, const SliceCtx& ctx);
+    void ProcessClasses(Classes& classes);
     // Process Signatures from Free-Functions and Class Methods
-    void ProcessSignatures(Functions& funcs, Classes& classes, const SliceCtx& ctx);
+    void ProcessSignatures(Functions& funcs, Classes& classes);
 
     // Moves over the sequence of statements and processes them in order
     // |__ Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
     // |__ Extract Expressions within a specified Block within a Function Definition
-    void ProcessStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className, const SliceCtx& ctx);
+    void ProcessStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className);
     
     // Creates Initial SliceProfile based off DeclData
-    void CreateSliceProfile(const DeclInfo& deltaDeclData, const FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
+    void CreateSliceProfile(const DeclInfo& deltaDeclData, const FunctionInfo& funcData, std::string className);
     // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
-    void ProcessInitLists(const FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
+    void ProcessInitLists(const FunctionInfo& funcData, std::string className);
     
     // Extract Expressions within a specified Block within a Function Definition
-    void ProcessExprStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className, const SliceCtx& ctx);
+    void ProcessExprStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className);
     
     // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
-    void ProcessExprStmt(const ExprInfo& expr, const FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
+    void ProcessExprStmt(const ExprInfo& expr, const FunctionInfo& funcData, std::string className);
     // Update Slice Profiles based off Collected Variable Data post ParseExpr
     void UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const FunctionInfo& funcData,
-                        std::string className, const SliceCtx& ctx);
+                        std::string className);
     // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
     std::vector<std::shared_ptr<VariableData>>& ParseExpr(const ExprInfo& expr, const SlicePosition& exprPos);
     // Get Type Details (isPtr, isRef, isArr, etc) based of a given DeclData
@@ -80,13 +80,13 @@ public:
     // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
     // for them, along with capturing expressions to update collected slices
     void CollectTryBlockData(const FunctionInfo& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
-                                std::string className, const SliceCtx& ctx);
-    void CollectConditionalData(const FunctionInfo& funcData, std::any& cntl, const std::string& className, const SliceCtx& ctx);
+                                std::string className);
+    void CollectConditionalData(const FunctionInfo& funcData, std::any& cntl, const std::string& className);
     // Given a list of Function Parameters create Initial SliceProfiles for each Parameter
     void ProcessFunctionParameters(const FunctionInfo& funcData, std::vector<DeclInfo>& parameters,
-                                    std::string currentFunctionName, std::string className, const SliceCtx& ctx);
+                                    std::string currentFunctionName, std::string className);
     // Create a Function Signature based off given Function Data
-    void ProcessFunctionSignature(FunctionInfo& funcData, std::string className, const SliceCtx& ctx);
+    void ProcessFunctionSignature(FunctionInfo& funcData, std::string className);
 
 
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
@@ -139,16 +139,24 @@ public:
     // we are not focusing on backwards-flows.
     void ComputeControlPaths();
 
-    auto ArgumentProfile(std::pair<std::string, FunctionSignatureData> func, int paramIndex, std::unordered_set<std::string>& visit_func);
+    auto ArgumentProfile(std::pair<std::string, FunctionSignatureData> func, int paramIndex);
 
     // Need to track Aliases we have already read through
     // InterProcedural from the normal call should also be reflected
     // if a profile with alias(s) is used in function calls
     void ComputeAliasInterprocedural();
     void ComputeInterprocedural();
+    // Perform a second pass over the system dictionary performing another round of ComputeInterprocedural
+    // against slices who have cfunction elements that could not resolve on the initial pass
+    void Finalize();
+    void ModifySlice(SliceProfile& sp);
+    void ResolveCall(SliceProfile& sp);
+    void UpdateCalls(SliceProfile& sp);
 
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
+    std::vector<SliceProfile*> partialSliceProfiles;
+    std::unordered_set <std::string> visited_func;
 
     std::vector<SlicePosition> loopdata;
     std::vector<SlicePosition> forloopdata;
@@ -161,6 +169,8 @@ private:
 
     std::unordered_map<std::string, std::vector<FunctionSignatureData>> functionSigMap;
     bool verboseMode, calculateControlEdges, progressMode;
+
+    SliceCtx sctx;
 };
 
 #endif

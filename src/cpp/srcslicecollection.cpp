@@ -3,20 +3,23 @@
 SlicePosition::SlicePosition(){}
 SlicePosition::SlicePosition(
                     srcDispatch::DeltaElement<srcDispatch::Position> start,
-                    srcDispatch::DeltaElement<srcDispatch::Position> end
-                ): start(start), end(end) {}
+                    srcDispatch::DeltaElement<srcDispatch::Position> end,
+                    std::string filename
+                ): start(start), end(end), filename(filename) {}
 
 SlicePosition::SlicePosition(const SlicePosition& position) {
     start = position.start;
     end = position.end;
+    filename = position.filename;
 }
 
-// Creates a String of a JSON object, ie: "2:12"
+// Creates a String of a JSON object, ie: "file.cpp:2:12"
 std::string SlicePosition::ToString() const {
     std::string s;
 
     s += "\"";
-    if (start) {
+    if (start && !filename.empty()) {
+        s += filename; s += ":";
         s += start->ToString();
     }
     s += "\"";
@@ -42,12 +45,15 @@ srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetStart() const
 srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetEnd() const {
     return end;
 }
+std::string SlicePosition::GetFileName() const { return filename; }
 
 SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
     if (this == &rhs) return *this;
 
     start = rhs.start;
     end = rhs.end;
+    filename = rhs.filename;
+
     return *this;
 }
 bool SlicePosition::operator==(const SlicePosition& rhs) const {
@@ -147,7 +153,7 @@ FunctionSignatureData::FunctionSignatureData(
     srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
     std::string className,
     const SliceCtx& ctx) {
-    position = SlicePosition(func->startPosition, func->endPosition);
+    position = SlicePosition(func->startPosition, func->endPosition, ctx.currentFilePath);
     name = func->name.ToString();
     returnType = func->returnType.ToString();
     parameters = func->parameters;
@@ -173,6 +179,18 @@ FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
     definitionPosition = rhs.definitionPosition;
     ignore = rhs.ignore;
 };
+
+FunctionCallData& FunctionCallData::operator=(const FunctionCallData& rhs) {
+    if (this == &rhs) return *this;
+
+    functionName = rhs.functionName;
+    invokePosition = rhs.invokePosition;
+    parameterIndex = rhs.parameterIndex;
+    definitionPosition = rhs.definitionPosition;
+    ignore = rhs.ignore;
+
+    return *this;
+}
 
 bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
     if (functionName != rhs.functionName) return false;
@@ -205,6 +223,7 @@ std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data) 
 }
 
 SliceCtx::SliceCtx(const srcDispatch::srcSAXEventContext& ctx) {
+    defined = true;
     currentFilePath = ctx.currentFilePath;
     currentFileChecksum = ctx.currentFileChecksum;
     currentFileLanguage = ctx.currentFileLanguage;
@@ -212,6 +231,7 @@ SliceCtx::SliceCtx(const srcDispatch::srcSAXEventContext& ctx) {
 }
 
 SliceCtx::SliceCtx(const SliceCtx& rhs) {
+    defined = rhs.defined;
     currentFilePath = rhs.currentFilePath;
     currentFileChecksum = rhs.currentFileChecksum;
     currentFileLanguage = rhs.currentFileLanguage;

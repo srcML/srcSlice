@@ -23,7 +23,8 @@ class SlicePosition {
 public:
     SlicePosition();
     SlicePosition(srcDispatch::DeltaElement<srcDispatch::Position> start,
-            srcDispatch::DeltaElement<srcDispatch::Position> end);
+            srcDispatch::DeltaElement<srcDispatch::Position> end,
+            std::string filename);
 
     SlicePosition(const SlicePosition& position);
     SlicePosition& operator=(SlicePosition rhs);
@@ -38,7 +39,9 @@ public:
     std::string ToNameString() const;
     srcDispatch::DeltaElement<srcDispatch::Position> GetStart() const;
     srcDispatch::DeltaElement<srcDispatch::Position> GetEnd() const;
+    std::string GetFileName() const;
 private:
+    std::string filename;
     srcDispatch::DeltaElement<srcDispatch::Position> start;
     srcDispatch::DeltaElement<srcDispatch::Position> end;
 };
@@ -90,6 +93,7 @@ public:
 // the entirety of srcSAXEventContext
 class SliceCtx {
 public:
+    SliceCtx(): defined(false) {}
     SliceCtx(const srcDispatch::srcSAXEventContext& ctx);
 
     SliceCtx(const SliceCtx& rhs);
@@ -98,6 +102,7 @@ public:
     std::string currentFileChecksum;
     std::string currentFileLanguage;
     std::vector<std::string> containingNamespaces;
+    bool defined;
 };
 
 // Store Data about Function Signatures by grouping functions of the same name
@@ -123,12 +128,15 @@ public:
 // and the line where the function is potentially defined
 class FunctionCallData {
 public:
+    FunctionCallData(){}
     FunctionCallData(std::string funcName, unsigned int paramIndex,
                     SlicePosition defPos,
                     SlicePosition invokePos,
                     bool ignore_ = false);
 
     FunctionCallData(const FunctionCallData& rhs);
+
+    FunctionCallData& operator=(const FunctionCallData& rhs);
 
     bool operator==(const FunctionCallData& rhs) const;
     bool operator!=(const FunctionCallData& rhs) const;

@@ -118,7 +118,7 @@ bool CheckNamespace(const std::string testName, const std::string sliceId, const
             auto it = std::find(producedNamespaces.begin(), producedNamespaces.end(), ns);
             if (it == producedNamespaces.end()) {
                 std::ostringstream osmsg;
-                osmsg << "Missing Namespace -> " << ns <<
+                osmsg << "(" << sliceId << ") Missing Namespace -> " << ns <<
                 "\n |___ Produced " << producedNamespaces << ", expected " << expectedNamespaces;
                 PrintErr(testName, osmsg.str());
                 return false;
@@ -158,7 +158,7 @@ bool CheckDependence(const std::string testName, const std::string sliceId, cons
             auto it = std::find(producedDependence.begin(), producedDependence.end(), dep);
             if (it == producedDependence.end()) {
                 std::ostringstream ossmsg;
-                ossmsg << "Missing Dependence -> " << dep <<
+                ossmsg << "(" << sliceId << ") Missing Dependence -> " << dep <<
                 "\n |___ Produced " << producedDependence << ", expected " << expectedDependence;
                 PrintErr(testName, ossmsg.str());
                 return false;
@@ -198,7 +198,7 @@ bool CheckAliases(const std::string testName, const std::string sliceId, const j
             auto it = std::find(producedAliases.begin(), producedAliases.end(), alias);
             if (it == producedAliases.end()) {
                 std::ostringstream ossmsg;
-                ossmsg << "Missing Alias -> " << alias;
+                ossmsg << "(" << sliceId << ") Missing Alias -> " << alias;
                 PrintErr(testName, ossmsg.str());
                 return false;
             }
@@ -238,7 +238,7 @@ bool CheckCalls(const std::string testName, const std::string sliceId, const jso
             auto it = std::find(producedCalls.begin(), producedCalls.end(), call);
             if (it == producedCalls.end()) {
                 std::ostringstream ossmsg;
-                ossmsg << "Missing Call -> " << call <<
+                ossmsg << "(" << sliceId << ") Missing Call -> " << call <<
                 "\n |___ Produced " << producedCalls;
                 PrintErr(testName, ossmsg.str());
                 return false;
@@ -278,7 +278,7 @@ bool CheckUses(const std::string testName, const std::string sliceId, const json
             auto it = std::find(producedUses.begin(), producedUses.end(), use);
             if (it == producedUses.end()) {
                 std::ostringstream ossmsg;
-                ossmsg << "Missing Use -> " << use <<
+                ossmsg << "(" << sliceId << ") Missing Use -> " << use <<
                 "\n |___ Produced " << producedUses;
                 PrintErr(testName, ossmsg.str());
                 return false;
@@ -318,7 +318,7 @@ bool CheckDefs(const std::string testName, const std::string sliceId, const json
             auto it = std::find(producedDefs.begin(), producedDefs.end(), def);
             if (it == producedDefs.end()) {
                 std::ostringstream ossmsg;
-                ossmsg << "Missing Definition -> " << def <<
+                ossmsg << "(" << sliceId << ") Missing Definition -> " << def <<
                 "\n |___ Produced " << producedDefs;
                 PrintErr(testName, ossmsg.str());
                 return false;
@@ -372,7 +372,7 @@ bool CompareJson(const std::string testName, const json& produced, const json& e
     
             if (producedData != expectedData) {
                 std::ostringstream osmsg;
-                osmsg << "Mismatching '" << attribute << "' attributes" <<
+                osmsg << "(" << sliceId << ") Mismatching '" << attribute << "' attributes" <<
                 "\n |____ Produced " << producedData << ", expected " << expectedData;
                 PrintErr(testName, osmsg.str());
     

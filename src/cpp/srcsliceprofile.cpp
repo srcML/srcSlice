@@ -6,18 +6,14 @@ SliceProfile::SliceProfile() : containsDeclaration(false), potentialAlias(false)
 SliceProfile::SliceProfile(
         std::string name, SlicePosition initial, bool alias, bool global,
         std::set<SlicePosition> aDef, std::set<SlicePosition> aUse,
-        std::set<FunctionCallData> cFunc,
-        std::set<std::pair<std::string, SlicePosition>> dv,
+        std::vector<FunctionCallData> cFunc,
+        std::vector<std::pair<std::string, SlicePosition>> dv,
         std::set<std::pair<SlicePosition, SlicePosition>> edges,
         bool containsDecl, bool visit) :
         variableName(name), initialPosition(initial), potentialAlias(alias),
         isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
         dvars(dv), containsDeclaration(containsDecl), controlEdges(edges),
-        visited(visit) {
-    dereferenced = false;
-    isPointer = false;
-    isReference = false;
-}
+        visited(visit) {}
 
 SliceProfile::SliceProfile(const SliceProfile& rhs) {
     initialPosition = rhs.initialPosition;
@@ -30,6 +26,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     potentialAlias = rhs.potentialAlias;
     dereferenced = rhs.dereferenced;
     isGlobal = rhs.isGlobal;
+    classMemberVar = rhs.classMemberVar;
     containsDeclaration = rhs.containsDeclaration;
     isPointer = rhs.isPointer;
     isReference = rhs.isReference;
@@ -43,6 +40,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     controlEdges = rhs.controlEdges;
     cfunctions = rhs.cfunctions;
     visited = rhs.visited;
+    updated = rhs.updated;
     returnUsesInserted = rhs.returnUsesInserted;
     conditionalUsesInserted = rhs.conditionalUsesInserted;
     conditionalDefsInserted = rhs.conditionalDefsInserted;
@@ -152,4 +150,40 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     }
 
     return out;
+}
+
+void SliceProfile::insertDvar(std::string name, SlicePosition& sp) {
+    std::pair<std::string, SlicePosition> p = std::make_pair(name, sp);
+    bool contained = std::find(
+        dvars.begin(),
+        dvars.end(),
+        p
+    ) != dvars.end();
+
+    if (!contained) {
+        dvars.push_back(p);
+    }
+}
+void SliceProfile::insertAlias(std::string name, SlicePosition& sp) {
+    std::pair<std::string, SlicePosition> p = std::make_pair(name, sp);
+    bool contained = std::find(
+        aliases.begin(),
+        aliases.end(),
+        p
+    ) != aliases.end();
+    
+    if (!contained) {
+        aliases.push_back(p);
+    }
+}
+void SliceProfile::insertCfunction(FunctionCallData& fcd) {
+    bool contained = std::find(
+        cfunctions.begin(),
+        cfunctions.end(),
+        fcd
+    ) != cfunctions.end();
+    
+    if (!contained) {
+        cfunctions.push_back(fcd);
+    }
 }

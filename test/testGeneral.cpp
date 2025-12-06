@@ -26,12 +26,12 @@ TEST_CASE( "General Test 1", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":["2:9"]
+        "definition":["file.cpp:2:9"]
     }
     })"_json;
 
@@ -55,12 +55,12 @@ TEST_CASE( "General Test 2", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:13"],
-        "definition":["2:9"]
+        "use":["file.cpp:3:13"],
+        "definition":["file.cpp:2:9"]
     }
     })"_json;
 
@@ -84,12 +84,12 @@ TEST_CASE( "General Test 3", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":["2:9","3:5"]
+        "definition":["file.cpp:2:9","file.cpp:3:5"]
     }
     })"_json;
 
@@ -113,12 +113,12 @@ TEST_CASE( "General Test 4", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"bar","parameter":"1","definitionPosition":"","invoke":"3:5"}],
-        "use":["3:9"],
-        "definition":["2:9"]
+        "calls":[{"functionName":"bar","parameter":"1","definitionPosition":"","invoke":"file.cpp:3:5"}],
+        "use":["file.cpp:3:9"],
+        "definition":["file.cpp:2:9"]
     }
     })"_json;
 
@@ -143,12 +143,12 @@ TEST_CASE( "General Test 5", "[srcslice]" ) {
         "function":"Fuzz",
         "type":"int",
         "name":"a",
-        "initial":"3:13",
+        "initial":"file.cpp:3:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":["3:13"]
+        "definition":["file.cpp:3:13"]
     }
     })"_json;
 
@@ -172,12 +172,12 @@ TEST_CASE( "General Test 6", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
-        "dependence":[{"b":"3:13"}],
+        "initial":"file.cpp:2:9",
+        "dependence":[{"b":"file.cpp:3:13"}],
         "aliases":[],
         "calls":[],
-        "use":["3:13"],
-        "definition":["2:9"]
+        "use":["file.cpp:3:13"],
+        "definition":["file.cpp:2:9"]
     },
     "b-3-9":{
         "file":"file.cpp",
@@ -187,12 +187,12 @@ TEST_CASE( "General Test 6", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"3:9",
+        "initial":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":["3:9"]
+        "definition":["file.cpp:3:9"]
     }
     })"_json;
 
@@ -216,12 +216,12 @@ TEST_CASE( "General Test 7", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:7"],
-        "definition":["2:9","3:7"]
+        "use":["file.cpp:3:7"],
+        "definition":["file.cpp:2:9","file.cpp:3:7"]
     }
     })"_json;
 
@@ -245,12 +245,12 @@ TEST_CASE( "General Test 8", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:5"],
-        "definition":["2:9","3:5"]
+        "use":["file.cpp:3:5"],
+        "definition":["file.cpp:2:9","file.cpp:3:5"]
     }
     })"_json;
 
@@ -274,12 +274,12 @@ TEST_CASE( "General Test 9", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:5"],
-        "definition":["2:9","3:5"]
+        "use":["file.cpp:3:5"],
+        "definition":["file.cpp:2:9","file.cpp:3:5"]
     }
     })"_json;
 
@@ -303,12 +303,12 @@ TEST_CASE( "General Test 10", "[srcslice]" ) {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"2:9",
+        "initial":"file.cpp:2:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":["2:9","3:12"]
+        "definition":["file.cpp:2:9","file.cpp:3:12"]
     }
     })"_json;
 
@@ -335,12 +335,12 @@ namespace mynamespace {
         "function":"jar",
         "type":"int",
         "name":"a",
-        "initial":"4:13",
+        "initial":"file.cpp:4:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
         "use":[],
-        "definition":["4:13"]
+        "definition":["file.cpp:4:13"]
     }
     })"_json;
 
@@ -381,12 +381,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"6:9",
+        "initial":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
-        "use":["2:13","3:12","7:9"],
-        "definition":["6:9"]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:7:5"}],
+        "use":["file.cpp:2:13","file.cpp:3:12","file.cpp:7:9"],
+        "definition":["file.cpp:6:9"]
     },
     "b-2-13":{
         "file":"file.cpp",
@@ -396,12 +396,12 @@ int main() {
         "function":"foo",
         "type":"int",
         "name":"b",
-        "initial":"2:13",
+        "initial":"file.cpp:2:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:12"],
-        "definition":["2:13"]
+        "use":["file.cpp:3:12"],
+        "definition":["file.cpp:2:13"]
     }
     })"_json;
 
@@ -431,12 +431,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"6:9",
+        "initial":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
-        "use":["2:14","3:12","7:9"],
-        "definition":["6:9"]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:7:5"}],
+        "use":["file.cpp:2:14","file.cpp:3:12","file.cpp:7:9"],
+        "definition":["file.cpp:6:9"]
     },
     "b-2-14":{
         "file":"file.cpp",
@@ -446,12 +446,12 @@ int main() {
         "function":"foo",
         "type":"int&",
         "name":"b",
-        "initial":"2:14",
+        "initial":"file.cpp:2:14",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:12"],
-        "definition":["2:14"]
+        "use":["file.cpp:3:12"],
+        "definition":["file.cpp:2:14"]
     }
     })"_json;
 
@@ -481,12 +481,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"6:9",
+        "initial":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
-        "use":["2:15","3:5","7:9"],
-        "definition":["3:5","6:9"]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:7:5"}],
+        "use":["file.cpp:2:15","file.cpp:3:5","file.cpp:7:9"],
+        "definition":["file.cpp:3:5","file.cpp:6:9"]
     },
     "b-2-15":{
         "file":"file.cpp",
@@ -496,12 +496,12 @@ int main() {
         "function":"foo",
         "type":"int&",
         "name":"b",
-        "initial":"2:15",
+        "initial":"file.cpp:2:15",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:5"],
-        "definition":["2:15","3:5"]
+        "use":["file.cpp:3:5"],
+        "definition":["file.cpp:2:15","file.cpp:3:5"]
     }
     })"_json;
 
@@ -531,12 +531,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"6:9",
+        "initial":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
-        "use":["2:15","3:14","7:10"],
-        "definition":["6:9"]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:7:5"}],
+        "use":["file.cpp:2:15","file.cpp:3:14","file.cpp:7:10"],
+        "definition":["file.cpp:6:9"]
     },
     "b-2-15":{
         "file":"file.cpp",
@@ -546,12 +546,12 @@ int main() {
         "function":"foo",
         "type":"int*",
         "name":"b",
-        "initial":"2:15",
+        "initial":"file.cpp:2:15",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:14"],
-        "definition":["2:15"]
+        "use":["file.cpp:3:14"],
+        "definition":["file.cpp:2:15"]
     }
     })"_json;
 
@@ -582,12 +582,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"6:9",
+        "initial":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"2:1","invoke":"7:5"}],
-        "use":["2:15","3:6","7:10"],
-        "definition":["6:9"]
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:7:5"}],
+        "use":["file.cpp:2:15","file.cpp:3:6","file.cpp:7:10"],
+        "definition":["file.cpp:6:9"]
     },
     "b-2-15":{
         "file":"file.cpp",
@@ -597,12 +597,12 @@ int main() {
         "function":"foo",
         "type":"int*",
         "name":"b",
-        "initial":"2:15",
+        "initial":"file.cpp:2:15",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:6"],
-        "definition":["2:15"]
+        "use":["file.cpp:3:6"],
+        "definition":["file.cpp:2:15"]
     }
     })"_json;
 
@@ -641,12 +641,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"3:14",
+        "initial":"file.cpp:3:14",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["3:21","3:31","4:22"],
-        "definition":["3:14","3:31"]
+        "use":["file.cpp:3:21","file.cpp:3:31","file.cpp:4:22"],
+        "definition":["file.cpp:3:14","file.cpp:3:31"]
     }
     })"_json;
 
@@ -672,12 +672,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"3:9",
+        "initial":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["4:9","4:27"],
-        "definition":["3:9"]
+        "use":["file.cpp:4:9","file.cpp:4:27"],
+        "definition":["file.cpp:3:9"]
     }
     })"_json;
 
@@ -703,12 +703,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"3:9",
+        "initial":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["4:12","4:24"],
-        "definition":["3:9","4:24"]
+        "use":["file.cpp:4:12","file.cpp:4:24"],
+        "definition":["file.cpp:3:9","file.cpp:4:24"]
     }
     })"_json;
 
@@ -734,12 +734,12 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"3:9",
+        "initial":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["4:12","4:24"],
-        "definition":["3:9","4:12"]
+        "use":["file.cpp:4:12","file.cpp:4:24"],
+        "definition":["file.cpp:3:9","file.cpp:4:12"]
     }
     })"_json;
 
@@ -772,14 +772,95 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"3:9",
+        "initial":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
-        "use":["4:13","5:14","6:21"],
-        "definition":["3:9","9:13"]
+        "use":["file.cpp:4:13","file.cpp:5:14","file.cpp:6:21"],
+        "definition":["file.cpp:3:9","file.cpp:9:13"]
     }
     })"_json;
 
     REQUIRE( CompareJson("General Test 21", produced, expected) );
+    std::cout << OK << " Passed!" << std::endl;
+}
+
+
+
+
+/**
+ * @section Basic Slicing Cases
+ * Tests Slicing against basic C++ Classes
+ */
+
+ TEST_CASE( "General Test 22", "[srcslice]" ) {
+    std::cout << INFO << " Testing Class Slicing" << std::endl;
+
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+class Item {
+public:
+    Item(): name("") {}
+    Item(std::string name_) {
+        name = name_;
+    }
+    Item(const Item& rhs) {
+        name = rhs.name;
+    }
+private:
+    std::string name;
+};
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "name-12-17":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"Item",
+        "function":"",
+        "type":"std::string",
+        "name":"name",
+        "initial":"file.cpp:12:17",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:4:13","file.cpp:6:9","file.cpp:9:9","file.cpp:12:17"]
+    },
+    "name_-5-22":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"Item",
+        "function":"Item",
+        "type":"std::string",
+        "name":"name_",
+        "initial":"file.cpp:5:22",
+        "dependence":[{"name":"file.cpp:6:9"}],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:6:16"],
+        "definition":["file.cpp:5:22"]
+    },
+    "rhs-8-22":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"Item",
+        "function":"Item",
+        "type":"Item&",
+        "name":"rhs",
+        "initial":"file.cpp:8:22",
+        "dependence":[{"name":"file.cpp:9:9"}],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:9:16"],
+        "definition":["file.cpp:8:22"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson("General Test 22", produced, expected) );
 }
