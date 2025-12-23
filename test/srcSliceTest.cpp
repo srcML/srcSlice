@@ -91,6 +91,13 @@ void PrintOk(const std::string msg) {
     std::cout << OK << " " << msg << std::endl;
 }
 
+std::string TestName(bool inc) {
+    static int i = 1;
+    std::string s = (inc) ? "General Test " + std::to_string(i) : "Test Error";
+    if (inc) ++i;
+    return s;
+}
+
 bool CheckNamespace(const std::string testName, const std::string sliceId, const json& produced, const json& expected) {
     try {
         auto producedNamespaces = produced[sliceId]["namespace"];
@@ -332,15 +339,31 @@ bool CheckDefs(const std::string testName, const std::string sliceId, const json
     }
 }
 
-bool CompareJson(const std::string testName, const json& produced, const json& expected) {
+bool CompareJson(const std::string sourceCode, const std::string testName, const json& produced, const json& expected) {
+    auto printSource = [&sourceCode](){
+        std::cout << "==============================" << std::endl;
+        std::cout << sourceCode << std::endl;
+        std::cout << "==============================" << std::endl;
+    };
+
     // check if all keys (varName-line-col strings) are present
     for (auto& [key,value] : expected.items()) {
         if (!produced.contains(key)) {
             std::string msg = "Missing Slice Data -> ";
             msg += key;
             PrintErr(testName, msg);
-            std::cout << " |____ Produced -> " << produced << std::endl;
-            std::cout << " |____ Expected -> " << expected << std::endl;
+
+            std::cout << " |____ Produced -> ";
+            for (auto& [key,value] : produced.items())
+                std::cout << key << " | ";
+            std::cout << std::endl;
+            
+                std::cout << " |____ Expected -> ";
+            for (auto& [key,value] : expected.items())
+                std::cout << key << " | ";
+            std::cout << std::endl;
+                
+            printSource();
             return false;
         }
     }
@@ -375,33 +398,39 @@ bool CompareJson(const std::string testName, const json& produced, const json& e
                 osmsg << "(" << sliceId << ") Mismatching '" << attribute << "' attributes" <<
                 "\n |____ Produced " << producedData << ", expected " << expectedData;
                 PrintErr(testName, osmsg.str());
-    
+                printSource();
                 return false;
             }
         }
 
         // Complex attribute comparision
         if (!CheckUses(testName, sliceId, produced, expected)) {
+            printSource();
             return false;
         }
 
         if (!CheckDefs(testName, sliceId, produced, expected)) {
+            printSource();
             return false;
         }
 
         if (!CheckCalls(testName, sliceId, produced, expected)) {
+            printSource();
             return false;
         }
 
         if (!CheckDependence(testName, sliceId, produced, expected)) {
+            printSource();
             return false;
         }
 
         if (!CheckAliases(testName, sliceId, produced, expected)) {
+            printSource();
             return false;
         }
 
         if (!CheckNamespace(testName, sliceId, produced, expected)) {
+            printSource();
             return false;
         }
     }

@@ -26,6 +26,9 @@ public:
 
     SliceProfile(const SliceProfile& rhs);
 
+    bool operator==(const SliceProfile& rhs) const;
+    bool operator!=(const SliceProfile& rhs) const;
+
     SlicePosition initialPosition;
     std::string file;
     std::string function;
@@ -51,20 +54,21 @@ public:
     std::set<SlicePosition> uses;
 
     std::vector<std::pair<std::string, SlicePosition>> dvars;
+    // Insert a Dependent Variable entry with a given LHS var name and its position
     void insertDvar(std::string name, SlicePosition& sp);
+
     std::vector<std::pair<std::string, SlicePosition>> aliases;
+    // Insert an Alias entry with a given pointer-alias name and its position
     void insertAlias(std::string name, SlicePosition& sp);
+    
     std::vector<FunctionCallData> cfunctions;
+    // Insert a Function Call entry with a given Function Call-Data
     void insertCfunction(FunctionCallData& fcd);
 
     std::set<std::pair<SlicePosition, SlicePosition>> controlEdges;
 
     bool visited = false;
     bool updated = false;
-
-    bool returnUsesInserted = false;
-    bool conditionalUsesInserted = false;
-    bool conditionalDefsInserted = false;
     bool showControlEdges = false;
 
     std::string currentPointerReference;

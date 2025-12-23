@@ -3,10 +3,7 @@ file(GLOB DISPATCHER_HEADER ../srcDispatch/*.hpp)
 
 file(GLOB SRCSLICE_SOURCE
     ../src/headers/srcslice*.hpp
-    ../src/cpp/srcslicehandler.cpp
-    ../src/cpp/srcsliceprofile.cpp
-    ../src/cpp/srcslicecollection.cpp
-    ../src/cpp/srcsliceprogress.cpp
+    ../src/cpp/srcslice*.cpp
     )
    
 file(GLOB SRCSLICETEST_SOURCE
@@ -47,11 +44,13 @@ endmacro()
 # dependency target that checks if the following testcases are built
 add_custom_target(build_srcslice_tests DEPENDS
     testGeneral
+    testParseExpr
     #testAliases
     #testPointer
 )
 
 # ctest test items
 add_unit_test(testGeneral.cpp)
+add_unit_test(testParseExpr.cpp)
 #add_unit_test(testAliases.cpp)
 #add_unit_test(testPointer.cpp)

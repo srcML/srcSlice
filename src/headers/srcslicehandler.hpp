@@ -3,6 +3,8 @@
 
 #include <srcsliceprofile.hpp>
 #include <srcsliceprogress.hpp>
+#include <srcsliceparse.hpp>
+
 #include <exception>
 #include <unordered_map>
 #include <unordered_set>
@@ -32,6 +34,8 @@ typedef srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>> Block
 typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> Functions;
 typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>> Classes;
 
+std::string GenerateArrayType(std::string typeString, int dim = 1);
+
 class SrcSliceHandler : public srcDispatch::PolicyListener {
 public:
     ~SrcSliceHandler(){};
@@ -47,7 +51,7 @@ public:
     void NotifyWrite(const srcDispatch::PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {};
 
     // Creates Initial SliceProfiles based off a list of decl statements
-    void ProcessDecls(DeclStmts& declStmts, std::string className = "");
+    void ProcessDecls(DeclStmts& declStmts, std::string className = "", bool globalDecls = false);
     // Creates Initial SliceProfiles for Function Parameters and Variables Declared within the function definition
     void ProcessFunctions(Functions& funcs);
     // Process Class Data and create slices of Class Member Variables and process Member Functions
@@ -70,11 +74,8 @@ public:
     
     // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
     void ProcessExprStmt(const ExprInfo& expr, const FunctionInfo& funcData, std::string className);
-    // Update Slice Profiles based off Collected Variable Data post ParseExpr
-    void UpdateSlices(std::vector<std::shared_ptr<VariableData>>& varDataGroup, const FunctionInfo& funcData,
-                        std::string className);
     // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
-    std::vector<std::shared_ptr<VariableData>>& ParseExpr(const ExprInfo& expr, const SlicePosition& exprPos);
+    void ParseExpr(const ExprInfo& expr, std::vector<std::string> lhsStack = {}, bool isArg = false, srcDispatch::CallData* funcCallData = nullptr, int argIndex = 0);
     // Get Type Details (isPtr, isRef, isArr, etc) based of a given DeclData
     std::string GetTypeDetails(const DeclInfo& localVar, bool& isPointer, bool& isReference, bool& isArray);
     // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
@@ -88,31 +89,21 @@ public:
     // Create a Function Signature based off given Function Data
     void ProcessFunctionSignature(FunctionInfo& funcData, std::string className);
 
-
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
     void CreateSliceCallData(std::string functionName, int argIndex, SlicePosition functionPosition, SliceProfile& sliceProfile, SlicePosition invokePosition);
-
-    void ProcessFunctionCall(std::shared_ptr<srcDispatch::CallData>& funcCallData);
 
     // Take large name strings and extract the root variable name
     std::string ExtractName(std::string elementName);
 
     bool IsPointerDereferenced(std::shared_ptr<srcDispatch::NameData>& varNameElem);
 
-    // Attempt to Recursively dig into potential nested indices in a RHS to form dependency relations with a LHS variable
-    void AppendIndices(std::shared_ptr<VariableData>& lhs, std::shared_ptr<VariableData>& varData);
-
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
     // Logic constructed for use BEFORE InterProcedural
-    SliceProfile* FetchSliceProfile(std::string profileName, std::shared_ptr<VariableData>& vd, const FunctionInfo& funcData,
+    SliceProfile* FetchSliceProfile(std::string profileName, const FunctionInfo& funcData,
                                     std::string className = "", std::vector<std::string> containingNameSpaces = {});
 
     // Extract the function name within either a call or a complex function name
     std::string GetSimpleFunctionName(std::string funcName);
-
-    // Used for inserting Uses and Defs for Slices in the LHS of an Expression Statement
-    // perform a map find and update the slice
-    void UpdateLHSSlices(std::shared_ptr<VariableData>& varData);
 
     bool StringContainsCharacters(std::string &str);
 
@@ -168,7 +159,10 @@ private:
     std::vector<SlicePosition> elsedata;
 
     std::unordered_map<std::string, std::vector<FunctionSignatureData>> functionSigMap;
-    bool verboseMode, calculateControlEdges, progressMode;
+
+    bool verboseMode = false;
+    bool calculateControlEdges = false;
+    bool progressMode = false;
 
     SliceCtx sctx;
 };

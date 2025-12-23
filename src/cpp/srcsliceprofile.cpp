@@ -41,13 +41,49 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     cfunctions = rhs.cfunctions;
     visited = rhs.visited;
     updated = rhs.updated;
-    returnUsesInserted = rhs.returnUsesInserted;
-    conditionalUsesInserted = rhs.conditionalUsesInserted;
-    conditionalDefsInserted = rhs.conditionalDefsInserted;
     showControlEdges = rhs.showControlEdges;
     currentPointerReference = rhs.currentPointerReference;
     isPotentialArray = rhs.isPotentialArray;
     ignorePtrRef = rhs.ignorePtrRef;
+}
+
+bool SliceProfile::operator==(const SliceProfile& rhs) const {
+    if (this == &rhs) return true; // self-check protection
+
+    if (initialPosition != rhs.initialPosition) return false;
+    if (file != rhs.file) return false;
+    if (function != rhs.function) return false;
+    if (nameOfContainingClass != rhs.nameOfContainingClass) return false;
+    if (containingNameSpaces != rhs.containingNameSpaces) return false;
+    if (language != rhs.language) return false;
+    if (checksum != rhs.checksum) return false;
+    if (potentialAlias != rhs.potentialAlias) return false;
+    if (dereferenced != rhs.dereferenced) return false;
+    if (isGlobal != rhs.isGlobal) return false;
+    if (classMemberVar != rhs.classMemberVar) return false;
+    if (containsDeclaration != rhs.containsDeclaration) return false;
+    if (isPointer != rhs.isPointer) return false;
+    if (isReference != rhs.isReference) return false;
+    if (variableName != rhs.variableName) return false;
+    if (variableType != rhs.variableType) return false;
+    if (memberVariables != rhs.memberVariables) return false;
+    if (definitions != rhs.definitions) return false;
+    if (uses != rhs.uses) return false;
+    if (dvars != rhs.dvars) return false;
+    if (aliases != rhs.aliases) return false;
+    if (controlEdges != rhs.controlEdges) return false;
+    if (cfunctions != rhs.cfunctions) return false;
+    if (visited != rhs.visited) return false;
+    if (updated != rhs.updated) return false;
+    if (showControlEdges != rhs.showControlEdges) return false;
+    if (currentPointerReference != rhs.currentPointerReference) return false;
+    if (isPotentialArray != rhs.isPotentialArray) return false;
+    if (ignorePtrRef != rhs.ignorePtrRef) return false;
+
+    return true;
+}
+bool SliceProfile::operator!=(const SliceProfile& rhs) const {
+    return !(*this == rhs);
 }
 
 std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {

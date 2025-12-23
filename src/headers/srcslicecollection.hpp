@@ -46,49 +46,6 @@ private:
     srcDispatch::DeltaElement<srcDispatch::Position> end;
 };
 
-class VariableData {
-public:
-    VariableData(std::string name="");
-    VariableData(const VariableData& rhs);
-    ~VariableData();
-
-    VariableData& operator=(VariableData rhs);
-
-    // Basic clean up of this struct to allow simple re-purposing
-    void clear();
-
-    // Name of an expression variable that may be a LHS/RHS var
-    // potentially have none to many RHS variables the LHS uses
-    std::string GetNameOfIdentifier() const;
-
-    // when the lhsVarName is not an empty string its considered initialized
-    bool isInitialized();
-
-    void InitializeLHS(std::string name, SlicePosition position);
-
-    void SetOriginLine(SlicePosition position);
-
-    void AddRHS(std::shared_ptr<VariableData> var);
-    std::shared_ptr<VariableData> GetRecentRHS();
-
-    std::string lhsVarName;
-    std::vector<std::shared_ptr<VariableData>> rhsElems;
-    std::vector<std::shared_ptr<VariableData>> indices;
-
-    bool lhs = false;
-    bool isAddrOf = false;
-    bool dereferenced = false;
-
-    // used concerning the user redefining data a pointer points-to
-    // but can be modified to be more expansive
-    bool userModified = false;
-    
-    int dereferenceCount;
-    SlicePosition originPosition;
-    std::set<SlicePosition> uses;
-    std::set<SlicePosition> definitions;
-};
-
 // Hold context data srcslice uses based off srcSAXEventContext without copying
 // the entirety of srcSAXEventContext
 class SliceCtx {
@@ -102,7 +59,7 @@ public:
     std::string currentFileChecksum;
     std::string currentFileLanguage;
     std::vector<std::string> containingNamespaces;
-    bool defined;
+    bool defined = false;
 };
 
 // Store Data about Function Signatures by grouping functions of the same name
@@ -148,7 +105,7 @@ public:
 
     SlicePosition invokePosition;
     SlicePosition definitionPosition;
-    bool ignore;
+    bool ignore = false;
     std::string functionName;
     unsigned int parameterIndex;
 };
