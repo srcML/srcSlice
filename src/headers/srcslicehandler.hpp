@@ -130,7 +130,7 @@ public:
     // we are not focusing on backwards-flows.
     void ComputeControlPaths();
 
-    auto ArgumentProfile(std::pair<std::string, FunctionSignatureData> func, int paramIndex);
+    SliceProfileIterator ArgumentProfile(const std::string& funcName, FunctionSignatureData& funcSig, int paramIndex);
 
     // Need to track Aliases we have already read through
     // InterProcedural from the normal call should also be reflected

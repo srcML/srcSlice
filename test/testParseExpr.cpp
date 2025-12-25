@@ -7034,3 +7034,339 @@ int main() {
 
     REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
 }
+
+
+
+
+TEST_CASE( TestName(), "[srcslice]" ) {
+        // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    Toy* tPtr;
+    int a = 0;
+    tPtr->disolve(a);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "tPtr-3-10":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"Toy*",
+        "name":"tPtr",
+        "initial":"file.cpp:3:10",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:5"],
+        "definition":["file.cpp:3:10"]
+    },
+    "a-4-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:4:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{
+            "functionName":"disolve",
+            "parameter":"1",
+            "definitionPosition":"",
+            "invoke":"file.cpp:5:5"
+        }],
+        "use":["file.cpp:5:19"],
+        "definition":["file.cpp:4:9"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+}
+
+
+
+
+TEST_CASE( TestName(), "[srcslice]" ) {
+        // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    Toy* tPtr;
+    int a = 0;
+    tPtr->attribute.ToString(a);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "tPtr-3-10":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"Toy*",
+        "name":"tPtr",
+        "initial":"file.cpp:3:10",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:5"],
+        "definition":["file.cpp:3:10"]
+    },
+    "a-4-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:4:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{
+            "functionName":"ToString",
+            "parameter":"1",
+            "definitionPosition":"",
+            "invoke":"file.cpp:5:5"
+        }],
+        "use":["file.cpp:5:30"],
+        "definition":["file.cpp:4:9"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+}
+
+
+
+
+TEST_CASE( TestName(), "[srcslice]" ) {
+        // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    Toy* tPtr;
+    int a = 0;
+    (*tPtr).disolve(a);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "tPtr-3-10":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"Toy*",
+        "name":"tPtr",
+        "initial":"file.cpp:3:10",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:7"],
+        "definition":["file.cpp:3:10"]
+    },
+    "a-4-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:4:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{
+            "functionName":"disolve",
+            "parameter":"1",
+            "definitionPosition":"",
+            "invoke":"file.cpp:5:5"
+        }],
+        "use":["file.cpp:5:21"],
+        "definition":["file.cpp:4:9"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+}
+
+
+
+
+TEST_CASE( TestName(), "[srcslice]" ) {
+        // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    Toy* tPtr;
+    int a = 0;
+    (*tPtr).finalAction.disolve(a);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "tPtr-3-10":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"Toy*",
+        "name":"tPtr",
+        "initial":"file.cpp:3:10",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:7"],
+        "definition":["file.cpp:3:10"]
+    },
+    "a-4-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:4:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{
+            "functionName":"disolve",
+            "parameter":"1",
+            "definitionPosition":"",
+            "invoke":"file.cpp:5:5"
+        }],
+        "use":["file.cpp:5:33"],
+        "definition":["file.cpp:4:9"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+}
+
+
+
+
+TEST_CASE( TestName(), "[srcslice]" ) {
+        // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    Toy toy;
+    int a = 0;
+    toy.action(a);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "toy-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"Toy",
+        "name":"toy",
+        "initial":"file.cpp:3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:5"],
+        "definition":["file.cpp:3:9"]
+    },
+    "a-4-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:4:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{
+            "functionName":"action",
+            "parameter":"1",
+            "definitionPosition":"",
+            "invoke":"file.cpp:5:5"
+        }],
+        "use":["file.cpp:5:16"],
+        "definition":["file.cpp:4:9"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+}
+
+
+
+
+TEST_CASE( TestName(), "[srcslice]" ) {
+        // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    Toy toy;
+    int a = 0;
+    toy.name.ToString(a);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "toy-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"Toy",
+        "name":"toy",
+        "initial":"file.cpp:3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:5"],
+        "definition":["file.cpp:3:9"]
+    },
+    "a-4-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:4:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{
+            "functionName":"ToString",
+            "parameter":"1",
+            "definitionPosition":"",
+            "invoke":"file.cpp:5:5"
+        }],
+        "use":["file.cpp:5:23"],
+        "definition":["file.cpp:4:9"]
+    }
+    })"_json;
+
+    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+}

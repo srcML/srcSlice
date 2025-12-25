@@ -92,8 +92,8 @@ std::string SrcSliceHandler::GetTypeDetails(const DeclInfo& localVar, bool& isPo
     std::string t;
 
     // Extract just the Data-Type name without extra data
-    for (std::size_t pos = 0; pos < localVar->type->types.size(); ++pos) {
-        const auto type = localVar->type->types[pos];
+    for (std::size_t i = 0; i < localVar->type->types.size(); ++i) {
+        const auto type = localVar->type->types[i];
 
         if(type.second.GetElement() == srcDispatch::TypeData::POINTER) {
             t += '*';
@@ -124,11 +124,11 @@ void SrcSliceHandler::ProcessDecls(DeclStmts& deltaDeclStmts, std::string classN
     // iterate the declstmts and review decldata
     for (const auto& deltaDeclStmt : deltaDeclStmts) {
         // validate data is safe to access
-        if (deltaDeclStmt && deltaDeclStmt.GetElement()) {
+        if (deltaDeclStmt) {
             // iterate decldata collection
             for (const auto& deltaDecl : deltaDeclStmt->decls) {
                 // validate data is safe to access
-                if (deltaDecl && deltaDecl.GetElement()) {
+                if (deltaDecl) {
                     if (!deltaDecl->name) continue;
 
                     // Collect pieces about the newly declared variable to use later when adding it into
@@ -550,17 +550,25 @@ void SrcSliceHandler::CreateSliceCallData(std::string functionName, int argIndex
     sliceProfile.insertCfunction(sliceCallData);
 
     // attempt to mark the cfunc towards the currentPointerReference
-    if (sliceProfile.aliases.size() > 0) {
-        // if this profile contains aliases we need to find the profile of the pointers
-        // current reference to append this cfunc data
-        auto aliasReferenceProfile = profileMap.find(sliceProfile.currentPointerReference);
-        if (aliasReferenceProfile != profileMap.end()) {
-            // Alias targets will inherit SOME of the cfunctions from their Alias representative
-            sliceCallData.ignore = true; // hidden metadata to tell InterProcedural to not process this cfunctions element
-            aliasReferenceProfile->second.back().insertCfunction(sliceCallData);
-            // Alias targets are used within function calls by default as it is an expression
-            aliasReferenceProfile->second.back().uses.insert(invokePosition);
-        }
+
+    std::vector<std::string> visited; // ensure we do not enter circular dependence
+    std::string referenceName = sliceProfile.currentPointerReference;
+    SliceProfileIterator aspi = profileMap.find(referenceName);
+
+    while (aspi != profileMap.end()) {
+        if (std::find(visited.begin(), visited.end(), referenceName) != visited.end()) break;
+        visited.push_back(referenceName);
+        
+        // hidden metadata to tell InterProcedural to not process this cfunctions element
+        sliceCallData.ignore = true;
+        aspi->second.back().insertCfunction(sliceCallData);
+
+        // Alias targets are used within function calls by default as it is an expression
+        aspi->second.back().uses.insert(invokePosition);
+
+        // iterate down the reference chain
+        referenceName = aspi->second.back().currentPointerReference;
+        aspi = profileMap.find(referenceName);
     }
 
     // Once a pointer is passed into a function-call there is no way to determine
@@ -1095,28 +1103,28 @@ void SrcSliceHandler::ParseExpr(const ExprInfo& expr, std::vector<std::string> l
                                 CreateSliceCallData(simpleFunctionName, argIndex, funcPos, sliceProfileItr->second.back(), invokePosition);
                             } else {
                                 // if a function is overloaded
-                                size_t pos = 0;
+                                size_t sigIndex = 0;
 
                                 // If we have a signature with predefined parameters and another signature where the data-type
                                 // of the parameter differs, we need to check argc <= paramc AND dataType(arg[i]) == dataType(param[i])
                                 // we will have to derive the arg[i] to its corresponding slice, param[i] is a decldata so we can fetch its type
-                                for (pos; pos < funcSig->second.size(); ++pos) {
-                                    bool argumentInBounds = (argIndex-1 < funcSig->second[pos].parameters.size());
+                                for (sigIndex; sigIndex < funcSig->second.size(); ++sigIndex) {
+                                    bool argumentInBounds = (argIndex-1 < funcSig->second[sigIndex].parameters.size());
                                     if (!argumentInBounds) continue;
 
-                                    bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[pos].parameters.size());
+                                    bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[sigIndex].parameters.size());
                                     if (!validArgCount) continue;
 
                                     if (!potentialContainingClass.empty()) {
                                         // check if the call data has the matching class name
-                                        bool matchingClass = (funcSig->second[pos].containingClass == potentialContainingClass);
+                                        bool matchingClass = (funcSig->second[sigIndex].containingClass == potentialContainingClass);
                                         if (!matchingClass) continue;
                                     }
 
                                     std::string sliceDataType = sliceProfileItr->second.back().variableType;
 
                                     // Make a function to pull data-type
-                                    std::string paramDataType = funcSig->second[pos].parameters[argIndex-1]->type.ToString();
+                                    std::string paramDataType = funcSig->second[sigIndex].parameters[argIndex-1]->type.ToString();
                                     // remove all spaces from type string
                                     paramDataType.erase(std::remove(paramDataType.begin(), paramDataType.end(), ' '), paramDataType.end());
 
@@ -1136,7 +1144,8 @@ void SrcSliceHandler::ParseExpr(const ExprInfo& expr, std::vector<std::string> l
 
                                     bool matchingTypes = (filteredParamDataType == filteredSliceDataType);
                                     if (verboseMode) {
-                                        std::cout << "[-] " << __LINE__  << " | Parameter Filtered-Type -> " << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << std::endl;
+                                        std::cout << "[-] " << __LINE__  << " | Parameter Filtered-Type -> "
+                                            << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << std::endl;
                                     }
                                     if (!matchingTypes) continue;
 
@@ -1144,8 +1153,8 @@ void SrcSliceHandler::ParseExpr(const ExprInfo& expr, std::vector<std::string> l
                                     break;
                                 }
 
-                                if (pos < funcSig->second.size()) {
-                                    SlicePosition funcPos = funcSig->second[pos].position;
+                                if (sigIndex < funcSig->second.size()) {
+                                    SlicePosition funcPos = funcSig->second[sigIndex].position;
                                     CreateSliceCallData(simpleFunctionName, argIndex, funcPos, sliceProfileItr->second.back(), invokePosition);
                                 } else {
                                     if (verboseMode)
@@ -1267,22 +1276,24 @@ void SrcSliceHandler::ParseExpr(const ExprInfo& expr, std::vector<std::string> l
                 std::cout << "[*] " << __LINE__  << " | Parsing For Targets: " << callData->name.ToString() << std::endl;
             }
 
-            size_t dotPosition = callData->name.ToString().find('.');
-            size_t hyphenPosition = callData->name.ToString().find('-');
-
-            // Choose the first occurring delimiter (if any)
-            size_t endPosition = std::min(dotPosition, hyphenPosition);
-
-            if (endPosition == std::string::npos) {
-                endPosition = std::max(dotPosition, hyphenPosition);
-            }
-            
-            if (endPosition == std::string::npos) {
-                endPosition = callData->name.ToString().length();  // No delimiter found
-            } else {
-                // variable that the call is invoked from ie: vec.size() => vec
-                std::string callTarget = callData->name.ToString().substr(0, endPosition);
-                SlicePosition callPos(callData->startPosition, callData->endPosition, sctx.currentFilePath);
+            // find root name if needed
+            for (const auto& nameElem : callData->name->names) {
+                if (nameElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
+                    std::shared_ptr<srcDispatch::NameData> nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(nameElem.GetElement());
+                    if (nameData) {
+                        std::string callTarget = nameData->name.ToString();
+                        SlicePosition namePos(
+                            nameData->startPosition,
+                            nameData->endPosition,
+                            sctx.currentFilePath
+                        );
+    
+                        auto spi = profileMap.find(callTarget);
+                        ExprParse::pushUse(profileMap, spi, namePos);
+                    }
+                    // terminate after reviewing first NameData
+                    break;
+                }
             }
 
             for (const ExprInfo& arg : callData->arguments) {
@@ -1421,7 +1432,7 @@ SliceProfile* SrcSliceHandler::FetchSliceProfile(std::string profileName, const 
             }
 
             // perform standard finger printing checks
-            if (funcData && funcData.GetElement()) {
+            if (funcData) {
                 if (funcData->name && funcData->name.GetElement()) {
                     bool matchingFunction = profile.function == funcData->name.ToString();
                     if (!matchingFunction) continue;
@@ -1823,17 +1834,17 @@ void SrcSliceHandler::ComputeControlPaths() {
     */
 }
 
-auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, FunctionSignatureData> func, int paramIndex) {
-    if (func.second.parameters.empty()) return profileMap.end();
-    if (paramIndex >= func.second.parameters.size()) return profileMap.end();
+SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcName, FunctionSignatureData& funcSig, int paramIndex) {
+    if (funcSig.parameters.empty()) return profileMap.end();
+    if (paramIndex >= funcSig.parameters.size()) return profileMap.end();
 
-    auto Spi = profileMap.find(func.second.parameters.at(paramIndex)->name.ToString());
-    for (auto& param : func.second.parameters) {
-        if (param && param.GetElement() && param->name && param->name.GetElement()) {
+    auto Spi = profileMap.find(funcSig.parameters.at(paramIndex)->name.ToString());
+    for (auto& param : funcSig.parameters) {
+        if (param && param->name && param->name.GetElement()) {
             if (profileMap.find(param->name.ToString()) == profileMap.end()) {
                 if (verboseMode) {
                     std::cout << "[-] " << __LINE__ << " | Could not find SliceProfile for parameter '"
-                    << param->name.ToString() << "' of function '" << func.first << "'" << std::endl;
+                    << param->name.ToString() << "' of function '" << funcName << "'" << std::endl;
                 }
                 continue;
             }
@@ -1843,71 +1854,82 @@ auto SrcSliceHandler::ArgumentProfile(std::pair<std::string, FunctionSignatureDa
             } else {
                 if (profileMap.find(param->name.ToString())->second.back().cfunctions.size() > 0) {
                     for (auto& cfunc : profileMap.find(param->name.ToString())->second.back().cfunctions) {
-                        if (cfunc.functionName == func.first) {
+                        if (cfunc.functionName == funcName) {
                             auto funcSigCollection = functionSigMap.find(cfunc.functionName);
                             if (funcSigCollection != functionSigMap.end()) {
-                                size_t pos = 0;
+                                size_t sigIndex = 0;
 
                                 // Attempt to fingerprint the right signature based on function call definition line and called function
                                 // def line data
-                                while (cfunc.invokePosition != funcSigCollection->second[pos].position) {
-                                    if (++pos >= funcSigCollection->second.size()) break;
+                                for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
+                                    if (cfunc.invokePosition == funcSigCollection->second[sigIndex].position) {
+                                        break;
+                                    }
                                 }
 
-                                if (cfunc.functionName == funcSigCollection->second[pos].name && visited_func.find(cfunc.functionName) == visited_func.end()) {
-                                    visited_func.insert(cfunc.functionName);
-                                    // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                                    if (cfunc.functionName == funcSigCollection->second[pos].name && funcSigCollection->second[pos].parameters.size() > 0 &&
-                                    cfunc.parameterIndex < funcSigCollection->second[pos].parameters.size()) {
-                                        if (funcSigCollection->second[pos].parameters[cfunc.parameterIndex]->name) {
-                                            // Only run this section if the parameter name can be extracted
-                                            auto recursiveSpi = ArgumentProfile(
-                                                std::make_pair(cfunc.functionName, funcSigCollection->second[pos]),
-                                                cfunc.parameterIndex - 1
-                                            );
+                                if (sigIndex < funcSigCollection->second.size()) {
+                                    bool matchingName = cfunc.functionName == funcSigCollection->second[sigIndex].name;
+                                    bool notVisited = visited_func.find(cfunc.functionName) == visited_func.end();
 
-                                            if (profileMap.find(param->name.ToString()) != profileMap.end() &&
-                                                profileMap.find(recursiveSpi->first) != profileMap.end()) {
-                                                // Uses and Defs need to reflect based on whether its pass by reference or pass by value
-                                                if (!recursiveSpi->second.back().isReference && !recursiveSpi->second.back().isPointer) {
-                                                    // pass by value
-                                                    profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                        recursiveSpi->second.back().definitions.begin(),
-                                                        recursiveSpi->second.back().definitions.end()
-                                                    );
-                                                    profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                            recursiveSpi->second.back().uses.begin(),
-                                                            recursiveSpi->second.back().uses.end()
-                                                    );
-                                                } else {
-                                                    // pass by reference
-                                                    profileMap.find(param->name.ToString())->second.back().definitions.insert(
-                                                        recursiveSpi->second.back().definitions.begin(),
-                                                        recursiveSpi->second.back().definitions.end()
-                                                    );
-                                                    profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                            recursiveSpi->second.back().uses.begin(),
-                                                            recursiveSpi->second.back().uses.end()
-                                                    );
-                                                }
+                                    if (matchingName && notVisited) {
+                                        visited_func.insert(cfunc.functionName);
 
-                                                profileMap.find(param->name.ToString())->second.back().cfunctions.insert(
-                                                    profileMap.find(param->name.ToString())->second.back().cfunctions.end(),
-                                                    recursiveSpi->second.back().cfunctions.begin(),
-                                                    recursiveSpi->second.back().cfunctions.end()
+                                        bool containsParameters = !funcSigCollection->second[sigIndex].parameters.empty();
+                                        bool validParamIndex = cfunc.parameterIndex < funcSigCollection->second[sigIndex].parameters.size();
+
+                                        // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
+                                        if (containsParameters && validParamIndex) {
+                                            if (funcSigCollection->second[sigIndex].parameters[cfunc.parameterIndex]->name) {
+                                                // Only run this section if the parameter name can be extracted
+                                                auto recursiveSpi = ArgumentProfile(
+                                                    cfunc.functionName,
+                                                    funcSigCollection->second[sigIndex],
+                                                    cfunc.parameterIndex - 1
                                                 );
-                                                // ensure dependencies and aliases are within local scope
-                                                if (recursiveSpi->second.back().function == profileMap.find(param->name.ToString())->second.back().function) {
-                                                    profileMap.find(param->name.ToString())->second.back().aliases.insert(
-                                                        profileMap.find(param->name.ToString())->second.back().aliases.end(),
-                                                        recursiveSpi->second.back().aliases.begin(),
-                                                        recursiveSpi->second.back().aliases.end()
+    
+                                                if (profileMap.find(param->name.ToString()) != profileMap.end() &&
+                                                    profileMap.find(recursiveSpi->first) != profileMap.end()) {
+                                                    // Uses and Defs need to reflect based on whether its pass by reference or pass by value
+                                                    if (!recursiveSpi->second.back().isReference && !recursiveSpi->second.back().isPointer) {
+                                                        // pass by value
+                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
+                                                            recursiveSpi->second.back().definitions.begin(),
+                                                            recursiveSpi->second.back().definitions.end()
+                                                        );
+                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
+                                                                recursiveSpi->second.back().uses.begin(),
+                                                                recursiveSpi->second.back().uses.end()
+                                                        );
+                                                    } else {
+                                                        // pass by reference
+                                                        profileMap.find(param->name.ToString())->second.back().definitions.insert(
+                                                            recursiveSpi->second.back().definitions.begin(),
+                                                            recursiveSpi->second.back().definitions.end()
+                                                        );
+                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
+                                                                recursiveSpi->second.back().uses.begin(),
+                                                                recursiveSpi->second.back().uses.end()
+                                                        );
+                                                    }
+    
+                                                    profileMap.find(param->name.ToString())->second.back().cfunctions.insert(
+                                                        profileMap.find(param->name.ToString())->second.back().cfunctions.end(),
+                                                        recursiveSpi->second.back().cfunctions.begin(),
+                                                        recursiveSpi->second.back().cfunctions.end()
                                                     );
-                                                    profileMap.find(param->name.ToString())->second.back().dvars.insert(
-                                                        profileMap.find(param->name.ToString())->second.back().dvars.end(),
-                                                        recursiveSpi->second.back().dvars.begin(),
-                                                        recursiveSpi->second.back().dvars.end()
-                                                    );
+                                                    // ensure dependencies and aliases are within local scope
+                                                    if (recursiveSpi->second.back().function == profileMap.find(param->name.ToString())->second.back().function) {
+                                                        profileMap.find(param->name.ToString())->second.back().aliases.insert(
+                                                            profileMap.find(param->name.ToString())->second.back().aliases.end(),
+                                                            recursiveSpi->second.back().aliases.begin(),
+                                                            recursiveSpi->second.back().aliases.end()
+                                                        );
+                                                        profileMap.find(param->name.ToString())->second.back().dvars.insert(
+                                                            profileMap.find(param->name.ToString())->second.back().dvars.end(),
+                                                            recursiveSpi->second.back().dvars.begin(),
+                                                            recursiveSpi->second.back().dvars.end()
+                                                        );
+                                                    }
                                                 }
                                             }
                                         }
@@ -2017,7 +2039,12 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                 // partialSliceProfiles we want to jump to it and update it (recursively)
                 // before passing it back into inter-procedural
                 unsigned int ArgProfParam = updatedData.parameterIndex - 1;
-                auto spi = ArgumentProfile(std::make_pair(updatedData.functionName, funcSig->second[0]), ArgProfParam);
+                auto spi = ArgumentProfile(
+                    updatedData.functionName,
+                    funcSig->second[0],
+                    ArgProfParam
+                );
+
                 if (spi != profileMap.end()) {
                     auto sliceItr = spi->second.begin();
                     std::string desiredVariableName = sliceItr->variableName;
@@ -2056,38 +2083,39 @@ void SrcSliceHandler::ComputeInterprocedural() {
     if (verboseMode || progressMode) std::cout << "[*] Computing Interprocedural. . ." << std::endl;
 
     for (auto& var : profileMap) {
-        // Need to watch the Slices we attempt to dig into because we are collecting slices we have no interest in
-        if (!profileMap.find(var.first)->second.back().visited && (var.second.back().variableName != "*LITERAL*")) {
-            ResolveCall(var.second.back());
-            profileMap.find(var.first)->second.back().visited = true;
+        SliceProfile& sp = var.second.back();
+        // Need to watch the Slices we attempt to dig into because
+        // we are collecting slices we have no interest in
+        if (!sp.visited && (sp.variableName != "*LITERAL*")) {
+            ResolveCall(sp);
+            sp.visited = true;
         }
     }
     
     if (verboseMode || progressMode) std::cout << "[*] Finished Computing Interprocedural" << std::endl;
 }
 
-void SrcSliceHandler::ResolveCall(SliceProfile &sp)
-{
+void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
     if (!sp.cfunctions.empty()) {
-        for (auto &cfunc : sp.cfunctions) {
+        for (auto& cfunc : sp.cfunctions) {
             if (cfunc.ignore) {
                 continue; // if a cfunc ignore flag is enabled skip this index and continue
             }
             auto funcSigCollection = functionSigMap.find(cfunc.functionName);
 
             if (funcSigCollection != functionSigMap.end()) {
-                size_t pos = 0;
-
+                size_t sigIndex = 0;
+                
                 // Attempt to fingerprint the right signature based on
                 // function call definition line and called function
                 // def line data
-                for (pos = 0; pos < funcSigCollection->second.size(); ++pos) {
-                    if (cfunc.definitionPosition == funcSigCollection->second[pos].position) {
+                for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
+                    if (cfunc.definitionPosition == funcSigCollection->second[sigIndex].position) {
                         break;
                     }
                 }
 
-                if (pos >= funcSigCollection->second.size()) {
+                if (sigIndex >= funcSigCollection->second.size()) {
                     if (!sp.updated) {
                         // do not create mulitple pointers pointing to the same thing
                         if (std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &sp) == partialSliceProfiles.end()) {
@@ -2096,11 +2124,12 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp)
                     }
                     continue; // no signature could be found
                 }
-                if (funcSigCollection->second[pos].name.empty()) {
+
+                if (funcSigCollection->second[sigIndex].name.empty()) {
                     continue; // the name is not usable in computation
                 }
 
-                std::string simpleFunctionName = GetSimpleFunctionName(funcSigCollection->second[pos].name);
+                std::string simpleFunctionName = GetSimpleFunctionName(funcSigCollection->second[sigIndex].name);
 
                 unsigned int ArgProfParam = cfunc.parameterIndex - 1;
 
@@ -2108,11 +2137,20 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp)
 
                 /*** @todo look for potential issues with overload case */
 
-                if (cfunc.functionName == simpleFunctionName && funcSigCollection->second[pos].parameters.size() > 0 &&
-                    ArgProfParam < funcSigCollection->second[pos].parameters.size() && pos < funcSigCollection->second.size()) {
-                    if (funcSigCollection->second[pos].parameters[ArgProfParam]->name) {
+                bool matchingName = cfunc.functionName == simpleFunctionName;
+                bool containsParameters = !funcSigCollection->second[sigIndex].parameters.empty();
+                bool validSigIndex = sigIndex < funcSigCollection->second.size();
+                bool validArgIndex = ArgProfParam < funcSigCollection->second[sigIndex].parameters.size();
+
+                if (matchingName && containsParameters && validSigIndex && validArgIndex) {
+                    if (funcSigCollection->second[sigIndex].parameters[ArgProfParam]->name) {
                         // Only run this section if the parameter name can be extracted
-                        auto Spi = ArgumentProfile(std::make_pair(cfunc.functionName, funcSigCollection->second[pos]), ArgProfParam);
+                        auto Spi = ArgumentProfile(
+                            cfunc.functionName,
+                            funcSigCollection->second[sigIndex],
+                            ArgProfParam
+                        );
+
                         if (Spi != profileMap.end()) {
                             auto sliceItr = Spi->second.begin();
                             std::string desiredVariableName = sliceItr->variableName;
@@ -2125,8 +2163,14 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp)
                                     if (GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
                                         continue;
                                     }
-                                    auto paramDecl = funcSigCollection->second[pos].parameters[ArgProfParam];
-                                    SlicePosition paramDeclPos(paramDecl->name->startPosition, paramDecl->name->endPosition, sctx.currentFilePath);
+
+                                    auto paramDecl = funcSigCollection->second[sigIndex].parameters[ArgProfParam];
+                                    SlicePosition paramDeclPos(
+                                        paramDecl->name->startPosition,
+                                        paramDecl->name->endPosition,
+                                        sctx.currentFilePath
+                                    );
+
                                     if (sliceItr->initialPosition != paramDeclPos) {
                                         continue;
                                     }
