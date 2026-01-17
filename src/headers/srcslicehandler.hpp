@@ -4,6 +4,10 @@
 #include <srcsliceprofile.hpp>
 #include <srcsliceprogress.hpp>
 #include <srcsliceparse.hpp>
+#include <srcsliceworker.hpp>
+
+#include <mutex>
+#include <queue>
 
 #include <exception>
 #include <unordered_map>
@@ -34,14 +38,15 @@ typedef srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::BlockData>> Block
 typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>> Functions;
 typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>> Classes;
 
-std::string GenerateArrayType(std::string typeString, int dim = 1);
+inline std::atomic_bool unitsScaned{false};
+inline std::mutex dataMutex;
 
 class SrcSliceHandler : public srcDispatch::PolicyListener {
 public:
-    ~SrcSliceHandler(){};
+    ~SrcSliceHandler();
 
     // Use literal string filename ctor of srcSAXController (srcslice cpp main)
-    SrcSliceHandler(const char* filename, bool v, bool p, bool ce);
+    SrcSliceHandler(const char* filename, bool v, bool p, bool ce, int threads);
 
     // Use string srcml buffer ctor of srcSAXController
     SrcSliceHandler(std::string& sourceCodeStr, bool ce);
@@ -49,71 +54,6 @@ public:
     void Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override;
 
     void NotifyWrite(const srcDispatch::PolicyDispatcher *policy [[maybe_unused]], srcDispatch::srcSAXEventContext &ctx [[maybe_unused]]) {};
-
-    // Creates Initial SliceProfiles based off a list of decl statements
-    void ProcessDecls(DeclStmts& declStmts, std::string className = "", bool globalDecls = false);
-    // Creates Initial SliceProfiles for Function Parameters and Variables Declared within the function definition
-    void ProcessFunctions(Functions& funcs);
-    // Process Class Data and create slices of Class Member Variables and process Member Functions
-    void ProcessClasses(Classes& classes);
-    // Process Signatures from Free-Functions and Class Methods
-    void ProcessSignatures(Functions& funcs, Classes& classes);
-
-    // Moves over the sequence of statements and processes them in order
-    // |__ Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
-    // |__ Extract Expressions within a specified Block within a Function Definition
-    void ProcessStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className);
-    
-    // Creates Initial SliceProfile based off DeclData
-    void CreateSliceProfile(const DeclInfo& deltaDeclData, const FunctionInfo& funcData, std::string className);
-    // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
-    void ProcessInitLists(const FunctionInfo& funcData, std::string className);
-    
-    // Extract Expressions within a specified Block within a Function Definition
-    void ProcessExprStmts(const FunctionInfo& funcData, const BlockInfo& block, std::string className);
-    
-    // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
-    void ProcessExprStmt(const ExprInfo& expr, const FunctionInfo& funcData, std::string className);
-    // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
-    void ParseExpr(const ExprInfo& expr, std::vector<std::string> lhsStack = {}, bool isArg = false, srcDispatch::CallData* funcCallData = nullptr, int argIndex = 0);
-    // Get Type Details (isPtr, isRef, isArr, etc) based of a given DeclData
-    std::string GetTypeDetails(const DeclInfo& localVar, bool& isPointer, bool& isReference, bool& isArray);
-    // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
-    // for them, along with capturing expressions to update collected slices
-    void CollectTryBlockData(const FunctionInfo& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
-                                std::string className);
-    void CollectConditionalData(const FunctionInfo& funcData, std::any& cntl, const std::string& className);
-    // Given a list of Function Parameters create Initial SliceProfiles for each Parameter
-    void ProcessFunctionParameters(const FunctionInfo& funcData, std::vector<DeclInfo>& parameters,
-                                    std::string currentFunctionName, std::string className);
-    // Create a Function Signature based off given Function Data
-    void ProcessFunctionSignature(FunctionInfo& funcData, std::string className);
-
-    // Use collected function call data to push a new cfunctions entry into a referenced slice profile
-    void CreateSliceCallData(std::string functionName, int argIndex, SlicePosition functionPosition, SliceProfile& sliceProfile, SlicePosition invokePosition);
-
-    // Take large name strings and extract the root variable name
-    std::string ExtractName(std::string elementName);
-
-    bool IsPointerDereferenced(std::shared_ptr<srcDispatch::NameData>& varNameElem);
-
-    // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
-    // Logic constructed for use BEFORE InterProcedural
-    SliceProfile* FetchSliceProfile(std::string profileName, const FunctionInfo& funcData,
-                                    std::string className = "", std::vector<std::string> containingNameSpaces = {});
-
-    // Extract the function name within either a call or a complex function name
-    std::string GetSimpleFunctionName(std::string funcName);
-
-    bool StringContainsCharacters(std::string &str);
-
-    bool isAssignment(std::string& expr_op);
-
-    bool isCompoundAssignment(std::string& expr_op);
-
-    bool isLogical(std::string& expr_op);
-
-    bool isWhiteSpace(std::string& str);
 
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap();
 
@@ -144,6 +84,9 @@ public:
     void ResolveCall(SliceProfile& sp);
     void UpdateCalls(SliceProfile& sp);
 
+    // thread target for managing SrcSliceWorker jobs
+    void ManageThreads();
+
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
     std::vector<SliceProfile*> partialSliceProfiles;
@@ -163,6 +106,9 @@ private:
     bool verboseMode = false;
     bool calculateControlEdges = false;
     bool progressMode = false;
+
+    int threadCount;
+    std::queue<SrcSliceWorker*> backlog;
 
     SliceCtx sctx;
 };
