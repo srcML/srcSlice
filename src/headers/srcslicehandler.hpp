@@ -29,6 +29,17 @@
 #include <ClassPolicy.hpp>
 #include <UnitPolicy.hpp>
 
+#if _WIN64
+    #include <windows.h>
+#elif __APPLE__
+    #include <sys/types.h>
+    #include <sys/sysctl.h>
+#else
+    #include <sched.h>
+#endif
+
+int CPUCount();
+
 // type aliasing
 typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclStmtData>>> DeclStmts;
 typedef srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::DeclData>> DeclInfo;

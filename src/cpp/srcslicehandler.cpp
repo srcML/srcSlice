@@ -4,6 +4,25 @@
 CallbackBuf cbOut(coutHandler);
 CallbackBuf cbErr(cerrHandler);
 
+// Number of CPU cores
+int CPUCount() {
+#ifdef _WIN64
+    SYSTEM_INFO sysinfo;
+    GetSystemInfo(&sysinfo);
+    return (int) sysinfo.dwNumberOfProcessors;
+#elif __APPLE__
+    int count = 0;
+    size_t len = sizeof(count);
+    sysctlbyname("machdep.cpu.core_count", &count, &len, NULL, 0);
+    return count;
+#else
+    cpu_set_t cs;
+    CPU_ZERO(&cs);
+    sched_getaffinity(0, sizeof(cs), &cs);
+    return CPU_COUNT(&cs);
+#endif
+}
+
 // Use literal string filename ctor of srcSAXController (srcslice cpp main)
 SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, int threads) : verboseMode(v), progressMode(p), calculateControlEdges(ce) {
     // if an invalid number is passed default to 5 threads
@@ -49,6 +68,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
 
 // Use string srcml buffer ctor of srcSAXController
 SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, bool ce) : verboseMode(false), calculateControlEdges(ce) {
+    // test-suite contains single-unit tests => multiple threads would be wasteful
     threadCount = 1;
 
     srcSAXController control(sourceCodeStr);
