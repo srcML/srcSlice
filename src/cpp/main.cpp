@@ -1,12 +1,26 @@
 #include <srcslicehandler.hpp>
 
+// determine default max threads
+int defaultThreads() {
+    int processorCount = CPUCount();
+    if (processorCount < 2)
+        return 2;
+    else if (processorCount == 2)
+        return 3;
+    else
+        return processorCount + 2;
+}
+
 int main(int argc, char **argv)
 {
     // search for the output flag and set a marker
     std::string inputFile = "", outputFile = "";
-    int threadCount = 5;
+    int threadCount = defaultThreads();
     std::ofstream outFile;
     bool debugMode = false, feedbackMode = false, showControlEdges = false;
+
+    std::ostringstream ss;
+    ss << "Number of concurrent threads [Default " << threadCount << "]";
 
     CLI::App app{"srcSlice (srcML Slicing Tool)"};
     // Options hold extra data
@@ -15,8 +29,8 @@ int main(int argc, char **argv)
         ->type_name("srcML FILE");
     app.add_flag ("-c, --control-edges", showControlEdges,      "Display Control-Edges of the Slice");
     app.add_option ("-o, --output",  outputFile,                "Name of the JSON output file [Stdout is Default]");
-    app.add_option ("-t, --threads", threadCount,               "Number of concurrent threads")
-        ->default_val(5);
+    app.add_option ("-t, --threads", threadCount,               ss.str())
+        ->default_val(threadCount);
     app.add_flag ("-v, --verbose", debugMode,                   "Display Debug Info when Slicing");
     app.add_flag ("-p, --progress", feedbackMode,               "Display Feedback Progress Bars");
     
