@@ -1,11 +1,9 @@
-file(GLOB DISPATCHER_SOURCE dispatcher/*.cpp)
-file(GLOB DISPATCHER_HEADER dispatcher/*.hpp)
+file(GLOB DISPATCHER_SOURCE ../srcDispatch/*.cpp)
+file(GLOB DISPATCHER_HEADER ../srcDispatch/*.hpp)
 
 file(GLOB SRCSLICE_SOURCE
-    ../src/cpp/srcslicehandler.cpp
-    ../src/headers/srcslicehandler.hpp
-    ../src/cpp/srcsliceevent.cpp
-    ../src/headers/srcsliceevent.hpp
+    ../src/headers/srcslice*.hpp
+    ../src/cpp/srcslice*.cpp
     )
    
 file(GLOB SRCSLICETEST_SOURCE
@@ -14,20 +12,45 @@ file(GLOB SRCSLICETEST_SOURCE
     )
 
 find_package(srcML REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 link_directories(/opt/homebrew/lib/)
 
-add_executable(testPointer ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPointer.cpp)
-target_link_libraries(testPointer srcsax_static srcML::LibsrcML srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+# Simple macro to reduce repetitive code
+macro(add_unit_test TEST_FILE)
+    get_filename_component(TEST_NAME_WITH_EXTENSION ${TEST_FILE} NAME)
+    string(FIND ${TEST_NAME_WITH_EXTENSION} "." EXTENSION_BEGIN)
+    string(SUBSTRING ${TEST_NAME_WITH_EXTENSION} 0 ${EXTENSION_BEGIN} TEST_NAME)
 
-add_executable(testConditional ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testConditional.cpp)
-target_link_libraries(testConditional srcsax_static srcML::LibsrcML srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+    add_executable(${TEST_NAME} ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} ${TEST_FILE})
+    target_link_libraries(
+        ${TEST_NAME}
+        srcsax_static
+        srcML::LibsrcML
+        srcdispatch
+        ${LIBXML2_LIBRARIES}
+        pthread
+        nlohmann_json::nlohmann_json
+    )
 
-add_executable(testPassByReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPassByReference.cpp)
-target_link_libraries(testPassByReference srcsax_static srcML::LibsrcML srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+    add_test(NAME ${TEST_NAME} COMMAND $<TARGET_FILE:${TEST_NAME}>)
+    # add special label to test
+    set_tests_properties(${TEST_NAME} PROPERTIES
+        LABELS "srcslice"
+    )
+    set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+endmacro()
 
-add_executable(testPassByValue ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testPassByValue.cpp)
-target_link_libraries(testPassByValue srcsax_static srcML::LibsrcML srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+# dependency target that checks if the following testcases are built
+add_custom_target(build_srcslice_tests DEPENDS
+    testGeneral
+    testParseExpr
+    #testAliases
+    #testPointer
+)
 
-add_executable(testConstReference ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SRCSLICE_SOURCE} ${SRCSLICETEST_SOURCE} testConstReference.cpp)
-target_link_libraries(testConstReference srcsax_static srcML::LibsrcML srcsaxeventdispatch ${GTEST_LIBRARIES} ${LIBXML2_LIBRARIES} pthread)
+# ctest test items
+add_unit_test(testGeneral.cpp)
+add_unit_test(testParseExpr.cpp)
+#add_unit_test(testAliases.cpp)
+#add_unit_test(testPointer.cpp)
