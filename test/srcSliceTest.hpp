@@ -21,12 +21,15 @@ void PrintOk(const std::string msg);
 std::string StringToSrcML(std::string str, const char* fileName);
 std::string FetchSlices(const std::string cppSource, bool findControlEdges = false);
 
+[[maybe_unused]] inline static int testNum = 1; // suppress unused compiler warnings
+[[maybe_unused]] inline static std::string tName;
 // generates test-case name with increment control
-// to reduce human error for having multiple tests
-// with the same test-name string
-std::string TestName(bool inc = true);
+std::string TestName(std::string testName);
+std::string GetTestName();
+void ResetCount();
 
 // modular checking functions
+bool CheckCtrlEdges(const std::string testName, const std::string sliceId, const json& produced, const json& expected);
 bool CheckNamespace(const std::string testName,const std::string sliceId, const json& produced, const json& expected);
 bool CheckDependence(const std::string testName, const std::string sliceId, const json& produced, const json& expected);
 bool CheckAliases(const std::string testName, const std::string sliceId, const json& produced, const json& expected);
@@ -34,6 +37,6 @@ bool CheckCalls(const std::string testName, const std::string sliceId, const jso
 bool CheckUses(const std::string testName, const std::string sliceId, const json& produced, const json& expected);
 bool CheckDefs(const std::string testName, const std::string sliceId, const json& produced, const json& expected);
 // primary check function
-bool CompareJson(const std::string sourceCode, const std::string testName, const json& produced, const json& expected);
+bool CompareJson(const std::string sourceCode, const std::string testName, const json& produced, const json& expected, bool checkEdges = false);
 
 #endif

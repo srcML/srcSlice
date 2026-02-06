@@ -8,7 +8,8 @@
  * Simple base-cases
  */
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    ResetCount();
     std::cout << INFO << " Testing Basic Slicing" << std::endl;
 
     std::string sourceCode = "int main() {\n"
@@ -35,10 +36,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a;\n"
                              "    cout << a;\n"
@@ -64,10 +65,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a;\n"
                              "    a = 5;\n"
@@ -93,10 +94,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a;\n"
                              "    bar(a);\n"
@@ -122,10 +123,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "class Fuzz {\n"
                              "    Fuzz() {\n"
                              "        int a = 2;\n"
@@ -152,10 +153,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a;\n"
                              "    int b = a;\n"
@@ -196,10 +197,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a = 5;\n"
                              "    ++a;\n"
@@ -225,10 +226,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a = 5;\n"
                              "    a--;\n"
@@ -254,10 +255,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a = 5;\n"
                              "    a += 5;\n"
@@ -283,10 +284,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = "int main() {\n"
                              "    int a;\n"
                              "    cin >> a;\n"
@@ -312,10 +313,10 @@ TEST_CASE( TestName(), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = R"(
 namespace mynamespace {
     void jar() {
@@ -344,7 +345,7 @@ namespace mynamespace {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -356,7 +357,7 @@ namespace mynamespace {
  * Tests Interprocedural implementation against pass-by-value and pass-by-reference
  */
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Interprocedural Slicing" << std::endl;
 
     // Raw-Strings C++11
@@ -405,10 +406,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     // Raw-Strings C++11
     std::string sourceCode = R"(
 int foo(int& b) {
@@ -455,10 +456,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     // Raw-Strings C++11
     std::string sourceCode = R"(
 void foo(int& b) {
@@ -505,10 +506,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     // Raw-Strings C++11
     std::string sourceCode = R"(
 void foo(int* b) {
@@ -555,10 +556,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     // Raw-Strings C++11
     std::string sourceCode = R"(
 void foo(int* b) {
@@ -606,7 +607,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -618,7 +619,7 @@ int main() {
  * Tests Slicing basic conditionals
  */
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Conditional Slicing" << std::endl;
 
     // Raw-Strings C++11
@@ -650,10 +651,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = R"(
 int main() {
     int a = 0;
@@ -681,10 +682,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = R"(
 int main() {
     int a = 0;
@@ -712,10 +713,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = R"(
 int main() {
     int a = 0;
@@ -743,10 +744,10 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = R"(
 int main() {
     int a = 0;
@@ -781,7 +782,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -793,7 +794,7 @@ int main() {
  * Tests Slicing against basic C++ Classes
  */
 
- TEST_CASE( TestName(), "[srcslice]" ) {
+ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Class Slicing" << std::endl;
 
     // Raw-Strings C++11
@@ -862,5 +863,5 @@ private:
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }

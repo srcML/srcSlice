@@ -91,13 +91,58 @@ void PrintOk(const std::string msg) {
     std::cout << OK << " " << msg << std::endl;
 }
 
-std::string TestName(bool inc) {
-    static int i = 1;
-    std::string s = (inc) ? "General Test " + std::to_string(i) : "Test Error";
-    if (inc) ++i;
-    return s;
+std::string TestName(std::string testName) {
+    tName = testName + " " + std::to_string(testNum);
+    ++testNum;
+    return tName;
+}
+std::string GetTestName() {
+    return tName;
+}
+void ResetCount() {
+    testNum = 1;
 }
 
+bool CheckCtrlEdges(const std::string testName, const std::string sliceId, const json& produced, const json& expected) {
+    try {
+        auto producedEdges = produced[sliceId]["controlEdges"];
+        auto expectedEdges = expected[sliceId]["controlEdges"];
+    
+        // check types
+        if (!producedEdges.is_array() || !expectedEdges.is_array()) {
+            std::string msg = "Incorrect JSON data-type (not array)";
+            PrintErr(testName, msg);
+            return false;
+        }
+    
+        // check sizes
+        if (producedEdges.size() != expectedEdges.size()) {
+            std::ostringstream osmsg;
+            osmsg << "Control-Edge arrays for " << sliceId << " are different sizes" <<
+            "\n |___ Produced " << producedEdges << ", expected " << expectedEdges;
+            PrintErr(testName, osmsg.str());
+            return false;
+        }
+    
+        // iterate over controlEdges: [["file.cpp:2:9","file.cpp:4:9"]]
+        for (const auto& edgeGroup : expectedEdges) {
+            // check if the edgeGroup is within the producedEdges array
+            auto it = std::find(producedEdges.begin(), producedEdges.end(), edgeGroup);
+            if (it == producedEdges.end()) {
+                std::ostringstream ossmsg;
+                ossmsg << "(" << sliceId << ") Missing Control-Edge -> " << edgeGroup <<
+                "\n |___ Produced " << producedEdges << ", expected " << expectedEdges;
+                PrintErr(testName, ossmsg.str());
+                return false;
+            }
+        }
+    
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "[-] Caught Exception: " << e.what() << std::endl;
+        return false;
+    }
+}
 bool CheckNamespace(const std::string testName, const std::string sliceId, const json& produced, const json& expected) {
     try {
         auto producedNamespaces = produced[sliceId]["namespace"];
@@ -339,7 +384,7 @@ bool CheckDefs(const std::string testName, const std::string sliceId, const json
     }
 }
 
-bool CompareJson(const std::string sourceCode, const std::string testName, const json& produced, const json& expected) {
+bool CompareJson(const std::string sourceCode, const std::string testName, const json& produced, const json& expected, bool checkEdges) {
     auto printSource = [&sourceCode](){
         std::cout << "==============================" << std::endl;
         std::cout << sourceCode << std::endl;
@@ -430,6 +475,11 @@ bool CompareJson(const std::string sourceCode, const std::string testName, const
         }
 
         if (!CheckNamespace(testName, sliceId, produced, expected)) {
+            printSource();
+            return false;
+        }
+
+        if (checkEdges && !CheckCtrlEdges(testName, sliceId, produced, expected)) {
             printSource();
             return false;
         }

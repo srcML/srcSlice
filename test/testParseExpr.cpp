@@ -5,7 +5,8 @@
  * @section Toy Code focusing on simple/complex expressions and declaration statements
  */
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
+    ResetCount();
     std::cout << INFO << " Testing General Expressions" << std::endl;
 
         // Raw-Strings C++11
@@ -85,13 +86,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -169,13 +170,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -253,13 +254,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -337,13 +338,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -421,13 +422,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -505,13 +506,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -589,13 +590,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -673,13 +674,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -757,13 +758,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -841,13 +842,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -925,13 +926,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1009,13 +1010,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1093,13 +1094,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1177,13 +1178,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1261,7 +1262,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
@@ -1270,7 +1271,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1314,13 +1315,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1364,13 +1365,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1414,13 +1415,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1464,13 +1465,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1531,13 +1532,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1598,13 +1599,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1665,13 +1666,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1732,13 +1733,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1799,13 +1800,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1866,13 +1867,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1933,13 +1934,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2000,7 +2001,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 /**
@@ -2011,7 +2012,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2089,13 +2090,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2173,13 +2174,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2257,13 +2258,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2341,13 +2342,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2425,13 +2426,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2509,13 +2510,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2593,13 +2594,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2677,13 +2678,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2761,13 +2762,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2845,13 +2846,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2929,13 +2930,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3013,13 +3014,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3097,13 +3098,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3181,13 +3182,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3265,7 +3266,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -3276,7 +3277,7 @@ int main() {
  * 
  */
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Conditional Expressions" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -3357,12 +3358,12 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3442,12 +3443,12 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3527,12 +3528,12 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3612,12 +3613,12 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3698,12 +3699,12 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3784,12 +3785,12 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3851,13 +3852,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3920,13 +3921,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3989,13 +3990,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4063,13 +4064,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4137,13 +4138,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4211,7 +4212,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -4224,7 +4225,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Expressions with Pointers" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -4269,13 +4270,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4336,13 +4337,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4387,13 +4388,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4438,13 +4439,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4489,13 +4490,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4540,13 +4541,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4591,13 +4592,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4642,13 +4643,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4693,13 +4694,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4744,13 +4745,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4795,13 +4796,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4861,13 +4862,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4927,13 +4928,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4993,13 +4994,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5059,13 +5060,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5126,13 +5127,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5194,13 +5195,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5262,13 +5263,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5328,7 +5329,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -5341,7 +5342,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with C/C++ Static Arrays" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -5386,13 +5387,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5452,13 +5453,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5503,13 +5504,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5554,13 +5555,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5605,13 +5606,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5672,7 +5673,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
@@ -5684,7 +5685,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5712,13 +5713,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5779,13 +5780,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5846,13 +5847,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5913,7 +5914,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -5925,7 +5926,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with Function Calls" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -5993,13 +5994,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int foo(int a, int c) {
@@ -6102,13 +6103,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6157,13 +6158,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6212,13 +6213,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int foo(int a) {
@@ -6285,13 +6286,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6340,13 +6341,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6415,13 +6416,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int foo(int a) {
@@ -6506,7 +6507,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -6519,7 +6520,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with C++ stdio" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -6549,13 +6550,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6584,13 +6585,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6634,13 +6635,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6669,13 +6670,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6704,13 +6705,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6754,13 +6755,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6789,13 +6790,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6824,13 +6825,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6874,7 +6875,7 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -6887,7 +6888,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with Objects" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -6932,13 +6933,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6982,13 +6983,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7032,13 +7033,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7088,13 +7089,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7144,13 +7145,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7200,13 +7201,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7256,13 +7257,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7312,13 +7313,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7368,5 +7369,5 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
 }
