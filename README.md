@@ -20,9 +20,11 @@ of it, and potential aliases.
 ## Building srcSlice
 
 ### Prepare dependencies:
+This is a srcML tool, if you do not have srcML installed you must install it.
+You can download an installer [here](https://www.srcml.org/#download) or you can
 ```bash
-# Install srcML Develop if not installed on your local machine, after running 'make' when building srcML run 'make install' to ensure cmake can find the srcML package when building srcSlice
-git clone --recursive -b develop https://github.com/srcML/srcML.git
+# After running 'make' when building srcML, run 'make install' to ensure cmake can find the srcML package when building srcSlice
+git clone --recursive https://github.com/srcML/srcML.git
 ```
 
 ### Preparing srcSlice:
@@ -55,28 +57,28 @@ Output: A JSON file containing the slice information about each variable contain
 ./srcslice -i shell_sort.cpp.xml -o results.json
 ```
 
+srcSlice supports multi-file slicing against a srcML archive:
+```text
+srcml src/ -o src.xml -r --position --hash
+./srcslice -i src.xml -o results.json
+```
+
 <br>
 
 ## Options
+```
+srcSlice (srcML Slicing Tool)
+Usage: srcslice [OPTIONS]
 
-Display the srcslice help page
-```
-./srcslice --help
-```
-
-Output debugging info to stdout<br>
-```
-./srcslice -i shell_sort.cpp.xml --verbose
-```
-
-Set the input srcML output file to read in<br>
-```
-./srcslice -i shell_sort.cpp.xml
-```
-
-Write the output to file. By default, it writes to standard output<br>
-```
-./srcslice -i shell_sort.cpp.xml -o results.json
+Options:
+  -h,--help                   Print this help message and exit
+  -i,--input srcML FILE REQUIRED
+                              Name of the srcML input file [Must be built using the --position and --hash flags]
+  -c,--control-edges          Display Control-Edges of the Slice
+  -o,--output TEXT            Name of the JSON output file [Stdout is Default]
+  -t,--threads INT            Number of concurrent threads
+  -v,--verbose                Display Debug Info when Slicing
+  -p,--progress               Display Feedback Progress Bars
 ```
 
 <br>
