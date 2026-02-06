@@ -19,6 +19,11 @@
 #include <ClassPolicy.hpp>
 #include <UnitPolicy.hpp>
 
+struct PositionMeta {
+    bool isIfCondition = false;
+    bool isElifCondition = false;
+};
+
 class SlicePosition {
 public:
     SlicePosition();
@@ -33,18 +38,33 @@ public:
     bool operator!=(const SlicePosition& rhs) const;
 
     bool operator<(const SlicePosition& rhs) const;
+    bool operator<=(const SlicePosition& rhs) const;
     bool operator>(const SlicePosition& rhs) const;
+    bool operator>=(const SlicePosition& rhs) const;
 
     std::string ToString() const;
+    std::string RangeToString() const;
     std::string ToNameString() const;
     srcDispatch::DeltaElement<srcDispatch::Position> GetStart() const;
     srcDispatch::DeltaElement<srcDispatch::Position> GetEnd() const;
     std::string GetFileName() const;
+    PositionMeta& GetData();
 private:
     std::string filename;
     srcDispatch::DeltaElement<srcDispatch::Position> start;
     srcDispatch::DeltaElement<srcDispatch::Position> end;
+    PositionMeta data;
 };
+
+// return if SlicePosition a is contained in the scope of SlicePosition b
+bool IsContained(SlicePosition& a, SlicePosition b);
+
+// return distance between SlicePosition a from b
+size_t GetDistance(SlicePosition& a, SlicePosition& b);
+
+// return index to a group element context that a sline is contained in
+// i.e if group = if_stmt group, return index to if_stmt the sline is contained in
+size_t FindContextBlock(SlicePosition& sline, std::vector<SlicePosition>& group);
 
 // Hold context data srcslice uses based off srcSAXEventContext without copying
 // the entirety of srcSAXEventContext

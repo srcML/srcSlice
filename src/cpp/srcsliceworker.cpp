@@ -279,6 +279,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                             data,
                             sctx,
                             deltaDecl->init,
+                            EXPRESSION_TYPE::NORMAL,
                             {declVarName}
                         );
                     }
@@ -444,6 +445,7 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
             data,
             sctx,
             deltaDeclData->init,
+            EXPRESSION_TYPE::NORMAL,
             {declVarName}
         );
     }
@@ -475,7 +477,7 @@ void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx, cons
             if (spi != data.profileMap.end()) lhsStack.push_back(varName);
 
             // process the argument of the initializer-list
-            ParseExpr(data, sctx, deltaArg, lhsStack);
+            ParseExpr(data, sctx, deltaArg, EXPRESSION_TYPE::NORMAL, lhsStack);
         }
     }
 }
@@ -621,9 +623,9 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
 }
 
 void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, const FunctionInfo& funcData,
-                                        std::string className) {
+                                        std::string className, EXPRESSION_TYPE expr_type) {
     if (expr) {
-        ParseExpr(data, sctx, expr);
+        ParseExpr(data, sctx, expr, expr_type);
     }
 }
 
@@ -696,6 +698,10 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
         // Extract all of the block data from if statements
         std::shared_ptr<srcDispatch::IfStmtData> ifcntl = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(cntl);
         if (ifcntl) {
+            SlicePosition ifStmtPos(ifcntl->startPosition, ifcntl->endPosition, sctx.currentFilePath);
+            if (data.ifStmts.size() == 0 || data.ifStmts.back() != ifStmtPos)
+                data.ifStmts.push_back(ifStmtPos);
+
             // ifstmts have three potential clauses (if-elseif-else)
             for (const auto& clause : ifcntl->clauses) {
                 if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
@@ -711,7 +717,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                                     // }
                                 } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                                     std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
-                                    ProcessExprStmt(data, sctx, exprstmt, funcData, className);
+                                    ProcessExprStmt(data, sctx, exprstmt, funcData, className, EXPRESSION_TYPE::IF_CONDITION);
                                 }
                             }
                         }
@@ -737,14 +743,10 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                                     // }
                                 } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                                     std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
-                                    ProcessExprStmt(data, sctx, exprstmt, funcData, className);
+                                    ProcessExprStmt(data, sctx, exprstmt, funcData, className, EXPRESSION_TYPE::ELIF_CONDITION);
                                 }
                             }
                         }
-
-                        // minimize duplicate entries, pushed into ifdata for the ComputeControlPaths Algorithm
-                        if (data.ifdata.size() == 0 || data.ifdata.back() != elifPos)
-                            data.ifdata.push_back(elifPos);
                         
                         // track elseif block data for later usage
                         if (data.elseifdata.size() == 0 || data.elseifdata.back() != elifPos)
@@ -929,7 +931,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
 
             SlicePosition whilePos(doWhileData->startPosition, doWhileData->endPosition, sctx.currentFilePath);
 
-            data.loopdata.push_back(whilePos);
+            // data.loopdata.push_back(whilePos);
             data.dowhileloopdata.push_back(whilePos);
 
             if (doWhileData->block && doWhileData->block.GetElement()) cntlBlocks.push_back(doWhileData->block.GetElement());
@@ -988,7 +990,8 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
     }
 }
 
-void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, std::vector<std::string> lhsStack, bool isArg,
+void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, EXPRESSION_TYPE expr_type,
+                                std::vector<std::string> lhsStack, bool isArg,
                                 srcDispatch::CallData* funcCallData, int argIndex) {
     ExprParse::ExprCtx ectx(data.profileMap, &lhsStack);
 
@@ -1006,6 +1009,10 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                 if (ectx.firstNameData == nullptr) ectx.firstNameData = &(*nameData);
 
                 ectx.namePos = SlicePosition(nameData->startPosition, nameData->endPosition, sctx.currentFilePath);
+
+                // apply meta data about the current position
+                ectx.namePos.GetData().isIfCondition = expr_type == EXPRESSION_TYPE::IF_CONDITION;
+                ectx.namePos.GetData().isElifCondition = expr_type == EXPRESSION_TYPE::ELIF_CONDITION;
                 
                 bool simpleName = nameData->indices.empty() && nameData->names.empty();
                 std::string name = simpleName ? nameData->name.ToString() : ExprParse::FindName(nameData->names, ectx.namePos);
@@ -1014,7 +1021,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
 
                 // parse the expressions of indices
                 for (const ExprInfo& exprInfo : nameData->indices) {
-                    ParseExpr(data, sctx, exprInfo, {});
+                    ParseExpr(data, sctx, exprInfo, expr_type, {});
                 }
 
 
@@ -1335,7 +1342,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                 int v = (isArg) ? 1 : ++argIndex;
 
                 // parse the call-argument expression
-                ParseExpr(data, sctx, arg, lhsStack, true, &(*callData), v);
+                ParseExpr(data, sctx, arg, expr_type, lhsStack, true, &(*callData), v);
             }
         } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LiteralData>)) {
             ectx.lastToken.type = ExprParse::TokenType::LITERAL;

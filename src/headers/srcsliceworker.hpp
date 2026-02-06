@@ -46,6 +46,7 @@ struct Blob {
     std::vector<SlicePosition> dowhileloopdata;
 
     std::vector<SlicePosition> ifdata;
+    std::vector<SlicePosition> ifStmts;
     std::vector<SlicePosition> elseifdata;
     std::vector<SlicePosition> elsedata;
 
@@ -54,6 +55,13 @@ struct Blob {
     // logic flags
     bool verboseMode = false;
     bool calculateControlEdges = false;
+};
+
+enum class EXPRESSION_TYPE {
+    NORMAL,
+    IF_CONDITION,
+    ELIF_CONDITION,
+    SWITCH_CONDITION
 };
 
 // Functions used when processing data
@@ -81,9 +89,25 @@ namespace SrcSliceOperations {
     void ProcessExprStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, std::string className);
     
     // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
-    void ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, const FunctionInfo& funcData, std::string className);
+    void ProcessExprStmt(
+        Blob& data,
+        const SliceCtx& sctx,
+        const ExprInfo& expr,
+        const FunctionInfo& funcData,
+        std::string className,
+        EXPRESSION_TYPE expr_type = EXPRESSION_TYPE::NORMAL
+    );
     // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
-    void ParseExpr(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, std::vector<std::string> lhsStack = {}, bool isArg = false, srcDispatch::CallData* funcCallData = nullptr, int argIndex = 0);
+    void ParseExpr(
+        Blob& data,
+        const SliceCtx& sctx,
+        const ExprInfo& expr, 
+        EXPRESSION_TYPE expr_type,
+        std::vector<std::string> lhsStack = {},
+        bool isArg = false,
+        srcDispatch::CallData* funcCallData = nullptr,
+        int argIndex = 0
+    );
     // Get Type Details (isPtr, isRef, isArr, etc) based of a given DeclData
     std::string GetTypeDetails(const DeclInfo& localVar, bool& isPointer, bool& isReference, bool& isArray);
     // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles

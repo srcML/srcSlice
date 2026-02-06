@@ -137,6 +137,10 @@ void SrcSliceHandler::ManageThreads() {
             std::make_move_iterator(data.ifdata.begin()),
             std::make_move_iterator(data.ifdata.end())
         );
+        ifStmts.insert(ifStmts.end(),
+            std::make_move_iterator(data.ifStmts.begin()),
+            std::make_move_iterator(data.ifStmts.end())
+        );
         elsedata.insert(elsedata.end(),
             std::make_move_iterator(data.elsedata.begin()),
             std::make_move_iterator(data.elsedata.end())
@@ -231,327 +235,227 @@ std::unordered_map<std::string, std::vector<SliceProfile>>& SrcSliceHandler::Get
     return profileMap;
 }
 
-// Component of function FindOtherPaths
-void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths, std::vector<SlicePosition>& sLines) {
-    /*
-    std::set<std::pair<Position,Position>> ifGroup;
-
-    // Find all valid connections between if,else-if,and else blocks
-    for (const auto& ifblock : ifdata) {
-        bool isSingleIf = true;
-        
-        // ensure we dont try indexing non-existing items
-        for (const auto& elseifblock : elseifdata) {
-            if (ifblock == elseifblock) {
-                ifGroup.insert(std::make_pair(ifblock, elseifblock));
-                isSingleIf = false;
-            }
-        }
-
-        // ensure we dont try indexing non-existing items
-        for (const auto& elseblock : elsedata) {
-            if (ifblock == elseblock) {
-                ifGroup.insert(std::make_pair(ifblock, elseblock));
-                isSingleIf = false;
-            }
-        }
-
-        // occurs when we have a single if statement that does not connect
-        // to any else-if or else statements
-        if (isSingleIf)
-            ifGroup.insert(std::make_pair(ifblock, ifblock));
-    }
-
-    // Iterate sLines and find potential paths between
-    // sLines[i] and sLines[k], focusing on outter paths
-    for (int i = 0; i < sLines.size(); ++i) {
-        // iterate the remaining sLines to see
-        // if a path can be formed
-        for (int k = i+1; k < sLines.size(); ++k) {
-            for (const auto& lineRange : ifGroup) {
-                // Finding the first sLine[k] that is >= lineRange.second
-                if (sLines[i] == lineRange.first && sLines[k] >= lineRange.second) {
-                    // std::cout << "Potential Outter-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
-                    otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
-
-                    // Increment outter-control i, so we can find the next outter path
-                    if (i < sLines.size()) {
-                        ++i;
-                    } else {
-                        // escape the entire loop
-                        k = i;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-        */
-}
-
-// Component of function FindOtherPaths
-void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths,
-                                        std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines) {
-    /*
-    // Iterate sLines and find potential paths between
-    // sLines[i] and sLines[k], focusing on block exits
-    for (int i = 0; i < sLines.size(); ++i) {
-        if (ignoreLines.find(sLines[i]) != ignoreLines.end()) continue;
-
-        if (i+1 < sLines.size()) {
-            std::pair<int,int> containedBlock(0,0);
-            // iterate if-data to see which if-block the current sLine is most likely contained in
-            for (const auto& ifblock : ifdata) {
-                // check if the current sline is contained in the ifblock
-                if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                    // std::cout << sLines[i] << " contained in -> (" << ifblock.first << "," << ifblock.second << ")" << std::endl;
-
-                    // focus on the block with the smallest gap
-                    int containedBlockSize = containedBlock.second - containedBlock.first;
-                    int blockSize = ifblock.second - ifblock.first;
-                    // update the block we suspect the current sline is contained in if
-                    // either we have not initially updated the block, or we found a block
-                    // of smaller size containing sLines[i]
-                    if (containedBlock.first == 0 || (blockSize < containedBlockSize)) {
-                        containedBlock = ifblock;
-
-                        //std::cout << "[*] Focusing on block -> (" <<
-                        //containedBlock.first << "," << containedBlock.second <<
-                        //") => " << sLines[i] << std::endl;
-                    }
-                }
-            }
-
-            // if we have marked a ifdata block attempt to form a connection
-            if (containedBlock.first != 0) {
-                // std::cout << "[*] Block of Interest -> (" <<
-                // containedBlock.first << "," << containedBlock.second <<
-                // ") => " << sLines[i] << std::endl;
-
-                // reduce the search area based on the block of interest
-                for (int k = i+1; k < sLines.size(); ++k) {
-                    // find first sLines[k] that is not contained
-                    // in a reduce union of sets: ifdata, elseifdata, and elsedata
-                    bool potentialExitEnd = true;
-
-                    for (const auto& ifblock : ifdata) {
-                        // incase the block sLines[i] is nested in an if-block
-                        if (ifblock.first < containedBlock.first) continue;
-                        if (sLines[k] >= ifblock.first && sLines[k] <= ifblock.second) {
-                            potentialExitEnd = false;
-                            break;
-                        }
-                    }
-                    for (const auto& elseblock : elsedata) {
-                        // incase the block sLines[i] is nested in an else-block
-                        if (elseblock.first < containedBlock.first) continue;
-                        if (sLines[k] >= elseblock.first && sLines[k] <= elseblock.second) {
-                            potentialExitEnd = false;
-                            break;
-                        }
-                    }
-
-                    // when we find the first sLines[k] that is not contained in the reduced sets
-                    // form the connection and exit the loops
-                    if (potentialExitEnd) {
-                        // std::cout << "Potential Exit-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
-                        otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
-                        break;
-                    }
-                }
-            }
-        }
-    }
+// Find forward control-edges between conditional conditions. ie: if -> else if -> else
+void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
+    /** @todo
+     * Checking metadata within each SlicePosition, connect sline[i] to a sline[k] where k > i
+     * corresponding if conditions to preceding elif conditions or the first sline within an else
     */
+
+    for (size_t i = 0; i < sLines.size() - 1; ++i) {
+        // sline[i] must be within the condition block of an if or else-if
+        if (!sLines[i].GetData().isIfCondition && !sLines[i].GetData().isElifCondition)
+            continue;
+
+        // find the condition context base
+        SlicePosition baseBlock;
+        for (SlicePosition& data : ifdata) {
+            if (sLines[i] < data) continue;
+            if (IsContained(sLines[i], data)) {
+                baseBlock = data;
+            }
+        }
+        for (SlicePosition& data : elseifdata) {
+            if (sLines[i] < data) continue;
+            if (IsContained(sLines[i], data)) {
+                baseBlock = data;
+            }
+        }
+
+        if (baseBlock.GetFileName().empty()) continue;
+
+        // find the preceding sline[k]
+        size_t k = i+1;
+        while (k < sLines.size()) {
+            if (!IsContained(sLines[k], baseBlock)) break;
+            ++k;
+        }
+        if (k == sLines.size()) continue;
+        
+        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
+    }
 }
 
-// Attempt to find other Forward Control-Flow paths | ComputeControlPaths Helper Function
-std::set<std::pair<SlicePosition,SlicePosition>> SrcSliceHandler::FindOtherPaths(std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines) {
-    std::set<std::pair<SlicePosition,SlicePosition>> otherPaths;
+// Collects the forward exiting control-flows of conditionals. ie: exiting conditional body
+void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
+    /** @todo
+     * Find the context if_stmt the sline[i] is within to find the first sline[k] not contained in the context if_stmt where k > i
+     * sline[i] must be the sline that occurs LAST within the inner context of the if_stmt context (specific if, elif, else block)
+    */
 
-    // For each path we need to compute, there is a specific function for it
-    //ComputeExitPaths(otherPaths, sLines, ignoreLines);
-    //ComputeOuterPaths(otherPaths, sLines);
+    for (size_t i = 0; i < sLines.size() - 1; ++i) {
+        // skip slines that are within the conditions
+        if (sLines[i].GetData().isIfCondition || sLines[i].GetData().isElifCondition)
+            continue;
 
-    return otherPaths;
+        // sline[i] must be contained within the block of either an if, else-if, or else statement
+        size_t ctxIndex = FindContextBlock(sLines[i], ifStmts);
+        if (ctxIndex == -1) continue;
+
+        // find inner-most context of sline[i]
+        SlicePosition innerContext;
+        for (SlicePosition& data : ifdata) {
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+        for (SlicePosition& data : elseifdata) {
+            // if the inner context has been found skip this loop
+            if (!innerContext.ToString().empty()) break;
+
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+        for (SlicePosition& data : elsedata) {
+            // if the inner context has been found skip this loop
+            if (!innerContext.ToString().empty()) break;
+
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+
+        // check if sline[i] is the last sline within the inner-most context
+        bool isExitPath = false;
+        size_t k = i+1;
+        while (k < sLines.size()) {
+            // if sline[k] is contained within the inner-most context
+            // then sline[i], sline[k] is not an exit-path
+            if (IsContained(sLines[k], innerContext)) {
+                break;
+            }
+
+            // check if sline[k] is outside of the if_stmt context
+            if (!IsContained(sLines[k], ifStmts[ctxIndex])) {
+                isExitPath = true;
+                break;
+            }
+
+            ++k;
+        }
+        if (!isExitPath) continue;
+
+        
+        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
+    }
 }
 
 // srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
 // we are not focusing on backwards-flows.
 void SrcSliceHandler::ComputeControlPaths() {
-    /*
-    for (std::pair<std::string, std::vector<SliceProfile>> var : profileMap) {
-        // Collect the slice lines and put them in numerical order
-        std::set<int> sLinesOrdered;
-        sLinesOrdered.insert(var.second.back().definitions.begin(), var.second.back().definitions.end());
-        sLinesOrdered.insert(var.second.back().uses.begin(), var.second.back().uses.end());
-        // Convert set into vector using vector ctor
-        std::vector<int> sLines(sLinesOrdered.begin(), sLinesOrdered.end());
-        // Used in helper function
-        std::set<int> ignoreLines;
-
-        // Handles controledges based from: for-loops, while-loops, do-while-loops
-        for (auto loop : loopdata) {
-            int predecessor = 0;
-            int falseSuccessor = 0;
-            int trueSuccessor = loop.second;
-            bool trueSuccessorExists = false;
-
-            for (auto sl : sLines) {
-                if (sl <= loop.first) {
-                    predecessor = sl;
-                }
-                if (sl >= loop.first) {
-                    falseSuccessor = sl;
-                }
-                for (auto firstLine : sLines) {
-                    if (firstLine >= loop.first && firstLine <= loop.second && firstLine <= trueSuccessor) {
-                        trueSuccessor = firstLine;
-                        trueSuccessorExists = true;
-                    }
-                }
-            }
-            if (predecessor < falseSuccessor) {
-                if (trueSuccessorExists) {
-                    if (predecessor != trueSuccessor) {
-                        if (predecessor != 0 && trueSuccessor != 0) {
-                            profileMap.find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(predecessor, trueSuccessor)
-                            );
-                        }
-                    }
-                }
-
-                if (predecessor != falseSuccessor) {
-                    if (predecessor != 0 && trueSuccessor != 0) {
-                        profileMap.find(var.first)->second.back().controlEdges.insert(
-                            std::make_pair(predecessor, falseSuccessor)
-                        );
-                    }
-                }
-            }
+    auto InBlock = [this](SlicePosition& sline, std::vector<SlicePosition>& groups) -> bool {
+        // groups are focused on if, elif, else position ranges
+        size_t ctxIndex = -1;
+        if (groups.size() > 1) {
+            ctxIndex = FindContextBlock(sline, ifStmts);
+            if (ctxIndex == -1) return false;
         }
 
-        int prevSL = 0;
-        bool loopPresent = false;
-        for (int i = 0; i < sLines.size(); i++) {
-            // Handle checking the next sline
-            if (i + 1 < sLines.size()) {
-                bool outIf = true;
-                // bool outElseIf = true;
-                bool outElse = true;
-                
-                for (auto ifblock : ifdata) {
-                    if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                        outIf = false;
-                        break;
-                    }
-                }
-
-                if (!outIf) {
-                    // when inside an if-block,
-                    // check if the next sline is contained within a else-if-block
-                    for (auto elseifblock : elseifdata) {
-                        if (sLines[i + 1] >= elseifblock.first && sLines[i + 1] <= elseifblock.second) {
-                            outElse = false;
-                            if (sLines[i] >= elseifblock.first && sLines[i] <= elseifblock.second)
-                                outElse = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!outIf) {
-                    // when inside an if-block AND not inside a else-if-block,
-                    // check if the next sline is contained within a else-block
-                    for (auto elseblock : elsedata) {
-                        if (sLines[i + 1] >= elseblock.first && sLines[i + 1] <= elseblock.second) {
-                            outElse = false;
-                            break;
-                        }
-                    }
-                }
-
-                // if we are outside an if or else AND both slines do not equal each other
-                if ((outIf || outElse) && sLines[i] != sLines[i + 1]) {
-                    // make sure we do not push a sline of 0 into the set
-                    if (sLines[i] != 0 && sLines[i + 1] != 0) {
-                        profileMap.find(var.first)->second.back().controlEdges.insert(
-                            std::make_pair(sLines[i], sLines[i + 1])
-                        );
-                        ignoreLines.insert(sLines[i]);
-                        // std::cout << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
-                    }
-                }
-            }
-            
-            // Focus exclusively on the current sline
-            bool outControlBlock = true;
-            for (auto loop : loopdata) {
-                // check if the current sline is contained within a: for-loop, while-loop, or do-while loop
-                if (sLines[i] >= loop.first && sLines[i] <= loop.second) {
-                    loopPresent = true;
-                    outControlBlock = false;
-                    break;
-                }
+        for (auto& data : groups) {
+            // if there is nesting we only want to be concerned with data related to the if_stmt context
+            if (ctxIndex != -1 && IsContained(ifStmts[ctxIndex], data)) {
+                continue;
             }
 
-            if (outControlBlock) {
-                // check if the current sline is contained an if-block
-                for (auto ifblock : ifdata) {
-                    if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                        outControlBlock = false;
-                        break;
-                    }
-                }
-            }
-            if (outControlBlock) {
-                // check if the current sline is contained an if-block
-                for (auto elseifblock : elseifdata) {
-                    if (sLines[i] >= elseifblock.first && sLines[i] <= elseifblock.second) {
-                        outControlBlock = false;
-                        break;
-                    }
-                }
-            }
-            if (outControlBlock) {
-                // check if the current sline is contained an else-block
-                for (auto elseblock : elsedata) {
-                    if (sLines[i] >= elseblock.first && sLines[i] <= elseblock.second) {
-                        outControlBlock = false;
-                        break;
-                    }
-                }
-            }
-
-            // if the current sline is not contained within a conditional (body or condition/control)
-            if (outControlBlock) {
-                if (prevSL == 0) {
-                    prevSL = sLines[i];
-                } else {
-                    if (prevSL != sLines[i]) {
-                        if (prevSL != 0 && sLines[i] != 0 && loopPresent) {
-                            profileMap.find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(prevSL, sLines[i])
-                            );
-                            ignoreLines.insert(prevSL);
-                            // std::cout << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
-                            loopPresent = false;
-                        }
-                    }
-                    prevSL = sLines[i];
-                }
+            if (IsContained(sline, data)) {
+                return true;
             }
         }
+        return false;
+    };
+    
+    auto InLoop = [](SlicePosition& sline, std::vector<SlicePosition>& loopdata) -> bool {
+        size_t ctxIndex = -1;
+        if (loopdata.size() > 1) {
+            ctxIndex = FindContextBlock(sline, loopdata);
+            if (ctxIndex == -1) return false;
+        }
 
-        // Attempt fetching other control-flows via helper function
-        std::set<std::pair<int, int>> otherPaths = FindOtherPaths(sLines, ignoreLines);
-        profileMap.find(var.first)->second.back().controlEdges.insert(
-            otherPaths.begin(),
-            otherPaths.end()
-        );
+        for (auto& data : loopdata) {
+            if (ctxIndex != -1 && IsContained(loopdata[ctxIndex], data)) {
+                continue;
+            }
+
+            if (IsContained(sline, data)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    for (auto& varGroup : profileMap) {
+        for (auto& profile : varGroup.second) {
+            if (!profile.containsDeclaration) continue;
+
+            // Collect the slice lines and put them in numerical order
+            std::set<SlicePosition> sLinesOrdered;
+            sLinesOrdered.insert(profile.definitions.begin(), profile.definitions.end());
+            sLinesOrdered.insert(profile.uses.begin(), profile.uses.end());
+
+            // Convert set into vector using vector ctor
+            std::vector<SlicePosition> sLines(sLinesOrdered.begin(), sLinesOrdered.end());
+
+            // Handles controledges based from: for-loops, while-loops, do-while-loops
+            for (auto& loop : loopdata) {
+                SlicePosition predecessor;    // origin position
+                SlicePosition falseSuccessor; // where to go when loop-condition is false
+                SlicePosition trueSuccessor;  // where to go when loop-condition is true (first sline within loop block)
+
+                for (auto& sline : sLines) {
+                    // see if the sline is before the loop or in the loop-control statement
+                    if (predecessor.GetFileName().empty() && IsContained(sline, loop)) {
+                        predecessor = sline;
+                        continue;
+                    }
+
+                    // find the first sline outside the loop-block
+                    if (falseSuccessor.GetFileName().empty() && sline > loop && !IsContained(sline, loop)) {
+                        falseSuccessor = sline;
+                        continue;
+                    }
+
+                    // find the first sline inside the loop-block
+                    if (trueSuccessor.GetFileName().empty() && IsContained(sline, loop)) {
+                        trueSuccessor = sline;
+                        continue;
+                    }
+                }
+
+                bool validPositions = !predecessor.GetFileName().empty() && !trueSuccessor.GetFileName().empty() && !falseSuccessor.GetFileName().empty();
+                if (validPositions && predecessor < falseSuccessor) {
+                    profile.controlEdges.insert(
+                        std::make_pair(predecessor, trueSuccessor)
+                    );
+                    profile.controlEdges.insert(
+                        std::make_pair(predecessor, falseSuccessor)
+                    );
+                }
+            }
+
+            // Create sline pairs between successive lines with case of if-else matching
+            for (size_t i = 0; i < sLines.size() - 1; ++i) {
+                if ( !(InBlock(sLines[i], ifdata) && (InBlock(sLines[i+1], elseifdata) || InBlock(sLines[i+1], elsedata)) ) ) {
+                    profile.controlEdges.insert(
+                        std::make_pair(sLines[i], sLines[i+1])
+                    );
+                }
+
+                // if the sline[i] does not belong to any loop or condition block
+                // then connect this sline to the first successive sline[k] that
+                // does not also belong to any loop or condiiton block
+                if (!InLoop(sLines[i], loopdata) && !InBlock(sLines[i], ifdata) && !InBlock(sLines[i], elseifdata) && !InBlock(sLines[i], elsedata)) {
+                    profile.controlEdges.insert(
+                        std::make_pair(sLines[i], sLines[i+1])
+                    );
+                }
+            }
+
+            // Find Exit-Paths and Outer-Paths that are not initially found from this algorithm
+            ComputeExitPaths(profile.controlEdges, sLines);
+            ComputeOuterPaths(profile.controlEdges, sLines);
+        }
     }
-    */
 }
 
 SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcName, FunctionSignatureData& funcSig, int paramIndex) {

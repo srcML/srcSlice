@@ -45,6 +45,7 @@ endmacro()
 add_custom_target(build_srcslice_tests DEPENDS
     testGeneral
     testParseExpr
+    testCtrlEdges
     #testAliases
     #testPointer
 )
@@ -52,5 +53,6 @@ add_custom_target(build_srcslice_tests DEPENDS
 # ctest test items
 add_unit_test(testGeneral.cpp)
 add_unit_test(testParseExpr.cpp)
+add_unit_test(testCtrlEdges.cpp)
 #add_unit_test(testAliases.cpp)
 #add_unit_test(testPointer.cpp)

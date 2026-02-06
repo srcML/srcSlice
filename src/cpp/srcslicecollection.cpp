@@ -1,6 +1,6 @@
 #include "srcslicecollection.hpp"
 
-SlicePosition::SlicePosition(){}
+SlicePosition::SlicePosition(): filename("") {}
 SlicePosition::SlicePosition(
                     srcDispatch::DeltaElement<srcDispatch::Position> start,
                     srcDispatch::DeltaElement<srcDispatch::Position> end,
@@ -11,9 +11,11 @@ SlicePosition::SlicePosition(const SlicePosition& position) {
     start = position.start;
     end = position.end;
     filename = position.filename;
+    data = position.data;
 }
 
 // Creates a String of a JSON object, ie: "file.cpp:2:12"
+// based on the start position
 std::string SlicePosition::ToString() const {
     std::string s;
 
@@ -21,6 +23,23 @@ std::string SlicePosition::ToString() const {
     if (start && !filename.empty()) {
         s += filename; s += ":";
         s += start->ToString();
+    }
+    s += "\"";
+
+    return s;
+}
+std::string SlicePosition::RangeToString() const {
+    std::string s;
+
+    s += "\"";
+    if (start && !filename.empty()) {
+        s += filename; s += ":";
+        s += start->ToString();
+    }
+    s += "-";
+    if (end && !filename.empty()) {
+        s += filename; s += ":";
+        s += end->ToString();
     }
     s += "\"";
 
@@ -46,6 +65,7 @@ srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetEnd() const {
     return end;
 }
 std::string SlicePosition::GetFileName() const { return filename; }
+PositionMeta& SlicePosition::GetData() { return data; }
 
 SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
     if (this == &rhs) return *this;
@@ -53,6 +73,7 @@ SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
     start = rhs.start;
     end = rhs.end;
     filename = rhs.filename;
+    data = rhs.data;
 
     return *this;
 }
@@ -80,9 +101,65 @@ bool SlicePosition::operator<(const SlicePosition& rhs) const {
     }
     return false;
 }
+bool SlicePosition::operator<=(const SlicePosition& rhs) const {
+    return (rhs < *this) || rhs == *this;
+}
 bool SlicePosition::operator>(const SlicePosition& rhs) const {
     return rhs < *this;
 }
+bool SlicePosition::operator>=(const SlicePosition& rhs) const {
+    return (rhs > *this) || rhs == *this;
+}
+
+bool IsContained(SlicePosition& a, SlicePosition b) {
+    bool lineContained = a.GetStart()->GetLine() >= b.GetStart()->GetLine() && a.GetEnd()->GetLine() <= b.GetEnd()->GetLine();
+
+    bool isOneLiner = a.GetStart()->GetLine() == b.GetStart()->GetLine() && a.GetEnd()->GetLine() == b.GetEnd()->GetLine();
+    bool colContained = true;
+    
+    if (isOneLiner) {
+        // start column of a should be greater than the start column of b
+        // end column of a should be less than the end column of b
+        colContained = a.GetStart()->GetColumn() >= b.GetStart()->GetColumn() && a.GetEnd()->GetColumn() <= b.GetEnd()->GetColumn();
+    } else {
+        // if the end row of b and the start row of a are the same
+        // check if the start column of a is less than the end column of b
+        if (a.GetStart()->GetLine() == b.GetEnd()->GetLine()) {
+            colContained = a.GetStart()->GetColumn() < b.GetEnd()->GetColumn();
+        }
+    }
+
+    return lineContained && colContained;
+};
+
+size_t GetDistance(SlicePosition& a, SlicePosition& b) {
+    size_t dist = 0;
+    dist = b.GetStart()->GetLine() - a.GetStart()->GetLine();
+
+    // if row a > row b => a isnt connected to b
+    if (dist >= 0) {
+        size_t bc = b.GetEnd()->GetColumn();
+        size_t ac = a.GetStart()->GetColumn();
+        
+        dist += ac - bc;
+    }
+
+    return dist;
+}
+
+size_t FindContextBlock(SlicePosition& sline, std::vector<SlicePosition>& group) {
+    size_t ctxIndex = -1;
+    for (size_t i = 0; i < group.size(); ++i) {
+        // skip ifStmt blocks that are below the sline
+        if (sline < group[i]) continue;
+
+        // may trigger multiple times in nesting situations
+        if (IsContained(sline, group[i])) {
+            ctxIndex = i;
+        }
+    }
+    return ctxIndex;
+};
 
 FunctionSignatureData::FunctionSignatureData(
     srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
