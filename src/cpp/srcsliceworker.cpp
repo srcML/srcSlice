@@ -599,7 +599,7 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
                     CollectTryBlockData(data, sctx, funcData, tryData, className);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ThrowData>)) {
-                auto throwData = std::any_cast<std::shared_ptr<srcDispatch::ThrowData>>(stmt);
+                auto throwData = std::any_cast<std::shared_ptr<srcDispatch::ThrowData>>(stmt.GetElement());
                 if (throwData && throwData->expr && throwData->expr.GetElement()) {
                     ProcessExprStmt(data, sctx, throwData->expr, funcData, className);
                 }
