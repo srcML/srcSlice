@@ -786,7 +786,7 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                     SlicePosition paramDeclPos(
                                         paramDecl->name->startPosition,
                                         paramDecl->name->endPosition,
-                                        sctx.currentFilePath
+                                        funcSigCollection->second[sigIndex].currentFilePath
                                     );
 
                                     if (sliceItr->initialPosition != paramDeclPos) {

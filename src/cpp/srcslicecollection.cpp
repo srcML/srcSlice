@@ -82,7 +82,9 @@ bool SlicePosition::operator==(const SlicePosition& rhs) const {
     if (validPositions) {
         bool matchingStarts = start->GetLine() == rhs.start->GetLine() && start->GetColumn() == rhs.start->GetColumn();
         bool matchingEnds = end->GetLine() == rhs.end->GetLine() && end->GetColumn() == rhs.end->GetColumn();
-        return matchingStarts && matchingEnds;
+        bool matchingFiles = filename == rhs.filename;
+        
+        return matchingStarts && matchingEnds && matchingFiles;
     }
     return false;
 }
@@ -97,6 +99,10 @@ bool SlicePosition::operator<(const SlicePosition& rhs) const {
         if (start->GetLine() > rhs.start->GetLine()) return false;
 
         // same line number compare the columns
+        if (start->GetColumn() == rhs.start->GetColumn()) {
+            // if line:col matches check if filenames are different
+            return filename != rhs.filename;
+        }
         return start->GetColumn() < rhs.start->GetColumn();
     }
     return false;
@@ -112,6 +118,8 @@ bool SlicePosition::operator>=(const SlicePosition& rhs) const {
 }
 
 bool IsContained(SlicePosition& a, SlicePosition b) {
+    if (a.GetFileName() != b.GetFileName()) return false;
+    
     bool lineContained = a.GetStart()->GetLine() >= b.GetStart()->GetLine() && a.GetEnd()->GetLine() <= b.GetEnd()->GetLine();
 
     bool isOneLiner = a.GetStart()->GetLine() == b.GetStart()->GetLine() && a.GetEnd()->GetLine() == b.GetEnd()->GetLine();
