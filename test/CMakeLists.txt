@@ -16,6 +16,9 @@ find_package(nlohmann_json CONFIG REQUIRED)
 
 link_directories(/opt/homebrew/lib/)
 
+# dependency target that checks if the following testcases are built
+add_custom_target(build_srcslice_tests)
+
 # Simple macro to reduce repetitive code
 macro(add_unit_test TEST_FILE)
     get_filename_component(TEST_NAME_WITH_EXTENSION ${TEST_FILE} NAME)
@@ -39,20 +42,11 @@ macro(add_unit_test TEST_FILE)
         LABELS "srcslice"
     )
     set_target_properties(${TEST_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    add_dependencies(build_srcslice_tests ${TEST_NAME})
 endmacro()
 
-# dependency target that checks if the following testcases are built
-add_custom_target(build_srcslice_tests DEPENDS
-    testGeneral
-    testParseExpr
-    testCtrlEdges
-    #testAliases
-    #testPointer
-)
-
 # ctest test items
-add_unit_test(testGeneral.cpp)
-add_unit_test(testParseExpr.cpp)
-add_unit_test(testCtrlEdges.cpp)
-#add_unit_test(testAliases.cpp)
-#add_unit_test(testPointer.cpp)
+file(GLOB TESTS test*.cpp)
+foreach(TEST IN ITEMS ${TESTS})
+	add_unit_test(${TEST})
+endforeach()

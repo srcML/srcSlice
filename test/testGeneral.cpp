@@ -36,7 +36,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -65,7 +66,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -94,7 +96,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -123,7 +126,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -153,7 +157,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -197,7 +202,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -226,7 +232,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -255,7 +262,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -284,7 +292,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -313,7 +322,8 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -345,7 +355,8 @@ namespace mynamespace {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -406,7 +417,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -456,7 +468,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -506,7 +519,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -556,7 +570,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -607,7 +622,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -651,7 +667,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -682,7 +699,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -713,7 +731,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -744,7 +763,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -782,7 +802,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -863,5 +884,6 @@ private:
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }

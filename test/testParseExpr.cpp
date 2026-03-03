@@ -86,7 +86,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -170,7 +171,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -254,7 +256,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -338,7 +341,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -422,7 +426,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -506,7 +511,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -590,7 +596,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -674,7 +681,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -758,7 +766,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -842,7 +851,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -926,7 +936,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1010,7 +1021,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1094,7 +1106,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1178,7 +1191,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1262,7 +1276,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1315,7 +1330,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1365,7 +1381,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1415,7 +1432,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1465,7 +1483,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1532,7 +1551,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1599,7 +1619,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1666,7 +1687,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1733,7 +1755,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1800,7 +1823,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1867,7 +1891,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1934,7 +1959,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2001,7 +2027,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 /**
@@ -2090,7 +2117,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2174,7 +2202,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2258,7 +2287,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2342,7 +2372,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2426,7 +2457,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2510,7 +2542,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2594,7 +2627,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2678,7 +2712,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2762,7 +2797,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2846,7 +2882,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -2930,7 +2967,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3014,7 +3052,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3098,7 +3137,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3182,7 +3222,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3266,7 +3307,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -3358,7 +3400,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3443,7 +3486,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3528,7 +3572,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3613,7 +3658,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3699,7 +3745,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3785,7 +3832,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3852,7 +3900,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3921,7 +3970,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -3990,7 +4040,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4064,7 +4115,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4138,7 +4190,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4212,7 +4265,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -4270,7 +4324,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4337,7 +4392,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4388,7 +4444,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4439,7 +4496,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4490,7 +4548,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4541,7 +4600,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4592,7 +4652,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4643,7 +4704,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4694,7 +4756,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4745,7 +4808,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4796,7 +4860,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4862,7 +4927,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4928,7 +4994,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -4994,7 +5061,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5060,7 +5128,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5127,7 +5196,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5195,7 +5265,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5263,7 +5334,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5329,7 +5401,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -5387,7 +5460,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5453,7 +5527,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5504,7 +5579,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5555,7 +5631,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5606,7 +5683,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5673,7 +5751,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5713,7 +5792,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5780,7 +5860,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5847,7 +5928,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5914,7 +5996,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -5994,7 +6077,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6103,7 +6187,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6158,7 +6243,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6213,7 +6299,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6286,7 +6373,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6341,7 +6429,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6416,7 +6505,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6507,7 +6597,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -6550,7 +6641,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6585,7 +6677,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6635,7 +6728,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6670,7 +6764,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6705,7 +6800,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6755,7 +6851,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6790,7 +6887,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6825,7 +6923,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6875,7 +6974,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -6933,7 +7033,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -6983,7 +7084,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -7033,7 +7135,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -7089,7 +7192,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -7145,7 +7249,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -7201,7 +7306,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -7257,7 +7363,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -7313,7 +7420,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -7369,5 +7477,6 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, GetTestName(), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
