@@ -16,7 +16,7 @@ SrcSliceWorker::~SrcSliceWorker() {
 
 void SrcSliceWorker::Perform() {
     if (!unit) {
-        std::cerr << "[-] Unit Information Invalid" << std::endl;
+        std::cerr << "[-] Unit Information Invalid\n";
         jobFinished.store(true, std::memory_order_release);
         return;
     }
@@ -291,7 +291,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
 
 void SrcSliceOperations::ProcessSignatures(Blob& data, const SliceCtx& sctx, Functions& funcs, Classes& classes) {
     if (data.verboseMode) {
-        std::cout << "[*] " << __LINE__  << " Processing Signatures" << std::endl;
+        std::cout << "[*] " << __FUNCTION__ << ":" << __LINE__  << " Processing Signatures\n";
     }
 
     // Fetch Signatures from Free-Functions
@@ -329,7 +329,7 @@ void SrcSliceOperations::ProcessSignatures(Blob& data, const SliceCtx& sctx, Fun
 void SrcSliceOperations::ProcessFunctions(Blob& data, const SliceCtx& sctx, Functions& funcs) {
     for (auto& func : funcs) {
         if (data.verboseMode) {
-            std::cout << "[*] " << __LINE__  << " Processing Function Name: " << func->name.ToString() << std::endl;
+            std::cout << "[*] " << __FUNCTION__ << ":" << __LINE__  << " Processing Function Name: " << func->name.ToString() << "\n";
         }
         ProcessInitLists(data, sctx, func, "");
         if (func->block) ProcessStmts(data, sctx, func, func->block, "");
@@ -340,7 +340,7 @@ void SrcSliceOperations::ProcessClasses(Blob& data, const SliceCtx& sctx, Classe
     if (classes.empty()) return;
     for (auto& classData : classes) {
         if (data.verboseMode) {
-            std::cout << "[*] " << __LINE__  << " Processing Class Name: " << classData->name.ToString() << std::endl;
+            std::cout << "[*] " << __FUNCTION__ << ":" << __LINE__  << " Processing Class Name: " << classData->name.ToString() << "\n";
         }
 
         // Process Class Member Variables
@@ -615,7 +615,7 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
                 }
             } else {
                 if (data.verboseMode) {
-                    std::cout << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
+                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << "\n";
                 }
             }
         }
@@ -819,7 +819,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                                 );
                             } else {
                                 if (data.verboseMode) {
-                                    std::cout << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << declData->name.ToString() << std::endl;
+                                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | Could not find Slice Profile of: " << declData->name.ToString() << "\n";
                                 }
                             }
                         }
@@ -843,7 +843,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                             );
                         } else {
                             if (data.verboseMode) {
-                                std::cout << "[-] " << __LINE__  << " | Could not find Slice Profile of: " << deltaName.ToString() << std::endl;
+                                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | Could not find Slice Profile of: " << deltaName.ToString() << "\n";
                             }
                         }
                     }
@@ -939,7 +939,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
     } else {
         if (data.verboseMode) {
             if (data.verboseMode) {
-                std::cout << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << cntl.type().name() << std::endl;
+                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << cntl.type().name() << "\n";
             }
         }
     }
@@ -983,7 +983,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                 CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
             } else {
                 if (data.verboseMode) {
-                    std::cout << "[-] " << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << std::endl;
+                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << "\n";
                 }
             }
         }
@@ -1084,7 +1084,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                 
                 ectx.lastToken.type = ExprParse::TokenType::NAME;
             } catch (std::logic_error& e) {
-                if (data.verboseMode) std::cout << "[-] Caught Logic Error: " << e.what() << std::endl;
+                if (data.verboseMode) std::cout << "[-] Caught Logic Error: " << e.what() << "\n";
             }
 
             // Collect cfunc data
@@ -1184,8 +1184,8 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
 
                                     bool matchingTypes = (filteredParamDataType == filteredSliceDataType);
                                     if (data.verboseMode) {
-                                        std::cout << "[-] " << __LINE__  << " | Parameter Filtered-Type -> "
-                                            << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << std::endl;
+                                        std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | Parameter Filtered-Type -> "
+                                            << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << "\n";
                                     }
                                     if (!matchingTypes) continue;
 
@@ -1198,18 +1198,18 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                                     CreateSliceCallData(data, sctx, simpleFunctionName, argIndex, funcPos, sliceProfileItr->second.back(), invokePosition);
                                 } else {
                                     if (data.verboseMode)
-                                        std::cout << "[-] " << __LINE__  << " | Fingerprint Not Found for -> " << simpleFunctionName << std::endl;
+                                        std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | Fingerprint Not Found for -> " << simpleFunctionName << "\n";
                                     CreateSliceCallData(data, sctx, simpleFunctionName, argIndex, SlicePosition(), sliceProfileItr->second.back(), invokePosition);
                                 }
                             }
                         } else {
                             if (data.verboseMode)
-                                std::cout << "[-] " << __LINE__  << " | No Function Signature Found for -> " << simpleFunctionName << std::endl;
+                                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | No Function Signature Found for -> " << simpleFunctionName << "\n";
                             CreateSliceCallData(data, sctx, simpleFunctionName, argIndex, SlicePosition(), sliceProfileItr->second.back(), invokePosition);
                         }
                     }
                 }  catch (std::logic_error& e) {
-                    if (data.verboseMode) std::cout << "[-] " << __LINE__  << " | Caught Logic Error: " << e.what() << std::endl;
+                    if (data.verboseMode) std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | Caught Logic Error: " << e.what() << "\n";
                 }
             }
         } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::OperatorData>)) {
@@ -1313,7 +1313,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
             std::shared_ptr<srcDispatch::CallData> callData = std::any_cast<std::shared_ptr<srcDispatch::CallData>>(exprElem.GetElement());
 
             if (data.verboseMode) {
-                std::cout << "[*] " << __LINE__  << " | Parsing For Targets: " << callData->name.ToString() << std::endl;
+                std::cout << "[*] " << __FUNCTION__ << ":" << __LINE__  << " | Parsing For Targets: " << callData->name.ToString() << "\n";
             }
 
             // find root name if needed

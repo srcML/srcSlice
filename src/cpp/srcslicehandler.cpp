@@ -39,7 +39,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
     if (p) {
         // Save original buffers and Redirect cout and cerr
         IdleBar idlebar;
-        std::cout << "[Slicing Started]" << std::endl;
+        std::cout << "[Slicing Started]" << "\n";
 
         control.parse(&handler); // Start parsing
         unitsScaned = true;
@@ -55,7 +55,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
 
         // Restore original buffers
         idlebar.Finish("[Second-Pass]");
-        std::cout << "[Slicing Finished]" << std::endl;
+        std::cout << "[Slicing Finished]" << "\n";
     } else {
         control.parse(&handler); // Start parsing
 
@@ -467,8 +467,8 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
         if (param && param->name && param->name.GetElement()) {
             if (profileMap.find(param->name.ToString()) == profileMap.end()) {
                 if (verboseMode) {
-                    std::cout << "[-] " << __LINE__ << " | Could not find SliceProfile for parameter '"
-                    << param->name.ToString() << "' of function '" << funcName << "'" << std::endl;
+                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Could not find SliceProfile for parameter '"
+                    << param->name.ToString() << "' of function '" << funcName << "'" << "\n";
                 }
                 continue;
             }
@@ -610,14 +610,14 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
 }
 
 void SrcSliceHandler::Finalize() {
-    if (verboseMode || progressMode) std::cout << "[*] Performing Second-Pass" << std::endl;
+    if (verboseMode || progressMode) std::cout << "[*] Performing Second-Pass" << "\n";
 
     for (size_t i = 0; i < partialSliceProfiles.size(); ++i) {
         if (partialSliceProfiles[i] == nullptr) continue;
         ModifySlice(*partialSliceProfiles[i]);
     }
 
-    if (verboseMode || progressMode) std::cout << "[*] Finished Second-Pass" << std::endl;
+    if (verboseMode || progressMode) std::cout << "[*] Finished Second-Pass" << "\n";
 }
 
 // modular reusable component
@@ -703,17 +703,27 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
 
 void SrcSliceHandler::ComputeInterprocedural() {
     for (auto& var : profileMap) {
-        SliceProfile& sp = var.second.back();
-        // Need to watch the Slices we attempt to dig into because
-        // we are collecting slices we have no interest in
-        if (!sp.visited && (sp.variableName != "*LITERAL*")) {
-            ResolveCall(sp);
-            sp.visited = true;
+        for (auto& sp : var.second) {
+            // Need to watch the Slices we attempt to dig into because
+            // we are collecting slices we have no interest in
+            if (!sp.visited && (sp.variableName != "*LITERAL*")) {
+                ResolveCall(sp);
+                sp.visited = true;
+            }
         }
     }
 }
 
 void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
+    auto addPartialSlice = [this](SliceProfile &sp) {
+        if (!sp.updated) {
+            // do not create mulitple pointers pointing to the same thing
+            if (std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &sp) == partialSliceProfiles.end()) {
+                partialSliceProfiles.push_back(&sp);
+            }
+        }
+    };
+
     if (!sp.cfunctions.empty()) {
         for (auto& cfunc : sp.cfunctions) {
             if (cfunc.ignore) {
@@ -734,12 +744,7 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                 }
 
                 if (sigIndex >= funcSigCollection->second.size()) {
-                    if (!sp.updated) {
-                        // do not create mulitple pointers pointing to the same thing
-                        if (std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &sp) == partialSliceProfiles.end()) {
-                            partialSliceProfiles.push_back(&sp);
-                        }
-                    }
+                    addPartialSlice(sp);
                     continue; // no signature could be found
                 }
 
@@ -840,24 +845,25 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                     std::cout << std::boolalpha << "Is '" << sp.variableName << "' a Map Entry? "
                                               << (profileMap.find(sp.variableName) != profileMap.end())
                                               << " | Is Spi '" << Spi->first << "' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
-                                              << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
+                                              << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << "\n";
 
-                                    std::cout << "Tried Accessing Slice Variable :: " << sp.variableName << std::endl;
-                                    std::cout << "[-] " << __LINE__ << " | An Error has Occured in `ComputeInterprocedural`" << std::endl;
+                                    std::cout << "Tried Accessing Slice Variable :: " << sp.variableName << "\n";
+                                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | An Error has Occured in `ComputeInterprocedural`" << "\n";
                                 }
                             }
                         } else {
                             if (verboseMode) {
-                                std::cout << "[-] " << __LINE__ << " | ArgumentProfile could not resolve SliceProfile for Call '"
-                                << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << std::endl;
+                                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | ArgumentProfile could not resolve SliceProfile for Call '"
+                                << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << "\n";
                             }
                         }
                     }
                 }
             } else {
                 if (verboseMode) {
-                    std::cout << "[-] " << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << std::endl;
+                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << "\n";
                 }
+                addPartialSlice(sp);
             }
         }
     }
