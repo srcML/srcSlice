@@ -77,6 +77,20 @@ void ExprParse::pushAlias(SliceProfileMap& profileMap, std::string lhsName, std:
 void ExprParse::pushUse(SliceProfileMap& profileMap, SliceProfileIterator spi, SlicePosition& pos) {
     if (spi == profileMap.end()) return;
     SliceProfile& sp = spi->second.back();
+
+    // a position cannot occur before the position of the initial
+    // unless its from a function call
+    if (pos < sp.initialPosition) {
+        // search backwards from second back to find a valid profile
+        for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
+            // if the pos occurs after the initial => valid profile
+            if (pos > rSpi->initialPosition) {
+                sp = *rSpi;
+                break;
+            }
+        }
+    }
+
     sp.uses.insert(pos);
 
     // if sp is a pointer type we need to show the use across its reference chain
@@ -106,7 +120,22 @@ void ExprParse::popUse(SliceProfileMap& profileMap, SliceProfileIterator spi, Sl
 
 void ExprParse::pushDef(SliceProfileMap& profileMap, SliceProfileIterator spi, SlicePosition& pos) {
     if (spi == profileMap.end()) return;
-    spi->second.back().definitions.insert(pos);
+    SliceProfile& sp = spi->second.back();
+
+    // a position cannot occur before the position of the initial
+    // unless its from a function call
+    if (pos < sp.initialPosition) {
+        // search backwards from second back to find a valid profile
+        for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
+            // if the pos occurs after the initial => valid profile
+            if (pos > rSpi->initialPosition) {
+                sp = *rSpi;
+                break;
+            }
+        }
+    }
+
+    sp.definitions.insert(pos);
 };
 void ExprParse::popDef(SliceProfileMap& profileMap, SliceProfileIterator spi, SlicePosition& pos) {
     if (spi == profileMap.end()) return;

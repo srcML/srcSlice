@@ -812,7 +812,8 @@ int main() {
 
 /**
  * @section Basic Slicing Cases
- * Tests Slicing against basic C++ Classes
+ * Tests Slicing against various constructs
+ * such as try-catch, anonymous blocks, throws, ...
  */
 
  TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -881,6 +882,119 @@ private:
         "calls":[],
         "use":["file.cpp:9:16"],
         "definition":["file.cpp:8:22"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
+
+
+
+/**
+ * @section Basic Slicing Cases
+ * Tests Slicing against basic C++ Classes
+ */
+
+ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    std::cout << INFO << " Testing Construct Slicing" << std::endl;
+
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
+    {
+        cout << a;
+        int b = (a % 3 == 1) ? 4 : -2;
+    }
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:3:9",
+        "dependence":[{"b":"file.cpp:6:18"}],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:17","file.cpp:6:18"],
+        "definition":["file.cpp:3:9"]
+    },
+    "b-6-13":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"b",
+        "initial":"file.cpp:6:13",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:6:13"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
+    {
+        int a = 0;
+        a = 5;
+    }
+    a = 10;
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:3:9","file.cpp:8:5"]
+    },
+    "a-5-13":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:5:13",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:5:13","file.cpp:6:9"]
     }
     })"_json;
 

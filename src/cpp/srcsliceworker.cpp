@@ -619,6 +619,11 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
                 }
             }
         }
+
+        // look within nested blocks for scoped statements
+        for (auto& innerBlock : block->blocks) {
+            ProcessStmts(data, sctx, funcData, innerBlock, className);
+        }
     }
 }
 
@@ -631,11 +636,13 @@ void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const
 
 // Use collected function call data to push a new cfunctions entry into a referenced slice profile
 // call data gets passed into aliases if needed
-void SrcSliceOperations::CreateSliceCallData(Blob& data, const SliceCtx& sctx, std::string functionName, int argIndex, SlicePosition functionPosition,
+void SrcSliceOperations::CreateSliceCallData(Blob& data, const SliceCtx& sctx, std::string functionName,
+                                            int argIndex, int argc, SlicePosition functionPosition,
                                             SliceProfile& sliceProfile, SlicePosition invokePosition) {
     FunctionCallData sliceCallData = FunctionCallData(
         functionName, // function call name
         argIndex, // arg index starting from 1 to n
+        argc, // number of arguments within the call
         functionPosition, // function definition position
         invokePosition // line:col scope where the function call occurs
     );
@@ -1134,78 +1141,112 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                             }
                         }
 
+                        int argc = funcCallData->arguments.size();
+                        
                         // Get the collection of functions by name
                         auto funcSig = data.functionSigMap.find(simpleFunctionName);
                         if (funcSig != data.functionSigMap.end()) {
                             // if there is only one record of a function signature
                             if (funcSig->second.size() == 1) {
-                                SlicePosition funcPos = funcSig->second[0].position;
-                                CreateSliceCallData(data, sctx, simpleFunctionName, argIndex, funcPos, sliceProfileItr->second.back(), invokePosition);
+                                if (argc > funcSig->second.at(0).parameters.size()) {
+                                    // signature has not been discovered yet
+                                    if (data.verboseMode)
+                                        std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | No Function Signature Found for -> " << simpleFunctionName << "\n";
+                                    
+                                    CreateSliceCallData(
+                                        data, sctx, simpleFunctionName, argIndex,
+                                        argc, SlicePosition(), sliceProfileItr->second.back(),
+                                        invokePosition
+                                    );
+                                } else {
+                                    SlicePosition funcPos = funcSig->second[0].position;
+                                    CreateSliceCallData(
+                                        data, sctx, simpleFunctionName, argIndex,
+                                        argc, funcPos, sliceProfileItr->second.back(),
+                                        invokePosition
+                                    );
+                                }
                             } else {
                                 // if a function is overloaded
-                                size_t sigIndex = 0;
+                                std::vector<FunctionSignatureData> signatures;
 
-                                // If we have a signature with predefined parameters and another signature where the data-type
-                                // of the parameter differs, we need to check argc <= paramc AND dataType(arg[i]) == dataType(param[i])
-                                // we will have to derive the arg[i] to its corresponding slice, param[i] is a decldata so we can fetch its type
-                                for (sigIndex; sigIndex < funcSig->second.size(); ++sigIndex) {
-                                    bool argumentInBounds = (argIndex-1 < funcSig->second[sigIndex].parameters.size());
+                                // check if there exists a potential collection of
+                                // 'perfect' signatures
+                                for (auto& funcData : funcSig->second) {
+                                    if (funcData.parameters.empty()) continue;
+
+                                    bool argumentInBounds = (argIndex-1 < funcData.parameters.size());
                                     if (!argumentInBounds) continue;
 
-                                    bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[sigIndex].parameters.size());
+                                    bool validArgCount = (funcCallData->arguments.size() <= funcData.parameters.size());
                                     if (!validArgCount) continue;
 
                                     if (!potentialContainingClass.empty()) {
                                         // check if the call data has the matching class name
-                                        bool matchingClass = (funcSig->second[sigIndex].containingClass == potentialContainingClass);
+                                        bool matchingClass = (funcData.containingClass == potentialContainingClass);
                                         if (!matchingClass) continue;
                                     }
-
-                                    std::string sliceDataType = sliceProfileItr->second.back().variableType;
-
-                                    // Make a function to pull data-type
-                                    std::string paramDataType = funcSig->second[sigIndex].parameters[argIndex-1]->type.ToString();
-                                    // remove all spaces from type string
-                                    paramDataType.erase(std::remove(paramDataType.begin(), paramDataType.end(), ' '), paramDataType.end());
-
-                                    std::string filteredSliceDataType = "";
-                                    std::string filteredParamDataType = "";
                                     
-                                    // For data-types like 'int *' or 'int &' only track everything before the space character from the type for comparison
-                                    filteredSliceDataType = sliceDataType.substr(0, sliceDataType.find(' '));
-                                    filteredParamDataType = paramDataType.substr(0, paramDataType.find(' '));
-
-                                    // For data-types like 'int*' only track everything before the astrisks character from the type for comparison
-                                    filteredSliceDataType = filteredSliceDataType.substr(0, filteredSliceDataType.find('*'));
-                                    filteredParamDataType = filteredParamDataType.substr(0, filteredParamDataType.find('*'));
-                                    // For data-types like 'int&' only track everything before the amp character from the type for comparison
-                                    filteredSliceDataType = filteredSliceDataType.substr(0, filteredSliceDataType.find('&'));
-                                    filteredParamDataType = filteredParamDataType.substr(0, filteredParamDataType.find('&'));
-
-                                    bool matchingTypes = (filteredParamDataType == filteredSliceDataType);
-                                    if (data.verboseMode) {
-                                        std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | Parameter Filtered-Type -> "
-                                            << filteredParamDataType << " | Argument Filtered-Type -> " << filteredSliceDataType << "\n";
+                                    if (funcCallData->arguments.size() == funcData.parameters.size()) {
+                                        signatures.push_back(funcData);
                                     }
-                                    if (!matchingTypes) continue;
-
-                                    // potentially valid function finger-print
-                                    break;
                                 }
 
-                                if (sigIndex < funcSig->second.size()) {
-                                    SlicePosition funcPos = funcSig->second[sigIndex].position;
-                                    CreateSliceCallData(data, sctx, simpleFunctionName, argIndex, funcPos, sliceProfileItr->second.back(), invokePosition);
-                                } else {
-                                    if (data.verboseMode)
-                                        std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | Fingerprint Not Found for -> " << simpleFunctionName << "\n";
-                                    CreateSliceCallData(data, sctx, simpleFunctionName, argIndex, SlicePosition(), sliceProfileItr->second.back(), invokePosition);
+                                if (signatures.empty()) {
+                                    size_t sigIndex = 0;
+                                    
+                                    for (sigIndex = 0; sigIndex < funcSig->second.size(); ++sigIndex) {
+                                        if (funcSig->second[sigIndex].parameters.empty()) continue;
+
+                                        bool argumentInBounds = (argIndex-1 < funcSig->second[sigIndex].parameters.size());
+                                        if (!argumentInBounds) continue;
+
+                                        bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[sigIndex].parameters.size());
+                                        if (!validArgCount) continue;
+
+                                        if (!potentialContainingClass.empty()) {
+                                            // check if the call data has the matching class name
+                                            bool matchingClass = (funcSig->second[sigIndex].containingClass == potentialContainingClass);
+                                            if (!matchingClass) continue;
+                                        }
+                                        
+                                        if (funcCallData->arguments.size() < funcSig->second[sigIndex].parameters.size()) {
+                                            signatures.push_back(funcSig->second[sigIndex]);
+                                        }
+                                    }
+
+                                    // could not locate potential signatures
+                                    if (sigIndex >= funcSig->second.size()) {
+                                        if (data.verboseMode)
+                                            std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  <<
+                                                " | Potential Signature not found for -> " << simpleFunctionName << "\n";
+        
+                                        CreateSliceCallData(data, sctx, simpleFunctionName, argIndex,
+                                            argc, SlicePosition(), sliceProfileItr->second.back(),
+                                            invokePosition
+                                        );
+                                    }
+                                }
+
+                                for (auto& funcSig : signatures) {
+                                    // the call argc is within the range of available params
+                                    // this signature is a possible target => create callData
+                                    CreateSliceCallData(
+                                        data, sctx, simpleFunctionName, argIndex,
+                                        argc, funcSig.position, sliceProfileItr->second.back(), 
+                                        invokePosition
+                                    );
                                 }
                             }
                         } else {
                             if (data.verboseMode)
-                                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | No Function Signature Found for -> " << simpleFunctionName << "\n";
-                            CreateSliceCallData(data, sctx, simpleFunctionName, argIndex, SlicePosition(), sliceProfileItr->second.back(), invokePosition);
+                                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  << " | No Function Signature found for -> " << simpleFunctionName << "\n";
+
+                            CreateSliceCallData(
+                                data, sctx, simpleFunctionName, argIndex,
+                                argc, SlicePosition(), sliceProfileItr->second.back(),
+                                invokePosition
+                            );
                         }
                     }
                 }  catch (std::logic_error& e) {
@@ -1430,6 +1471,7 @@ void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sc
     if (funcSig != data.functionSigMap.end()) {
         if (updateSignature) {
             for (auto& func : funcSig->second) {
+                if (func.parameters.empty()) continue;
                 if (func.parameters.size() == functionParameters.size()) {
                     // Update marked signature
                     func = FunctionSignatureData(funcData, className, sctx);
@@ -1448,7 +1490,7 @@ void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sc
 
 // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
 // Logic constructed for use BEFORE InterProcedural
-SliceProfile* SrcSliceOperations::FetchSliceProfile(Blob& data, const SliceCtx& sctx, std::string profileName, const FunctionInfo& funcData,
+SliceProfile* SrcSliceOperations::FetchSliceProfile(Blob& data, const SliceCtx& sctx [[maybe_unused]], std::string profileName, const FunctionInfo& funcData,
                                 std::string className, std::vector<std::string> containingNameSpaces) {
     auto spi = data.profileMap.find(profileName);
     SliceProfile* probableProfile = nullptr;

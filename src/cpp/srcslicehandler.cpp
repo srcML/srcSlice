@@ -112,8 +112,25 @@ void SrcSliceHandler::ManageThreads() {
         std::lock_guard<std::mutex> lock(dataMutex);
         Blob& data = worker->data;
 
-        profileMap.merge(data.profileMap);
-        functionSigMap.merge(data.functionSigMap);
+        // manually move map entry values, merge will not merge if the keys between both maps exist
+        for (auto& profileGroup : data.profileMap) {
+            auto& dest = profileMap[profileGroup.first];
+            dest.insert(
+                dest.end(),
+                std::make_move_iterator(profileGroup.second.begin()),
+                std::make_move_iterator(profileGroup.second.end())
+            );
+        }
+
+        // manually move map entry values, merge will not merge if the keys between both maps exist
+        for (auto& funcSig : data.functionSigMap) {
+            auto& dest = functionSigMap[funcSig.first];
+            dest.insert(
+                dest.end(),
+                std::make_move_iterator(funcSig.second.begin()),
+                std::make_move_iterator(funcSig.second.end())
+            );
+        }
         
         // make_move_iterator prevents making copies
         loopdata.insert(loopdata.end(),
@@ -650,52 +667,139 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
         if (funcSig != functionSigMap.end()) {
             // if there is only one record of a function signature
             if (funcSig->second.size() == 1) {
-                // update definitionPosition
-                FunctionCallData updatedData(cfunc);
-                updatedData.definitionPosition = funcSig->second[0].position;
+                if (funcSig->second[0].parameters.size() > 0 && cfunc.argumentCount <= funcSig->second[0].parameters.size()) {
+                    
+                    // update definitionPosition
+                    FunctionCallData updatedData(cfunc);
+                    updatedData.definitionPosition = funcSig->second[0].position;
+    
+                    // replace old data with new data
+                    cfunc = updatedData;
+    
+                    // evaluate the slice profile based off the updatedData and if its within
+                    // partialSliceProfiles we want to jump to it and update it (recursively)
+                    // before passing it back into inter-procedural
+                    unsigned int ArgProfParam = updatedData.parameterIndex - 1;
+    
+                    // argument slice profile
+                    auto spi = ArgumentProfile(
+                        updatedData.functionName,
+                        funcSig->second[0],
+                        ArgProfParam
+                    );
+    
+                    if (spi != profileMap.end()) {
+                        auto sliceItr = spi->second.begin();
+                        std::string desiredVariableName = sliceItr->variableName;
+    
+                        for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
+                            if (sliceItr->containsDeclaration) {
+                                if (sliceItr->variableName != desiredVariableName) {
+                                    continue;
+                                }
+                                if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != updatedData.functionName) {
+                                    continue;
+                                }
 
-                // replace old data with new data
-                cfunc = updatedData;
+                                auto paramDecl = funcSig->second[0].parameters[ArgProfParam];
+                                SlicePosition paramDeclPos(
+                                    paramDecl->name->startPosition,
+                                    paramDecl->name->endPosition,
+                                    sliceItr->file
+                                );
 
-                // evaluate the slice profile based off the updatedData and if its within
-                // partialSliceProfiles we want to jump to it and update it (recursively)
-                // before passing it back into inter-procedural
-                unsigned int ArgProfParam = updatedData.parameterIndex - 1;
-                auto spi = ArgumentProfile(
-                    updatedData.functionName,
-                    funcSig->second[0],
-                    ArgProfParam
-                );
-
-                if (spi != profileMap.end()) {
-                    auto sliceItr = spi->second.begin();
-                    std::string desiredVariableName = sliceItr->variableName;
-
-                    for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
-                        if (sliceItr->containsDeclaration) {
-                            if (sliceItr->variableName != desiredVariableName) {
-                                continue;
+                                if (sliceItr->initialPosition != paramDeclPos) {
+                                    continue;
+                                }
+    
+                                break;
                             }
-                            if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != updatedData.functionName) {
-                                continue;
-                            }
-                            auto paramDecl = funcSig->second[0].parameters[ArgProfParam];
-                            SlicePosition paramDeclPos(paramDecl->name->startPosition, paramDecl->name->endPosition, sctx.currentFilePath);
-                            if (sliceItr->initialPosition != paramDeclPos) {
-                                continue;
-                            }
-
-                            break;
                         }
-                    }
-
-                    bool isPartialSlice = std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &(*sliceItr)) != partialSliceProfiles.end();
-                    if (sliceItr != spi->second.end() && isPartialSlice) {
-                        ModifySlice(*sliceItr);
+    
+                        bool isPartialSlice = std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &(*sliceItr)) != partialSliceProfiles.end();
+                        if (sliceItr != spi->second.end() && isPartialSlice) {
+                            ModifySlice(*sliceItr);
+                        }
                     }
                 }
             } else {
                 // if a function is overloaded
+
+                unsigned int ArgProfParam = cfunc.parameterIndex - 1;
+                std::vector<FunctionSignatureData> signatures;
+
+                for (auto& funcData : funcSig->second) {
+                    if (cfunc.argumentCount == funcData.parameters.size()) {
+                        signatures.push_back(funcData);
+                    }
+                }
+
+                if (signatures.empty()) {
+                    for (auto& funcData : funcSig->second) {
+                        if (cfunc.argumentCount == 0 || cfunc.argumentCount >= funcData.parameters.size()) continue;
+                        // 1 <= argCount < paramCount
+                        signatures.push_back(funcData);
+                    }
+                }
+
+                // update the current cfunc and add new entries per possible signature
+                for (size_t i = 0; i < signatures.size(); ++i) {
+                    // argument slice profile
+                    auto spi = ArgumentProfile(
+                        cfunc.functionName,
+                        signatures[i],
+                        ArgProfParam
+                    );
+
+                    if (spi != profileMap.end()) {
+                        auto sliceItr = spi->second.begin();
+                        std::string desiredVariableName = sliceItr->variableName;
+
+                        for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
+                            if (sliceItr->containsDeclaration) {
+                                if (sliceItr->variableName != desiredVariableName) {
+                                    continue;
+                                }
+                                if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
+                                    continue;
+                                }
+
+                                auto paramDecl = signatures[i].parameters[ArgProfParam];
+                                SlicePosition paramDeclPos(
+                                    paramDecl->name->startPosition,
+                                    paramDecl->name->endPosition,
+                                    sliceItr->file
+                                );
+
+                                if (sliceItr->initialPosition != paramDeclPos) {
+                                    continue;
+                                }
+
+                                break;
+                            }
+                        }
+
+                        bool isPartialSlice = std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &(*sliceItr)) != partialSliceProfiles.end();
+                        if (sliceItr != spi->second.end()) {
+                            
+                            if (cfunc.definitionPosition.GetFileName().empty()) {
+                                // update cfunc data
+                                FunctionCallData updatedData(cfunc);
+                                updatedData.definitionPosition = signatures[i].position;
+                                cfunc = updatedData;
+                            } else {
+                                // append new cfunc data
+                                FunctionCallData newData(cfunc);
+                                newData.definitionPosition = signatures[i].position;
+                                sp.insertCfunction(newData);
+                            }
+
+                            if (isPartialSlice) {
+                                ModifySlice(*sliceItr);
+                            }
+                        }
+                    }
+                }
             }
         }
     }

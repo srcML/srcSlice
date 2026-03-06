@@ -19,7 +19,10 @@ void PrintInfo(const std::string msg);
 void PrintOk(const std::string msg);
 
 std::string StringToSrcML(std::string str, const char* fileName);
-std::string FetchSlices(const std::string cppSource, bool findControlEdges = false);
+std::string StringsToArchive(std::vector<std::string>, std::vector<std::string>);
+std::string FetchSlices(std::string cppSource, bool findControlEdges = false);
+std::string FetchSlices(std::vector<std::string> contents, std::vector<std::string> filenames);
+std::string RunSrcSlice(std::string srcml, bool computeControlEdges = false);
 
 [[maybe_unused]] inline static int testNum = 1; // suppress unused compiler warnings
 [[maybe_unused]] inline static std::string tName;

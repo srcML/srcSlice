@@ -36,11 +36,46 @@ std::string StringToSrcML(std::string str, const char* fileName){ // Function by
     return output;
 }
 
-std::string FetchSlices(const std::string cppSource, bool findControlEdges) {
-    std::ostringstream output;
-    std::string srcmlStr = StringToSrcML(cppSource, "file.cpp");
+/**
+ * Converts a multi-file string setup into a srcML multi-unit composed archive
+ */
+std::string StringsToArchive(std::vector<std::string> contents, std::vector<std::string> filenames) {
+    std::string archive_str;
+    if (filenames.size() != contents.size()) return archive_str;
 
-    SrcSliceHandler srcSliceHandler(srcmlStr, findControlEdges);
+    struct srcml_archive* archive;
+    struct srcml_unit* unit;
+    
+    size_t size = 0;
+    char* ch;
+
+    archive = srcml_archive_create();
+    srcml_archive_enable_option(archive, SRCML_OPTION_POSITION);
+    srcml_archive_write_open_memory(archive, &ch, &size);
+
+    for (size_t i = 0; i < filenames.size(); ++i) {
+        unit = srcml_unit_create(archive);
+        srcml_unit_set_language(unit, SRCML_LANGUAGE_CXX);
+        srcml_unit_set_filename(unit, filenames.at(i).c_str());
+
+        srcml_unit_parse_memory(unit, contents.at(i).c_str(), contents.at(i).size());
+        srcml_archive_write_unit(archive, unit);
+        srcml_unit_free(unit);
+    }
+
+    srcml_archive_close(archive);
+    srcml_archive_free(archive);
+
+    ch[size-1] = 0;
+    archive_str.append(ch,size);
+    srcml_memory_free(ch);
+
+    return archive_str;
+}
+
+std::string RunSrcSlice(std::string srcml, bool computeControlEdges) {
+    std::ostringstream output;
+    SrcSliceHandler srcSliceHandler(srcml, computeControlEdges);
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap = srcSliceHandler.GetProfileMap();
 
     size_t totalElements = profileMap.size();
@@ -55,30 +90,32 @@ std::string FetchSlices(const std::string cppSource, bool findControlEdges) {
             {
                 // write out the start of the json object
                 std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString());
+
                 output << "\"" << name << "\":{" << std::endl;
-
-                // print out content of the SliceProfile
                 output << slice;
-
-                // write out the end of the json object
-                if (currIndex != totalElements)
-                    output << "}," << std::endl;
-                else
-                    output << "}" << std::endl;
+                output << "}," << std::endl;
             }
         }
     }
-    output << "}" << std::endl;
 
-    // Check for leading comma and remove it
+    // remove trailing comma
     std::string stream2string = output.str();
+    stream2string.resize(stream2string.length() - 2);
 
-    if (stream2string[stream2string.size() - 4] == ',')
-    {
-        stream2string.erase(stream2string.size() - 4, 1);
-    }
+    // closing of the entire JSON object
+    stream2string += "\n}";
 
     return stream2string;
+}
+
+std::string FetchSlices(std::string cppSource, bool findControlEdges) {
+    std::string srcml = StringToSrcML(cppSource, "file.cpp");
+    return RunSrcSlice(srcml, findControlEdges);
+}
+
+std::string FetchSlices(std::vector<std::string> contents, std::vector<std::string> filenames) {
+    std::string srcmlStr = StringsToArchive(contents, filenames);
+    return RunSrcSlice(srcmlStr, false);
 }
 
 void PrintErr(const std::string testName, const std::string msg) {

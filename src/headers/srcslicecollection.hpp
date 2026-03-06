@@ -106,10 +106,14 @@ public:
 class FunctionCallData {
 public:
     FunctionCallData(){}
-    FunctionCallData(std::string funcName, unsigned int paramIndex,
-                    SlicePosition defPos,
-                    SlicePosition invokePos,
-                    bool ignore_ = false);
+    FunctionCallData(
+        std::string funcName,
+        unsigned int paramIndex,
+        unsigned int argc,
+        SlicePosition defPos,
+        SlicePosition invokePos,
+        bool ignore_ = false
+    );
 
     FunctionCallData(const FunctionCallData& rhs);
 
@@ -128,6 +132,7 @@ public:
     bool ignore = false;
     std::string functionName;
     unsigned int parameterIndex;
+    unsigned int argumentCount;
 };
 
 #endif

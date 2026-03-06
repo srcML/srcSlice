@@ -122,7 +122,11 @@ namespace SrcSliceOperations {
     void ProcessFunctionSignature(Blob& data, const SliceCtx& sctx, FunctionInfo& funcData, std::string className);
 
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
-    void CreateSliceCallData(Blob& data, const SliceCtx& sctx, std::string functionName, int argIndex, SlicePosition functionPosition, SliceProfile& sliceProfile, SlicePosition invokePosition);
+    void CreateSliceCallData(
+        Blob& data, const SliceCtx& sctx, std::string functionName,
+        int argIndex, int argc, SlicePosition functionPosition, SliceProfile& sliceProfile,
+        SlicePosition invokePosition
+    );
 
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
     // Logic constructed for use BEFORE InterProcedural

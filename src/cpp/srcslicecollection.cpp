@@ -20,10 +20,16 @@ std::string SlicePosition::ToString() const {
     std::string s;
 
     s += "\"";
-    if (start && !filename.empty()) {
-        s += filename; s += ":";
+
+    if (!filename.empty()) {
+        s += filename;
+    }
+
+    if (start) {
+        s += ":";
         s += start->ToString();
     }
+
     s += "\"";
 
     return s;
@@ -184,18 +190,22 @@ FunctionSignatureData::FunctionSignatureData(
     containingNamespaces = ctx.containingNamespaces;
 }
 
-FunctionCallData::FunctionCallData(std::string funcName, unsigned int paramIndex,
-                                    SlicePosition defPos,
-                                    SlicePosition invokePos,
-                                    bool ignore_
-                                ): functionName(funcName), parameterIndex(paramIndex),
-                                definitionPosition(defPos), invokePosition(invokePos),
-                                ignore(ignore_) {};
+FunctionCallData::FunctionCallData(
+    std::string funcName,
+    unsigned int paramIndex,
+    unsigned int argc,
+    SlicePosition defPos,
+    SlicePosition invokePos,
+    bool ignore_
+): functionName(funcName), parameterIndex(paramIndex),
+definitionPosition(defPos), invokePosition(invokePos),
+argumentCount(argc), ignore(ignore_) {};
 
 FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
     functionName = rhs.functionName;
     invokePosition = rhs.invokePosition;
     parameterIndex = rhs.parameterIndex;
+    argumentCount = rhs.argumentCount;
     definitionPosition = rhs.definitionPosition;
     ignore = rhs.ignore;
 };
@@ -206,6 +216,7 @@ FunctionCallData& FunctionCallData::operator=(const FunctionCallData& rhs) {
     functionName = rhs.functionName;
     invokePosition = rhs.invokePosition;
     parameterIndex = rhs.parameterIndex;
+    argumentCount = rhs.argumentCount;
     definitionPosition = rhs.definitionPosition;
     ignore = rhs.ignore;
 
@@ -216,6 +227,7 @@ bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
     if (functionName != rhs.functionName) return false;
     if (invokePosition != rhs.invokePosition) return false;
     if (parameterIndex != rhs.parameterIndex) return false;
+    if (argumentCount != rhs.argumentCount) return false;
     if (definitionPosition != rhs.definitionPosition) return false;
     if (ignore != rhs.ignore) return false;
     return true;
@@ -227,6 +239,7 @@ bool FunctionCallData::operator!=(const FunctionCallData& rhs) const {
 bool FunctionCallData::operator<(const FunctionCallData& rhs) const {
     if (functionName < rhs.functionName) return true;
     if (invokePosition < rhs.invokePosition) return true;
+    if (argumentCount < rhs.argumentCount) return true;
     if (parameterIndex < rhs.parameterIndex) return true;
     if (definitionPosition < rhs.definitionPosition) return true;
     if (ignore == false && rhs.ignore == true) return true;
