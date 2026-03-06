@@ -63,28 +63,18 @@ int main(int argc, char **argv)
                 if (slice.containsDeclaration) {
                     std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString() + '-' + slice.checksum);
                     sliceOutput << "\"" << name << "\":{" << std::endl;
-
-                    // print out content of the SliceProfile
                     sliceOutput << slice;
-
-                    // write out the end of the json object
-                    if (currIndex != totalElements)
-                        sliceOutput << "}," << std::endl;
-                    else
-                        sliceOutput << "}" << std::endl;
+                    sliceOutput << "}," << std::endl;
                 }
             }
         }
 
-        // closing of the entire JSON object
-        sliceOutput << "}" << std::endl;
-
-        // Check for leading comma and remove it
+        // remove trailing comma
         std::string stream2string = sliceOutput.str();
+        stream2string.resize(stream2string.length() - 2);
 
-        if (stream2string[stream2string.size() - 4] == ',') {
-            stream2string.erase(stream2string.size() - 4, 1);
-        }
+        // closing of the entire JSON object
+        stream2string += "\n}";
 
         // write to either stdout or output file
         if (!outputFile.empty()) {
