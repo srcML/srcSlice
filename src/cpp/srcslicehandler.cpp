@@ -629,9 +629,11 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
 void SrcSliceHandler::Finalize() {
     if (verboseMode || progressMode) std::cout << "[*] Performing Second-Pass" << "\n";
 
-    for (size_t i = 0; i < partialSliceProfiles.size(); ++i) {
-        if (partialSliceProfiles[i] == nullptr) continue;
-        ModifySlice(*partialSliceProfiles[i]);
+    for (auto& [name, profiles] : profileMap) {
+        for (auto& profile : profiles) {
+            if (!profile.partial) continue;
+            ModifySlice(profile);
+        }
     }
 
     if (verboseMode || progressMode) std::cout << "[*] Finished Second-Pass" << "\n";
@@ -660,7 +662,20 @@ void SrcSliceHandler::ModifySlice(SliceProfile& sp) {
 }
 
 void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
-    for (auto& cfunc : sp.cfunctions) {
+    // do not read/modify the slice if its not a partial
+    if (!sp.partial) return;
+
+    // collection of call data that is to be later added to the given slice profile
+    std::vector<FunctionCallData> toInsert;
+    
+    for (auto itr = sp.cfunctions.begin(); itr != sp.cfunctions.end(); ++itr) {
+        FunctionCallData& cfunc = *itr;
+
+        // only update cfunc entries that do not have a definition position
+        if (!cfunc.definitionPosition.GetFileName().empty()) {
+            continue;
+        }
+
         std::string name = cfunc.functionName;
         auto funcSig = functionSigMap.find(name);
 
@@ -680,6 +695,12 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                     // partialSliceProfiles we want to jump to it and update it (recursively)
                     // before passing it back into inter-procedural
                     unsigned int ArgProfParam = updatedData.parameterIndex - 1;
+
+                    /**
+                     * @todo may need to remove argument profile usage,
+                     * interprocedural skips if the argument cant be
+                     * resolved from a given call
+                     **/
     
                     // argument slice profile
                     auto spi = ArgumentProfile(
@@ -715,11 +736,6 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                                 break;
                             }
                         }
-    
-                        bool isPartialSlice = std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &(*sliceItr)) != partialSliceProfiles.end();
-                        if (sliceItr != spi->second.end() && isPartialSlice) {
-                            ModifySlice(*sliceItr);
-                        }
                     }
                 }
             } else {
@@ -744,6 +760,13 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
 
                 // update the current cfunc and add new entries per possible signature
                 for (size_t i = 0; i < signatures.size(); ++i) {
+
+                    /**
+                     * @todo may need to remove argument profile usage,
+                     * interprocedural skips if the argument cant be
+                     * resolved from a given call
+                     **/
+
                     // argument slice profile
                     auto spi = ArgumentProfile(
                         cfunc.functionName,
@@ -779,7 +802,6 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                             }
                         }
 
-                        bool isPartialSlice = std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &(*sliceItr)) != partialSliceProfiles.end();
                         if (sliceItr != spi->second.end()) {
                             
                             if (cfunc.definitionPosition.GetFileName().empty()) {
@@ -791,11 +813,7 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                                 // append new cfunc data
                                 FunctionCallData newData(cfunc);
                                 newData.definitionPosition = signatures[i].position;
-                                sp.insertCfunction(newData);
-                            }
-
-                            if (isPartialSlice) {
-                                ModifySlice(*sliceItr);
+                                toInsert.push_back(newData);
                             }
                         }
                     }
@@ -803,6 +821,15 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
             }
         }
     }
+
+    // insert the new calls into the profile after iteration
+    // to not risk iterator invalidation
+    for (auto& data : toInsert) {
+        sp.insertCfunction(data);
+    }
+
+    // toggle off just incase so we do not run over this profile again
+    sp.partial = false;
 }
 
 void SrcSliceHandler::ComputeInterprocedural() {
@@ -821,10 +848,7 @@ void SrcSliceHandler::ComputeInterprocedural() {
 void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
     auto addPartialSlice = [this](SliceProfile &sp) {
         if (!sp.updated) {
-            // do not create mulitple pointers pointing to the same thing
-            if (std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &sp) == partialSliceProfiles.end()) {
-                partialSliceProfiles.push_back(&sp);
-            }
+            sp.partial = true;
         }
     };
 

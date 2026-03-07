@@ -212,7 +212,7 @@ void SliceProfile::insertAlias(std::string name, SlicePosition& sp) {
         aliases.push_back(p);
     }
 }
-void SliceProfile::insertCfunction(FunctionCallData& fcd) {
+void SliceProfile::insertCfunction(FunctionCallData fcd) {
     bool contained = std::find(
         cfunctions.begin(),
         cfunctions.end(),

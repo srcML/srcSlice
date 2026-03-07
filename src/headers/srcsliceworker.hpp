@@ -80,6 +80,8 @@ namespace SrcSliceOperations {
     // |__ Extract Expressions within a specified Block within a Function Definition
     void ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, std::string className);
     
+    // returns if the sliceProfile is unique within a given profiles collection
+    bool HasOriginal(const std::vector<SliceProfile>& profiles, const SliceProfile& sliceProfile);
     // Creates Initial SliceProfile based off DeclData
     void CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData, const FunctionInfo& funcData, std::string className);
     // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters

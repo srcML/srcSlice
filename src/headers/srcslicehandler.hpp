@@ -95,7 +95,6 @@ public:
 
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-    std::vector<SliceProfile*> partialSliceProfiles;
     std::unordered_set <std::string> visited_func;
 
     std::vector<SlicePosition> loopdata;

@@ -41,8 +41,40 @@ void SrcSliceWorker::Start() {
 
 // ensure the work thread has closed safely
 void SrcSliceWorker::WaitForJob() {
-    if (work.joinable())
+    if (work.joinable()) {
         work.join();
+        
+        // remove duplicates
+        for (auto& [key, profiles] : data.profileMap) {
+            std::unordered_map<std::string, SliceProfile> mergedMap;
+
+            // perform one pass across the vector and insert unique keys
+            // when a duplicate is found merge the duplicates contents
+            // into the stored profile in the local map
+            for (auto& p : profiles) {
+                auto it = mergedMap.find(p.initialPosition.ToNameString());
+                if (it == mergedMap.end()) {
+                    mergedMap[p.initialPosition.ToNameString()] = std::move(p);
+                } else {
+                    // merge existing slice profile data and remove the duplicate
+                    it->second.uses.insert(p.uses.begin(), p.uses.end());
+                    it->second.definitions.insert(p.definitions.begin(), p.definitions.end());
+
+                    it->second.dvars.insert(it->second.dvars.end(),
+                                            p.dvars.begin(), p.dvars.end());
+                    it->second.aliases.insert(it->second.aliases.end(),
+                                            p.aliases.begin(), p.aliases.end());
+                    it->second.cfunctions.insert(it->second.cfunctions.end(),
+                                                p.cfunctions.begin(), p.cfunctions.end());
+                }
+            }
+
+            // rebuild profile collection based on map contents
+            profiles.clear();
+            for (auto& [pos, p] : mergedMap)
+                profiles.push_back(std::move(p));
+        }
+    }
 }
 
 bool SrcSliceWorker::Finished() {
@@ -262,7 +294,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
 
                         // We may have variables of the same name, but each slice of the same name
                         // must be initially declared on different lines
-                        if (sliceProfileItr->second.back() != sliceProfile) {
+                        if (HasOriginal(sliceProfileItr->second, sliceProfile)) {
                             sliceProfileItr->second.push_back(sliceProfile);
                         }
                     } else {
@@ -371,6 +403,17 @@ void SrcSliceOperations::ProcessClasses(Blob& data, const SliceCtx& sctx, Classe
     }
 }
 
+bool SrcSliceOperations::HasOriginal(const std::vector<SliceProfile>& profiles, const SliceProfile& sliceProfile) {
+    auto hasOriginal = std::find_if(
+        profiles.begin(),
+        profiles.end(),
+        [&sliceProfile](const SliceProfile& profile){
+            return profile.initialPosition.ToNameString() == sliceProfile.initialPosition.ToNameString();
+        }
+    );
+    return hasOriginal == profiles.end();
+}
+
 void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData, const FunctionInfo& funcData,
                                             std::string className) {
     if (!deltaDeclData) return;
@@ -397,6 +440,7 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
     auto sliceProfileItr = data.profileMap.find(declVarName);
 
     SliceProfile sliceProfile = SliceProfile(declVarName, namePos, isPointer, true, {namePos});
+    sliceProfile.containsDeclaration = true;
 
     sliceProfile.nameOfContainingClass = className;
 
@@ -411,33 +455,26 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
     sliceProfile.isReference = isReference;
     sliceProfile.isPotentialArray = isArray;
 
+    // Link the function this slice is located in
+    if (funcData->name) {
+        sliceProfile.function = funcData->name.ToString();
+    }
+
+    // Use function data to attach contained namespaces
+    sliceProfile.containingNameSpaces = funcData->namespaces;
+
     //Just add new slice profile if name already exists. Otherwise, add new entry in map.
     if (sliceProfileItr != data.profileMap.end()) {
         // Check if the new slice we potentially try to create has not already been made
         // (we dont want to have duplicates of the same slice)
-
-        // We may have variables of the same name, but each slice of the same name
-        // must be initially declared on different lines
-        if (sliceProfileItr->second.back() != sliceProfile) {
-            sliceProfile.containsDeclaration = true;
+        if (HasOriginal(sliceProfileItr->second, sliceProfile)) {
             sliceProfileItr->second.push_back(sliceProfile);
         }
     } else {
-        sliceProfile.containsDeclaration = true;
         // point the iterator to the newly inserted profile element
         sliceProfileItr = data.profileMap.insert(
             std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProfile) })
         ).first;
-    }
-
-    if (funcData) {
-        // Link the function this slice is located in
-        if (funcData->name) {
-            sliceProfileItr->second.back().function = funcData->name.ToString();
-        }
-
-        // Use function data to attach contained namespaces
-        sliceProfileItr->second.back().containingNameSpaces = funcData->namespaces;
     }
 
     if (deltaDeclData->init) {
@@ -1431,24 +1468,19 @@ void SrcSliceOperations::ProcessFunctionParameters(Blob& data, const SliceCtx& s
         sliceProf.isReference = isReference;
         sliceProf.isPotentialArray = isArray;
 
+        sliceProf.variableType = isArray ? SrcSliceOperations::GenerateArrayType(paramType, parameter->name->indices.size()) : paramType;
+        sliceProf.file = sctx.currentFilePath;
+        sliceProf.checksum = sctx.currentFileChecksum;
+        sliceProf.function = currentFunctionName;
+
         // Just add new slice profile if name already exists. Otherwise, add new entry in map.
         if (sliceProfileItr != data.profileMap.end()) {
-            sliceProfileItr->second.push_back(std::move(sliceProf));
+            if (HasOriginal(sliceProfileItr->second, sliceProf)) {
+                sliceProfileItr->second.push_back(std::move(sliceProf));
+            }
         } else {
             data.profileMap.insert(std::make_pair(paramName, std::vector<SliceProfile>{ std::move(sliceProf) }));
         }
-
-        // Attempt to insert data-types for sliceprofiles found in function/ctor parameters
-        data.profileMap.find(paramName)->second.back().variableType = isArray ? SrcSliceOperations::GenerateArrayType(paramType, parameter->name->indices.size()) : paramType;
-
-        // Link the filepath this slice is located in
-        data.profileMap.find(paramName)->second.back().file = sctx.currentFilePath;
-
-        // Link the file hash attribute
-        data.profileMap.find(paramName)->second.back().checksum = sctx.currentFileChecksum;
-
-        // Link the function the XML Originates from
-        data.profileMap.find(paramName)->second.back().function = currentFunctionName;
     }
 }
 

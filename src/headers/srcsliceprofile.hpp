@@ -63,12 +63,13 @@ public:
     
     std::vector<FunctionCallData> cfunctions;
     // Insert a Function Call entry with a given Function Call-Data
-    void insertCfunction(FunctionCallData& fcd);
+    void insertCfunction(FunctionCallData fcd);
 
     std::set<std::pair<SlicePosition, SlicePosition>> controlEdges;
 
     bool visited = false;
     bool updated = false;
+    bool partial = false;
     bool showControlEdges = false;
 
     std::string currentPointerReference;
