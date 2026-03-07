@@ -24,7 +24,7 @@ int main(int argc, char **argv)
 
     CLI::App app{"srcSlice (srcML Slicing Tool)"};
     // Options hold extra data
-    app.add_option  ("-i, --input",   inputFile,                    "Name of the srcML input file [Must be built using the --position and --hash flags]")
+    app.add_option  ("input",   inputFile,                          "Name of the srcML input file [Must be built using the --position and --hash flags]")
         ->required()
         ->type_name("srcML FILE");
     app.add_flag    ("-c, --control-edges", showControlEdges,       "Display Control-Edges of the Slice");
