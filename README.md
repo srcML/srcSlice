@@ -26,6 +26,14 @@ You can download an installer [here](https://www.srcml.org/#download) or you can
 # After running 'make' when building srcML, run 'make install' to ensure cmake can find the srcML package when building srcSlice
 git clone --recursive https://github.com/srcML/srcML.git
 ```
+This project uses the `nlohmann json` for handling JSON
+```bash
+# Linux
+apt install nlohmann-json3-dev
+sudo pacman -S nlohmann-json
+# macOS
+brew install nlohmann-json
+```
 
 ### Preparing srcSlice:
 ```bash
@@ -54,13 +62,13 @@ srcml shell_sort.cpp -o shell_sort.cpp.xml --position --hash
 
 Output: A JSON file containing the slice information about each variable contained in the input file.<br>
 ```text
-./srcslice -i shell_sort.cpp.xml -o results.json
+./srcslice shell_sort.cpp.xml -o results.json
 ```
 
 srcSlice supports multi-file slicing against a srcML archive:
 ```text
 srcml src/ -o src.xml -r --position --hash
-./srcslice -i src.xml -o results.json
+./srcslice src.xml -o results.json
 ```
 
 <br>
@@ -70,10 +78,11 @@ srcml src/ -o src.xml -r --position --hash
 srcSlice (srcML Slicing Tool)
 Usage: srcslice [OPTIONS]
 
+Positionals:
+  input srcML FILE REQUIRED   Name of the srcML input file [Must be built using the --position and --hash flags]
+
 Options:
   -h,--help                   Print this help message and exit
-  -i,--input srcML FILE REQUIRED
-                              Name of the srcML input file [Must be built using the --position and --hash flags]
   -c,--control-edges          Display Control-Edges of the Slice
   -o,--output TEXT            Name of the JSON output file [Stdout is Default]
   -t,--threads INT            Number of concurrent threads
@@ -87,12 +96,12 @@ Options:
 
 Generate slices and write output to standard output<br>
 ```
-./srcslice -i shell_sort.cpp.xml
+./srcslice shell_sort.cpp.xml
 ```
 
 Generate slices and write output to **slices.json**<br>
 ```
-./srcslice -i shell_sort.cpp.xml -o slices.json
+./srcslice shell_sort.cpp.xml -o slices.json
 ```
 
 <br>
