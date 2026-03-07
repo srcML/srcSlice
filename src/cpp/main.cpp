@@ -37,11 +37,17 @@ int main(int argc, char **argv)
     CLI11_PARSE(app, argc, argv);
 
     try {
+        // check if input file exists
+        std::ifstream srcmlFile(inputFile);
+        if (!srcmlFile.is_open()) {
+            throw std::runtime_error("Input file does not exist");
+        }
+        srcmlFile.close();
+
         SrcSliceHandler srcSliceHandler(inputFile.c_str(), debugMode, feedbackMode, showControlEdges, threadCount);
 
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
-        size_t totalElements = sliceProfileMap.size();
         size_t currIndex = -1;
         std::ostringstream sliceOutput;
 
@@ -89,8 +95,8 @@ int main(int argc, char **argv)
         } else {
             std::cout << stream2string;
         }
-    } catch (std::string errormsg) {
-        std::cout << "\033[31m" << errormsg << "\033[0m" << std::endl;
+    } catch (const std::exception& e) {
+        std::cout << "\033[31m" << e.what() << "\033[0m" << std::endl;
         return 3;
     }
 
