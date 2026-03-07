@@ -55,12 +55,14 @@ int main(int argc, char **argv)
 
         // opening of the entire JSON object
         sliceOutput << "{" << std::endl;
+        bool writtenSlices = false;
 
         for (auto& profile : sliceProfileMap) {
             ++currIndex;
             
             for (auto& slice : profile.second) {
                 if (slice.containsDeclaration) {
+                    writtenSlices = true;
                     std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString() + '-' + slice.checksum);
                     sliceOutput << "\"" << name << "\":{" << std::endl;
                     sliceOutput << slice;
@@ -71,7 +73,11 @@ int main(int argc, char **argv)
 
         // remove trailing comma
         std::string stream2string = sliceOutput.str();
-        stream2string.resize(stream2string.length() - 2);
+
+        // remove trailing comma
+        if (writtenSlices) {
+            stream2string.resize(stream2string.length() - 2);
+        }
 
         // closing of the entire JSON object
         stream2string += "\n}";
