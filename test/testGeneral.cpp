@@ -624,6 +624,56 @@ int main() {
 
     std::string testName = Catch::getResultCapture().getCurrentTestName();
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+void f(int n) {
+    n;
+}
+void g(int n) {
+    n;
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "n-2-12":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"f",
+        "type":"int",
+        "name":"n",
+        "initial":"file.cpp:2:12",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:3:5"],
+        "definition":["file.cpp:2:12"]
+    },
+    "n-5-12":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"g",
+        "type":"int",
+        "name":"n",
+        "initial":"file.cpp:5:12",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:6:5"],
+        "definition":["file.cpp:5:12"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -889,6 +939,87 @@ private:
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+class Loth {
+public:
+    Loth(){}
+    void f(int n) {
+        n;
+    }
+private:
+    int n;
+};
+void g(int n) {
+    n;
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "n-5-16":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"Loth",
+        "function":"f",
+        "type":"int",
+        "name":"n",
+        "initial":"file.cpp:5:16",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:6:9"],
+        "definition":["file.cpp:5:16"]
+    },
+    "n-11-12":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"g",
+        "type":"int",
+        "name":"n",
+        "initial":"file.cpp:11:12",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:12:5"],
+        "definition":["file.cpp:11:12"]
+    },
+    "n-9-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"Loth",
+        "function":"",
+        "type":"int",
+        "name":"n",
+        "initial":"file.cpp:9:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:9:9"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+    std::cout << OK << " Passed!" << std::endl;
+}
+
+
+
+
+/**
+ * @section Basic Slicing Cases
+ * Tests Slicing against various constructs
+ * such as try-catch, anonymous blocks, throws, ...
+ */
+
  TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Construct Slicing" << std::endl;
 
@@ -1089,4 +1220,5 @@ int main() {
 
     std::string testName = Catch::getResultCapture().getCurrentTestName();
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+    std::cout << OK << " Passed!" << std::endl;
 }

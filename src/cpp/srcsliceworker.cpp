@@ -43,37 +43,6 @@ void SrcSliceWorker::Start() {
 void SrcSliceWorker::WaitForJob() {
     if (work.joinable()) {
         work.join();
-        
-        // remove duplicates
-        for (auto& [key, profiles] : data.profileMap) {
-            std::unordered_map<std::string, SliceProfile> mergedMap;
-
-            // perform one pass across the vector and insert unique keys
-            // when a duplicate is found merge the duplicates contents
-            // into the stored profile in the local map
-            for (auto& p : profiles) {
-                auto it = mergedMap.find(p.initialPosition.ToNameString());
-                if (it == mergedMap.end()) {
-                    mergedMap[p.initialPosition.ToNameString()] = std::move(p);
-                } else {
-                    // merge existing slice profile data and remove the duplicate
-                    it->second.uses.insert(p.uses.begin(), p.uses.end());
-                    it->second.definitions.insert(p.definitions.begin(), p.definitions.end());
-
-                    it->second.dvars.insert(it->second.dvars.end(),
-                                            p.dvars.begin(), p.dvars.end());
-                    it->second.aliases.insert(it->second.aliases.end(),
-                                            p.aliases.begin(), p.aliases.end());
-                    it->second.cfunctions.insert(it->second.cfunctions.end(),
-                                                p.cfunctions.begin(), p.cfunctions.end());
-                }
-            }
-
-            // rebuild profile collection based on map contents
-            profiles.clear();
-            for (auto& [pos, p] : mergedMap)
-                profiles.push_back(std::move(p));
-        }
     }
 }
 
@@ -283,11 +252,12 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                     auto sliceProfile = SliceProfile(declVarName, namePos, isPointer, true, {namePos});
                     sliceProfile.variableType = isArray ? SrcSliceOperations::GenerateArrayType(declVarType, deltaDecl->name->indices.size()) : declVarType;
                     sliceProfile.nameOfContainingClass = className;
-                    sliceProfile.classMemberVar = className.empty() ? false : true;
+                    sliceProfile.classMemberVar = !className.empty();
 
                     sliceProfile.containingNameSpaces = {}; /*** @todo find a link for namespaces on globals */
                     sliceProfile.language = sctx.currentFileLanguage;
                     sliceProfile.file = sctx.currentFilePath;
+                    sliceProfile.checksum = sctx.currentFileChecksum;
 
                     sliceProfile.showControlEdges = data.calculateControlEdges;
 
@@ -305,9 +275,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
 
                         // We may have variables of the same name, but each slice of the same name
                         // must be initially declared on different lines
-                        if (HasOriginal(sliceProfileItr->second, sliceProfile)) {
-                            sliceProfileItr->second.push_back(sliceProfile);
-                        }
+                        sliceProfileItr->second.push_back(sliceProfile);
                     } else {
                         sliceProfile.isGlobal = false;
 
@@ -321,6 +289,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                         SrcSliceOperations::ParseExpr(
                             data,
                             sctx,
+                            className,
                             deltaDecl->init,
                             EXPRESSION_TYPE::NORMAL,
                             {declVarName}
@@ -331,6 +300,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                         SrcSliceOperations::ParseExpr(
                             data,
                             sctx,
+                            className,
                             argument,
                             EXPRESSION_TYPE::NORMAL,
                             {declVarName},
@@ -425,17 +395,6 @@ void SrcSliceOperations::ProcessClasses(Blob& data, const SliceCtx& sctx, Classe
     }
 }
 
-bool SrcSliceOperations::HasOriginal(const std::vector<SliceProfile>& profiles, const SliceProfile& sliceProfile) {
-    auto hasOriginal = std::find_if(
-        profiles.begin(),
-        profiles.end(),
-        [&sliceProfile](const SliceProfile& profile){
-            return profile.initialPosition.ToNameString() == sliceProfile.initialPosition.ToNameString();
-        }
-    );
-    return hasOriginal == profiles.end();
-}
-
 void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData, const FunctionInfo& funcData,
                                             std::string className) {
     if (!deltaDeclData) return;
@@ -489,9 +448,7 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
     if (sliceProfileItr != data.profileMap.end()) {
         // Check if the new slice we potentially try to create has not already been made
         // (we dont want to have duplicates of the same slice)
-        if (HasOriginal(sliceProfileItr->second, sliceProfile)) {
-            sliceProfileItr->second.push_back(sliceProfile);
-        }
+        sliceProfileItr->second.push_back(sliceProfile);
     } else {
         // point the iterator to the newly inserted profile element
         sliceProfileItr = data.profileMap.insert(
@@ -503,6 +460,7 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
         ParseExpr(
             data,
             sctx,
+            className,
             deltaDeclData->init,
             EXPRESSION_TYPE::NORMAL,
             {declVarName}
@@ -513,6 +471,7 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
         ParseExpr(
             data,
             sctx,
+            className,
             argument,
             EXPRESSION_TYPE::NORMAL,
             {declVarName},
@@ -522,7 +481,9 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
 }
 
 
-void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::string className [[maybe_unused]]) {
+void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx,
+                                            const FunctionInfo& funcData,
+                                            std::string className) {
     if (!funcData) return;
 
     // process C++ initializer lists
@@ -547,25 +508,31 @@ void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx, cons
             if (spi != data.profileMap.end()) lhsStack.push_back(varName);
 
             // process the argument of the initializer-list
-            ParseExpr(data, sctx, deltaArg, EXPRESSION_TYPE::NORMAL, lhsStack);
+            ParseExpr(data, sctx, className, deltaArg, EXPRESSION_TYPE::NORMAL, lhsStack);
         }
     }
 }
 
-void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block,
-                                    std::string className) {
-    std::vector<std::string> containingNamespaces;
-
+void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData,
+                                        const BlockInfo& block, std::string className) {
     // Capture Conditional expressions
     if (funcData && block) {
-        containingNamespaces = funcData->namespaces;
-
         for (auto& stmt : block->statements) {
             if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExprStmtData>)) {
                 auto exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
                 if (exprstmt && exprstmt->expr && exprstmt->expr.GetElement()) {
                     // Capture general expressions
                     ProcessExprStmt(data, sctx, exprstmt->expr, funcData, className);
+                }
+            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
+                // local decls
+                auto declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
+                if (declStmtData) {
+                    for (auto& deltaDecl : declStmtData->decls) {
+                        if (deltaDecl) {
+                            CreateSliceProfile(data, sctx, deltaDecl, funcData, className);
+                        }
+                    }
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ReturnData>)) {
                 auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
@@ -574,75 +541,14 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
                     ProcessExprStmt(data, sctx, retstmt->expr, funcData, className);
                 }
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                // capture decls
-                auto ifStmtData = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(stmt.GetElement());
-                if (ifStmtData) {
-                    for (const auto& clause : ifStmtData->clauses) {
-                        if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfData>)) {
-                            auto ifData = std::any_cast<std::shared_ptr<srcDispatch::IfData>>(clause.GetElement());
-                            if (ifData && ifData->condition) {
-                                for (auto& elem : ifData->condition->conditions) {
-                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                        auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                                        if (initData) {
-                                            CreateSliceProfile(data, sctx, initData, funcData, className);
-                                        }
-                                    }
-                                }
-                            }
-                        } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
-                            auto elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
-                            if (elseIfData && elseIfData->condition) {
-                                for (auto& elem : elseIfData->condition->conditions) {
-                                    if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                        auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                                        if (initData) {
-                                            CreateSliceProfile(data, sctx, initData, funcData, className);
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                }
-
-                // capture expressions
                 CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                // capture decls
-                auto switchData = std::any_cast<std::shared_ptr<srcDispatch::SwitchData>>(stmt.GetElement());
-                if (switchData && switchData->condition) {
-                    for (const auto& elem : switchData->condition->conditions) {
-                        if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                            if (initData) {
-                                CreateSliceProfile(data, sctx, initData, funcData, className);
-                            }
-                        }
-                    }
-                }
-
-                // capture expressions
                 CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CaseData>)) {
                 CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
                 CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                // capture decls
-                auto forData = std::any_cast<std::shared_ptr<srcDispatch::ForData>>(stmt.GetElement());
-                if (forData && forData->control && forData->control->init) {
-                    for (auto& initData : forData->control->init->inits) {
-                        if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                            auto initDeclData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
-                            if (initDeclData) {
-                                CreateSliceProfile(data, sctx, initDeclData, funcData, className);
-                            }
-                        }
-                    }
-                }
-
-                // capture expressions
                 CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
             } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
                 CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
@@ -673,16 +579,6 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
                 if (throwData && throwData->expr && throwData->expr.GetElement()) {
                     ProcessExprStmt(data, sctx, throwData->expr, funcData, className);
                 }
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
-                // local decls
-                auto declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
-                if (declStmtData) {
-                    for (auto& deltaDecl : declStmtData->decls) {
-                        if (deltaDecl) {
-                            CreateSliceProfile(data, sctx, deltaDecl, funcData, className);
-                        }
-                    }
-                }
             } else {
                 if (data.verboseMode) {
                     std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << "\n";
@@ -697,10 +593,11 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
     }
 }
 
-void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, [[maybe_unused]] const FunctionInfo& funcData,
-                                        [[maybe_unused]] std::string className, EXPRESSION_TYPE expr_type) {
+void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr,
+                                            [[maybe_unused]] const FunctionInfo& funcData,
+                                            std::string className, EXPRESSION_TYPE expr_type) {
     if (expr) {
-        ParseExpr(data, sctx, expr, expr_type);
+        ParseExpr(data, sctx, className, expr, expr_type);
     }
 }
 
@@ -749,8 +646,9 @@ void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const 
 
 // try blocks contain both exprs and decls, need to extract those decls and create slice profiles
 // for them, along with capturing expressions to update collected slices
-void SrcSliceOperations::CollectTryBlockData(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
-                            std::string className) {
+void SrcSliceOperations::CollectTryBlockData(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData,
+                                                std::shared_ptr<srcDispatch::TryData>& tryBlock,
+                                                std::string className) {
     if (tryBlock->block) {
         // Collect Decls and Exprs within the block of this Try-Block
         ProcessStmts(data, sctx, funcData, tryBlock->block, className);
@@ -768,16 +666,15 @@ void SrcSliceOperations::CollectTryBlockData(Blob& data, const SliceCtx& sctx, c
 }
 
 void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::any& cntl, const std::string& className) {
-    std::vector<std::shared_ptr<srcDispatch::BlockData>> cntlBlocks;
-
     // identify what conditional type we are viewing and handle logic accordingly
     if (cntl.type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
         // Extract all of the block data from if statements
         std::shared_ptr<srcDispatch::IfStmtData> ifcntl = std::any_cast<std::shared_ptr<srcDispatch::IfStmtData>>(cntl);
         if (ifcntl) {
             SlicePosition ifStmtPos(ifcntl->startPosition, ifcntl->endPosition, sctx.currentFilePath);
-            if (data.ifStmts.size() == 0 || data.ifStmts.back() != ifStmtPos)
+            if (data.ifStmts.size() == 0 || data.ifStmts.back() != ifStmtPos) {
                 data.ifStmts.push_back(ifStmtPos);
+            }
 
             // ifstmts have three potential clauses (if-elseif-else)
             for (const auto& clause : ifcntl->clauses) {
@@ -789,9 +686,10 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                         if (ifData && ifData->condition) {
                             for (auto& elem : ifData->condition->conditions) {
                                 if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                    // if (declStmts) {
-                                    //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                                    // }
+                                    auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                    if (initData) {
+                                        CreateSliceProfile(data, sctx, initData, funcData, className);
+                                    }
                                 } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                                     std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
                                     ProcessExprStmt(data, sctx, exprstmt, funcData, className, EXPRESSION_TYPE::IF_CONDITION);
@@ -805,7 +703,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
 
                         // track the block so we can view nesting
                         if (ifData->block && ifData->block.GetElement())
-                            cntlBlocks.push_back(ifData->block.GetElement());
+                            ProcessStmts(data, sctx, funcData, ifData->block, className);
                     }
                 } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseIfData>)) {
                     std::shared_ptr<srcDispatch::ElseIfData> elseIfData = std::any_cast<std::shared_ptr<srcDispatch::ElseIfData>>(clause.GetElement());
@@ -815,9 +713,10 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                         if (elseIfData && elseIfData->condition) {
                             for (auto& elem : elseIfData->condition->conditions) {
                                 if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                                    // if (declStmts) {
-                                    //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement()));
-                                    // }
+                                    auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                                    if (initData) {
+                                        CreateSliceProfile(data, sctx, initData, funcData, className);
+                                    }
                                 } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                                     std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
                                     ProcessExprStmt(data, sctx, exprstmt, funcData, className, EXPRESSION_TYPE::ELIF_CONDITION);
@@ -831,7 +730,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
 
                         // track blocks for checking nesting
                         if (elseIfData->block && elseIfData->block.GetElement())
-                            cntlBlocks.push_back(elseIfData->block.GetElement());
+                            ProcessStmts(data, sctx, funcData, elseIfData->block, className);
                     }
                 } else if (clause.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ElseData>)) {
                     std::shared_ptr<srcDispatch::ElseData> elseData = std::any_cast<std::shared_ptr<srcDispatch::ElseData>>(clause.GetElement());
@@ -844,7 +743,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
 
                         // track blocks for checking nesting
                         if (elseData->block && elseData->block.GetElement())
-                            cntlBlocks.push_back(elseData->block.GetElement());
+                            ProcessStmts(data, sctx, funcData, elseData->block, className);
                     }
                 }
             }
@@ -875,6 +774,9 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                         }
                     } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
                         std::shared_ptr<srcDispatch::DeclData> declData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+                        if (declData) {
+                            CreateSliceProfile(data, sctx, declData, funcData, className);
+                        }
 
                         /***
                             @todo
@@ -926,7 +828,8 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                     }
                 }
 
-                if (switchData->block.GetElement()) cntlBlocks.push_back(switchData->block.GetElement());
+                if (switchData->block.GetElement())
+                    ProcessStmts(data, sctx, funcData, switchData->block, className);
             }
 
         }
@@ -939,6 +842,7 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                     if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
                         auto declData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
                         if (declData) {
+                            CreateSliceProfile(data, sctx, declData, funcData, className);
                             ProcessExprStmt(data, sctx, declData->range, funcData, className);
                         }
                     } else if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
@@ -969,7 +873,8 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
         data.loopdata.push_back(forPos);
         data.forloopdata.push_back(forPos);
 
-        cntlBlocks.push_back(forData->block.GetElement());
+        if (forData->block)
+            ProcessStmts(data, sctx, funcData, forData->block, className);
     } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
         // Extract all of the block data from While Loops
         std::shared_ptr<srcDispatch::WhileData> whileData = std::any_cast<std::shared_ptr<srcDispatch::WhileData>>(cntl);
@@ -990,7 +895,8 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
             data.loopdata.push_back(whilePos);
             data.whileloopdata.push_back(whilePos);
 
-            if (whileData->block && whileData->block.GetElement()) cntlBlocks.push_back(whileData->block.GetElement());
+            if (whileData->block && whileData->block.GetElement())
+                ProcessStmts(data, sctx, funcData, whileData->block, className);
         }
     } else if (cntl.type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
         // Extract all of the block data from Do-While Loops
@@ -1012,7 +918,8 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
             // data.loopdata.push_back(whilePos);
             data.dowhileloopdata.push_back(whilePos);
 
-            if (doWhileData->block && doWhileData->block.GetElement()) cntlBlocks.push_back(doWhileData->block.GetElement());
+            if (doWhileData->block && doWhileData->block.GetElement())
+                ProcessStmts(data, sctx, funcData, doWhileData->block, className);
         }
     } else {
         if (data.verboseMode) {
@@ -1021,57 +928,13 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
             }
         }
     }
-
-    // Capture the Expressions and Decl-Stmts from the conditonal blocks
-    for (const auto& block : cntlBlocks) {
-        if (!block) continue;
-        std::vector<std::any> conditionals;
-
-        // capture decls nested within blocks of conditionals before parsing expressions
-        // within the block
-        ProcessStmts(data, sctx, funcData, block, "");
-
-        for (auto& stmt : block->statements) {
-            if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExprStmtData>)) {
-                std::shared_ptr<srcDispatch::ExprStmtData> exprstmtdata = std::any_cast<std::shared_ptr<srcDispatch::ExprStmtData>>(stmt.GetElement());
-                ProcessExprStmt(data, sctx, exprstmtdata->expr, funcData, className);
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclStmtData>)) {
-                // locals
-                std::shared_ptr<srcDispatch::DeclStmtData> declStmtData = std::any_cast<std::shared_ptr<srcDispatch::DeclStmtData>>(stmt.GetElement());
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ReturnData>)) {
-                // type of expression statement
-                auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
-                if (retstmt) {
-                    if (retstmt->expr && retstmt->expr.GetElement()) {
-                        std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(retstmt->expr.GetElement());
-                        ProcessExprStmt(data, sctx, exprstmt, funcData, className);
-                    }
-                }
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::IfStmtData>)) {
-                CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::SwitchData>)) {
-                CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::CaseData>)) {
-                CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::WhileData>)) {
-                CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ForData>)) {
-                CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
-            } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DoData>)) {
-                CollectConditionalData(data, sctx, funcData, stmt.GetElement(), className);
-            } else {
-                if (data.verboseMode) {
-                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " : " << __FUNCTION__ << " | Unhandled Type -> " << stmt.GetElement().type().name() << "\n";
-                }
-            }
-        }
-    }
 }
 
-void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, EXPRESSION_TYPE expr_type,
-                                std::vector<std::string> lhsStack, bool isArg,
-                                srcDispatch::CallData* funcCallData, int argIndex) {
-    ExprParse::ExprCtx ectx(data.profileMap, &lhsStack);
+void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, std::string className,
+                                    const ExprInfo& expr, EXPRESSION_TYPE expr_type,
+                                    std::vector<std::string> lhsStack, bool isArg,
+                                    srcDispatch::CallData* funcCallData, int argIndex) {
+    ExprParse::ExprCtx ectx(data.profileMap, &lhsStack, className);
 
     // lhsStack -> transparent stack where begin() is outter LHS and end() is inner LHS
     std::string expr_op = ""; // most recently encountered operator token
@@ -1099,7 +962,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
 
                 // parse the expressions of indices
                 for (const ExprInfo& exprInfo : nameData->indices) {
-                    ParseExpr(data, sctx, exprInfo, expr_type, {});
+                    ParseExpr(data, sctx, className, exprInfo, expr_type, {});
                 }
 
 
@@ -1126,11 +989,11 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                         // meaning the lhs is data dependent of SOME of the reference chain
                         ExprParse::updateLHS(data.profileMap, ectx, referenceName, i, ectx.dLength);
 
-                        ExprParse::pushUse(data.profileMap, aspi, ectx.namePos);
+                        ExprParse::pushUse(data.profileMap, aspi, ectx);
 
                         // handle pre/post fix incr/decr
                         if (ectx.prefixed || (expr_op == "++" || expr_op == "--")) {
-                            if (i+1 == ectx.dLength) ExprParse::pushDef(data.profileMap, aspi, ectx.namePos);
+                            if (i+1 == ectx.dLength) ExprParse::pushDef(data.profileMap, aspi, ectx);
                         }
 
                         visited.push_back(referenceName);
@@ -1142,21 +1005,21 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
 
                     // apply the definition to the end of the chain
                     if (ectx.cppInput) {
-                        ExprParse::pushDef(data.profileMap, (aspi == data.profileMap.end()) ? prevAspi : aspi, ectx.namePos);
-                        ExprParse::popUse(data.profileMap, (aspi == data.profileMap.end()) ? prevAspi : aspi, ectx.namePos);
+                        ExprParse::pushDef(data.profileMap, (aspi == data.profileMap.end()) ? prevAspi : aspi, ectx);
+                        ExprParse::popUse(data.profileMap, (aspi == data.profileMap.end()) ? prevAspi : aspi, ectx);
                     }
                 }
                 
-                ExprParse::pushUse(data.profileMap, ectx.spi, ectx.namePos);
+                ExprParse::pushUse(data.profileMap, ectx.spi, ectx);
 
                 if (ectx.cppInput && !ectx.dereferenced) {
-                    ExprParse::pushDef(data.profileMap, ectx.spi, ectx.namePos);
-                    ExprParse::popUse(data.profileMap, ectx.spi, ectx.namePos);
+                    ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
+                    ExprParse::popUse(data.profileMap, ectx.spi, ectx);
                 }
                 
                 // handle pre/post fix incr/decr
                 if (ectx.prefixed || (expr_op == "++" || expr_op == "--")) {
-                    if (!ectx.dereferenced) ExprParse::pushDef(data.profileMap, ectx.spi, ectx.namePos);
+                    if (!ectx.dereferenced) ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
                     ectx.prefixed = false;
                 }
                 
@@ -1342,18 +1205,18 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
 
                     if (!ectx.dereferenced) {
                         // redefining a normal variable
-                        ExprParse::pushDef(data.profileMap, ectx.spi, ectx.namePos);
+                        ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
                         
-                        ExprParse::popUse(data.profileMap, ectx.spi, ectx.namePos);
+                        ExprParse::popUse(data.profileMap, ectx.spi, ectx);
                         // if spi is a pointer then when we redefine a pointer's reference
                         // we are not using the current reference
-                        ExprParse::popUse(data.profileMap, aspi, ectx.namePos);
+                        ExprParse::popUse(data.profileMap, aspi, ectx);
 
                         lhsStack.push_back(recent_name);
                     } else {
                         // redefining a pointer's reference
-                        ExprParse::pushDef(data.profileMap, aspi, ectx.namePos);
-                        ExprParse::popUse(data.profileMap, aspi, ectx.namePos);
+                        ExprParse::pushDef(data.profileMap, aspi, ectx);
+                        ExprParse::popUse(data.profileMap, aspi, ectx);
 
                         if (aspi != data.profileMap.end())
                             lhsStack.push_back(aspi->second.back().variableName);
@@ -1362,11 +1225,11 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                     
                     if (SrcSliceOperations::isCompoundAssignment(expr_op)) {
                         // recent_name (new lhs) is used and redefined
-                        ExprParse::pushUse(data.profileMap, ectx.spi, ectx.namePos);
+                        ExprParse::pushUse(data.profileMap, ectx.spi, ectx);
     
                         if (ectx.dereferenced) {
                             // redefining a pointer's reference
-                            ExprParse::pushUse(data.profileMap, aspi, ectx.namePos);
+                            ExprParse::pushUse(data.profileMap, aspi, ectx);
                         }
                     }
                 } else if (current_op_token == "<<" || current_op_token == ">>") {
@@ -1403,12 +1266,12 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                             std::string name = (ectx.spi == data.profileMap.end()) ? "" : ectx.spi->second.back().currentPointerReference;
                             auto aspi = data.profileMap.find(name);
                             
-                            ExprParse::pushDef(data.profileMap, aspi, ectx.namePos);
-                            ExprParse::pushUse(data.profileMap, aspi, ectx.namePos);
+                            ExprParse::pushDef(data.profileMap, aspi, ectx);
+                            ExprParse::pushUse(data.profileMap, aspi, ectx);
                         } else {
                             // normal variable
-                            ExprParse::pushDef(data.profileMap, ectx.spi, ectx.namePos);
-                            ExprParse::pushUse(data.profileMap, ectx.spi, ectx.namePos);
+                            ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
+                            ExprParse::pushUse(data.profileMap, ectx.spi, ectx);
                         }
                     }
                 }
@@ -1439,9 +1302,12 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                             nameData->endPosition,
                             sctx.currentFilePath
                         );
+
+                        ExprParse::ExprCtx callCtx(data.profileMap, &lhsStack, className);
+                        callCtx.namePos = namePos;
     
                         auto spi = data.profileMap.find(callTarget);
-                        ExprParse::pushUse(data.profileMap, spi, namePos);
+                        ExprParse::pushUse(data.profileMap, spi, callCtx);
                     }
                     // terminate after reviewing first NameData
                     break;
@@ -1454,7 +1320,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
                 int v = (isArg) ? 1 : ++argIndex;
 
                 // parse the call-argument expression
-                ParseExpr(data, sctx, arg, expr_type, lhsStack, true, &(*callData), v);
+                ParseExpr(data, sctx, className, arg, expr_type, lhsStack, true, &(*callData), v);
             }
         } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::LiteralData>)) {
             ectx.lastToken.type = ExprParse::TokenType::LITERAL;
@@ -1462,8 +1328,9 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
     } // end of looping elements
 }
 
-void SrcSliceOperations::ProcessFunctionParameters(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::vector<DeclInfo>& parameters,
-                                                std::string currentFunctionName, std::string className) {
+void SrcSliceOperations::ProcessFunctionParameters(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData,
+                                                    std::vector<DeclInfo>& parameters, std::string currentFunctionName,
+                                                    std::string className) {
     for (auto& parameter : parameters) {
         if (!parameter->name) continue;
         std::string paramName = parameter->name.ToString();
@@ -1507,18 +1374,18 @@ void SrcSliceOperations::ProcessFunctionParameters(Blob& data, const SliceCtx& s
         sliceProf.checksum = sctx.currentFileChecksum;
         sliceProf.function = currentFunctionName;
 
+        
         // Just add new slice profile if name already exists. Otherwise, add new entry in map.
         if (sliceProfileItr != data.profileMap.end()) {
-            if (HasOriginal(sliceProfileItr->second, sliceProf)) {
-                sliceProfileItr->second.push_back(std::move(sliceProf));
-            }
+            sliceProfileItr->second.push_back(std::move(sliceProf));
         } else {
             data.profileMap.insert(std::make_pair(paramName, std::vector<SliceProfile>{ std::move(sliceProf) }));
         }
     }
 }
 
-void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sctx, FunctionInfo& funcData, std::string className) {
+void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sctx,
+                                                    FunctionInfo& funcData, std::string className) {
     std::string functionName = funcData->name.ToString();
     if (functionName.empty()) return;
 
@@ -1556,8 +1423,9 @@ void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sc
 
 // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
 // Logic constructed for use BEFORE InterProcedural
-SliceProfile* SrcSliceOperations::FetchSliceProfile(Blob& data, const SliceCtx& sctx [[maybe_unused]], std::string profileName, const FunctionInfo& funcData,
-                                std::string className, std::vector<std::string> containingNameSpaces) {
+SliceProfile* SrcSliceOperations::FetchSliceProfile(Blob& data, const SliceCtx& sctx [[maybe_unused]],
+                                                    std::string profileName, const FunctionInfo& funcData,
+                                                    std::string className, std::vector<std::string> containingNameSpaces) {
     auto spi = data.profileMap.find(profileName);
     SliceProfile* probableProfile = nullptr;
 
