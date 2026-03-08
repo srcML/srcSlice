@@ -889,14 +889,6 @@ private:
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
-
-
-
-/**
- * @section Basic Slicing Cases
- * Tests Slicing against basic C++ Classes
- */
-
  TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Construct Slicing" << std::endl;
 
@@ -995,6 +987,103 @@ int main() {
         "calls":[],
         "use":[],
         "definition":["file.cpp:5:13","file.cpp:6:9"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
+    Item itm(a);
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:3:9",
+        "dependence":[{"itm":"file.cpp:4:14"}],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:4:14"],
+        "definition":["file.cpp:3:9"]
+    },
+    "itm-4-10":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"Item",
+        "name":"itm",
+        "initial":"file.cpp:4:10",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:4:10"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+int main() {
+    vector<string> vec;
+    for (const auto& entry : vec) {
+    }
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "entry-4-22":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"auto&",
+        "name":"entry",
+        "initial":"file.cpp:4:22",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:4:22"]
+    },
+    "vec-3-20":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"vector<string>",
+        "name":"vec",
+        "initial":"file.cpp:3:20",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:4:30"],
+        "definition":["file.cpp:3:20"]
     }
     })"_json;
 

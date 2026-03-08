@@ -210,24 +210,35 @@ std::string SrcSliceOperations::GetTypeDetails(const DeclInfo& localVar, bool& i
     std::string t;
 
     // Extract just the Data-Type name without extra data
-    for (std::size_t i = 0; i < localVar->type->types.size(); ++i) {
-        const auto type = localVar->type->types[i];
-
-        if(type.second.GetElement() == srcDispatch::TypeData::POINTER) {
+    for (const auto& typeEntry : localVar->type->types) {
+        if(typeEntry.second.GetElement() == srcDispatch::TypeData::POINTER) {
             t += '*';
-        } else if(type.second.GetElement() == srcDispatch::TypeData::REFERENCE) {
+        } else if(typeEntry.second.GetElement() == srcDispatch::TypeData::REFERENCE) {
             t += '&';
-        } else if(type.second.GetElement() == srcDispatch::TypeData::RVALUE) {
+        } else if(typeEntry.second.GetElement() == srcDispatch::TypeData::RVALUE) {
             t += "&&";
-        } else if(type.second.GetElement() == srcDispatch::TypeData::TYPENAME) {
-            t += type.first.ToString<std::shared_ptr<srcDispatch::NameData>>(srcDispatch::DiffOperation::NONE);
+        } else if(typeEntry.second.GetElement() == srcDispatch::TypeData::TYPENAME) {
+            t += typeEntry.first.ToString<std::shared_ptr<srcDispatch::NameData>>(srcDispatch::DiffOperation::NONE);
+        } else if (typeEntry.second.GetElement() == srcDispatch::TypeData::SPECIFIER) {
+            // check for certain specifiers such as: auto, ref, ...
+            if (typeEntry.first.GetElement().type() == typeid(std::shared_ptr<std::string>)) {
+                auto specifier = std::any_cast<std::shared_ptr<std::string>>(typeEntry.first.GetElement());
+                
+                bool usefulSpecifer = (
+                    *specifier == "auto" || *specifier == "ref"
+                );
+
+                if (specifier && usefulSpecifer) {
+                    t += *specifier;
+                }
+            }
         }
 
-        if (type.second.GetElement() == srcDispatch::TypeData::POINTER) {
+        if (typeEntry.second.GetElement() == srcDispatch::TypeData::POINTER) {
             isPointer = true;
-        } else if (type.second.GetElement() == srcDispatch::TypeData::REFERENCE) {
+        } else if (typeEntry.second.GetElement() == srcDispatch::TypeData::REFERENCE) {
             isReference = true;
-        } else if (type.second.GetElement() == srcDispatch::TypeData::TYPENAME) {
+        } else if (typeEntry.second.GetElement() == srcDispatch::TypeData::TYPENAME) {
             // attempt to mark raw-arrays for alias processing later
             if (localVar->name && localVar->name->indices.size() > 0) {
                 isArray = true;
@@ -240,7 +251,7 @@ std::string SrcSliceOperations::GetTypeDetails(const DeclInfo& localVar, bool& i
 
 //=======================================================================
 
-void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmts& deltaDeclStmts, std::string className, bool globalDecls) {
+void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmts& deltaDeclStmts, std::string className, bool globalDecls [[maybe_unused]]) {
     // iterate the declstmts and review decldata
     for (const auto& deltaDeclStmt : deltaDeclStmts) {
         // validate data is safe to access
@@ -313,6 +324,17 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                             deltaDecl->init,
                             EXPRESSION_TYPE::NORMAL,
                             {declVarName}
+                        );
+                    }
+
+                    for (auto& argument : deltaDecl->arguments) {
+                        SrcSliceOperations::ParseExpr(
+                            data,
+                            sctx,
+                            argument,
+                            EXPRESSION_TYPE::NORMAL,
+                            {declVarName},
+                            true
                         );
                     }
                 }
@@ -486,10 +508,21 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
             {declVarName}
         );
     }
+
+    for (auto& argument : deltaDeclData->arguments) {
+        ParseExpr(
+            data,
+            sctx,
+            argument,
+            EXPRESSION_TYPE::NORMAL,
+            {declVarName},
+            true
+        );
+    }
 }
 
 
-void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::string className) {
+void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::string className [[maybe_unused]]) {
     if (!funcData) return;
 
     // process C++ initializer lists
@@ -664,8 +697,8 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
     }
 }
 
-void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, const FunctionInfo& funcData,
-                                        std::string className, EXPRESSION_TYPE expr_type) {
+void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, [[maybe_unused]] const FunctionInfo& funcData,
+                                        [[maybe_unused]] std::string className, EXPRESSION_TYPE expr_type) {
     if (expr) {
         ParseExpr(data, sctx, expr, expr_type);
     }
@@ -673,7 +706,7 @@ void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const
 
 // Use collected function call data to push a new cfunctions entry into a referenced slice profile
 // call data gets passed into aliases if needed
-void SrcSliceOperations::CreateSliceCallData(Blob& data, const SliceCtx& sctx, std::string functionName,
+void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const SliceCtx& sctx, std::string functionName,
                                             int argIndex, int argc, SlicePosition functionPosition,
                                             SliceProfile& sliceProfile, SlicePosition invokePosition) {
     FunctionCallData sliceCallData = FunctionCallData(
@@ -904,9 +937,10 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
             if (forData->control->init) {
                 for (auto& initData : forData->control->init->inits) {
                     if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
-                        // if (declStmts) {
-                        //     declStmts->push_back(std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement()));
-                        // }
+                        auto declData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
+                        if (declData) {
+                            ProcessExprStmt(data, sctx, declData->range, funcData, className);
+                        }
                     } else if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                         std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(initData.GetElement());
                         ProcessExprStmt(data, sctx, exprstmt, funcData, className);
@@ -1132,7 +1166,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const ExprI
             }
 
             // Collect cfunc data
-            if (isArg) {
+            if (isArg && funcCallData != nullptr) {
                 try {
                     std::string functionName = funcCallData->name.ToString();
 
