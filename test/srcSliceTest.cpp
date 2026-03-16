@@ -78,29 +78,32 @@ std::string RunSrcSlice(std::string srcml, bool computeControlEdges) {
     SrcSliceHandler srcSliceHandler(srcml, computeControlEdges);
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap = srcSliceHandler.GetProfileMap();
 
-    size_t totalElements = profileMap.size();
-    size_t currIndex = 0;
-
     output << "{" << std::endl;
-    for (auto& profiles : profileMap) {
-        ++currIndex;
-        for (auto& slice : profiles.second)
-        {
-            if (slice.containsDeclaration)
-            {
-                // write out the start of the json object
-                std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString());
+    bool writtenSlices = false;
 
-                output << "\"" << name << "\":{" << std::endl;
-                output << slice;
-                output << "}," << std::endl;
-            }
+    for (auto& profiles : profileMap) {
+        for (auto& slice : profiles.second) {
+            if (!slice.containsDeclaration)
+                continue;
+
+            writtenSlices = true;
+            // write out the start of the json object
+            std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString());
+
+            output << "\"" << name << "\":{" << std::endl;
+            output << slice;
+            output << "}," << std::endl;
         }
     }
 
     // remove trailing comma
     std::string stream2string = output.str();
-    stream2string.resize(stream2string.length() - 2);
+    output.clear();
+
+    // remove trailing comma
+    if (writtenSlices) {
+        stream2string.resize(stream2string.length() - 2);
+    }
 
     // closing of the entire JSON object
     stream2string += "\n}";

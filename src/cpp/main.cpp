@@ -48,7 +48,6 @@ int main(int argc, char **argv)
 
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
-        size_t currIndex = -1;
         std::ostringstream sliceOutput;
 
         if (!outputFile.empty()) {
@@ -63,22 +62,23 @@ int main(int argc, char **argv)
         sliceOutput << "{" << std::endl;
         bool writtenSlices = false;
 
-        for (auto& profile : sliceProfileMap) {
-            ++currIndex;
-            
-            for (auto& slice : profile.second) {
-                if (slice.containsDeclaration) {
-                    writtenSlices = true;
-                    std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString() + '-' + slice.checksum);
-                    sliceOutput << "\"" << name << "\":{" << std::endl;
-                    sliceOutput << slice;
-                    sliceOutput << "}," << std::endl;
-                }
+        for (auto& profiles : sliceProfileMap) {
+            for (auto& slice : profiles.second) {
+                if (!slice.containsDeclaration)
+                    continue;
+
+                writtenSlices = true;
+                std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString() + '-' + slice.checksum);
+
+                sliceOutput << "\"" << name << "\":{" << std::endl;
+                sliceOutput << slice;
+                sliceOutput << "}," << std::endl;
             }
         }
 
         // remove trailing comma
         std::string stream2string = sliceOutput.str();
+        sliceOutput.clear();
 
         // remove trailing comma
         if (writtenSlices) {
