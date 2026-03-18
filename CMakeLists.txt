@@ -24,6 +24,16 @@
 cmake_minimum_required(VERSION 3.20)
 project(srcSlice)
 
+option(BUILD_WITH_VCPKG "Build dependencies with vcpkg" OFF)
+if(BUILD_WITH_VCPKG)
+    message(STATUS "Building with vcpkg")
+    set(VCPKG_BUILD_TYPE "release")
+    include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+endif()
+if(WIN32 AND NOT DEFINED CMAKE_INSTALL_PREFIX)
+  set(CMAKE_INSTALL_PREFIX "C:/Program Files/srcSlice" CACHE PATH "Set Windows install dir" FORCE)
+endif()
+
 # enable ctest
 enable_testing()
 

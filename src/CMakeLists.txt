@@ -16,3 +16,7 @@ add_executable(srcslice ${DISPATCHER_SOURCE} ${DISPATCHER_HEADER} ${SLICE_SOURCE
 target_link_libraries(srcslice srcdispatch srcsax_static ${LIBXML2_LIBRARIES})
 
 install(TARGETS srcslice)
+
+if(MSVC)
+    set_source_files_properties(cpp/main.cpp PROPERTIES COMPILE_FLAGS /wd4866)
+endif()
