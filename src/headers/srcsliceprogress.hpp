@@ -7,7 +7,6 @@
 #include <sstream>
 #include <thread>
 #include <chrono>
-#include <unistd.h>
 #include <iomanip>
 #include <mutex>
 #include <cmath>

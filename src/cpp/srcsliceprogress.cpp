@@ -63,7 +63,7 @@ void ProgressBar::Increment() {
 // prints above it
 void ProgressBar::Update() {
     while (!actionFinished) {
-        usleep(2000);
+        std::this_thread::sleep_for(std::chrono::microseconds(2));
         Log();
     }
 }
@@ -158,7 +158,7 @@ void IdleBar::Finish(std::string msg) {
 // prints above it
 void IdleBar::Update() {
     while (!actionFinished) {
-        usleep(2000);
+        std::this_thread::sleep_for(std::chrono::microseconds(2));
         Log();
     }
 }
