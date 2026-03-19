@@ -1,0 +1,87 @@
+{
+  "version": 8,
+  "include": [
+    "CMakeBasePresets.json"
+  ],
+  "configurePresets": [
+    {
+      "name": "ci-msvc",
+      "displayName": "MSVC",
+      "description": "Default build options for MSVC",
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "toolchainFile": "toolchain-msvc.cmake",
+      "inherits": ["ci-base", "ci-subdirectory-build"],
+      "cacheVariables": {
+        "BUILD_WITH_VCPKG": "ON",
+        "CMAKE_CXX_COMPILER": "cl",
+        "CMAKE_C_COMPILER": "cl",
+        "CMAKE_CXX_FLAGS": "/Wall /D_CRT_SECURE_NO_WARNINGS /D_CRT_NONSTDC_NO_WARNINGS /wd4068 /wd4514 /wd4710 /wd4820 /wd5039 /wd4711 /wd4706 /wd4625 /wd4626 /wd5026 /wd5027 /wd4668 /wd4868 /wd4371 /wd4623 /wd5045 /wd5266 /wd5267 /wd4505 /wd4702 /wd4458 /wd4100 /wd4355 /wd4265 /wd4365 /wd4865 /wd4388 /wd4266 /wd4245 /wd4267 /wd5038 /wd4800 /wd4456 /wd4061 /wd4574 /wd4996 /wd4296 /wd5233 /wd5219 ",
+        "VCPKG_FEATURE_FLAGS": "manifests,binarycaching,-compilertracking",
+        "VCPKG_INSTALL_OPTIONS": "--x-abi-tools-use-exact-versions"
+      }
+    }
+  ],
+  "buildPresets" : [
+    {
+      "name": "ci-msvc-only",
+      "displayName": "MSVC only",
+      "description": "Restrict to MSVC",
+      "hidden": true,
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "configurePreset": "ci-msvc"
+    },
+    {
+      "name": "ci-msvc",
+      "inherits": ["ci-msvc-only"],
+      "configuration": "Release"
+    },
+    {
+      "name": "ci-clean-install-msvc3",
+      "inherits": ["ci-msvc-only", "ci-clean-install"]
+    },
+    {
+      "name": "ci-install-package-msvc",
+      "inherits": ["ci-install-package", "ci-msvc-only"]
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "ci-msvc-only",
+      "hidden": true,
+      "condition": { "type": "equals", "lhs": "${hostSystemName}", "rhs": "Windows" },
+      "configurePreset": "ci-msvc"
+    },
+    {
+      "name": "ci-msvc",
+      "generators": [ "INNOSETUP", "NuGet", "ZIP" ],
+      "inherits": ["ci-msvc-only", "ci-base"]
+    },
+    {
+      "name": "ci-msvc-wix",
+      "generators": [ "WIX", "ZIP" ],
+      "inherits": ["ci-msvc-only", "ci-base"]
+    },
+    {
+      "name": "ci-msvc-inno",
+      "generators": [ "INNOSETUP", "ZIP" ],
+      "inherits": ["ci-msvc-only", "ci-base"]
+    },
+    {
+      "name": "ci-msvc-nuget",
+      "generators": [ "NuGet", "ZIP" ],
+      "inherits": ["ci-msvc-only", "ci-base"]
+    }
+  ],
+  "testPresets": [
+  ],
+  "workflowPresets": [
+    {
+      "name": "ci-msvc",
+      "steps": [
+        { "type": "configure", "name": "ci-msvc" },
+        { "type": "build",     "name": "ci-msvc" },
+        { "type": "package",   "name": "ci-msvc" }
+      ]
+    }
+  ]
+}

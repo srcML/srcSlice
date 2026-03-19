@@ -28,7 +28,12 @@ option(BUILD_WITH_VCPKG "Build dependencies with vcpkg" OFF)
 if(BUILD_WITH_VCPKG)
     message(STATUS "Building with vcpkg")
     set(VCPKG_BUILD_TYPE "release")
+    
     include("$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake")
+    
+    include_directories(
+        ${VCPKG_INSTALLED_DIR}/x64-windows/include
+    )
 endif()
 if(WIN32 AND NOT DEFINED CMAKE_INSTALL_PREFIX)
   set(CMAKE_INSTALL_PREFIX "C:/Program Files/srcSlice" CACHE PATH "Set Windows install dir" FORCE)
@@ -41,7 +46,9 @@ enable_testing()
 find_package(LibXml2 REQUIRED)
 
 set(CMAKE_CXX_STANDARD 20)
-set(CMAKE_CXX_FLAGS "-Wno-reorder -Wunused-variable -Wunused-parameter -Wnarrowing -Werror=narrowing -Wno-error=all")
+if(NOT MSVC)
+    set(CMAKE_CXX_FLAGS "-Wno-reorder -Wunused-variable -Wunused-parameter -Wnarrowing -Werror=narrowing -Wno-error=all")
+endif()
 
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
@@ -57,7 +64,12 @@ include_directories(${LIBXML2_INCLUDE_DIR}
                     src/headers)
 
 add_subdirectory(src)
-add_subdirectory(test)
+
+option(BUILD_TESTS "Build test targets" ON)
+if(BUILD_TESTS)
+    message(STATUS "Building tests")
+    add_subdirectory(test)
+endif()
 add_subdirectory(srcDispatch)
 
 # custom make target to strictly test srcSlice test suite

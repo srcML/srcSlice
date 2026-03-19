@@ -1,0 +1,43 @@
+{
+  "version": 8,
+  "configurePresets": [
+    {
+      "name": "ci-base",
+      "hidden": true
+    },
+    {
+      "name": "ci-sibling-build",
+      "description": "Sibling build",
+      "hidden": true,
+      "binaryDir": "${sourceParentDir}/${sourceDirName}-build"
+    },
+    {
+      "name": "ci-subdirectory-build",
+      "description": "Subdirectory build",
+      "hidden": true,
+      "binaryDir": "build"
+    }
+  ],
+  "buildPresets": [
+    {
+      "name": "ci-install-package",
+      "description": "Install a package",
+      "hidden": true,
+      "targets": ["install_package"]
+    },
+    {
+      "name": "ci-clean-install",
+      "description": "Clean the installed package",
+      "hidden": true,
+      "targets": ["clean_install"]
+    }
+  ],
+  "packagePresets": [
+    {
+      "name": "ci-base",
+      "hidden": true,
+      "configurations": [ "Release" ],
+      "generators": [ "TGZ", "TBZ2" ]
+    }
+  ]
+}

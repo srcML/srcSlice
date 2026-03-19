@@ -1,0 +1,11 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg-tool/main/docs/vcpkg.schema.json",
+  "name": "srcslice",
+  "dependencies": [
+    { "name": "libxml2", "version>=": "2.10.3" },
+    { "name": "libiconv", "version>=": "1.17" },
+    { "name": "nlohmann-json", "version>=": "3.11.2" },
+    { "name": "boost-test", "version>=": "1.83.0" }
+  ],
+  "builtin-baseline": "3bdaa9b42070c241c1bdb02b4cf01f90de579738"
+}
