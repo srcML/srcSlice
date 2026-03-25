@@ -57,8 +57,8 @@ std::string SlicePosition::RangeToString() const {
 std::string SlicePosition::ToNameString() const {
     std::string s;
 
-    std::string lineStr = std::to_string(start->GetLine());
-    std::string colStr = std::to_string(start->GetColumn());
+    std::string lineStr = start ? std::to_string(start->GetLine()) : "0";
+    std::string colStr = start ? std::to_string(start->GetColumn()) : "0";
     s += lineStr + "-" + colStr;
 
     return s;
