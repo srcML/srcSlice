@@ -326,6 +326,61 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
+
+
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    std::string sourceCode = R"(
+int a = 10;
+
+int main() {
+    cout << a;
+
+    {
+        int a = 0;
+        cout << a;
+    }
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-2-5":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:2:5",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:5:13"],
+        "definition":["file.cpp:2:5"]
+    },
+    "a-8-13":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:8:13",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:9:17"],
+        "definition":["file.cpp:8:13"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = R"(
 namespace mynamespace {
@@ -862,8 +917,7 @@ int main() {
 
 /**
  * @section Basic Slicing Cases
- * Tests Slicing against various constructs
- * such as try-catch, anonymous blocks, throws, ...
+ * Tests Slicing against classes
  */
 
  TEST_CASE( TestName("General Test"), "[srcslice]" ) {
@@ -1003,6 +1057,46 @@ void g(int n) {
         "calls":[],
         "use":[],
         "definition":["file.cpp:9:9"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+class Solar {
+public:
+    Solar(){};
+    void Show();
+private:
+    int dma;
+};
+
+void Solar::Show() {
+    cout << dma << endl;
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "dma-7-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"Solar",
+        "function":"",
+        "type":"int",
+        "name":"dma",
+        "initial":"file.cpp:7:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:11:13"],
+        "definition":["file.cpp:7:9"]
     }
     })"_json;
 

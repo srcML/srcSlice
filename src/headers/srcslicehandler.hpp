@@ -86,6 +86,8 @@ public:
     // Perform a second pass over the system dictionary performing another round of ComputeInterprocedural
     // against slices who have cfunction elements that could not resolve on the initial pass
     void Finalize();
+
+    void mergeFragments(std::vector<SliceProfile>& profiles);
     void ModifySlice(SliceProfile& sp);
     void ResolveCall(SliceProfile& sp);
     void UpdateCalls(SliceProfile& sp);
@@ -115,6 +117,8 @@ private:
 
     int threadCount;
     std::queue<SrcSliceWorker*> backlog;
+
+    std::unordered_map<std::string, std::vector<std::string>> fileDependencyTable;
 
     SliceCtx sctx;
 };

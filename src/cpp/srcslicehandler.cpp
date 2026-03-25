@@ -98,6 +98,11 @@ SrcSliceHandler::~SrcSliceHandler() {
 void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) {
     std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
     if (unit) {
+        // track what files are including to be used for fragment gluing
+        for (const auto& includeData : unit->includes) {
+            fileDependencyTable[ctx.currentFilePath].push_back(includeData->path.ToString());
+        }
+
         // push worker into queue
         backlog.push(
             new SrcSliceWorker(unit, ctx, verboseMode, calculateControlEdges)
@@ -630,13 +635,66 @@ void SrcSliceHandler::Finalize() {
     if (verboseMode || progressMode) std::cout << "[*] Performing Second-Pass" << "\n";
 
     for (auto& [name, profiles] : profileMap) {
+        mergeFragments(profiles);
         for (auto& profile : profiles) {
-            if (!profile.partial) continue;
-            ModifySlice(profile);
+            if (profile.partial) ModifySlice(profile);
         }
     }
 
     if (verboseMode || progressMode) std::cout << "[*] Finished Second-Pass" << "\n";
+}
+
+void SrcSliceHandler::mergeFragments(std::vector<SliceProfile>& profiles) {
+    typedef std::vector<SliceProfile>::iterator Spi;
+    std::unordered_map<std::string, std::vector<Spi>> possibleRootFragments;
+
+    // move fragments to the back so roots are at the front
+    std::partition(profiles.begin(), profiles.end(), [](const SliceProfile& p) {
+        // root fragments remain at the front of the vector
+        // while fragement profiles are moved to the back
+        // to ensure upon iteration we mark all root fragments
+        // before handling a fragment
+        return !p.isFragment;
+    });
+    
+    for (auto itr = profiles.begin(); itr != profiles.end();) {
+        if (itr->isFragment) {
+            // find the root fragment and merge data
+            // then remove fragment and continue
+            auto dFiles = fileDependencyTable.find(itr->file);
+
+            auto mergeFragment = [&possibleRootFragments](Spi itr, std::vector<std::string> includedFiles) {
+                for (auto& [baseFile, rootFragments] : possibleRootFragments) {
+                    for (auto& rootFragment : rootFragments) {
+                        // root fragment and partial fragment exist in the same file
+                        if (rootFragment->file == itr->file) {
+                            rootFragment->merge(*itr);
+                            return;
+                        }
+
+                        // inclusions in the file the fragment originates from
+                        for (auto& includeName : includedFiles) {
+                            // search from end of rootFragment file string
+                            // if includeName substring occurs (C++20 string)
+                            if (rootFragment->file.ends_with(includeName)) {
+                                // merge fragment (itr) with rootFragment
+                                rootFragment->merge(*itr);
+                                return;
+                            }
+                        }
+                    }
+                }
+            };
+            mergeFragment(itr, (dFiles != fileDependencyTable.end()) ? dFiles->second : std::vector<std::string>{});
+            itr = profiles.erase(itr);
+        } else {
+            // check if profile is potential root
+            if (itr->isGlobal || itr->classMemberVar) {
+                possibleRootFragments[itr->file].push_back(itr);
+            }
+            ++itr;
+        }
+    }
 }
 
 // modular reusable component

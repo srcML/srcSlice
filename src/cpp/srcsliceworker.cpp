@@ -220,94 +220,119 @@ std::string SrcSliceOperations::GetTypeDetails(const DeclInfo& localVar, bool& i
 
 //=======================================================================
 
-void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmts& deltaDeclStmts, std::string className, bool globalDecls [[maybe_unused]]) {
+void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmts& deltaDeclStmts, std::string className, bool globalDecls) {
     // iterate the declstmts and review decldata
     for (const auto& deltaDeclStmt : deltaDeclStmts) {
         // validate data is safe to access
-        if (deltaDeclStmt) {
-            // iterate decldata collection
-            for (const auto& deltaDecl : deltaDeclStmt->decls) {
-                // validate data is safe to access
-                if (deltaDecl) {
-                    if (!deltaDecl->name) continue;
+        if (!deltaDeclStmt) continue;
 
-                    // Collect pieces about the newly declared variable to use later when adding it into
-                    // our profileMap
-                    std::string declVarName = deltaDecl->name.ToString();
-                    declVarName = declVarName.substr(0, declVarName.find('[')); // remove index operator characters from variable names
-                    std::string declVarType = "";
+        // iterate decldata collection
+        for (const auto& deltaDecl : deltaDeclStmt->decls) {
+            // validate data is safe to access
+            if (!deltaDecl) continue;
+            if (!deltaDecl->name) continue;
 
-                    bool isPointer = false;
-                    bool isReference = false;
-                    bool isArray = false;
+            if (sctx.currentFileLanguage == "C" || sctx.currentFileLanguage == "C++") {
+                typedef std::vector<
+                    std::pair<srcDispatch::DeltaElement<std::any>,
+                    srcDispatch::DeltaElement<srcDispatch::TypeData::TypeType>>
+                > TypeVector;
 
-                    // Make a function to pull data-type
-                    declVarType = GetTypeDetails(deltaDecl.GetElement(), isPointer, isReference, isArray);
-                    // remove all spaces from type string
-                    declVarType.erase(std::remove(declVarType.begin(), declVarType.end(), ' '), declVarType.end());
+                // extern in C/C++ tells the compiler this variable if defined somewhere
+                // else therefor the SliceProfile exists somewhere else
+                auto isExtern = [](TypeVector types) -> bool {
+                    for (const auto& ty : types) {
+                        if (ty.second.GetElement() != srcDispatch::TypeData::SPECIFIER) continue;
+                        if (ty.first.GetElement().type() != typeid(std::shared_ptr<std::string>)) continue;
 
-                    auto sliceProfileItr = data.profileMap.find(declVarName);
-                    SlicePosition namePos(deltaDecl->name->startPosition, deltaDecl->name->endPosition, sctx.currentFilePath);
-                    
-                    auto sliceProfile = SliceProfile(declVarName, namePos, isPointer, true, {namePos});
-                    sliceProfile.variableType = isArray ? SrcSliceOperations::GenerateArrayType(declVarType, deltaDecl->name->indices.size()) : declVarType;
-                    sliceProfile.nameOfContainingClass = className;
-                    sliceProfile.classMemberVar = !className.empty();
-
-                    sliceProfile.containingNameSpaces = {}; /*** @todo find a link for namespaces on globals */
-                    sliceProfile.language = sctx.currentFileLanguage;
-                    sliceProfile.file = sctx.currentFilePath;
-                    sliceProfile.checksum = sctx.currentFileChecksum;
-
-                    sliceProfile.showControlEdges = data.calculateControlEdges;
-
-                    sliceProfile.isPointer = isPointer;
-                    sliceProfile.isReference = isReference;
-                    sliceProfile.isPotentialArray = isArray;
-
-                    sliceProfile.containsDeclaration = true;
-
-                    //Just add new slice profile if name already exists. Otherwise, add new entry in map.
-                    if (sliceProfileItr != data.profileMap.end()) {
-                        // Check if the new slice we potentially try to create has not already been made
-                        // (we dont want to have duplicates of the same slice)
-                        sliceProfile.isGlobal = true;
-
-                        // We may have variables of the same name, but each slice of the same name
-                        // must be initially declared on different lines
-                        sliceProfileItr->second.push_back(sliceProfile);
-                    } else {
-                        sliceProfile.isGlobal = false;
-
-                        // point the iterator to the newly inserted profile element
-                        sliceProfileItr = data.profileMap.insert(
-                            std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProfile) })
-                        ).first;
+                        auto specifier = std::any_cast<std::shared_ptr<std::string>>(ty.first.GetElement());
+                        if (!specifier) continue;
+                        if(*specifier != "extern") continue;
+                        return true;
                     }
+                    return false;
+                };
 
-                    if (deltaDecl->init) {
-                        SrcSliceOperations::ParseExpr(
-                            data,
-                            sctx,
-                            className,
-                            deltaDecl->init,
-                            EXPRESSION_TYPE::NORMAL,
-                            {declVarName}
-                        );
-                    }
+                if (isExtern(deltaDecl->type->types)) continue;
+            }
 
-                    for (auto& argument : deltaDecl->arguments) {
-                        SrcSliceOperations::ParseExpr(
-                            data,
-                            sctx,
-                            className,
-                            argument,
-                            EXPRESSION_TYPE::NORMAL,
-                            {declVarName},
-                            true
-                        );
-                    }
-                }
+            // Collect pieces about the newly declared variable to use later when adding it into
+            // our profileMap
+            std::string declVarName = deltaDecl->name.ToString();
+            declVarName = declVarName.substr(0, declVarName.find('[')); // remove index operator characters from variable names
+            std::string declVarType = "";
+
+            bool isPointer = false;
+            bool isReference = false;
+            bool isArray = false;
+
+            // Make a function to pull data-type
+            declVarType = GetTypeDetails(deltaDecl.GetElement(), isPointer, isReference, isArray);
+            // remove all spaces from type string
+            declVarType.erase(std::remove(declVarType.begin(), declVarType.end(), ' '), declVarType.end());
+
+            auto sliceProfileItr = data.profileMap.find(declVarName);
+            SlicePosition namePos(deltaDecl->name->startPosition, deltaDecl->name->endPosition, sctx.currentFilePath);
+            
+            auto sliceProfile = SliceProfile(declVarName, namePos, isPointer, true, {namePos});
+            sliceProfile.variableType = isArray ? SrcSliceOperations::GenerateArrayType(declVarType, deltaDecl->name->indices.size()) : declVarType;
+            sliceProfile.nameOfContainingClass = className;
+            sliceProfile.classMemberVar = !className.empty();
+
+            sliceProfile.containingNameSpaces = {}; /*** @todo find a link for namespaces on globals */
+            sliceProfile.language = sctx.currentFileLanguage;
+            sliceProfile.file = sctx.currentFilePath;
+            sliceProfile.checksum = sctx.currentFileChecksum;
+
+            sliceProfile.showControlEdges = data.calculateControlEdges;
+
+            sliceProfile.isPointer = isPointer;
+            sliceProfile.isReference = isReference;
+            sliceProfile.isPotentialArray = isArray;
+
+            sliceProfile.containsDeclaration = true;
+
+            //Just add new slice profile if name already exists. Otherwise, add new entry in map.
+            if (sliceProfileItr != data.profileMap.end()) {
+                // Check if the new slice we potentially try to create has not already been made
+                // (we dont want to have duplicates of the same slice)
+                sliceProfile.isGlobal = true;
+
+                // We may have variables of the same name, but each slice of the same name
+                // must be initially declared on different lines
+                sliceProfileItr->second.push_back(sliceProfile);
+            } else {
+                // based on method invoke we know if these new profiles represent
+                // global variables or not
+                sliceProfile.isGlobal = globalDecls;
+
+                // point the iterator to the newly inserted profile element
+                sliceProfileItr = data.profileMap.insert(
+                    std::make_pair(declVarName, std::vector<SliceProfile>{ std::move(sliceProfile) })
+                ).first;
+            }
+
+            if (deltaDecl->init) {
+                SrcSliceOperations::ParseExpr(
+                    data,
+                    sctx,
+                    className,
+                    deltaDecl->init,
+                    EXPRESSION_TYPE::NORMAL,
+                    {declVarName}
+                );
+            }
+
+            for (auto& argument : deltaDecl->arguments) {
+                SrcSliceOperations::ParseExpr(
+                    data,
+                    sctx,
+                    className,
+                    argument,
+                    EXPRESSION_TYPE::NORMAL,
+                    {declVarName},
+                    true
+                );
             }
         }
     }
@@ -968,6 +993,20 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, std::string
 
                 recent_name = SrcSliceOperations::ExtractName(name);
                 ectx.spi = data.profileMap.find(recent_name);
+
+                if (ectx.spi == data.profileMap.end()) {
+                    SliceProfile sp = SliceProfile(recent_name, SlicePosition{});
+                    
+                    sp.isFragment = true;
+                    sp.file = sctx.currentFilePath;
+                    sp.checksum = sctx.currentFileChecksum;
+
+                    data.profileMap.insert(
+                        std::make_pair(recent_name, std::vector<SliceProfile>{ std::move(sp) })
+                    );
+                    
+                    ectx.spi = data.profileMap.find(recent_name);
+                }
 
                 // ensure all LHS are given their dvar/alias data
                 ExprParse::updateLHS(data.profileMap, ectx, recent_name);

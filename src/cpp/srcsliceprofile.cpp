@@ -45,6 +45,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     currentPointerReference = rhs.currentPointerReference;
     isPotentialArray = rhs.isPotentialArray;
     ignorePtrRef = rhs.ignorePtrRef;
+    isFragment = rhs.isFragment;
 }
 
 bool SliceProfile::operator==(const SliceProfile& rhs) const {
@@ -79,6 +80,7 @@ bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (currentPointerReference != rhs.currentPointerReference) return false;
     if (isPotentialArray != rhs.isPotentialArray) return false;
     if (ignorePtrRef != rhs.ignorePtrRef) return false;
+    if (isFragment != rhs.isFragment) return false;
 
     return true;
 }
@@ -222,4 +224,16 @@ void SliceProfile::insertCfunction(FunctionCallData fcd) {
     if (!contained) {
         cfunctions.push_back(fcd);
     }
+}
+
+void SliceProfile::merge(const SliceProfile& other) {
+    if (!other.isFragment) std::cerr << "[!] SliceProfile::Merge argument should be a fragment, merge might not be correct.\n";
+    
+    uses.insert(other.uses.begin(), other.uses.end());
+    definitions.insert(other.definitions.begin(), other.definitions.end());
+    controlEdges.insert(other.controlEdges.begin(), other.controlEdges.end());
+
+    dvars.insert(dvars.end(), other.dvars.begin(), other.dvars.end());
+    aliases.insert(aliases.end(), other.aliases.begin(), other.aliases.end());
+    cfunctions.insert(cfunctions.end(), other.cfunctions.begin(), other.cfunctions.end());
 }

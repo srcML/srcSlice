@@ -65,6 +65,8 @@ public:
     // Insert a Function Call entry with a given Function Call-Data
     void insertCfunction(FunctionCallData fcd);
 
+    void merge(const SliceProfile& other);
+
     std::set<std::pair<SlicePosition, SlicePosition>> controlEdges;
 
     bool visited = false;
@@ -75,6 +77,8 @@ public:
     std::string currentPointerReference;
     bool ignorePtrRef = false;
     bool isPotentialArray = false;
+
+    bool isFragment = false;
 
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile);
 };

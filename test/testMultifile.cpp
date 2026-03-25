@@ -711,3 +711,117 @@ int main() {
     std::string testName = Catch::getResultCapture().getCurrentTestName();
     REQUIRE( CompareJson("", testName, produced, expected) );
 }
+
+// test slice fragment gluing for class member variables and global variables
+TEST_CASE( TestName("Multi-file Test"), "[srcslice]" ) {
+    json produced = json::parse(FetchSlices((std::vector<std::string>){
+R"(
+#include <iostream>
+#include <file.hpp>
+
+int sigma = 10;
+
+Sun::Sun() {
+    temp = 82465;
+}
+double Sun::getTemp() const { return temp; }
+
+void euclid() {
+    std::cout << (sigma + 10) << std::endl;
+}
+
+int main() {
+    euclid();
+    std::cout << sigma << std::endl;
+    std::cout << EV << std::endl;
+    return 0;
+}
+)",
+R"(
+#ifndef MY_SUN
+#define MY_SUN
+
+extern int sigma;
+
+inline const char* EV = "the_world!";
+
+class Sun {
+public:
+    Sun();
+    double getTemp() const;
+private:
+    double temp;
+};
+
+#endif
+)"
+    }, {"file.cpp","file.hpp"}));
+
+    json expected = R"({
+    "sigma-5-5":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"",
+        "type":"int",
+        "name":"sigma",
+        "initial":"file.cpp:5:5",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:13:19","file.cpp:18:18"],
+        "definition":["file.cpp:5:5"]
+    },
+    "temp-14-12":{
+        "file":"file.hpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"Sun",
+        "function":"",
+        "type":"double",
+        "name":"temp",
+        "initial":"file.hpp:14:12",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:10:38"],
+        "definition":["file.cpp:8:5","file.hpp:14:12"]
+    },
+    "EV-7-20":{
+        "file":"file.hpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"",
+        "type":"char*",
+        "name":"EV",
+        "initial":"file.hpp:7:20",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:19:18"],
+        "definition":["file.hpp:7:20"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson("", testName, produced, expected) );
+}
+
+TEST_CASE( TestName("Multi-file Test"), "[srcslice]" ) {
+    json produced = json::parse(FetchSlices((std::vector<std::string>){
+R"(
+
+)",
+R"(
+
+)"
+    }, {"file.cpp","file.hpp"}));
+
+    json expected = R"({
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson("", testName, produced, expected) );
+}
