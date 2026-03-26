@@ -215,14 +215,6 @@ void SrcSliceHandler::ManageThreads() {
                 ++activeJobs;
                 if (workers[i]->Finished()) {
                     workers[i]->WaitForJob();
-
-                    // Handles Collecting Control-Edges
-                    if (calculateControlEdges) ComputeControlPaths();
-                    
-                    // populates Aliases attribute in slice profiles and
-                    // performs crude interprocedural to connect use/def data
-                    ComputeAliasInterprocedural();
-                    ComputeInterprocedural();
                     
                     // merge worker blob into main structure
                     MergeStructures(workers[i]);
@@ -495,97 +487,13 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
                 continue;
             }
 
-            if (profileMap.find(param->name.ToString())->second.back().visited) {
+            SliceProfile& argSp = profileMap.find(param->name.ToString())->second.back();
+
+            if (argSp.visited) {
                 return Spi;
             } else {
-                if (profileMap.find(param->name.ToString())->second.back().cfunctions.size() > 0) {
-                    for (auto& cfunc : profileMap.find(param->name.ToString())->second.back().cfunctions) {
-                        if (cfunc.functionName == funcName) {
-                            auto funcSigCollection = functionSigMap.find(cfunc.functionName);
-                            if (funcSigCollection != functionSigMap.end()) {
-                                size_t sigIndex = 0;
-
-                                // Attempt to fingerprint the right signature based on function call definition line and called function
-                                // def line data
-                                for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
-                                    if (cfunc.invokePosition == funcSigCollection->second[sigIndex].position) {
-                                        break;
-                                    }
-                                }
-
-                                if (sigIndex < funcSigCollection->second.size()) {
-                                    bool matchingName = cfunc.functionName == funcSigCollection->second[sigIndex].name;
-                                    bool notVisited = visited_func.find(cfunc.functionName) == visited_func.end();
-
-                                    if (matchingName && notVisited) {
-                                        visited_func.insert(cfunc.functionName);
-
-                                        bool containsParameters = !funcSigCollection->second[sigIndex].parameters.empty();
-                                        bool validParamIndex = cfunc.parameterIndex < funcSigCollection->second[sigIndex].parameters.size();
-
-                                        // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                                        if (containsParameters && validParamIndex) {
-                                            if (funcSigCollection->second[sigIndex].parameters[cfunc.parameterIndex]->name) {
-                                                // Only run this section if the parameter name can be extracted
-                                                auto recursiveSpi = ArgumentProfile(
-                                                    cfunc.functionName,
-                                                    funcSigCollection->second[sigIndex],
-                                                    cfunc.parameterIndex - 1
-                                                );
-    
-                                                if (profileMap.find(param->name.ToString()) != profileMap.end() &&
-                                                    profileMap.find(recursiveSpi->first) != profileMap.end()) {
-                                                    // Uses and Defs need to reflect based on whether its pass by reference or pass by value
-                                                    if (!recursiveSpi->second.back().isReference && !recursiveSpi->second.back().isPointer) {
-                                                        // pass by value
-                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                            recursiveSpi->second.back().definitions.begin(),
-                                                            recursiveSpi->second.back().definitions.end()
-                                                        );
-                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                                recursiveSpi->second.back().uses.begin(),
-                                                                recursiveSpi->second.back().uses.end()
-                                                        );
-                                                    } else {
-                                                        // pass by reference
-                                                        profileMap.find(param->name.ToString())->second.back().definitions.insert(
-                                                            recursiveSpi->second.back().definitions.begin(),
-                                                            recursiveSpi->second.back().definitions.end()
-                                                        );
-                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                                recursiveSpi->second.back().uses.begin(),
-                                                                recursiveSpi->second.back().uses.end()
-                                                        );
-                                                    }
-    
-                                                    profileMap.find(param->name.ToString())->second.back().cfunctions.insert(
-                                                        profileMap.find(param->name.ToString())->second.back().cfunctions.end(),
-                                                        recursiveSpi->second.back().cfunctions.begin(),
-                                                        recursiveSpi->second.back().cfunctions.end()
-                                                    );
-                                                    // ensure dependencies and aliases are within local scope
-                                                    if (recursiveSpi->second.back().function == profileMap.find(param->name.ToString())->second.back().function) {
-                                                        profileMap.find(param->name.ToString())->second.back().aliases.insert(
-                                                            profileMap.find(param->name.ToString())->second.back().aliases.end(),
-                                                            recursiveSpi->second.back().aliases.begin(),
-                                                            recursiveSpi->second.back().aliases.end()
-                                                        );
-                                                        profileMap.find(param->name.ToString())->second.back().dvars.insert(
-                                                            profileMap.find(param->name.ToString())->second.back().dvars.end(),
-                                                            recursiveSpi->second.back().dvars.begin(),
-                                                            recursiveSpi->second.back().dvars.end()
-                                                        );
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    profileMap.find(param->name.ToString())->second.back().visited = true;
-                }
+                ResolveCall(argSp);
+                argSp.visited = true;
             }
         }
     }
@@ -891,8 +799,8 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
 }
 
 void SrcSliceHandler::ComputeInterprocedural() {
-    for (auto& var : profileMap) {
-        for (auto& sp : var.second) {
+    for (auto& [name, profiles] : profileMap) {
+        for (auto& sp : profiles) {
             // Need to watch the Slices we attempt to dig into because
             // we are collecting slices we have no interest in
             if (!sp.visited && (sp.variableName != "*LITERAL*")) {
