@@ -493,7 +493,6 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
                 return Spi;
             } else {
                 ResolveCall(argSp);
-                argSp.visited = true;
             }
         }
     }
@@ -514,25 +513,26 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
             for (auto& alias : sp.aliases) {
                 // view aliases of the slice profile
                 auto spi = profileMap.find(alias.first);
-                if (spi != profileMap.end()) {
-                    // fingerprint the profile based on contained use
-                    for (auto& aspi : spi->second) {
-                        if (!aspi.containsDeclaration) continue;
-                        auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
-                        if (usesItr != aspi.uses.end()) {
-                            // determine if the potential target is a pointer or reference
-                            if (aspi.isPointer || aspi.isReference) {
-                                // check if the alias has been visited
-                                if (visited_alias.find(aspi.variableName) == visited_alias.end()) {
-                                    // mark alias as visited so we dont review this alias entry again (circular dependence protection)
-                                    visited_alias.insert(aspi.variableName);
+                if (spi == profileMap.end()) continue;
 
-                                    // push_back alias slice profile's aliases into the source slice aliases
-                                    sp.aliases.insert(sp.aliases.end(), aspi.aliases.begin(), aspi.aliases.end());
-                                }
-                            }
-                        }
-                    }
+                // fingerprint the profile based on contained use
+                for (auto& aspi : spi->second) {
+                    if (!aspi.containsDeclaration) continue;
+                    
+                    auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
+                    if (usesItr == aspi.uses.end()) continue;
+                    
+                    // determine if the potential target is a pointer or reference
+                    if (!aspi.isPointer && !aspi.isReference) continue;
+
+                    // check if the alias has been visited
+                    if (visited_alias.find(aspi.variableName) != visited_alias.end()) continue;
+
+                    // mark alias as visited so we dont review this alias entry again (circular dependence protection)
+                    visited_alias.insert(aspi.variableName);
+
+                    // push_back alias slice profile's aliases into the source slice aliases
+                    sp.aliases.insert(sp.aliases.end(), aspi.aliases.begin(), aspi.aliases.end());
                 }
             }
         }
@@ -621,10 +621,8 @@ void SrcSliceHandler::ModifySlice(SliceProfile& sp) {
     UpdateCalls(sp);
 
     // attempt ComputeInterprocedural against the slice profile (sp)
+    // sp gets marked as visited once again
     ResolveCall(sp);
-
-    // mark sp as visited once again
-    sp.visited = true;
 }
 
 void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
@@ -645,144 +643,138 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
         std::string name = cfunc.functionName;
         auto funcSig = functionSigMap.find(name);
 
-        if (funcSig != functionSigMap.end()) {
-            // if there is only one record of a function signature
-            if (funcSig->second.size() == 1) {
-                if (funcSig->second[0].parameters.size() > 0 && cfunc.argumentCount <= funcSig->second[0].parameters.size()) {
-                    
-                    // update definitionPosition
-                    FunctionCallData updatedData(cfunc);
-                    updatedData.definitionPosition = funcSig->second[0].position;
-    
-                    // replace old data with new data
-                    cfunc = updatedData;
-    
-                    // evaluate the slice profile based off the updatedData and if its within
-                    // partialSliceProfiles we want to jump to it and update it (recursively)
-                    // before passing it back into inter-procedural
-                    unsigned int ArgProfParam = updatedData.parameterIndex - 1;
+        if (funcSig == functionSigMap.end()) continue;
 
-                    /**
-                     * @todo may need to remove argument profile usage,
-                     * interprocedural skips if the argument cant be
-                     * resolved from a given call
-                     **/
-    
-                    // argument slice profile
-                    auto spi = ArgumentProfile(
-                        updatedData.functionName,
-                        funcSig->second[0],
-                        ArgProfParam
-                    );
-    
-                    if (spi != profileMap.end()) {
-                        auto sliceItr = spi->second.begin();
-                        std::string desiredVariableName = sliceItr->variableName;
-    
-                        for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
-                            if (sliceItr->containsDeclaration) {
-                                if (sliceItr->variableName != desiredVariableName) {
-                                    continue;
-                                }
-                                if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != updatedData.functionName) {
-                                    continue;
-                                }
+        // if there is only one record of a function signature
+        if (funcSig->second.size() == 1) {
+            if (funcSig->second[0].parameters.empty()) continue;
+            if (cfunc.argumentCount > funcSig->second[0].parameters.size()) continue;
 
-                                auto paramDecl = funcSig->second[0].parameters[ArgProfParam];
-                                SlicePosition paramDeclPos(
-                                    paramDecl->name->startPosition,
-                                    paramDecl->name->endPosition,
-                                    sliceItr->file
-                                );
+            // update definitionPosition
+            FunctionCallData updatedData(cfunc);
+            updatedData.definitionPosition = funcSig->second[0].position;
 
-                                if (sliceItr->initialPosition != paramDeclPos) {
-                                    continue;
-                                }
-    
-                                break;
-                            }
-                        }
-                    }
+            // replace old data with new data
+            cfunc = updatedData;
+
+            // evaluate the slice profile based off the updatedData and if its within
+            // partialSliceProfiles we want to jump to it and update it (recursively)
+            // before passing it back into inter-procedural
+            unsigned int ArgProfParam = updatedData.parameterIndex - 1;
+
+            /**
+             * @todo may need to remove argument profile usage,
+             * interprocedural skips if the argument cant be
+             * resolved from a given call
+             **/
+
+            // argument slice profile
+            auto spi = ArgumentProfile(
+                updatedData.functionName,
+                funcSig->second[0],
+                ArgProfParam
+            );
+
+            if (spi == profileMap.end()) continue;
+
+            auto sliceItr = spi->second.begin();
+            std::string desiredVariableName = sliceItr->variableName;
+
+            for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
+                if (!sliceItr->containsDeclaration)
+                    continue;
+                if (sliceItr->variableName != desiredVariableName)
+                    continue;
+                if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != updatedData.functionName)
+                    continue;
+
+                auto paramDecl = funcSig->second[0].parameters[ArgProfParam];
+                SlicePosition paramDeclPos(
+                    paramDecl->name->startPosition,
+                    paramDecl->name->endPosition,
+                    sliceItr->file
+                );
+
+                if (sliceItr->initialPosition != paramDeclPos)
+                    continue;
+
+                break;
+            }
+        } else {
+            // if a function is overloaded
+
+            unsigned int ArgProfParam = cfunc.parameterIndex - 1;
+            std::vector<FunctionSignatureData> signatures;
+
+            for (auto& funcData : funcSig->second) {
+                if (cfunc.argumentCount == funcData.parameters.size()) {
+                    signatures.push_back(funcData);
                 }
-            } else {
-                // if a function is overloaded
+            }
 
-                unsigned int ArgProfParam = cfunc.parameterIndex - 1;
-                std::vector<FunctionSignatureData> signatures;
-
+            if (signatures.empty()) {
                 for (auto& funcData : funcSig->second) {
-                    if (cfunc.argumentCount == funcData.parameters.size()) {
-                        signatures.push_back(funcData);
-                    }
+                    if (cfunc.argumentCount == 0 || cfunc.argumentCount >= funcData.parameters.size()) continue;
+                    // 1 <= argCount < paramCount
+                    signatures.push_back(funcData);
                 }
+            }
 
-                if (signatures.empty()) {
-                    for (auto& funcData : funcSig->second) {
-                        if (cfunc.argumentCount == 0 || cfunc.argumentCount >= funcData.parameters.size()) continue;
-                        // 1 <= argCount < paramCount
-                        signatures.push_back(funcData);
-                    }
-                }
+            // update the current cfunc and add new entries per possible signature
+            for (size_t i = 0; i < signatures.size(); ++i) {
 
-                // update the current cfunc and add new entries per possible signature
-                for (size_t i = 0; i < signatures.size(); ++i) {
+                /**
+                 * @todo may need to remove argument profile usage,
+                 * interprocedural skips if the argument cant be
+                 * resolved from a given call
+                 **/
 
-                    /**
-                     * @todo may need to remove argument profile usage,
-                     * interprocedural skips if the argument cant be
-                     * resolved from a given call
-                     **/
+                // argument slice profile
+                auto spi = ArgumentProfile(
+                    cfunc.functionName,
+                    signatures[i],
+                    ArgProfParam
+                );
 
-                    // argument slice profile
-                    auto spi = ArgumentProfile(
-                        cfunc.functionName,
-                        signatures[i],
-                        ArgProfParam
+                if (spi == profileMap.end())
+                    continue;
+
+                auto sliceItr = spi->second.begin();
+                std::string desiredVariableName = sliceItr->variableName;
+
+                for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
+                    if (!sliceItr->containsDeclaration)
+                        continue;
+                    if (sliceItr->variableName != desiredVariableName)
+                        continue;
+                    if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != cfunc.functionName)
+                        continue;
+
+                    auto paramDecl = signatures[i].parameters[ArgProfParam];
+                    SlicePosition paramDeclPos(
+                        paramDecl->name->startPosition,
+                        paramDecl->name->endPosition,
+                        sliceItr->file
                     );
 
-                    if (spi != profileMap.end()) {
-                        auto sliceItr = spi->second.begin();
-                        std::string desiredVariableName = sliceItr->variableName;
+                    if (sliceItr->initialPosition != paramDeclPos)
+                        continue;
 
-                        for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
-                            if (sliceItr->containsDeclaration) {
-                                if (sliceItr->variableName != desiredVariableName) {
-                                    continue;
-                                }
-                                if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
-                                    continue;
-                                }
+                    break;
+                }
 
-                                auto paramDecl = signatures[i].parameters[ArgProfParam];
-                                SlicePosition paramDeclPos(
-                                    paramDecl->name->startPosition,
-                                    paramDecl->name->endPosition,
-                                    sliceItr->file
-                                );
-
-                                if (sliceItr->initialPosition != paramDeclPos) {
-                                    continue;
-                                }
-
-                                break;
-                            }
-                        }
-
-                        if (sliceItr != spi->second.end()) {
-                            
-                            if (cfunc.definitionPosition.GetFileName().empty()) {
-                                // update cfunc data
-                                FunctionCallData updatedData(cfunc);
-                                updatedData.definitionPosition = signatures[i].position;
-                                cfunc = updatedData;
-                            } else {
-                                // append new cfunc data
-                                FunctionCallData newData(cfunc);
-                                newData.definitionPosition = signatures[i].position;
-                                toInsert.push_back(newData);
-                            }
-                        }
-                    }
+                if (sliceItr == spi->second.end())
+                    continue;
+                if (cfunc.definitionPosition.GetFileName().empty()) {
+                    // update cfunc data
+                    FunctionCallData updatedData(cfunc);
+                    updatedData.definitionPosition = signatures[i].position;
+                    cfunc = updatedData;
+                } else {
+                    // append new cfunc data
+                    FunctionCallData newData(cfunc);
+                    newData.definitionPosition = signatures[i].position;
+                    toInsert.push_back(newData);
                 }
             }
         }
@@ -801,28 +793,28 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
 void SrcSliceHandler::ComputeInterprocedural() {
     for (auto& [name, profiles] : profileMap) {
         for (auto& sp : profiles) {
-            // Need to watch the Slices we attempt to dig into because
-            // we are collecting slices we have no interest in
-            if (!sp.visited && (sp.variableName != "*LITERAL*")) {
-                ResolveCall(sp);
-                sp.visited = true;
-            }
+            ResolveCall(sp);
         }
     }
 }
 
 void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
+    // safety to ensure we avoid circular profile linkage
+    if (sp.visited) return;
+    // ignore profiles with no value
+    if ((sp.variableName == "*LITERAL*")) return;
+    
     auto addPartialSlice = [this](SliceProfile &sp) {
-        if (!sp.updated) {
-            sp.partial = true;
-        }
+        if (sp.updated) return;
+        sp.partial = true;
     };
 
     if (!sp.cfunctions.empty()) {
         for (auto& cfunc : sp.cfunctions) {
-            if (cfunc.ignore) {
-                continue; // if a cfunc ignore flag is enabled skip this index and continue
-            }
+            // if a cfunc ignore flag is enabled skip this index and continue
+            if (cfunc.ignore)
+                continue;
+
             auto funcSigCollection = functionSigMap.find(cfunc.functionName);
 
             if (funcSigCollection != functionSigMap.end()) {
@@ -961,4 +953,7 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
             }
         }
     }
+    
+    // label the profile as visited to avoid circular profile linkage
+    sp.visited = true;
 }
