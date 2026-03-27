@@ -809,6 +809,9 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
         sp.partial = true;
     };
 
+    // label the profile as visited to avoid circular profile linkage
+    sp.visited = true;
+
     if (!sp.cfunctions.empty()) {
         for (auto& cfunc : sp.cfunctions) {
             // if a cfunc ignore flag is enabled skip this index and continue
@@ -903,8 +906,11 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                                 sliceItr->definitions.end());
                                         }
 
-                                        // Parameter initial declaration def line is considered a use towards the argument
-                                        profileMap.find(sp.variableName)->second.back().definitions.erase(sliceItr->initialPosition);
+                                        // ensure we do not remove the initial decl from a slices definitions set
+                                        if (profileMap.find(sp.variableName)->second.back().initialPosition != sliceItr->initialPosition) {
+                                            // Parameter initial declaration def line is considered a use towards the argument
+                                            profileMap.find(sp.variableName)->second.back().definitions.erase(sliceItr->initialPosition);
+                                        }
                                         profileMap.find(sp.variableName)->second.back().uses.insert(sliceItr->initialPosition);
 
                                         profileMap.find(sp.variableName)->second.back().uses.insert(
@@ -953,7 +959,4 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
             }
         }
     }
-    
-    // label the profile as visited to avoid circular profile linkage
-    sp.visited = true;
 }

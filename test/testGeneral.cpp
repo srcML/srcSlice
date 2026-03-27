@@ -681,6 +681,60 @@ int main() {
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
+// recursive interprocedural
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    // Raw-Strings C++11
+    std::string sourceCode = R"(
+int factorial(int n) {
+    if (n <= 1) return 1;
+    return n * factorial(n - 1);
+}
+
+int main() {
+    int a = 10;
+    std::cout << factorial(a) << std::endl;
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-8-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "initial":"file.cpp:8:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{"functionName":"factorial","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:9:18"}],
+        "use":["file.cpp:2:19","file.cpp:3:9","file.cpp:4:12","file.cpp:4:26","file.cpp:9:28"],
+        "definition":["file.cpp:8:9"]
+    },
+    "n-2-19":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"factorial",
+        "type":"int",
+        "name":"n",
+        "initial":"file.cpp:2:19",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{"functionName":"factorial","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:4:16"}],
+        "use":["file.cpp:2:19","file.cpp:3:9","file.cpp:4:12","file.cpp:4:26"],
+        "definition":["file.cpp:2:19"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
 TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     // Raw-Strings C++11
     std::string sourceCode = R"(
