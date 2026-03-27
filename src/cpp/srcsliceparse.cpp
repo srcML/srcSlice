@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcsliceparse.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include <srcsliceparse.hpp>
 
 // Returns a numeric id based on the type of C++ IO operation is within given NameData

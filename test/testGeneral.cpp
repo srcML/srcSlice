@@ -1,6 +1,14 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file testGeneral.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #define CATCH_CONFIG_MAIN
 #include "./srcSliceTest.hpp"
-
 
 /**
  * @section Basic Slicing Cases

@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcslicehandler.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include <srcslicehandler.hpp>
 
 // Create custom buffers with callbacks

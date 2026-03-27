@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcsliceworker.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include <srcsliceworker.hpp>
 
 SrcSliceWorker::SrcSliceWorker(std::shared_ptr<srcDispatch::UnitData> unitData, const srcDispatch::srcSAXEventContext &ctx,

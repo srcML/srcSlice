@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-only
+##
+# @file CMakeLists.txt
+#
+# @copyright Copyright (C) 2013-2024 srcML, LLC. (www.srcML.org)
+
 file(GLOB DISPATCHER_SOURCE ../srcDispatch/*.cpp)
 file(GLOB DISPATCHER_HEADER ../srcDispatch/*.hpp)
 
