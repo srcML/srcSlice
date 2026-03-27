@@ -13,19 +13,19 @@ SliceProfile::SliceProfile() : containsDeclaration(false), potentialAlias(false)
                     isGlobal(false) { isPointer = false; isReference = false; }
 
 SliceProfile::SliceProfile(
-        std::string name, SlicePosition initial, bool alias, bool global,
+        std::string name, SlicePosition decl, bool alias, bool global,
         std::set<SlicePosition> aDef, std::set<SlicePosition> aUse,
         std::vector<FunctionCallData> cFunc,
         std::vector<std::pair<std::string, SlicePosition>> dv,
         std::set<std::pair<SlicePosition, SlicePosition>> edges,
         bool containsDecl, bool visit) :
-        variableName(name), initialPosition(initial), potentialAlias(alias),
+        variableName(name), declPosition(decl), potentialAlias(alias),
         isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
         dvars(dv), containsDeclaration(containsDecl), controlEdges(edges),
         visited(visit) {}
 
 SliceProfile::SliceProfile(const SliceProfile& rhs) {
-    initialPosition = rhs.initialPosition;
+    declPosition = rhs.declPosition;
     file = rhs.file;
     function = rhs.function;
     nameOfContainingClass = rhs.nameOfContainingClass;
@@ -60,7 +60,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
 bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (this == &rhs) return true; // self-check protection
 
-    if (initialPosition != rhs.initialPosition) return false;
+    if (declPosition != rhs.declPosition) return false;
     if (file != rhs.file) return false;
     if (function != rhs.function) return false;
     if (nameOfContainingClass != rhs.nameOfContainingClass) return false;
@@ -117,7 +117,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
     out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
     
-    out << "    \"initial\":" << profile.initialPosition.ToString() << "," << std::endl;
+    out << "    \"decl\":" << profile.declPosition.ToString() << "," << std::endl;
 
     out << "    \"dependence\":[";
     first = true;

@@ -77,7 +77,7 @@ int main(int argc, char **argv)
                     continue;
 
                 writtenSlices = true;
-                std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString() + '-' + slice.checksum);
+                std::string name(slice.variableName + '-' + slice.declPosition.ToNameString() + '-' + slice.checksum);
 
                 sliceOutput << "\"" << name << "\":{" << std::endl;
                 sliceOutput << slice;

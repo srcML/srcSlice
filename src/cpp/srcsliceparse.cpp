@@ -82,11 +82,11 @@ void ExprParse::pushDvar(SliceProfileMap& profileMap, std::string lhsName, std::
 
         // a position cannot occur before the position of the initial
         // unless its from a function call
-        if (checkPosition(ectx.namePos, sp->initialPosition) || ectx.containedClass != sp->nameOfContainingClass) {
+        if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
             // search backwards from second back to find a valid profile
             for (auto rSpi = rhsSpi->second.rbegin(); rSpi != rhsSpi->second.rend(); ++rSpi) {
                 // if the pos occurs after the initial => valid profile
-                if (checkPosition(rSpi->initialPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
+                if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
                     sp = &(*rSpi);
                     break;
                 }
@@ -107,11 +107,11 @@ void ExprParse::pushAlias(SliceProfileMap& profileMap, std::string lhsName, std:
 
         // a position cannot occur before the position of the initial
         // unless its from a function call
-        if (checkPosition(ectx.namePos, sp->initialPosition) || ectx.containedClass != sp->nameOfContainingClass) {
+        if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
             // search backwards from second back to find a valid profile
             for (auto rSpi = lhsSpi->second.rbegin(); rSpi != lhsSpi->second.rend(); ++rSpi) {
                 // if the pos occurs after the initial => valid profile
-                if (checkPosition(rSpi->initialPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
+                if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
                     sp = &(*rSpi);
                     break;
                 }
@@ -130,11 +130,11 @@ void ExprParse::pushUse(SliceProfileMap& profileMap, SliceProfileIterator spi, E
 
     // a position cannot occur before the position of the initial
     // unless its from a function call
-    if (checkPosition(ectx.namePos, sp->initialPosition) || ectx.containedClass != sp->nameOfContainingClass) {
+    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
         // search backwards from second back to find a valid profile
         for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
             // if the pos occurs after the initial => valid profile
-            if (checkPosition(rSpi->initialPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
+            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
                 sp = &(*rSpi);
                 break;
             }
@@ -167,9 +167,9 @@ void ExprParse::popUse(SliceProfileMap& profileMap, SliceProfileIterator spi, Ex
     if (spi == profileMap.end()) return;
     SliceProfile* sp = &(spi->second.back());
 
-    if (checkPosition(ectx.namePos, sp->initialPosition) || ectx.containedClass != sp->nameOfContainingClass) {
+    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
         for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
-            if (checkPosition(rSpi->initialPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
+            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
                 sp = &(*rSpi);
                 break;
             }
@@ -183,9 +183,9 @@ void ExprParse::pushDef(SliceProfileMap& profileMap, SliceProfileIterator spi, E
     if (spi == profileMap.end()) return;
     SliceProfile* sp = &(spi->second.back());
 
-    if (checkPosition(ectx.namePos, sp->initialPosition) || ectx.containedClass != sp->nameOfContainingClass) {
+    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
         for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
-            if (checkPosition(rSpi->initialPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
+            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
                 sp = &(*rSpi);
                 break;
             }
@@ -198,9 +198,9 @@ void ExprParse::popDef(SliceProfileMap& profileMap, SliceProfileIterator spi, Ex
     if (spi == profileMap.end()) return;
     SliceProfile* sp = &(spi->second.back());
 
-    if (checkPosition(ectx.namePos, sp->initialPosition) || ectx.containedClass != sp->nameOfContainingClass) {
+    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
         for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
-            if (checkPosition(rSpi->initialPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
+            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
                 sp = &(*rSpi);
                 break;
             }

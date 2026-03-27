@@ -704,7 +704,7 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                     sliceItr->file
                 );
 
-                if (sliceItr->initialPosition != paramDeclPos)
+                if (sliceItr->declPosition != paramDeclPos)
                     continue;
 
                 break;
@@ -766,7 +766,7 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                         sliceItr->file
                     );
 
-                    if (sliceItr->initialPosition != paramDeclPos)
+                    if (sliceItr->declPosition != paramDeclPos)
                         continue;
 
                     break;
@@ -892,7 +892,7 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                         funcSigCollection->second[sigIndex].currentFilePath
                                     );
 
-                                    if (sliceItr->initialPosition != paramDeclPos) {
+                                    if (sliceItr->declPosition != paramDeclPos) {
                                         continue;
                                     }
 
@@ -916,11 +916,11 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                         }
 
                                         // ensure we do not remove the initial decl from a slices definitions set
-                                        if (profileMap.find(sp.variableName)->second.back().initialPosition != sliceItr->initialPosition) {
+                                        if (profileMap.find(sp.variableName)->second.back().declPosition != sliceItr->declPosition) {
                                             // Parameter initial declaration def line is considered a use towards the argument
-                                            profileMap.find(sp.variableName)->second.back().definitions.erase(sliceItr->initialPosition);
+                                            profileMap.find(sp.variableName)->second.back().definitions.erase(sliceItr->declPosition);
                                         }
-                                        profileMap.find(sp.variableName)->second.back().uses.insert(sliceItr->initialPosition);
+                                        profileMap.find(sp.variableName)->second.back().uses.insert(sliceItr->declPosition);
 
                                         profileMap.find(sp.variableName)->second.back().uses.insert(
                                             sliceItr->uses.begin(),

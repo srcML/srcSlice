@@ -38,7 +38,7 @@ public:
     bool operator==(const SliceProfile& rhs) const;
     bool operator!=(const SliceProfile& rhs) const;
 
-    SlicePosition initialPosition;
+    SlicePosition declPosition;
     std::string file;
     std::string function;
     std::string nameOfContainingClass;

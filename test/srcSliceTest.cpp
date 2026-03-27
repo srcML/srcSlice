@@ -97,7 +97,7 @@ std::string RunSrcSlice(std::string srcml, bool computeControlEdges) {
 
             writtenSlices = true;
             // write out the start of the json object
-            std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString());
+            std::string name(slice.variableName + '-' + slice.declPosition.ToNameString());
 
             output << "\"" << name << "\":{" << std::endl;
             output << slice;
@@ -474,7 +474,7 @@ bool CompareJson(const std::string sourceCode, const std::string testName, const
             "function":"main",
             "type":"int",
             "name":"a",
-            "initial":{"start":"2:9","end":"2:9"},
+            "decl":{"start":"2:9","end":"2:9"},
             "dependence":[{"b":{"start":"2:9","end":"2:9"}}],
             "aliases":[{"c":{"start":"2:9","end":"2:9"}}],
             "calls":[{"functionName":"fuzz","parameter":"1","definitionPosition":{"start":"2:9","end":"2:9"},"invoke":{"start":"2:9","end":"2:9"}}],
@@ -483,7 +483,7 @@ bool CompareJson(const std::string sourceCode, const std::string testName, const
         */
 
         // Simple attribute comparison
-        for (const std::string& attribute : {"file","language","class","function","type","name","initial"}) {
+        for (const std::string& attribute : {"file","language","class","function","type","name","decl"}) {
             auto& producedData = produced[sliceId][attribute];
             auto& expectedData = expected[sliceId][attribute];
     
