@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcslicehandler.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include <srcslicehandler.hpp>
 
 // Create custom buffers with callbacks
@@ -39,7 +48,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
     if (p) {
         // Save original buffers and Redirect cout and cerr
         IdleBar idlebar;
-        std::cout << "[Slicing Started]" << std::endl;
+        std::cout << "[Slicing Started]" << "\n";
 
         control.parse(&handler); // Start parsing
         unitsScaned = true;
@@ -55,7 +64,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
 
         // Restore original buffers
         idlebar.Finish("[Second-Pass]");
-        std::cout << "[Slicing Finished]" << std::endl;
+        std::cout << "[Slicing Finished]" << "\n";
     } else {
         control.parse(&handler); // Start parsing
 
@@ -98,6 +107,11 @@ SrcSliceHandler::~SrcSliceHandler() {
 void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) {
     std::shared_ptr<srcDispatch::UnitData> unit = policy->Data<srcDispatch::UnitData>();
     if (unit) {
+        // track what files are including to be used for fragment gluing
+        for (const auto& includeData : unit->includes) {
+            fileDependencyTable[ctx.currentFilePath].push_back(includeData->path.ToString());
+        }
+
         // push worker into queue
         backlog.push(
             new SrcSliceWorker(unit, ctx, verboseMode, calculateControlEdges)
@@ -112,8 +126,25 @@ void SrcSliceHandler::ManageThreads() {
         std::lock_guard<std::mutex> lock(dataMutex);
         Blob& data = worker->data;
 
-        profileMap.merge(data.profileMap);
-        functionSigMap.merge(data.functionSigMap);
+        // manually move map entry values, merge will not merge if the keys between both maps exist
+        for (auto& profileGroup : data.profileMap) {
+            auto& dest = profileMap[profileGroup.first];
+            dest.insert(
+                dest.end(),
+                std::make_move_iterator(profileGroup.second.begin()),
+                std::make_move_iterator(profileGroup.second.end())
+            );
+        }
+
+        // manually move map entry values, merge will not merge if the keys between both maps exist
+        for (auto& funcSig : data.functionSigMap) {
+            auto& dest = functionSigMap[funcSig.first];
+            dest.insert(
+                dest.end(),
+                std::make_move_iterator(funcSig.second.begin()),
+                std::make_move_iterator(funcSig.second.end())
+            );
+        }
         
         // make_move_iterator prevents making copies
         loopdata.insert(loopdata.end(),
@@ -136,6 +167,10 @@ void SrcSliceHandler::ManageThreads() {
         ifdata.insert(ifdata.end(),
             std::make_move_iterator(data.ifdata.begin()),
             std::make_move_iterator(data.ifdata.end())
+        );
+        ifStmts.insert(ifStmts.end(),
+            std::make_move_iterator(data.ifStmts.begin()),
+            std::make_move_iterator(data.ifStmts.end())
         );
         elsedata.insert(elsedata.end(),
             std::make_move_iterator(data.elsedata.begin()),
@@ -189,14 +224,6 @@ void SrcSliceHandler::ManageThreads() {
                 ++activeJobs;
                 if (workers[i]->Finished()) {
                     workers[i]->WaitForJob();
-
-                    // Handles Collecting Control-Edges
-                    if (calculateControlEdges) ComputeControlPaths();
-                    
-                    // populates Aliases attribute in slice profiles and
-                    // performs crude interprocedural to connect use/def data
-                    ComputeAliasInterprocedural();
-                    ComputeInterprocedural();
                     
                     // merge worker blob into main structure
                     MergeStructures(workers[i]);
@@ -231,327 +258,227 @@ std::unordered_map<std::string, std::vector<SliceProfile>>& SrcSliceHandler::Get
     return profileMap;
 }
 
-// Component of function FindOtherPaths
-void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths, std::vector<SlicePosition>& sLines) {
-    /*
-    std::set<std::pair<Position,Position>> ifGroup;
-
-    // Find all valid connections between if,else-if,and else blocks
-    for (const auto& ifblock : ifdata) {
-        bool isSingleIf = true;
-        
-        // ensure we dont try indexing non-existing items
-        for (const auto& elseifblock : elseifdata) {
-            if (ifblock == elseifblock) {
-                ifGroup.insert(std::make_pair(ifblock, elseifblock));
-                isSingleIf = false;
-            }
-        }
-
-        // ensure we dont try indexing non-existing items
-        for (const auto& elseblock : elsedata) {
-            if (ifblock == elseblock) {
-                ifGroup.insert(std::make_pair(ifblock, elseblock));
-                isSingleIf = false;
-            }
-        }
-
-        // occurs when we have a single if statement that does not connect
-        // to any else-if or else statements
-        if (isSingleIf)
-            ifGroup.insert(std::make_pair(ifblock, ifblock));
-    }
-
-    // Iterate sLines and find potential paths between
-    // sLines[i] and sLines[k], focusing on outter paths
-    for (int i = 0; i < sLines.size(); ++i) {
-        // iterate the remaining sLines to see
-        // if a path can be formed
-        for (int k = i+1; k < sLines.size(); ++k) {
-            for (const auto& lineRange : ifGroup) {
-                // Finding the first sLine[k] that is >= lineRange.second
-                if (sLines[i] == lineRange.first && sLines[k] >= lineRange.second) {
-                    // std::cout << "Potential Outter-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
-                    otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
-
-                    // Increment outter-control i, so we can find the next outter path
-                    if (i < sLines.size()) {
-                        ++i;
-                    } else {
-                        // escape the entire loop
-                        k = i;
-                        break;
-                    }
-                }
-            }
-        }
-    }
-        */
-}
-
-// Component of function FindOtherPaths
-void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths,
-                                        std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines) {
-    /*
-    // Iterate sLines and find potential paths between
-    // sLines[i] and sLines[k], focusing on block exits
-    for (int i = 0; i < sLines.size(); ++i) {
-        if (ignoreLines.find(sLines[i]) != ignoreLines.end()) continue;
-
-        if (i+1 < sLines.size()) {
-            std::pair<int,int> containedBlock(0,0);
-            // iterate if-data to see which if-block the current sLine is most likely contained in
-            for (const auto& ifblock : ifdata) {
-                // check if the current sline is contained in the ifblock
-                if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                    // std::cout << sLines[i] << " contained in -> (" << ifblock.first << "," << ifblock.second << ")" << std::endl;
-
-                    // focus on the block with the smallest gap
-                    int containedBlockSize = containedBlock.second - containedBlock.first;
-                    int blockSize = ifblock.second - ifblock.first;
-                    // update the block we suspect the current sline is contained in if
-                    // either we have not initially updated the block, or we found a block
-                    // of smaller size containing sLines[i]
-                    if (containedBlock.first == 0 || (blockSize < containedBlockSize)) {
-                        containedBlock = ifblock;
-
-                        //std::cout << "[*] Focusing on block -> (" <<
-                        //containedBlock.first << "," << containedBlock.second <<
-                        //") => " << sLines[i] << std::endl;
-                    }
-                }
-            }
-
-            // if we have marked a ifdata block attempt to form a connection
-            if (containedBlock.first != 0) {
-                // std::cout << "[*] Block of Interest -> (" <<
-                // containedBlock.first << "," << containedBlock.second <<
-                // ") => " << sLines[i] << std::endl;
-
-                // reduce the search area based on the block of interest
-                for (int k = i+1; k < sLines.size(); ++k) {
-                    // find first sLines[k] that is not contained
-                    // in a reduce union of sets: ifdata, elseifdata, and elsedata
-                    bool potentialExitEnd = true;
-
-                    for (const auto& ifblock : ifdata) {
-                        // incase the block sLines[i] is nested in an if-block
-                        if (ifblock.first < containedBlock.first) continue;
-                        if (sLines[k] >= ifblock.first && sLines[k] <= ifblock.second) {
-                            potentialExitEnd = false;
-                            break;
-                        }
-                    }
-                    for (const auto& elseblock : elsedata) {
-                        // incase the block sLines[i] is nested in an else-block
-                        if (elseblock.first < containedBlock.first) continue;
-                        if (sLines[k] >= elseblock.first && sLines[k] <= elseblock.second) {
-                            potentialExitEnd = false;
-                            break;
-                        }
-                    }
-
-                    // when we find the first sLines[k] that is not contained in the reduced sets
-                    // form the connection and exit the loops
-                    if (potentialExitEnd) {
-                        // std::cout << "Potential Exit-Path --> " << sLines[i] << "," << sLines[k] << std::endl;
-                        otherPaths.insert(std::make_pair(sLines[i], sLines[k]));
-                        break;
-                    }
-                }
-            }
-        }
-    }
+// Find forward control-edges between conditional conditions. ie: if -> else if -> else
+void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
+    /** @todo
+     * Checking metadata within each SlicePosition, connect sline[i] to a sline[k] where k > i
+     * corresponding if conditions to preceding elif conditions or the first sline within an else
     */
+
+    for (size_t i = 0; i < sLines.size() - 1; ++i) {
+        // sline[i] must be within the condition block of an if or else-if
+        if (!sLines[i].GetData().isIfCondition && !sLines[i].GetData().isElifCondition)
+            continue;
+
+        // find the condition context base
+        SlicePosition baseBlock;
+        for (SlicePosition& data : ifdata) {
+            if (sLines[i] < data) continue;
+            if (IsContained(sLines[i], data)) {
+                baseBlock = data;
+            }
+        }
+        for (SlicePosition& data : elseifdata) {
+            if (sLines[i] < data) continue;
+            if (IsContained(sLines[i], data)) {
+                baseBlock = data;
+            }
+        }
+
+        if (baseBlock.GetFileName().empty()) continue;
+
+        // find the preceding sline[k]
+        size_t k = i+1;
+        while (k < sLines.size()) {
+            if (!IsContained(sLines[k], baseBlock)) break;
+            ++k;
+        }
+        if (k == sLines.size()) continue;
+        
+        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
+    }
 }
 
-// Attempt to find other Forward Control-Flow paths | ComputeControlPaths Helper Function
-std::set<std::pair<SlicePosition,SlicePosition>> SrcSliceHandler::FindOtherPaths(std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines) {
-    std::set<std::pair<SlicePosition,SlicePosition>> otherPaths;
+// Collects the forward exiting control-flows of conditionals. ie: exiting conditional body
+void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
+    /** @todo
+     * Find the context if_stmt the sline[i] is within to find the first sline[k] not contained in the context if_stmt where k > i
+     * sline[i] must be the sline that occurs LAST within the inner context of the if_stmt context (specific if, elif, else block)
+    */
 
-    // For each path we need to compute, there is a specific function for it
-    //ComputeExitPaths(otherPaths, sLines, ignoreLines);
-    //ComputeOuterPaths(otherPaths, sLines);
+    for (size_t i = 0; i < sLines.size() - 1; ++i) {
+        // skip slines that are within the conditions
+        if (sLines[i].GetData().isIfCondition || sLines[i].GetData().isElifCondition)
+            continue;
 
-    return otherPaths;
+        // sline[i] must be contained within the block of either an if, else-if, or else statement
+        size_t ctxIndex = FindContextBlock(sLines[i], ifStmts);
+        if (ctxIndex == -1) continue;
+
+        // find inner-most context of sline[i]
+        SlicePosition innerContext;
+        for (SlicePosition& data : ifdata) {
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+        for (SlicePosition& data : elseifdata) {
+            // if the inner context has been found skip this loop
+            if (!innerContext.ToString().empty()) break;
+
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+        for (SlicePosition& data : elsedata) {
+            // if the inner context has been found skip this loop
+            if (!innerContext.ToString().empty()) break;
+
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+
+        // check if sline[i] is the last sline within the inner-most context
+        bool isExitPath = false;
+        size_t k = i+1;
+        while (k < sLines.size()) {
+            // if sline[k] is contained within the inner-most context
+            // then sline[i], sline[k] is not an exit-path
+            if (IsContained(sLines[k], innerContext)) {
+                break;
+            }
+
+            // check if sline[k] is outside of the if_stmt context
+            if (!IsContained(sLines[k], ifStmts[ctxIndex])) {
+                isExitPath = true;
+                break;
+            }
+
+            ++k;
+        }
+        if (!isExitPath) continue;
+
+        
+        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
+    }
 }
 
 // srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
 // we are not focusing on backwards-flows.
 void SrcSliceHandler::ComputeControlPaths() {
-    /*
-    for (std::pair<std::string, std::vector<SliceProfile>> var : profileMap) {
-        // Collect the slice lines and put them in numerical order
-        std::set<int> sLinesOrdered;
-        sLinesOrdered.insert(var.second.back().definitions.begin(), var.second.back().definitions.end());
-        sLinesOrdered.insert(var.second.back().uses.begin(), var.second.back().uses.end());
-        // Convert set into vector using vector ctor
-        std::vector<int> sLines(sLinesOrdered.begin(), sLinesOrdered.end());
-        // Used in helper function
-        std::set<int> ignoreLines;
-
-        // Handles controledges based from: for-loops, while-loops, do-while-loops
-        for (auto loop : loopdata) {
-            int predecessor = 0;
-            int falseSuccessor = 0;
-            int trueSuccessor = loop.second;
-            bool trueSuccessorExists = false;
-
-            for (auto sl : sLines) {
-                if (sl <= loop.first) {
-                    predecessor = sl;
-                }
-                if (sl >= loop.first) {
-                    falseSuccessor = sl;
-                }
-                for (auto firstLine : sLines) {
-                    if (firstLine >= loop.first && firstLine <= loop.second && firstLine <= trueSuccessor) {
-                        trueSuccessor = firstLine;
-                        trueSuccessorExists = true;
-                    }
-                }
-            }
-            if (predecessor < falseSuccessor) {
-                if (trueSuccessorExists) {
-                    if (predecessor != trueSuccessor) {
-                        if (predecessor != 0 && trueSuccessor != 0) {
-                            profileMap.find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(predecessor, trueSuccessor)
-                            );
-                        }
-                    }
-                }
-
-                if (predecessor != falseSuccessor) {
-                    if (predecessor != 0 && trueSuccessor != 0) {
-                        profileMap.find(var.first)->second.back().controlEdges.insert(
-                            std::make_pair(predecessor, falseSuccessor)
-                        );
-                    }
-                }
-            }
+    auto InBlock = [this](SlicePosition& sline, std::vector<SlicePosition>& groups) -> bool {
+        // groups are focused on if, elif, else position ranges
+        size_t ctxIndex = -1;
+        if (groups.size() > 1) {
+            ctxIndex = FindContextBlock(sline, ifStmts);
+            if (ctxIndex == -1) return false;
         }
 
-        int prevSL = 0;
-        bool loopPresent = false;
-        for (int i = 0; i < sLines.size(); i++) {
-            // Handle checking the next sline
-            if (i + 1 < sLines.size()) {
-                bool outIf = true;
-                // bool outElseIf = true;
-                bool outElse = true;
-                
-                for (auto ifblock : ifdata) {
-                    if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                        outIf = false;
-                        break;
-                    }
-                }
-
-                if (!outIf) {
-                    // when inside an if-block,
-                    // check if the next sline is contained within a else-if-block
-                    for (auto elseifblock : elseifdata) {
-                        if (sLines[i + 1] >= elseifblock.first && sLines[i + 1] <= elseifblock.second) {
-                            outElse = false;
-                            if (sLines[i] >= elseifblock.first && sLines[i] <= elseifblock.second)
-                                outElse = true;
-                            break;
-                        }
-                    }
-                }
-
-                if (!outIf) {
-                    // when inside an if-block AND not inside a else-if-block,
-                    // check if the next sline is contained within a else-block
-                    for (auto elseblock : elsedata) {
-                        if (sLines[i + 1] >= elseblock.first && sLines[i + 1] <= elseblock.second) {
-                            outElse = false;
-                            break;
-                        }
-                    }
-                }
-
-                // if we are outside an if or else AND both slines do not equal each other
-                if ((outIf || outElse) && sLines[i] != sLines[i + 1]) {
-                    // make sure we do not push a sline of 0 into the set
-                    if (sLines[i] != 0 && sLines[i + 1] != 0) {
-                        profileMap.find(var.first)->second.back().controlEdges.insert(
-                            std::make_pair(sLines[i], sLines[i + 1])
-                        );
-                        ignoreLines.insert(sLines[i]);
-                        // std::cout << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
-                    }
-                }
-            }
-            
-            // Focus exclusively on the current sline
-            bool outControlBlock = true;
-            for (auto loop : loopdata) {
-                // check if the current sline is contained within a: for-loop, while-loop, or do-while loop
-                if (sLines[i] >= loop.first && sLines[i] <= loop.second) {
-                    loopPresent = true;
-                    outControlBlock = false;
-                    break;
-                }
+        for (auto& data : groups) {
+            // if there is nesting we only want to be concerned with data related to the if_stmt context
+            if (ctxIndex != -1 && IsContained(ifStmts[ctxIndex], data)) {
+                continue;
             }
 
-            if (outControlBlock) {
-                // check if the current sline is contained an if-block
-                for (auto ifblock : ifdata) {
-                    if (sLines[i] >= ifblock.first && sLines[i] <= ifblock.second) {
-                        outControlBlock = false;
-                        break;
-                    }
-                }
-            }
-            if (outControlBlock) {
-                // check if the current sline is contained an if-block
-                for (auto elseifblock : elseifdata) {
-                    if (sLines[i] >= elseifblock.first && sLines[i] <= elseifblock.second) {
-                        outControlBlock = false;
-                        break;
-                    }
-                }
-            }
-            if (outControlBlock) {
-                // check if the current sline is contained an else-block
-                for (auto elseblock : elsedata) {
-                    if (sLines[i] >= elseblock.first && sLines[i] <= elseblock.second) {
-                        outControlBlock = false;
-                        break;
-                    }
-                }
-            }
-
-            // if the current sline is not contained within a conditional (body or condition/control)
-            if (outControlBlock) {
-                if (prevSL == 0) {
-                    prevSL = sLines[i];
-                } else {
-                    if (prevSL != sLines[i]) {
-                        if (prevSL != 0 && sLines[i] != 0 && loopPresent) {
-                            profileMap.find(var.first)->second.back().controlEdges.insert(
-                                std::make_pair(prevSL, sLines[i])
-                            );
-                            ignoreLines.insert(prevSL);
-                            // std::cout << "[*] " << __LINE__ << " | Normal Path --> " << sLines[i] << "," << sLines[i+1] << std::endl;
-                            loopPresent = false;
-                        }
-                    }
-                    prevSL = sLines[i];
-                }
+            if (IsContained(sline, data)) {
+                return true;
             }
         }
+        return false;
+    };
+    
+    auto InLoop = [](SlicePosition& sline, std::vector<SlicePosition>& loopdata) -> bool {
+        size_t ctxIndex = -1;
+        if (loopdata.size() > 1) {
+            ctxIndex = FindContextBlock(sline, loopdata);
+            if (ctxIndex == -1) return false;
+        }
 
-        // Attempt fetching other control-flows via helper function
-        std::set<std::pair<int, int>> otherPaths = FindOtherPaths(sLines, ignoreLines);
-        profileMap.find(var.first)->second.back().controlEdges.insert(
-            otherPaths.begin(),
-            otherPaths.end()
-        );
+        for (auto& data : loopdata) {
+            if (ctxIndex != -1 && IsContained(loopdata[ctxIndex], data)) {
+                continue;
+            }
+
+            if (IsContained(sline, data)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    for (auto& varGroup : profileMap) {
+        for (auto& profile : varGroup.second) {
+            if (!profile.containsDeclaration) continue;
+
+            // Collect the slice lines and put them in numerical order
+            std::set<SlicePosition> sLinesOrdered;
+            sLinesOrdered.insert(profile.definitions.begin(), profile.definitions.end());
+            sLinesOrdered.insert(profile.uses.begin(), profile.uses.end());
+
+            // Convert set into vector using vector ctor
+            std::vector<SlicePosition> sLines(sLinesOrdered.begin(), sLinesOrdered.end());
+
+            // Handles controledges based from: for-loops, while-loops, do-while-loops
+            for (auto& loop : loopdata) {
+                SlicePosition predecessor;    // origin position
+                SlicePosition falseSuccessor; // where to go when loop-condition is false
+                SlicePosition trueSuccessor;  // where to go when loop-condition is true (first sline within loop block)
+
+                for (auto& sline : sLines) {
+                    // see if the sline is before the loop or in the loop-control statement
+                    if (predecessor.GetFileName().empty() && IsContained(sline, loop)) {
+                        predecessor = sline;
+                        continue;
+                    }
+
+                    // find the first sline outside the loop-block
+                    if (falseSuccessor.GetFileName().empty() && sline > loop && !IsContained(sline, loop)) {
+                        falseSuccessor = sline;
+                        continue;
+                    }
+
+                    // find the first sline inside the loop-block
+                    if (trueSuccessor.GetFileName().empty() && IsContained(sline, loop)) {
+                        trueSuccessor = sline;
+                        continue;
+                    }
+                }
+
+                bool validPositions = !predecessor.GetFileName().empty() && !trueSuccessor.GetFileName().empty() && !falseSuccessor.GetFileName().empty();
+                if (validPositions && predecessor < falseSuccessor) {
+                    profile.controlEdges.insert(
+                        std::make_pair(predecessor, trueSuccessor)
+                    );
+                    profile.controlEdges.insert(
+                        std::make_pair(predecessor, falseSuccessor)
+                    );
+                }
+            }
+
+            // Create sline pairs between successive lines with case of if-else matching
+            for (size_t i = 0; i < sLines.size() - 1; ++i) {
+                if ( !(InBlock(sLines[i], ifdata) && (InBlock(sLines[i+1], elseifdata) || InBlock(sLines[i+1], elsedata)) ) ) {
+                    profile.controlEdges.insert(
+                        std::make_pair(sLines[i], sLines[i+1])
+                    );
+                }
+
+                // if the sline[i] does not belong to any loop or condition block
+                // then connect this sline to the first successive sline[k] that
+                // does not also belong to any loop or condiiton block
+                if (!InLoop(sLines[i], loopdata) && !InBlock(sLines[i], ifdata) && !InBlock(sLines[i], elseifdata) && !InBlock(sLines[i], elsedata)) {
+                    profile.controlEdges.insert(
+                        std::make_pair(sLines[i], sLines[i+1])
+                    );
+                }
+            }
+
+            // Find Exit-Paths and Outer-Paths that are not initially found from this algorithm
+            ComputeExitPaths(profile.controlEdges, sLines);
+            ComputeOuterPaths(profile.controlEdges, sLines);
+        }
     }
-    */
 }
 
 SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcName, FunctionSignatureData& funcSig, int paramIndex) {
@@ -563,103 +490,18 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
         if (param && param->name && param->name.GetElement()) {
             if (profileMap.find(param->name.ToString()) == profileMap.end()) {
                 if (verboseMode) {
-                    std::cout << "[-] " << __LINE__ << " | Could not find SliceProfile for parameter '"
-                    << param->name.ToString() << "' of function '" << funcName << "'" << std::endl;
+                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Could not find SliceProfile for parameter '"
+                    << param->name.ToString() << "' of function '" << funcName << "'" << "\n";
                 }
                 continue;
             }
 
-            if (profileMap.find(param->name.ToString())->second.back().visited) {
+            SliceProfile& argSp = profileMap.find(param->name.ToString())->second.back();
+
+            if (argSp.visited) {
                 return Spi;
             } else {
-                if (profileMap.find(param->name.ToString())->second.back().cfunctions.size() > 0) {
-                    for (auto& cfunc : profileMap.find(param->name.ToString())->second.back().cfunctions) {
-                        if (cfunc.functionName == funcName) {
-                            auto funcSigCollection = functionSigMap.find(cfunc.functionName);
-                            if (funcSigCollection != functionSigMap.end()) {
-                                size_t sigIndex = 0;
-
-                                // Attempt to fingerprint the right signature based on function call definition line and called function
-                                // def line data
-                                for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
-                                    if (cfunc.invokePosition == funcSigCollection->second[sigIndex].position) {
-                                        break;
-                                    }
-                                }
-
-                                if (sigIndex < funcSigCollection->second.size()) {
-                                    bool matchingName = cfunc.functionName == funcSigCollection->second[sigIndex].name;
-                                    bool notVisited = visited_func.find(cfunc.functionName) == visited_func.end();
-
-                                    if (matchingName && notVisited) {
-                                        visited_func.insert(cfunc.functionName);
-
-                                        bool containsParameters = !funcSigCollection->second[sigIndex].parameters.empty();
-                                        bool validParamIndex = cfunc.parameterIndex < funcSigCollection->second[sigIndex].parameters.size();
-
-                                        // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-                                        if (containsParameters && validParamIndex) {
-                                            if (funcSigCollection->second[sigIndex].parameters[cfunc.parameterIndex]->name) {
-                                                // Only run this section if the parameter name can be extracted
-                                                auto recursiveSpi = ArgumentProfile(
-                                                    cfunc.functionName,
-                                                    funcSigCollection->second[sigIndex],
-                                                    cfunc.parameterIndex - 1
-                                                );
-    
-                                                if (profileMap.find(param->name.ToString()) != profileMap.end() &&
-                                                    profileMap.find(recursiveSpi->first) != profileMap.end()) {
-                                                    // Uses and Defs need to reflect based on whether its pass by reference or pass by value
-                                                    if (!recursiveSpi->second.back().isReference && !recursiveSpi->second.back().isPointer) {
-                                                        // pass by value
-                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                            recursiveSpi->second.back().definitions.begin(),
-                                                            recursiveSpi->second.back().definitions.end()
-                                                        );
-                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                                recursiveSpi->second.back().uses.begin(),
-                                                                recursiveSpi->second.back().uses.end()
-                                                        );
-                                                    } else {
-                                                        // pass by reference
-                                                        profileMap.find(param->name.ToString())->second.back().definitions.insert(
-                                                            recursiveSpi->second.back().definitions.begin(),
-                                                            recursiveSpi->second.back().definitions.end()
-                                                        );
-                                                        profileMap.find(param->name.ToString())->second.back().uses.insert(
-                                                                recursiveSpi->second.back().uses.begin(),
-                                                                recursiveSpi->second.back().uses.end()
-                                                        );
-                                                    }
-    
-                                                    profileMap.find(param->name.ToString())->second.back().cfunctions.insert(
-                                                        profileMap.find(param->name.ToString())->second.back().cfunctions.end(),
-                                                        recursiveSpi->second.back().cfunctions.begin(),
-                                                        recursiveSpi->second.back().cfunctions.end()
-                                                    );
-                                                    // ensure dependencies and aliases are within local scope
-                                                    if (recursiveSpi->second.back().function == profileMap.find(param->name.ToString())->second.back().function) {
-                                                        profileMap.find(param->name.ToString())->second.back().aliases.insert(
-                                                            profileMap.find(param->name.ToString())->second.back().aliases.end(),
-                                                            recursiveSpi->second.back().aliases.begin(),
-                                                            recursiveSpi->second.back().aliases.end()
-                                                        );
-                                                        profileMap.find(param->name.ToString())->second.back().dvars.insert(
-                                                            profileMap.find(param->name.ToString())->second.back().dvars.end(),
-                                                            recursiveSpi->second.back().dvars.begin(),
-                                                            recursiveSpi->second.back().dvars.end()
-                                                        );
-                                                    }
-                                                }
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                        }
-                    }
-                    profileMap.find(param->name.ToString())->second.back().visited = true;
-                }
+                ResolveCall(argSp);
             }
         }
     }
@@ -680,25 +522,26 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
             for (auto& alias : sp.aliases) {
                 // view aliases of the slice profile
                 auto spi = profileMap.find(alias.first);
-                if (spi != profileMap.end()) {
-                    // fingerprint the profile based on contained use
-                    for (auto& aspi : spi->second) {
-                        if (!aspi.containsDeclaration) continue;
-                        auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
-                        if (usesItr != aspi.uses.end()) {
-                            // determine if the potential target is a pointer or reference
-                            if (aspi.isPointer || aspi.isReference) {
-                                // check if the alias has been visited
-                                if (visited_alias.find(aspi.variableName) == visited_alias.end()) {
-                                    // mark alias as visited so we dont review this alias entry again (circular dependence protection)
-                                    visited_alias.insert(aspi.variableName);
+                if (spi == profileMap.end()) continue;
 
-                                    // push_back alias slice profile's aliases into the source slice aliases
-                                    sp.aliases.insert(sp.aliases.end(), aspi.aliases.begin(), aspi.aliases.end());
-                                }
-                            }
-                        }
-                    }
+                // fingerprint the profile based on contained use
+                for (auto& aspi : spi->second) {
+                    if (!aspi.containsDeclaration) continue;
+                    
+                    auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
+                    if (usesItr == aspi.uses.end()) continue;
+                    
+                    // determine if the potential target is a pointer or reference
+                    if (!aspi.isPointer && !aspi.isReference) continue;
+
+                    // check if the alias has been visited
+                    if (visited_alias.find(aspi.variableName) != visited_alias.end()) continue;
+
+                    // mark alias as visited so we dont review this alias entry again (circular dependence protection)
+                    visited_alias.insert(aspi.variableName);
+
+                    // push_back alias slice profile's aliases into the source slice aliases
+                    sp.aliases.insert(sp.aliases.end(), aspi.aliases.begin(), aspi.aliases.end());
                 }
             }
         }
@@ -706,14 +549,69 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
 }
 
 void SrcSliceHandler::Finalize() {
-    if (verboseMode || progressMode) std::cout << "[*] Performing Second-Pass" << std::endl;
+    if (verboseMode || progressMode) std::cout << "[*] Performing Second-Pass" << "\n";
 
-    for (size_t i = 0; i < partialSliceProfiles.size(); ++i) {
-        if (partialSliceProfiles[i] == nullptr) continue;
-        ModifySlice(*partialSliceProfiles[i]);
+    for (auto& [name, profiles] : profileMap) {
+        mergeFragments(profiles);
+        for (auto& profile : profiles) {
+            if (profile.partial) ModifySlice(profile);
+        }
     }
 
-    if (verboseMode || progressMode) std::cout << "[*] Finished Second-Pass" << std::endl;
+    if (verboseMode || progressMode) std::cout << "[*] Finished Second-Pass" << "\n";
+}
+
+void SrcSliceHandler::mergeFragments(std::vector<SliceProfile>& profiles) {
+    typedef std::vector<SliceProfile>::iterator Spi;
+    std::unordered_map<std::string, std::vector<Spi>> possibleRootFragments;
+
+    // move fragments to the back so roots are at the front
+    std::partition(profiles.begin(), profiles.end(), [](const SliceProfile& p) {
+        // root fragments remain at the front of the vector
+        // while fragement profiles are moved to the back
+        // to ensure upon iteration we mark all root fragments
+        // before handling a fragment
+        return !p.isFragment;
+    });
+    
+    for (auto itr = profiles.begin(); itr != profiles.end();) {
+        if (itr->isFragment) {
+            // find the root fragment and merge data
+            // then remove fragment and continue
+            auto dFiles = fileDependencyTable.find(itr->file);
+
+            auto mergeFragment = [&possibleRootFragments](Spi itr, std::vector<std::string> includedFiles) {
+                for (auto& [baseFile, rootFragments] : possibleRootFragments) {
+                    for (auto& rootFragment : rootFragments) {
+                        // root fragment and partial fragment exist in the same file
+                        if (rootFragment->file == itr->file) {
+                            rootFragment->merge(*itr);
+                            return;
+                        }
+
+                        // inclusions in the file the fragment originates from
+                        for (auto& includeName : includedFiles) {
+                            // search from end of rootFragment file string
+                            // if includeName substring occurs (C++20 string)
+                            if (rootFragment->file.ends_with(includeName)) {
+                                // merge fragment (itr) with rootFragment
+                                rootFragment->merge(*itr);
+                                return;
+                            }
+                        }
+                    }
+                }
+            };
+            mergeFragment(itr, (dFiles != fileDependencyTable.end()) ? dFiles->second : std::vector<std::string>{});
+            itr = profiles.erase(itr);
+        } else {
+            // check if profile is potential root
+            if (itr->isGlobal || itr->classMemberVar) {
+                possibleRootFragments[itr->file].push_back(itr);
+            }
+            ++itr;
+        }
+    }
 }
 
 // modular reusable component
@@ -732,89 +630,203 @@ void SrcSliceHandler::ModifySlice(SliceProfile& sp) {
     UpdateCalls(sp);
 
     // attempt ComputeInterprocedural against the slice profile (sp)
+    // sp gets marked as visited once again
     ResolveCall(sp);
-
-    // mark sp as visited once again
-    sp.visited = true;
 }
 
 void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
-    for (auto& cfunc : sp.cfunctions) {
+    // do not read/modify the slice if its not a partial
+    if (!sp.partial) return;
+
+    // collection of call data that is to be later added to the given slice profile
+    std::vector<FunctionCallData> toInsert;
+    
+    for (auto itr = sp.cfunctions.begin(); itr != sp.cfunctions.end(); ++itr) {
+        FunctionCallData& cfunc = *itr;
+
+        // only update cfunc entries that do not have a definition position
+        if (!cfunc.definitionPosition.GetFileName().empty()) {
+            continue;
+        }
+
         std::string name = cfunc.functionName;
         auto funcSig = functionSigMap.find(name);
 
-        if (funcSig != functionSigMap.end()) {
-            // if there is only one record of a function signature
-            if (funcSig->second.size() == 1) {
-                // update definitionPosition
-                FunctionCallData updatedData(cfunc);
-                updatedData.definitionPosition = funcSig->second[0].position;
+        if (funcSig == functionSigMap.end()) continue;
 
-                // replace old data with new data
-                cfunc = updatedData;
+        // if there is only one record of a function signature
+        if (funcSig->second.size() == 1) {
+            if (funcSig->second[0].parameters.empty()) continue;
+            if (cfunc.argumentCount > funcSig->second[0].parameters.size()) continue;
 
-                // evaluate the slice profile based off the updatedData and if its within
-                // partialSliceProfiles we want to jump to it and update it (recursively)
-                // before passing it back into inter-procedural
-                unsigned int ArgProfParam = updatedData.parameterIndex - 1;
+            // update definitionPosition
+            FunctionCallData updatedData(cfunc);
+            updatedData.definitionPosition = funcSig->second[0].position;
+
+            // replace old data with new data
+            cfunc = updatedData;
+
+            // evaluate the slice profile based off the updatedData and if its within
+            // partialSliceProfiles we want to jump to it and update it (recursively)
+            // before passing it back into inter-procedural
+            unsigned int ArgProfParam = updatedData.parameterIndex - 1;
+
+            /**
+             * @todo may need to remove argument profile usage,
+             * interprocedural skips if the argument cant be
+             * resolved from a given call
+             **/
+
+            // argument slice profile
+            auto spi = ArgumentProfile(
+                updatedData.functionName,
+                funcSig->second[0],
+                ArgProfParam
+            );
+
+            if (spi == profileMap.end()) continue;
+
+            auto sliceItr = spi->second.begin();
+            std::string desiredVariableName = sliceItr->variableName;
+
+            for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
+                if (!sliceItr->containsDeclaration)
+                    continue;
+                if (sliceItr->variableName != desiredVariableName)
+                    continue;
+                if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != updatedData.functionName)
+                    continue;
+
+                auto paramDecl = funcSig->second[0].parameters[ArgProfParam];
+                SlicePosition paramDeclPos(
+                    paramDecl->name->startPosition,
+                    paramDecl->name->endPosition,
+                    sliceItr->file
+                );
+
+                if (sliceItr->declPosition != paramDeclPos)
+                    continue;
+
+                break;
+            }
+        } else {
+            // if a function is overloaded
+
+            unsigned int ArgProfParam = cfunc.parameterIndex - 1;
+            std::vector<FunctionSignatureData> signatures;
+
+            for (auto& funcData : funcSig->second) {
+                if (cfunc.argumentCount == funcData.parameters.size()) {
+                    signatures.push_back(funcData);
+                }
+            }
+
+            if (signatures.empty()) {
+                for (auto& funcData : funcSig->second) {
+                    if (cfunc.argumentCount == 0 || cfunc.argumentCount >= funcData.parameters.size()) continue;
+                    // 1 <= argCount < paramCount
+                    signatures.push_back(funcData);
+                }
+            }
+
+            // update the current cfunc and add new entries per possible signature
+            for (size_t i = 0; i < signatures.size(); ++i) {
+
+                /**
+                 * @todo may need to remove argument profile usage,
+                 * interprocedural skips if the argument cant be
+                 * resolved from a given call
+                 **/
+
+                // argument slice profile
                 auto spi = ArgumentProfile(
-                    updatedData.functionName,
-                    funcSig->second[0],
+                    cfunc.functionName,
+                    signatures[i],
                     ArgProfParam
                 );
 
-                if (spi != profileMap.end()) {
-                    auto sliceItr = spi->second.begin();
-                    std::string desiredVariableName = sliceItr->variableName;
+                if (spi == profileMap.end())
+                    continue;
 
-                    for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
-                        if (sliceItr->containsDeclaration) {
-                            if (sliceItr->variableName != desiredVariableName) {
-                                continue;
-                            }
-                            if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != updatedData.functionName) {
-                                continue;
-                            }
-                            auto paramDecl = funcSig->second[0].parameters[ArgProfParam];
-                            SlicePosition paramDeclPos(paramDecl->name->startPosition, paramDecl->name->endPosition, sctx.currentFilePath);
-                            if (sliceItr->initialPosition != paramDeclPos) {
-                                continue;
-                            }
+                auto sliceItr = spi->second.begin();
+                std::string desiredVariableName = sliceItr->variableName;
 
-                            break;
-                        }
-                    }
+                for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
+                    if (!sliceItr->containsDeclaration)
+                        continue;
+                    if (sliceItr->variableName != desiredVariableName)
+                        continue;
+                    if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != cfunc.functionName)
+                        continue;
 
-                    bool isPartialSlice = std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &(*sliceItr)) != partialSliceProfiles.end();
-                    if (sliceItr != spi->second.end() && isPartialSlice) {
-                        ModifySlice(*sliceItr);
-                    }
+                    auto paramDecl = signatures[i].parameters[ArgProfParam];
+                    SlicePosition paramDeclPos(
+                        paramDecl->name->startPosition,
+                        paramDecl->name->endPosition,
+                        sliceItr->file
+                    );
+
+                    if (sliceItr->declPosition != paramDeclPos)
+                        continue;
+
+                    break;
                 }
-            } else {
-                // if a function is overloaded
+
+                if (sliceItr == spi->second.end())
+                    continue;
+                if (cfunc.definitionPosition.GetFileName().empty()) {
+                    // update cfunc data
+                    FunctionCallData updatedData(cfunc);
+                    updatedData.definitionPosition = signatures[i].position;
+                    cfunc = updatedData;
+                } else {
+                    // append new cfunc data
+                    FunctionCallData newData(cfunc);
+                    newData.definitionPosition = signatures[i].position;
+                    toInsert.push_back(newData);
+                }
             }
         }
     }
+
+    // insert the new calls into the profile after iteration
+    // to not risk iterator invalidation
+    for (auto& data : toInsert) {
+        sp.insertCfunction(data);
+    }
+
+    // toggle off just incase so we do not run over this profile again
+    sp.partial = false;
 }
 
 void SrcSliceHandler::ComputeInterprocedural() {
-    for (auto& var : profileMap) {
-        SliceProfile& sp = var.second.back();
-        // Need to watch the Slices we attempt to dig into because
-        // we are collecting slices we have no interest in
-        if (!sp.visited && (sp.variableName != "*LITERAL*")) {
+    for (auto& [name, profiles] : profileMap) {
+        for (auto& sp : profiles) {
             ResolveCall(sp);
-            sp.visited = true;
         }
     }
 }
 
 void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
+    // safety to ensure we avoid circular profile linkage
+    if (sp.visited) return;
+    // ignore profiles with no value
+    if ((sp.variableName == "*LITERAL*")) return;
+    
+    auto addPartialSlice = [this](SliceProfile &sp) {
+        if (sp.updated) return;
+        sp.partial = true;
+    };
+
+    // label the profile as visited to avoid circular profile linkage
+    sp.visited = true;
+
     if (!sp.cfunctions.empty()) {
         for (auto& cfunc : sp.cfunctions) {
-            if (cfunc.ignore) {
-                continue; // if a cfunc ignore flag is enabled skip this index and continue
-            }
+            // if a cfunc ignore flag is enabled skip this index and continue
+            if (cfunc.ignore)
+                continue;
+
             auto funcSigCollection = functionSigMap.find(cfunc.functionName);
 
             if (funcSigCollection != functionSigMap.end()) {
@@ -830,12 +842,7 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                 }
 
                 if (sigIndex >= funcSigCollection->second.size()) {
-                    if (!sp.updated) {
-                        // do not create mulitple pointers pointing to the same thing
-                        if (std::find(partialSliceProfiles.begin(), partialSliceProfiles.end(), &sp) == partialSliceProfiles.end()) {
-                            partialSliceProfiles.push_back(&sp);
-                        }
-                    }
+                    addPartialSlice(sp);
                     continue; // no signature could be found
                 }
 
@@ -882,10 +889,10 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                     SlicePosition paramDeclPos(
                                         paramDecl->name->startPosition,
                                         paramDecl->name->endPosition,
-                                        sctx.currentFilePath
+                                        funcSigCollection->second[sigIndex].currentFilePath
                                     );
 
-                                    if (sliceItr->initialPosition != paramDeclPos) {
+                                    if (sliceItr->declPosition != paramDeclPos) {
                                         continue;
                                     }
 
@@ -908,9 +915,12 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                                 sliceItr->definitions.end());
                                         }
 
-                                        // Parameter initial declaration def line is considered a use towards the argument
-                                        profileMap.find(sp.variableName)->second.back().definitions.erase(sliceItr->initialPosition);
-                                        profileMap.find(sp.variableName)->second.back().uses.insert(sliceItr->initialPosition);
+                                        // ensure we do not remove the initial decl from a slices definitions set
+                                        if (profileMap.find(sp.variableName)->second.back().declPosition != sliceItr->declPosition) {
+                                            // Parameter initial declaration def line is considered a use towards the argument
+                                            profileMap.find(sp.variableName)->second.back().definitions.erase(sliceItr->declPosition);
+                                        }
+                                        profileMap.find(sp.variableName)->second.back().uses.insert(sliceItr->declPosition);
 
                                         profileMap.find(sp.variableName)->second.back().uses.insert(
                                             sliceItr->uses.begin(),
@@ -936,24 +946,25 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                     std::cout << std::boolalpha << "Is '" << sp.variableName << "' a Map Entry? "
                                               << (profileMap.find(sp.variableName) != profileMap.end())
                                               << " | Is Spi '" << Spi->first << "' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
-                                              << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << std::endl;
+                                              << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << "\n";
 
-                                    std::cout << "Tried Accessing Slice Variable :: " << sp.variableName << std::endl;
-                                    std::cout << "[-] " << __LINE__ << " | An Error has Occured in `ComputeInterprocedural`" << std::endl;
+                                    std::cout << "Tried Accessing Slice Variable :: " << sp.variableName << "\n";
+                                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | An Error has Occured in `ComputeInterprocedural`" << "\n";
                                 }
                             }
                         } else {
                             if (verboseMode) {
-                                std::cout << "[-] " << __LINE__ << " | ArgumentProfile could not resolve SliceProfile for Call '"
-                                << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << std::endl;
+                                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | ArgumentProfile could not resolve SliceProfile for Call '"
+                                << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << "\n";
                             }
                         }
                     }
                 }
             } else {
                 if (verboseMode) {
-                    std::cout << "[-] " << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << std::endl;
+                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << "\n";
                 }
+                addPartialSlice(sp);
             }
         }
     }

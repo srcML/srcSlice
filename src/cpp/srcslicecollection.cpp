@@ -1,6 +1,15 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcslicecollection.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include "srcslicecollection.hpp"
 
-SlicePosition::SlicePosition(){}
+SlicePosition::SlicePosition(): filename("") {}
 SlicePosition::SlicePosition(
                     srcDispatch::DeltaElement<srcDispatch::Position> start,
                     srcDispatch::DeltaElement<srcDispatch::Position> end,
@@ -11,16 +20,41 @@ SlicePosition::SlicePosition(const SlicePosition& position) {
     start = position.start;
     end = position.end;
     filename = position.filename;
+    data = position.data;
 }
 
 // Creates a String of a JSON object, ie: "file.cpp:2:12"
+// based on the start position
 std::string SlicePosition::ToString() const {
+    std::string s;
+
+    s += "\"";
+
+    if (!filename.empty()) {
+        s += filename;
+    }
+
+    if (start) {
+        s += ":";
+        s += start->ToString();
+    }
+
+    s += "\"";
+
+    return s;
+}
+std::string SlicePosition::RangeToString() const {
     std::string s;
 
     s += "\"";
     if (start && !filename.empty()) {
         s += filename; s += ":";
         s += start->ToString();
+    }
+    s += "-";
+    if (end && !filename.empty()) {
+        s += filename; s += ":";
+        s += end->ToString();
     }
     s += "\"";
 
@@ -32,8 +66,8 @@ std::string SlicePosition::ToString() const {
 std::string SlicePosition::ToNameString() const {
     std::string s;
 
-    std::string lineStr = std::to_string(start->GetLine());
-    std::string colStr = std::to_string(start->GetColumn());
+    std::string lineStr = start ? std::to_string(start->GetLine()) : "0";
+    std::string colStr = start ? std::to_string(start->GetColumn()) : "0";
     s += lineStr + "-" + colStr;
 
     return s;
@@ -46,6 +80,7 @@ srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetEnd() const {
     return end;
 }
 std::string SlicePosition::GetFileName() const { return filename; }
+PositionMeta& SlicePosition::GetData() { return data; }
 
 SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
     if (this == &rhs) return *this;
@@ -53,6 +88,7 @@ SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
     start = rhs.start;
     end = rhs.end;
     filename = rhs.filename;
+    data = rhs.data;
 
     return *this;
 }
@@ -61,7 +97,9 @@ bool SlicePosition::operator==(const SlicePosition& rhs) const {
     if (validPositions) {
         bool matchingStarts = start->GetLine() == rhs.start->GetLine() && start->GetColumn() == rhs.start->GetColumn();
         bool matchingEnds = end->GetLine() == rhs.end->GetLine() && end->GetColumn() == rhs.end->GetColumn();
-        return matchingStarts && matchingEnds;
+        bool matchingFiles = filename == rhs.filename;
+        
+        return matchingStarts && matchingEnds && matchingFiles;
     }
     return false;
 }
@@ -76,13 +114,75 @@ bool SlicePosition::operator<(const SlicePosition& rhs) const {
         if (start->GetLine() > rhs.start->GetLine()) return false;
 
         // same line number compare the columns
+        if (start->GetColumn() == rhs.start->GetColumn()) {
+            // if line:col matches check if filenames are different
+            return filename != rhs.filename;
+        }
         return start->GetColumn() < rhs.start->GetColumn();
     }
     return false;
 }
+bool SlicePosition::operator<=(const SlicePosition& rhs) const {
+    return (rhs < *this) || rhs == *this;
+}
 bool SlicePosition::operator>(const SlicePosition& rhs) const {
     return rhs < *this;
 }
+bool SlicePosition::operator>=(const SlicePosition& rhs) const {
+    return (rhs > *this) || rhs == *this;
+}
+
+bool IsContained(SlicePosition& a, SlicePosition b) {
+    if (a.GetFileName() != b.GetFileName()) return false;
+    
+    bool lineContained = a.GetStart()->GetLine() >= b.GetStart()->GetLine() && a.GetEnd()->GetLine() <= b.GetEnd()->GetLine();
+
+    bool isOneLiner = a.GetStart()->GetLine() == b.GetStart()->GetLine() && a.GetEnd()->GetLine() == b.GetEnd()->GetLine();
+    bool colContained = true;
+    
+    if (isOneLiner) {
+        // start column of a should be greater than the start column of b
+        // end column of a should be less than the end column of b
+        colContained = a.GetStart()->GetColumn() >= b.GetStart()->GetColumn() && a.GetEnd()->GetColumn() <= b.GetEnd()->GetColumn();
+    } else {
+        // if the end row of b and the start row of a are the same
+        // check if the start column of a is less than the end column of b
+        if (a.GetStart()->GetLine() == b.GetEnd()->GetLine()) {
+            colContained = a.GetStart()->GetColumn() < b.GetEnd()->GetColumn();
+        }
+    }
+
+    return lineContained && colContained;
+};
+
+size_t GetDistance(SlicePosition& a, SlicePosition& b) {
+    size_t dist = 0;
+    dist = b.GetStart()->GetLine() - a.GetStart()->GetLine();
+
+    // if row a > row b => a isnt connected to b
+    if (dist >= 0) {
+        size_t bc = b.GetEnd()->GetColumn();
+        size_t ac = a.GetStart()->GetColumn();
+        
+        dist += ac - bc;
+    }
+
+    return dist;
+}
+
+size_t FindContextBlock(SlicePosition& sline, std::vector<SlicePosition>& group) {
+    size_t ctxIndex = -1;
+    for (size_t i = 0; i < group.size(); ++i) {
+        // skip ifStmt blocks that are below the sline
+        if (sline < group[i]) continue;
+
+        // may trigger multiple times in nesting situations
+        if (IsContained(sline, group[i])) {
+            ctxIndex = i;
+        }
+    }
+    return ctxIndex;
+};
 
 FunctionSignatureData::FunctionSignatureData(
     srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
@@ -99,18 +199,22 @@ FunctionSignatureData::FunctionSignatureData(
     containingNamespaces = ctx.containingNamespaces;
 }
 
-FunctionCallData::FunctionCallData(std::string funcName, unsigned int paramIndex,
-                                    SlicePosition defPos,
-                                    SlicePosition invokePos,
-                                    bool ignore_
-                                ): functionName(funcName), parameterIndex(paramIndex),
-                                definitionPosition(defPos), invokePosition(invokePos),
-                                ignore(ignore_) {};
+FunctionCallData::FunctionCallData(
+    std::string funcName,
+    unsigned int paramIndex,
+    unsigned int argc,
+    SlicePosition defPos,
+    SlicePosition invokePos,
+    bool ignore_
+): functionName(funcName), parameterIndex(paramIndex),
+definitionPosition(defPos), invokePosition(invokePos),
+argumentCount(argc), ignore(ignore_) {};
 
 FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
     functionName = rhs.functionName;
     invokePosition = rhs.invokePosition;
     parameterIndex = rhs.parameterIndex;
+    argumentCount = rhs.argumentCount;
     definitionPosition = rhs.definitionPosition;
     ignore = rhs.ignore;
 };
@@ -121,6 +225,7 @@ FunctionCallData& FunctionCallData::operator=(const FunctionCallData& rhs) {
     functionName = rhs.functionName;
     invokePosition = rhs.invokePosition;
     parameterIndex = rhs.parameterIndex;
+    argumentCount = rhs.argumentCount;
     definitionPosition = rhs.definitionPosition;
     ignore = rhs.ignore;
 
@@ -131,6 +236,7 @@ bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
     if (functionName != rhs.functionName) return false;
     if (invokePosition != rhs.invokePosition) return false;
     if (parameterIndex != rhs.parameterIndex) return false;
+    if (argumentCount != rhs.argumentCount) return false;
     if (definitionPosition != rhs.definitionPosition) return false;
     if (ignore != rhs.ignore) return false;
     return true;
@@ -142,6 +248,7 @@ bool FunctionCallData::operator!=(const FunctionCallData& rhs) const {
 bool FunctionCallData::operator<(const FunctionCallData& rhs) const {
     if (functionName < rhs.functionName) return true;
     if (invokePosition < rhs.invokePosition) return true;
+    if (argumentCount < rhs.argumentCount) return true;
     if (parameterIndex < rhs.parameterIndex) return true;
     if (definitionPosition < rhs.definitionPosition) return true;
     if (ignore == false && rhs.ignore == true) return true;

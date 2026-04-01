@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcSliceTest.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include "srcSliceTest.hpp"
 
 std::string StringToSrcML(std::string str, const char* fileName){ // Function by Cnewman
@@ -36,49 +45,89 @@ std::string StringToSrcML(std::string str, const char* fileName){ // Function by
     return output;
 }
 
-std::string FetchSlices(const std::string cppSource, bool findControlEdges) {
-    std::ostringstream output;
-    std::string srcmlStr = StringToSrcML(cppSource, "file.cpp");
+/**
+ * Converts a multi-file string setup into a srcML multi-unit composed archive
+ */
+std::string StringsToArchive(std::vector<std::string> contents, std::vector<std::string> filenames) {
+    std::string archive_str;
+    if (filenames.size() != contents.size()) return archive_str;
 
-    SrcSliceHandler srcSliceHandler(srcmlStr, findControlEdges);
+    struct srcml_archive* archive;
+    struct srcml_unit* unit;
+    
+    size_t size = 0;
+    char* ch;
+
+    archive = srcml_archive_create();
+    srcml_archive_enable_option(archive, SRCML_OPTION_POSITION);
+    srcml_archive_write_open_memory(archive, &ch, &size);
+
+    for (size_t i = 0; i < filenames.size(); ++i) {
+        unit = srcml_unit_create(archive);
+        srcml_unit_set_language(unit, SRCML_LANGUAGE_CXX);
+        srcml_unit_set_filename(unit, filenames.at(i).c_str());
+
+        srcml_unit_parse_memory(unit, contents.at(i).c_str(), contents.at(i).size());
+        srcml_archive_write_unit(archive, unit);
+        srcml_unit_free(unit);
+    }
+
+    srcml_archive_close(archive);
+    srcml_archive_free(archive);
+
+    ch[size-1] = 0;
+    archive_str.append(ch,size);
+    srcml_memory_free(ch);
+
+    return archive_str;
+}
+
+std::string RunSrcSlice(std::string srcml, bool computeControlEdges) {
+    std::ostringstream output;
+    SrcSliceHandler srcSliceHandler(srcml, computeControlEdges);
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap = srcSliceHandler.GetProfileMap();
 
-    size_t totalElements = profileMap.size();
-    size_t currIndex = 0;
-
     output << "{" << std::endl;
+    bool writtenSlices = false;
+
     for (auto& profiles : profileMap) {
-        ++currIndex;
-        for (auto& slice : profiles.second)
-        {
-            if (slice.containsDeclaration)
-            {
-                // write out the start of the json object
-                std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString());
-                output << "\"" << name << "\":{" << std::endl;
+        for (auto& slice : profiles.second) {
+            if (!slice.containsDeclaration)
+                continue;
 
-                // print out content of the SliceProfile
-                output << slice;
+            writtenSlices = true;
+            // write out the start of the json object
+            std::string name(slice.variableName + '-' + slice.declPosition.ToNameString());
 
-                // write out the end of the json object
-                if (currIndex != totalElements)
-                    output << "}," << std::endl;
-                else
-                    output << "}" << std::endl;
-            }
+            output << "\"" << name << "\":{" << std::endl;
+            output << slice;
+            output << "}," << std::endl;
         }
     }
-    output << "}" << std::endl;
 
-    // Check for leading comma and remove it
+    // remove trailing comma
     std::string stream2string = output.str();
+    output.clear();
 
-    if (stream2string[stream2string.size() - 4] == ',')
-    {
-        stream2string.erase(stream2string.size() - 4, 1);
+    // remove trailing comma
+    if (writtenSlices) {
+        stream2string.resize(stream2string.length() - 2);
     }
 
+    // closing of the entire JSON object
+    stream2string += "\n}";
+
     return stream2string;
+}
+
+std::string FetchSlices(std::string cppSource, bool findControlEdges) {
+    std::string srcml = StringToSrcML(cppSource, "file.cpp");
+    return RunSrcSlice(srcml, findControlEdges);
+}
+
+std::string FetchSlices(std::vector<std::string> contents, std::vector<std::string> filenames) {
+    std::string srcmlStr = StringsToArchive(contents, filenames);
+    return RunSrcSlice(srcmlStr, false);
 }
 
 void PrintErr(const std::string testName, const std::string msg) {
@@ -91,13 +140,58 @@ void PrintOk(const std::string msg) {
     std::cout << OK << " " << msg << std::endl;
 }
 
-std::string TestName(bool inc) {
-    static int i = 1;
-    std::string s = (inc) ? "General Test " + std::to_string(i) : "Test Error";
-    if (inc) ++i;
-    return s;
+std::string TestName(std::string testName) {
+    tName = testName + " " + std::to_string(testNum);
+    ++testNum;
+    return tName;
+}
+std::string GetTestName() {
+    return tName;
+}
+void ResetCount() {
+    testNum = 1;
 }
 
+bool CheckCtrlEdges(const std::string testName, const std::string sliceId, const json& produced, const json& expected) {
+    try {
+        auto producedEdges = produced[sliceId]["controlEdges"];
+        auto expectedEdges = expected[sliceId]["controlEdges"];
+    
+        // check types
+        if (!producedEdges.is_array() || !expectedEdges.is_array()) {
+            std::string msg = "Incorrect JSON data-type (not array)";
+            PrintErr(testName, msg);
+            return false;
+        }
+    
+        // check sizes
+        if (producedEdges.size() != expectedEdges.size()) {
+            std::ostringstream osmsg;
+            osmsg << "Control-Edge arrays for " << sliceId << " are different sizes" <<
+            "\n |___ Produced " << producedEdges << ", expected " << expectedEdges;
+            PrintErr(testName, osmsg.str());
+            return false;
+        }
+    
+        // iterate over controlEdges: [["file.cpp:2:9","file.cpp:4:9"]]
+        for (const auto& edgeGroup : expectedEdges) {
+            // check if the edgeGroup is within the producedEdges array
+            auto it = std::find(producedEdges.begin(), producedEdges.end(), edgeGroup);
+            if (it == producedEdges.end()) {
+                std::ostringstream ossmsg;
+                ossmsg << "(" << sliceId << ") Missing Control-Edge -> " << edgeGroup <<
+                "\n |___ Produced " << producedEdges << ", expected " << expectedEdges;
+                PrintErr(testName, ossmsg.str());
+                return false;
+            }
+        }
+    
+        return true;
+    } catch (const std::exception& e) {
+        std::cerr << "[-] Caught Exception: " << e.what() << std::endl;
+        return false;
+    }
+}
 bool CheckNamespace(const std::string testName, const std::string sliceId, const json& produced, const json& expected) {
     try {
         auto producedNamespaces = produced[sliceId]["namespace"];
@@ -339,7 +433,7 @@ bool CheckDefs(const std::string testName, const std::string sliceId, const json
     }
 }
 
-bool CompareJson(const std::string sourceCode, const std::string testName, const json& produced, const json& expected) {
+bool CompareJson(const std::string sourceCode, const std::string testName, const json& produced, const json& expected, bool checkEdges) {
     auto printSource = [&sourceCode](){
         std::cout << "==============================" << std::endl;
         std::cout << sourceCode << std::endl;
@@ -380,7 +474,7 @@ bool CompareJson(const std::string sourceCode, const std::string testName, const
             "function":"main",
             "type":"int",
             "name":"a",
-            "initial":{"start":"2:9","end":"2:9"},
+            "decl":{"start":"2:9","end":"2:9"},
             "dependence":[{"b":{"start":"2:9","end":"2:9"}}],
             "aliases":[{"c":{"start":"2:9","end":"2:9"}}],
             "calls":[{"functionName":"fuzz","parameter":"1","definitionPosition":{"start":"2:9","end":"2:9"},"invoke":{"start":"2:9","end":"2:9"}}],
@@ -389,7 +483,7 @@ bool CompareJson(const std::string sourceCode, const std::string testName, const
         */
 
         // Simple attribute comparison
-        for (const std::string& attribute : {"file","language","class","function","type","name","initial"}) {
+        for (const std::string& attribute : {"file","language","class","function","type","name","decl"}) {
             auto& producedData = produced[sliceId][attribute];
             auto& expectedData = expected[sliceId][attribute];
     
@@ -430,6 +524,11 @@ bool CompareJson(const std::string sourceCode, const std::string testName, const
         }
 
         if (!CheckNamespace(testName, sliceId, produced, expected)) {
+            printSource();
+            return false;
+        }
+
+        if (checkEdges && !CheckCtrlEdges(testName, sliceId, produced, expected)) {
             printSource();
             return false;
         }

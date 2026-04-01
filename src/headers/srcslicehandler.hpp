@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcslicehandler.hpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #ifndef SRCSLICEHANDLER
 #define SRCSLICEHANDLER
 
@@ -68,18 +77,13 @@ public:
 
     std::unordered_map<std::string, std::vector<SliceProfile>>& GetProfileMap();
 
-    // Component of function FindOtherPaths
-    void ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths, std::vector<SlicePosition>& sLines);
-
-    // Component of function FindOtherPaths
-    void ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& otherPaths, std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines);
-
-    // Attempt to find other Forward Control-Flow paths | ComputeControlPaths Helper Function
-    std::set<std::pair<SlicePosition,SlicePosition>> FindOtherPaths(std::vector<SlicePosition>& sLines, std::set<SlicePosition>& ignoreLines);
-
-    // srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
-    // we are not focusing on backwards-flows.
+    /*
+        srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
+        we are not focusing on backwards-flows.
+    */
     void ComputeControlPaths();
+    void ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines);
+    void ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines);
 
     SliceProfileIterator ArgumentProfile(const std::string& funcName, FunctionSignatureData& funcSig, int paramIndex);
 
@@ -91,6 +95,8 @@ public:
     // Perform a second pass over the system dictionary performing another round of ComputeInterprocedural
     // against slices who have cfunction elements that could not resolve on the initial pass
     void Finalize();
+
+    void mergeFragments(std::vector<SliceProfile>& profiles);
     void ModifySlice(SliceProfile& sp);
     void ResolveCall(SliceProfile& sp);
     void UpdateCalls(SliceProfile& sp);
@@ -100,7 +106,6 @@ public:
 
 private:
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap;
-    std::vector<SliceProfile*> partialSliceProfiles;
     std::unordered_set <std::string> visited_func;
 
     std::vector<SlicePosition> loopdata;
@@ -109,6 +114,7 @@ private:
     std::vector<SlicePosition> dowhileloopdata;
 
     std::vector<SlicePosition> ifdata;
+    std::vector<SlicePosition> ifStmts;
     std::vector<SlicePosition> elseifdata;
     std::vector<SlicePosition> elsedata;
 
@@ -120,6 +126,8 @@ private:
 
     int threadCount;
     std::queue<SrcSliceWorker*> backlog;
+
+    std::unordered_map<std::string, std::vector<std::string>> fileDependencyTable;
 
     SliceCtx sctx;
 };

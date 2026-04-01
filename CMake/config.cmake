@@ -1,3 +1,9 @@
+# SPDX-License-Identifier: GPL-3.0-only
+##
+# @file config.cmake
+#
+# @copyright Copyright (C) 2013-2024 srcML, LLC. (www.srcML.org)
+
 ##
 #  config.cmake
 #

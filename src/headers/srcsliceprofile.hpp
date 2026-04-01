@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcsliceprofile.hpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #ifndef SRCSLICEPROFILE
 #define SRCSLICEPROFILE
 
@@ -29,7 +38,7 @@ public:
     bool operator==(const SliceProfile& rhs) const;
     bool operator!=(const SliceProfile& rhs) const;
 
-    SlicePosition initialPosition;
+    SlicePosition declPosition;
     std::string file;
     std::string function;
     std::string nameOfContainingClass;
@@ -63,17 +72,22 @@ public:
     
     std::vector<FunctionCallData> cfunctions;
     // Insert a Function Call entry with a given Function Call-Data
-    void insertCfunction(FunctionCallData& fcd);
+    void insertCfunction(FunctionCallData fcd);
+
+    void merge(const SliceProfile& other);
 
     std::set<std::pair<SlicePosition, SlicePosition>> controlEdges;
 
     bool visited = false;
     bool updated = false;
+    bool partial = false;
     bool showControlEdges = false;
 
     std::string currentPointerReference;
     bool ignorePtrRef = false;
     bool isPotentialArray = false;
+
+    bool isFragment = false;
 
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile);
 };

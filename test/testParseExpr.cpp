@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file testParseExpr.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #define CATCH_CONFIG_MAIN
 #include "./srcSliceTest.hpp"
 
@@ -5,7 +14,8 @@
  * @section Toy Code focusing on simple/complex expressions and declaration statements
  */
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
+    ResetCount();
     std::cout << INFO << " Testing General Expressions" << std::endl;
 
         // Raw-Strings C++11
@@ -31,7 +41,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -46,7 +56,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -61,7 +71,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -76,7 +86,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -85,13 +95,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -115,7 +126,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -130,7 +141,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -145,7 +156,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -160,7 +171,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -169,13 +180,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -199,7 +211,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -214,7 +226,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -229,7 +241,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -244,7 +256,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -253,13 +265,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -283,7 +296,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -298,7 +311,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -313,7 +326,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -328,7 +341,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -337,13 +350,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -367,7 +381,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -382,7 +396,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -397,7 +411,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -412,7 +426,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -421,13 +435,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -451,7 +466,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -466,7 +481,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -481,7 +496,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -496,7 +511,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -505,13 +520,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -535,7 +551,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -550,7 +566,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -565,7 +581,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"},{"b":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -580,7 +596,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -589,13 +605,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -619,7 +636,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -634,7 +651,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -649,7 +666,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"},{"b":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -664,7 +681,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -673,13 +690,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -703,7 +721,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -718,7 +736,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -733,7 +751,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -748,7 +766,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[{"a":"file.cpp:8:18"},{"c":"file.cpp:8:18"}],
         "aliases":[],
         "calls":[],
@@ -757,13 +775,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -787,7 +806,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -802,7 +821,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -817,7 +836,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -832,7 +851,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -841,13 +860,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -871,7 +891,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -886,7 +906,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -901,7 +921,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -916,7 +936,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -925,13 +945,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -955,7 +976,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -970,7 +991,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -985,7 +1006,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -1000,7 +1021,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1009,13 +1030,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1039,7 +1061,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1054,7 +1076,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -1069,7 +1091,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -1084,7 +1106,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1093,13 +1115,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1123,7 +1146,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1138,7 +1161,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -1153,7 +1176,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -1168,7 +1191,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1177,13 +1200,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1207,7 +1231,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1222,7 +1246,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -1237,7 +1261,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -1252,7 +1276,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1261,7 +1285,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -1270,7 +1295,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1290,7 +1315,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:4:15"}],
         "aliases":[],
         "calls":[],
@@ -1305,7 +1330,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1314,13 +1339,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1340,7 +1366,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:4:15"}],
         "aliases":[],
         "calls":[],
@@ -1355,7 +1381,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1364,13 +1390,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1390,7 +1417,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:4:13"}],
         "aliases":[],
         "calls":[],
@@ -1405,7 +1432,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1414,13 +1441,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1440,7 +1468,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:4:13"}],
         "aliases":[],
         "calls":[],
@@ -1455,7 +1483,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1464,13 +1492,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1492,7 +1521,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:15"}],
         "aliases":[],
         "calls":[],
@@ -1507,7 +1536,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:9"}],
         "aliases":[],
         "calls":[],
@@ -1522,7 +1551,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1531,13 +1560,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1559,7 +1589,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:15"}],
         "aliases":[],
         "calls":[],
@@ -1574,7 +1604,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:9"}],
         "aliases":[],
         "calls":[],
@@ -1589,7 +1619,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1598,13 +1628,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1626,7 +1657,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:13"}],
         "aliases":[],
         "calls":[],
@@ -1641,7 +1672,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:9"}],
         "aliases":[],
         "calls":[],
@@ -1656,7 +1687,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1665,13 +1696,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1693,7 +1725,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:13"}],
         "aliases":[],
         "calls":[],
@@ -1708,7 +1740,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:9"}],
         "aliases":[],
         "calls":[],
@@ -1723,7 +1755,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1732,13 +1764,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1760,7 +1793,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:15"}],
         "aliases":[],
         "calls":[],
@@ -1775,7 +1808,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:9"}],
         "aliases":[],
         "calls":[],
@@ -1790,7 +1823,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1799,13 +1832,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1827,7 +1861,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:15"}],
         "aliases":[],
         "calls":[],
@@ -1842,7 +1876,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:9"}],
         "aliases":[],
         "calls":[],
@@ -1857,7 +1891,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1866,13 +1900,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1894,7 +1929,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:15"}],
         "aliases":[],
         "calls":[],
@@ -1909,7 +1944,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:11"}],
         "aliases":[],
         "calls":[],
@@ -1924,7 +1959,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -1933,13 +1968,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -1961,7 +1997,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"c":"file.cpp:6:15"}],
         "aliases":[],
         "calls":[],
@@ -1976,7 +2012,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"c":"file.cpp:6:11"}],
         "aliases":[],
         "calls":[],
@@ -1991,7 +2027,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2000,7 +2036,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 /**
@@ -2011,7 +2048,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2035,7 +2072,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2050,7 +2087,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2065,7 +2102,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -2080,7 +2117,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2089,13 +2126,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2119,7 +2157,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2134,7 +2172,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2149,7 +2187,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -2164,7 +2202,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2173,13 +2211,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2203,7 +2242,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2218,7 +2257,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -2233,7 +2272,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:15"}],
         "aliases":[],
         "calls":[],
@@ -2248,7 +2287,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2257,13 +2296,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2287,7 +2327,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2302,7 +2342,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2317,7 +2357,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:15"}],
         "aliases":[],
         "calls":[],
@@ -2332,7 +2372,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2341,13 +2381,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2371,7 +2412,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2386,7 +2427,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2401,7 +2442,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -2416,7 +2457,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2425,13 +2466,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2455,7 +2497,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2470,7 +2512,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2485,7 +2527,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -2500,7 +2542,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2509,13 +2551,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2539,7 +2582,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2554,7 +2597,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2569,7 +2612,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -2584,7 +2627,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2593,13 +2636,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2623,7 +2667,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2638,7 +2682,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2653,7 +2697,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -2668,7 +2712,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2677,13 +2721,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2707,7 +2752,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2722,7 +2767,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2737,7 +2782,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -2752,7 +2797,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2761,13 +2806,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2791,7 +2837,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2806,7 +2852,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2821,7 +2867,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -2836,7 +2882,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2845,13 +2891,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2875,7 +2922,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2890,7 +2937,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2905,7 +2952,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:13"}],
         "aliases":[],
         "calls":[],
@@ -2920,7 +2967,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2929,13 +2976,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -2959,7 +3007,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -2974,7 +3022,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -2989,7 +3037,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:14"}],
         "aliases":[],
         "calls":[],
@@ -3004,7 +3052,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3013,13 +3061,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3043,7 +3092,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3058,7 +3107,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:9"}],
         "aliases":[],
         "calls":[],
@@ -3073,7 +3122,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:17"}],
         "aliases":[],
         "calls":[],
@@ -3088,7 +3137,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[{"a":"file.cpp:8:21"}],
         "aliases":[],
         "calls":[],
@@ -3097,13 +3146,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3127,7 +3177,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3142,7 +3192,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -3157,7 +3207,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:19"}],
         "aliases":[],
         "calls":[],
@@ -3172,7 +3222,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[{"a":"file.cpp:8:23"}],
         "aliases":[],
         "calls":[],
@@ -3181,13 +3231,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3211,7 +3262,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3226,7 +3277,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:8:10"}],
         "aliases":[],
         "calls":[],
@@ -3241,7 +3292,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[{"a":"file.cpp:8:19"}],
         "aliases":[],
         "calls":[],
@@ -3256,7 +3307,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[{"a":"file.cpp:8:23"}],
         "aliases":[],
         "calls":[],
@@ -3265,7 +3316,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -3276,7 +3328,7 @@ int main() {
  * 
  */
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Conditional Expressions" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -3303,7 +3355,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3318,7 +3370,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3333,7 +3385,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3348,7 +3400,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3357,12 +3409,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3388,7 +3441,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3403,7 +3456,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3418,7 +3471,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3433,7 +3486,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3442,12 +3495,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3473,7 +3527,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3488,7 +3542,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3503,7 +3557,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3518,7 +3572,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3527,12 +3581,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3558,7 +3613,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3573,7 +3628,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3588,7 +3643,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3603,7 +3658,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3612,12 +3667,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3644,7 +3700,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3659,7 +3715,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3674,7 +3730,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3689,7 +3745,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3698,12 +3754,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3730,7 +3787,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3745,7 +3802,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3760,7 +3817,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3775,7 +3832,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"d",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3784,12 +3841,13 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3812,7 +3870,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3827,7 +3885,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3842,7 +3900,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:5:14",
+        "decl":"file.cpp:5:14",
         "dependence":[{"b":"file.cpp:6:13"}],
         "aliases":[],
         "calls":[],
@@ -3851,13 +3909,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3881,7 +3940,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3896,7 +3955,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3911,7 +3970,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3920,13 +3979,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -3950,7 +4010,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3965,7 +4025,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3980,7 +4040,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -3989,13 +4049,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4024,7 +4085,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4039,7 +4100,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4054,7 +4115,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4063,13 +4124,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4098,7 +4160,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4113,7 +4175,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4128,7 +4190,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4137,13 +4199,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4172,7 +4235,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4187,7 +4250,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4202,7 +4265,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4211,7 +4274,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -4224,7 +4288,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Expressions with Pointers" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -4245,7 +4309,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4260,7 +4324,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4269,13 +4333,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4297,7 +4362,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:6:11"}],
         "aliases":[],
         "calls":[],
@@ -4312,7 +4377,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4327,7 +4392,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:5:10",
+        "decl":"file.cpp:5:10",
         "dependence":[{"b":"file.cpp:6:11"}],
         "aliases":[{"a":"file.cpp:5:15"}],
         "calls":[],
@@ -4336,13 +4401,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4363,7 +4429,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4378,7 +4444,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4387,13 +4453,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4414,7 +4481,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4429,7 +4496,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4438,13 +4505,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4465,7 +4533,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4480,7 +4548,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4489,13 +4557,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4516,7 +4585,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4531,7 +4600,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4540,13 +4609,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4567,7 +4637,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4582,7 +4652,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4591,13 +4661,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4618,7 +4689,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4633,7 +4704,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4642,13 +4713,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4669,7 +4741,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4684,7 +4756,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4693,13 +4765,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4720,7 +4793,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4735,7 +4808,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4744,13 +4817,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4771,7 +4845,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4786,7 +4860,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4795,13 +4869,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4822,7 +4897,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:5:14"}],
         "aliases":[],
         "calls":[],
@@ -4837,7 +4912,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[{"b":"file.cpp:5:14"}],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4852,7 +4927,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4861,13 +4936,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4888,7 +4964,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:5:18"}],
         "aliases":[],
         "calls":[],
@@ -4903,7 +4979,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[{"b":"file.cpp:5:18"}],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4918,7 +4994,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4927,13 +5003,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -4954,7 +5031,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:5:19"}],
         "aliases":[],
         "calls":[],
@@ -4969,7 +5046,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[{"b":"file.cpp:5:19"}],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -4984,7 +5061,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -4993,13 +5070,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5020,7 +5098,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:5:21"}],
         "aliases":[],
         "calls":[],
@@ -5035,7 +5113,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[{"b":"file.cpp:5:21"}],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -5050,7 +5128,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5059,13 +5137,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5087,7 +5166,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5102,7 +5181,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5117,7 +5196,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:5:10",
+        "decl":"file.cpp:5:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:5:15"},{"b":"file.cpp:6:10"}],
         "calls":[],
@@ -5126,13 +5205,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5155,7 +5235,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5170,7 +5250,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5185,7 +5265,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:5:10",
+        "decl":"file.cpp:5:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:5:15"},{"b":"file.cpp:6:10"}],
         "calls":[],
@@ -5194,13 +5274,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5223,7 +5304,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:7:11"}],
         "aliases":[],
         "calls":[],
@@ -5238,7 +5319,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5253,7 +5334,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:5:10",
+        "decl":"file.cpp:5:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:5:15"},{"b":"file.cpp:6:10"}],
         "calls":[],
@@ -5262,13 +5343,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5289,7 +5371,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5304,7 +5386,7 @@ int main() {
         "function":"main",
         "type":"int*",
         "name":"p",
-        "initial":"file.cpp:4:10",
+        "decl":"file.cpp:4:10",
         "dependence":[],
         "aliases":[{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -5319,7 +5401,7 @@ int main() {
         "function":"main",
         "type":"int**",
         "name":"mptr",
-        "initial":"file.cpp:5:11",
+        "decl":"file.cpp:5:11",
         "dependence":[],
         "aliases":[{"p":"file.cpp:5:19"},{"a":"file.cpp:4:15"}],
         "calls":[],
@@ -5328,7 +5410,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -5341,7 +5424,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with C/C++ Static Arrays" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -5362,7 +5445,7 @@ int main() {
         "function":"main",
         "type":"int[]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5377,7 +5460,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5386,13 +5469,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5413,7 +5497,7 @@ int main() {
         "function":"main",
         "type":"int[]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"b":"file.cpp:5:13"}],
         "aliases":[],
         "calls":[],
@@ -5428,7 +5512,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5443,7 +5527,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5452,13 +5536,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5479,7 +5564,7 @@ int main() {
         "function":"main",
         "type":"int[]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5494,7 +5579,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5503,13 +5588,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5530,7 +5616,7 @@ int main() {
         "function":"main",
         "type":"int[]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5545,7 +5631,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5554,13 +5640,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5581,7 +5668,7 @@ int main() {
         "function":"main",
         "type":"int[]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5596,7 +5683,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[{"a":"file.cpp:5:13"}],
         "aliases":[],
         "calls":[],
@@ -5605,13 +5692,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5633,7 +5721,7 @@ int main() {
         "function":"main",
         "type":"int[]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5648,7 +5736,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5663,7 +5751,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"k",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5672,7 +5760,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
@@ -5684,7 +5773,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5703,7 +5792,7 @@ int main() {
         "function":"main",
         "type":"int[][]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5712,13 +5801,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5740,7 +5830,7 @@ int main() {
         "function":"main",
         "type":"int[][]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5755,7 +5845,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5770,7 +5860,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"j",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5779,13 +5869,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5807,7 +5898,7 @@ int main() {
         "function":"main",
         "type":"int[][]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5822,7 +5913,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5837,7 +5928,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"j",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5846,13 +5937,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -5874,7 +5966,7 @@ int main() {
         "function":"main",
         "type":"int[][]",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5889,7 +5981,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"i",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5904,7 +5996,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"j",
-        "initial":"file.cpp:5:9",
+        "decl":"file.cpp:5:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5913,7 +6005,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -5925,7 +6018,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with Function Calls" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -5949,7 +6042,7 @@ int main() {
         "function":"foo",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:2:13",
+        "decl":"file.cpp:2:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5964,7 +6057,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[{"y":"file.cpp:7:17"}],
         "aliases":[],
         "calls":[{
@@ -5984,7 +6077,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:7:9",
+        "decl":"file.cpp:7:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -5993,13 +6086,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int foo(int a, int c) {
@@ -6023,7 +6117,7 @@ int main() {
         "function":"foo",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:2:13",
+        "decl":"file.cpp:2:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6038,7 +6132,7 @@ int main() {
         "function":"foo",
         "type":"int",
         "name":"c",
-        "initial":"file.cpp:2:20",
+        "decl":"file.cpp:2:20",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6053,7 +6147,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"k",
-        "initial":"file.cpp:7:9",
+        "decl":"file.cpp:7:9",
         "dependence":[{"y":"file.cpp:8:19"}],
         "aliases":[],
         "calls":[{
@@ -6073,7 +6167,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[{"y":"file.cpp:8:17"}],
         "aliases":[],
         "calls":[{
@@ -6093,7 +6187,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:8:9",
+        "decl":"file.cpp:8:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6102,13 +6196,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6128,7 +6223,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"y":"file.cpp:4:17"}],
         "aliases":[],
         "calls":[{
@@ -6148,7 +6243,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6157,13 +6252,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6183,7 +6279,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"y":"file.cpp:4:17"}],
         "aliases":[],
         "calls":[{
@@ -6203,7 +6299,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6212,13 +6308,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int foo(int a) {
@@ -6241,7 +6338,7 @@ int main() {
         "function":"foo",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:2:13",
+        "decl":"file.cpp:2:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6256,7 +6353,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:6:9",
+        "decl":"file.cpp:6:9",
         "dependence":[{"y":"file.cpp:7:19"}],
         "aliases":[],
         "calls":[{
@@ -6276,7 +6373,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:7:9",
+        "decl":"file.cpp:7:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6285,13 +6382,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6311,7 +6409,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"y":"file.cpp:4:17"}],
         "aliases":[],
         "calls":[{
@@ -6331,7 +6429,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6340,13 +6438,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6366,7 +6465,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"y":"file.cpp:4:17"}],
         "aliases":[],
         "calls":[{
@@ -6386,7 +6485,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"z",
-        "initial":"file.cpp:3:16",
+        "decl":"file.cpp:3:16",
         "dependence":[{"y":"file.cpp:4:25"}],
         "aliases":[],
         "calls":[{
@@ -6406,7 +6505,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6415,13 +6514,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int foo(int a) {
@@ -6447,7 +6547,7 @@ int main() {
         "function":"foo",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:2:13",
+        "decl":"file.cpp:2:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6462,7 +6562,7 @@ int main() {
         "function":"bar",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:5:13",
+        "decl":"file.cpp:5:13",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6477,7 +6577,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"x",
-        "initial":"file.cpp:9:9",
+        "decl":"file.cpp:9:9",
         "dependence":[{"y":"file.cpp:10:21"}],
         "aliases":[],
         "calls":[{
@@ -6497,7 +6597,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"y",
-        "initial":"file.cpp:10:9",
+        "decl":"file.cpp:10:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6506,7 +6606,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -6519,7 +6620,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with C++ stdio" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -6540,7 +6641,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6549,13 +6650,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6575,7 +6677,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6584,13 +6686,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6610,7 +6713,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6625,7 +6728,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:3:16",
+        "decl":"file.cpp:3:16",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6634,13 +6737,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6660,7 +6764,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6669,13 +6773,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6695,7 +6800,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6704,13 +6809,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6730,7 +6836,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6745,7 +6851,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:3:16",
+        "decl":"file.cpp:3:16",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6754,13 +6860,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6780,7 +6887,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6789,13 +6896,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6815,7 +6923,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6824,13 +6932,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6850,7 +6959,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6865,7 +6974,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"b",
-        "initial":"file.cpp:3:16",
+        "decl":"file.cpp:3:16",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6874,7 +6983,8 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
     std::cout << OK << " Passed!" << std::endl;
 }
 
@@ -6887,7 +6997,7 @@ int main() {
  */
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
 std::cout << INFO << " Testing Expressions with Objects" << std::endl;
         // Raw-Strings C++11
     std::string sourceCode = R"(
@@ -6908,7 +7018,7 @@ int main() {
         "function":"main",
         "type":"Toy",
         "name":"a",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[{"s":"file.cpp:4:21"}],
         "aliases":[],
         "calls":[],
@@ -6923,7 +7033,7 @@ int main() {
         "function":"main",
         "type":"std::string",
         "name":"s",
-        "initial":"file.cpp:4:17",
+        "decl":"file.cpp:4:17",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6932,13 +7042,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -6958,7 +7069,7 @@ int main() {
         "function":"main",
         "type":"Toy*",
         "name":"a",
-        "initial":"file.cpp:3:10",
+        "decl":"file.cpp:3:10",
         "dependence":[{"s":"file.cpp:4:21"}],
         "aliases":[],
         "calls":[],
@@ -6973,7 +7084,7 @@ int main() {
         "function":"main",
         "type":"std::string",
         "name":"s",
-        "initial":"file.cpp:4:17",
+        "decl":"file.cpp:4:17",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -6982,13 +7093,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7008,7 +7120,7 @@ int main() {
         "function":"main",
         "type":"Toy*",
         "name":"a",
-        "initial":"file.cpp:3:10",
+        "decl":"file.cpp:3:10",
         "dependence":[{"s":"file.cpp:4:23"}],
         "aliases":[],
         "calls":[],
@@ -7023,7 +7135,7 @@ int main() {
         "function":"main",
         "type":"std::string",
         "name":"s",
-        "initial":"file.cpp:4:17",
+        "decl":"file.cpp:4:17",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -7032,13 +7144,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7059,7 +7172,7 @@ int main() {
         "function":"main",
         "type":"Toy*",
         "name":"tPtr",
-        "initial":"file.cpp:3:10",
+        "decl":"file.cpp:3:10",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -7074,7 +7187,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[{
@@ -7088,13 +7201,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7115,7 +7229,7 @@ int main() {
         "function":"main",
         "type":"Toy*",
         "name":"tPtr",
-        "initial":"file.cpp:3:10",
+        "decl":"file.cpp:3:10",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -7130,7 +7244,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[{
@@ -7144,13 +7258,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7171,7 +7286,7 @@ int main() {
         "function":"main",
         "type":"Toy*",
         "name":"tPtr",
-        "initial":"file.cpp:3:10",
+        "decl":"file.cpp:3:10",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -7186,7 +7301,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[{
@@ -7200,13 +7315,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7227,7 +7343,7 @@ int main() {
         "function":"main",
         "type":"Toy*",
         "name":"tPtr",
-        "initial":"file.cpp:3:10",
+        "decl":"file.cpp:3:10",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -7242,7 +7358,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[{
@@ -7256,13 +7372,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7283,7 +7400,7 @@ int main() {
         "function":"main",
         "type":"Toy",
         "name":"toy",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -7298,7 +7415,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[{
@@ -7312,13 +7429,14 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
 
 
 
-TEST_CASE( TestName(), "[srcslice]" ) {
+TEST_CASE( TestName("Parse Expression Test"), "[srcslice]" ) {
         // Raw-Strings C++11
     std::string sourceCode = R"(
 int main() {
@@ -7339,7 +7457,7 @@ int main() {
         "function":"main",
         "type":"Toy",
         "name":"toy",
-        "initial":"file.cpp:3:9",
+        "decl":"file.cpp:3:9",
         "dependence":[],
         "aliases":[],
         "calls":[],
@@ -7354,7 +7472,7 @@ int main() {
         "function":"main",
         "type":"int",
         "name":"a",
-        "initial":"file.cpp:4:9",
+        "decl":"file.cpp:4:9",
         "dependence":[],
         "aliases":[],
         "calls":[{
@@ -7368,5 +7486,6 @@ int main() {
     }
     })"_json;
 
-    REQUIRE( CompareJson(sourceCode, TestName(false), produced, expected) );
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }

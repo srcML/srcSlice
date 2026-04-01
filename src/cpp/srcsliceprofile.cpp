@@ -1,22 +1,31 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcsliceprofile.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include "srcsliceprofile.hpp"
 
 SliceProfile::SliceProfile() : containsDeclaration(false), potentialAlias(false), dereferenced(false),
                     isGlobal(false) { isPointer = false; isReference = false; }
 
 SliceProfile::SliceProfile(
-        std::string name, SlicePosition initial, bool alias, bool global,
+        std::string name, SlicePosition decl, bool alias, bool global,
         std::set<SlicePosition> aDef, std::set<SlicePosition> aUse,
         std::vector<FunctionCallData> cFunc,
         std::vector<std::pair<std::string, SlicePosition>> dv,
         std::set<std::pair<SlicePosition, SlicePosition>> edges,
         bool containsDecl, bool visit) :
-        variableName(name), initialPosition(initial), potentialAlias(alias),
+        variableName(name), declPosition(decl), potentialAlias(alias),
         isGlobal(global), definitions(aDef), uses(aUse), cfunctions(cFunc),
         dvars(dv), containsDeclaration(containsDecl), controlEdges(edges),
         visited(visit) {}
 
 SliceProfile::SliceProfile(const SliceProfile& rhs) {
-    initialPosition = rhs.initialPosition;
+    declPosition = rhs.declPosition;
     file = rhs.file;
     function = rhs.function;
     nameOfContainingClass = rhs.nameOfContainingClass;
@@ -45,12 +54,13 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     currentPointerReference = rhs.currentPointerReference;
     isPotentialArray = rhs.isPotentialArray;
     ignorePtrRef = rhs.ignorePtrRef;
+    isFragment = rhs.isFragment;
 }
 
 bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (this == &rhs) return true; // self-check protection
 
-    if (initialPosition != rhs.initialPosition) return false;
+    if (declPosition != rhs.declPosition) return false;
     if (file != rhs.file) return false;
     if (function != rhs.function) return false;
     if (nameOfContainingClass != rhs.nameOfContainingClass) return false;
@@ -79,6 +89,7 @@ bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (currentPointerReference != rhs.currentPointerReference) return false;
     if (isPotentialArray != rhs.isPotentialArray) return false;
     if (ignorePtrRef != rhs.ignorePtrRef) return false;
+    if (isFragment != rhs.isFragment) return false;
 
     return true;
 }
@@ -106,7 +117,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
     out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
     
-    out << "    \"initial\":" << profile.initialPosition.ToString() << "," << std::endl;
+    out << "    \"decl\":" << profile.declPosition.ToString() << "," << std::endl;
 
     out << "    \"dependence\":[";
     first = true;
@@ -212,7 +223,7 @@ void SliceProfile::insertAlias(std::string name, SlicePosition& sp) {
         aliases.push_back(p);
     }
 }
-void SliceProfile::insertCfunction(FunctionCallData& fcd) {
+void SliceProfile::insertCfunction(FunctionCallData fcd) {
     bool contained = std::find(
         cfunctions.begin(),
         cfunctions.end(),
@@ -222,4 +233,16 @@ void SliceProfile::insertCfunction(FunctionCallData& fcd) {
     if (!contained) {
         cfunctions.push_back(fcd);
     }
+}
+
+void SliceProfile::merge(const SliceProfile& other) {
+    if (!other.isFragment) std::cerr << "[!] SliceProfile::Merge argument should be a fragment, merge might not be correct.\n";
+    
+    uses.insert(other.uses.begin(), other.uses.end());
+    definitions.insert(other.definitions.begin(), other.definitions.end());
+    controlEdges.insert(other.controlEdges.begin(), other.controlEdges.end());
+
+    dvars.insert(dvars.end(), other.dvars.begin(), other.dvars.end());
+    aliases.insert(aliases.end(), other.aliases.begin(), other.aliases.end());
+    cfunctions.insert(cfunctions.end(), other.cfunctions.begin(), other.cfunctions.end());
 }

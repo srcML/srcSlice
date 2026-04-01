@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file main.cpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #include <srcslicehandler.hpp>
 
 // determine default max threads
@@ -24,25 +33,30 @@ int main(int argc, char **argv)
 
     CLI::App app{"srcSlice (srcML Slicing Tool)"};
     // Options hold extra data
-    app.add_option ("-i, --input",   inputFile,                 "Name of the srcML input file [Must be built using the --position and --hash flags]")
+    app.add_option  ("input",   inputFile,                          "Name of the srcML input file [Must be built using the --position and --hash flags]")
         ->required()
         ->type_name("srcML FILE");
-    app.add_flag ("-c, --control-edges", showControlEdges,      "Display Control-Edges of the Slice");
-    app.add_option ("-o, --output",  outputFile,                "Name of the JSON output file [Stdout is Default]");
-    app.add_option ("-t, --threads", threadCount,               ss.str())
+    app.add_flag    ("-c, --control-edges", showControlEdges,       "Display Control-Edges of the Slice");
+    app.add_option  ("-o, --output",  outputFile,                   "Name of the JSON output file [Stdout is Default]");
+    app.add_option  ("-t, --threads", threadCount,               ss.str())
         ->default_val(threadCount);
-    app.add_flag ("-v, --verbose", debugMode,                   "Display Debug Info when Slicing");
-    app.add_flag ("-p, --progress", feedbackMode,               "Display Feedback Progress Bars");
+    app.add_flag    ("-v, --verbose", debugMode,                    "Display Debug Info when Slicing");
+    app.add_flag    ("-p, --progress", feedbackMode,                "Display Feedback Progress Bars");
     
     CLI11_PARSE(app, argc, argv);
 
     try {
+        // check if input file exists
+        std::ifstream srcmlFile(inputFile);
+        if (!srcmlFile.is_open()) {
+            throw std::runtime_error("Input file does not exist");
+        }
+        srcmlFile.close();
+
         SrcSliceHandler srcSliceHandler(inputFile.c_str(), debugMode, feedbackMode, showControlEdges, threadCount);
 
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
-        size_t totalElements = sliceProfileMap.size();
-        size_t currIndex = -1;
         std::ostringstream sliceOutput;
 
         if (!outputFile.empty()) {
@@ -53,52 +67,35 @@ int main(int argc, char **argv)
             outFile.close();
         }
 
-        std::map<std::string, unsigned int> sliceProfileNames;
-
         // opening of the entire JSON object
         sliceOutput << "{" << std::endl;
+        bool writtenSlices = false;
 
-        for (auto& profile : sliceProfileMap)
-        {
-            ++currIndex;
-            
-            for (auto& slice : profile.second)
-            {
-                if (slice.containsDeclaration)
-                {
-                    // write out the start of the json object
-                    // build json slice profile name
-                    // variableName_initDefLine_checksum_numericalTagger
+        for (auto& profiles : sliceProfileMap) {
+            for (auto& slice : profiles.second) {
+                if (!slice.containsDeclaration)
+                    continue;
 
-                    std::string name(slice.variableName + '-' + slice.initialPosition.ToNameString() + '-' + slice.checksum);
-                    ++sliceProfileNames[name]; // if the name exists in the map we will see the value increase
-                    // if the numeric tag after substracting 1 is not 0 we need to include this tag
-                    // in the slice name when we pipe to stdout
-                    if (sliceProfileNames[name]-1 != 0) name += '-' + sliceProfileNames[name];
+                writtenSlices = true;
+                std::string name(slice.variableName + '-' + slice.declPosition.ToNameString() + '-' + slice.checksum);
 
-                    sliceOutput << "\"" << name << "\":{" << std::endl;
-
-                    // print out content of the SliceProfile
-                    sliceOutput << slice;
-
-                    // write out the end of the json object
-                    if (currIndex != totalElements)
-                        sliceOutput << "}," << std::endl;
-                    else
-                        sliceOutput << "}___" << std::endl;
-                }
+                sliceOutput << "\"" << name << "\":{" << std::endl;
+                sliceOutput << slice;
+                sliceOutput << "}," << std::endl;
             }
         }
 
-        // closing of the entire JSON object
-        sliceOutput << "}" << std::endl;
-
-        // Check for leading comma and remove it
+        // remove trailing comma
         std::string stream2string = sliceOutput.str();
+        sliceOutput.clear();
 
-        if (stream2string[stream2string.size() - 4] == ',') {
-            stream2string.erase(stream2string.size() - 4, 1);
+        // remove trailing comma
+        if (writtenSlices) {
+            stream2string.resize(stream2string.length() - 2);
         }
+
+        // closing of the entire JSON object
+        stream2string += "\n}";
 
         // write to either stdout or output file
         if (!outputFile.empty()) {
@@ -107,8 +104,8 @@ int main(int argc, char **argv)
         } else {
             std::cout << stream2string;
         }
-    } catch (std::string errormsg) {
-        std::cout << "\033[31m" << errormsg << "\033[0m" << std::endl;
+    } catch (const std::exception& e) {
+        std::cout << "\033[31m" << e.what() << "\033[0m" << std::endl;
         return 3;
     }
 

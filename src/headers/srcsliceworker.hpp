@@ -1,3 +1,12 @@
+// SPDX-License-Identifier: GPL-3.0-only
+/**
+ * @file srcsliceworker.hpp
+ *
+ * @copyright Copyright (C) 2018-2024 srcML, LLC. (www.srcML.org)
+ *
+ * This file is part of the srcSlice application.
+ */
+
 #ifndef SRCSLICE_WORKER
 #define SRCSLICE_WORKER
 
@@ -46,6 +55,7 @@ struct Blob {
     std::vector<SlicePosition> dowhileloopdata;
 
     std::vector<SlicePosition> ifdata;
+    std::vector<SlicePosition> ifStmts;
     std::vector<SlicePosition> elseifdata;
     std::vector<SlicePosition> elsedata;
 
@@ -54,6 +64,13 @@ struct Blob {
     // logic flags
     bool verboseMode = false;
     bool calculateControlEdges = false;
+};
+
+enum class EXPRESSION_TYPE {
+    NORMAL,
+    IF_CONDITION,
+    ELIF_CONDITION,
+    SWITCH_CONDITION
 };
 
 // Functions used when processing data
@@ -71,7 +88,7 @@ namespace SrcSliceOperations {
     // |__ Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
     // |__ Extract Expressions within a specified Block within a Function Definition
     void ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, std::string className);
-    
+
     // Creates Initial SliceProfile based off DeclData
     void CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData, const FunctionInfo& funcData, std::string className);
     // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
@@ -81,9 +98,26 @@ namespace SrcSliceOperations {
     void ProcessExprStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, std::string className);
     
     // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
-    void ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, const FunctionInfo& funcData, std::string className);
+    void ProcessExprStmt(
+        Blob& data,
+        const SliceCtx& sctx,
+        const ExprInfo& expr,
+        const FunctionInfo& funcData,
+        std::string className,
+        EXPRESSION_TYPE expr_type = EXPRESSION_TYPE::NORMAL
+    );
     // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
-    void ParseExpr(Blob& data, const SliceCtx& sctx, const ExprInfo& expr, std::vector<std::string> lhsStack = {}, bool isArg = false, srcDispatch::CallData* funcCallData = nullptr, int argIndex = 0);
+    void ParseExpr(
+        Blob& data,
+        const SliceCtx& sctx,
+        std::string className,
+        const ExprInfo& expr, 
+        EXPRESSION_TYPE expr_type,
+        std::vector<std::string> lhsStack = {},
+        bool isArg = false,
+        srcDispatch::CallData* funcCallData = nullptr,
+        int argIndex = 0
+    );
     // Get Type Details (isPtr, isRef, isArr, etc) based of a given DeclData
     std::string GetTypeDetails(const DeclInfo& localVar, bool& isPointer, bool& isReference, bool& isArray);
     // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
@@ -98,7 +132,11 @@ namespace SrcSliceOperations {
     void ProcessFunctionSignature(Blob& data, const SliceCtx& sctx, FunctionInfo& funcData, std::string className);
 
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
-    void CreateSliceCallData(Blob& data, const SliceCtx& sctx, std::string functionName, int argIndex, SlicePosition functionPosition, SliceProfile& sliceProfile, SlicePosition invokePosition);
+    void CreateSliceCallData(
+        Blob& data, const SliceCtx& sctx, std::string functionName,
+        int argIndex, int argc, SlicePosition functionPosition, SliceProfile& sliceProfile,
+        SlicePosition invokePosition
+    );
 
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
     // Logic constructed for use BEFORE InterProcedural
