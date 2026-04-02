@@ -67,10 +67,6 @@ namespace ExprParse {
         std::vector<std::string>* lhsStackPtr = nullptr;
     };
 
-    // returns true if SlicePosition a comes before SlicePosition b based on
-    // line:col (ignores file)
-    bool checkPosition(SlicePosition& a, SlicePosition& b);
-
     // Returns a numeric id based on the type of C++ IO operation is within given NameData
     // -1 => None | 0 => cout | 1 => cerr | 2 => cin
     int IsIO(const SliceCtx& sctx, const srcDispatch::NameData* nameDataPtr = nullptr);
@@ -84,6 +80,8 @@ namespace ExprParse {
      */
 
     std::string FindName(const std::vector<srcDispatch::DeltaElement<std::any>>& names, SlicePosition& namePos);
+
+    SliceProfile* findValidProfile(SliceProfileIterator spi, ExprParse::ExprCtx& ectx);
 
     // capture this to access the member variable profileMap to avoid a capture-all
     void pushDvar(SliceProfileMap& profileMap, std::string lhsName, std::string rhsName, ExprCtx& ectx);

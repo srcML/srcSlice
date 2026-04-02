@@ -82,7 +82,7 @@ srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetEnd() const {
 std::string SlicePosition::GetFileName() const { return filename; }
 PositionMeta& SlicePosition::GetData() { return data; }
 
-SlicePosition& SlicePosition::operator=(SlicePosition rhs) {
+SlicePosition& SlicePosition::operator=(const SlicePosition& rhs) {
     if (this == &rhs) return *this;
 
     start = rhs.start;
@@ -107,29 +107,23 @@ bool SlicePosition::operator!=(const SlicePosition& rhs) const {
     return !(*this == rhs);
 }
 bool SlicePosition::operator<(const SlicePosition& rhs) const {
-    bool validPositions = (start && rhs.start);
-    if (validPositions) {
-        // line comparison
-        if (start->GetLine() < rhs.start->GetLine()) return true;
-        if (start->GetLine() > rhs.start->GetLine()) return false;
+    if (!start || !rhs.start) return false;
 
-        // same line number compare the columns
-        if (start->GetColumn() == rhs.start->GetColumn()) {
-            // if line:col matches check if filenames are different
-            return filename != rhs.filename;
-        }
-        return start->GetColumn() < rhs.start->GetColumn();
-    }
-    return false;
+    // line comparison
+    if (start->GetLine() > rhs.start->GetLine()) return false;
+    if (start->GetLine() < rhs.start->GetLine()) return true;
+
+    return start->GetColumn() < rhs.start->GetColumn();
 }
 bool SlicePosition::operator<=(const SlicePosition& rhs) const {
-    return (rhs < *this) || rhs == *this;
+    return (*this < rhs) || *this == rhs;
 }
+
 bool SlicePosition::operator>(const SlicePosition& rhs) const {
-    return rhs < *this;
+    return (rhs < *this);
 }
 bool SlicePosition::operator>=(const SlicePosition& rhs) const {
-    return (rhs > *this) || rhs == *this;
+    return (rhs < *this) || *this == rhs;
 }
 
 bool IsContained(SlicePosition& a, SlicePosition b) {

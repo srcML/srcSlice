@@ -74,7 +74,10 @@ public:
     // Insert a Function Call entry with a given Function Call-Data
     void insertCfunction(FunctionCallData fcd);
 
+    SlicePosition endOfScope;
+
     void merge(const SliceProfile& other);
+    bool inScope(const SlicePosition& pos);
 
     std::set<std::pair<SlicePosition, SlicePosition>> controlEdges;
 

@@ -60,15 +60,25 @@ std::string ExprParse::FindName(const std::vector<srcDispatch::DeltaElement<std:
     return "";
 };
 
-bool ExprParse::checkPosition(SlicePosition& a, SlicePosition& b) {
-    if (a.GetStart()->GetLine() < b.GetStart()->GetLine()) return true;
-    if (a.GetStart()->GetLine() > b.GetStart()->GetLine()) return false;
-    
-    // when lines match, check column
-    if (a.GetStart()->GetColumn() < b.GetStart()->GetColumn()) return true;
-    if (a.GetStart()->GetColumn() > b.GetStart()->GetColumn()) return false;
+SliceProfile* ExprParse::findValidProfile(SliceProfileIterator spi, ExprParse::ExprCtx& ectx) {
+    SliceProfile* sp = &(spi->second.back());
+    SlicePosition pos = ectx.namePos;
 
-    return false;
+    if (sp->inScope(pos) && ectx.containedClass == sp->nameOfContainingClass) {
+        return sp;
+    }
+
+    // search backwards from second back to find a valid profile
+    for (auto rSpi = spi->second.rbegin()+1; rSpi != spi->second.rend(); ++rSpi) {
+        sp = &(*rSpi);
+        
+        if (!sp->inScope(pos)) continue;
+        if (ectx.containedClass != sp->nameOfContainingClass) continue;
+
+        return sp;
+    }
+    
+    return nullptr;
 }
 
 // capture this to access the member variable profileMap to avoid a capture-all
@@ -78,20 +88,8 @@ void ExprParse::pushDvar(SliceProfileMap& profileMap, std::string lhsName, std::
     // LHS is data dependent of RHS => insert LHS as dvar of RHS slice
     auto rhsSpi = profileMap.find(rhsName);
     if (rhsSpi != profileMap.end()) {
-        SliceProfile* sp = &(rhsSpi->second.back());
-
-        // a position cannot occur before the position of the initial
-        // unless its from a function call
-        if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
-            // search backwards from second back to find a valid profile
-            for (auto rSpi = rhsSpi->second.rbegin(); rSpi != rhsSpi->second.rend(); ++rSpi) {
-                // if the pos occurs after the initial => valid profile
-                if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
-                    sp = &(*rSpi);
-                    break;
-                }
-            }
-        }
+        SliceProfile* sp = findValidProfile(rhsSpi, ectx);
+        if (sp == nullptr) return;
 
         sp->insertDvar(lhsName, ectx.namePos);
     }
@@ -103,20 +101,8 @@ void ExprParse::pushAlias(SliceProfileMap& profileMap, std::string lhsName, std:
     // LHS is an alias to RHS => insert RHS as alias of LHS
     auto lhsSpi = profileMap.find(lhsName);
     if (lhsSpi != profileMap.end()) {
-        SliceProfile* sp = &(lhsSpi->second.back());
-
-        // a position cannot occur before the position of the initial
-        // unless its from a function call
-        if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
-            // search backwards from second back to find a valid profile
-            for (auto rSpi = lhsSpi->second.rbegin(); rSpi != lhsSpi->second.rend(); ++rSpi) {
-                // if the pos occurs after the initial => valid profile
-                if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
-                    sp = &(*rSpi);
-                    break;
-                }
-            }
-        }
+        SliceProfile* sp = findValidProfile(lhsSpi, ectx);
+        if (sp == nullptr) return;
 
         sp->insertAlias(rhsName, ectx.namePos);
         // mark the pointers current reference
@@ -126,86 +112,57 @@ void ExprParse::pushAlias(SliceProfileMap& profileMap, std::string lhsName, std:
 
 void ExprParse::pushUse(SliceProfileMap& profileMap, SliceProfileIterator spi, ExprParse::ExprCtx& ectx) {
     if (spi == profileMap.end()) return;
-    SliceProfile* sp = &(spi->second.back());
 
-    // a position cannot occur before the position of the initial
-    // unless its from a function call
-    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
-        // search backwards from second back to find a valid profile
-        for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
-            // if the pos occurs after the initial => valid profile
-            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
-                sp = &(*rSpi);
-                break;
-            }
-        }
-    }
-
+    SliceProfile* sp = findValidProfile(spi, ectx);
+    if (sp == nullptr) return;
+    
     sp->uses.insert(ectx.namePos);
 
     // if sp is a pointer type we need to show the use across its reference chain
-    if (sp->isPointer) {
-        std::vector<std::string> visited; // ensure we do not enter circular dependence
-        std::string referenceName = sp->currentPointerReference;
-        auto aspi = profileMap.find(referenceName);
-        
-        while (true) {
-            if (aspi == profileMap.end()) break;
-            if (std::find(visited.begin(), visited.end(), referenceName) != visited.end()) break;
+    if (!sp->isPointer) return;
 
-            aspi->second.back().uses.insert(ectx.namePos);
+    std::vector<std::string> visited; // ensure we do not enter circular dependence
+    std::string referenceName = sp->currentPointerReference;
+    auto aspi = profileMap.find(referenceName);
+    
+    while (true) {
+        if (aspi == profileMap.end()) break;
+        if (std::find(visited.begin(), visited.end(), referenceName) != visited.end()) break;
 
-            visited.push_back(referenceName);
+        aspi->second.back().uses.insert(ectx.namePos);
 
-            referenceName = aspi->second.back().currentPointerReference;
-            aspi = profileMap.find(referenceName);
-        }
+        visited.push_back(referenceName);
+
+        referenceName = aspi->second.back().currentPointerReference;
+        aspi = profileMap.find(referenceName);
     }
 };
 
 void ExprParse::popUse(SliceProfileMap& profileMap, SliceProfileIterator spi, ExprParse::ExprCtx& ectx) {
     if (spi == profileMap.end()) return;
-    SliceProfile* sp = &(spi->second.back());
-
-    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
-        for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
-            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
-                sp = &(*rSpi);
-                break;
-            }
-        }
-    }
+    
+    SliceProfile* sp = findValidProfile(spi, ectx);
+    if (sp == nullptr) return;
 
     sp->uses.erase(ectx.namePos);
 };
 
 void ExprParse::pushDef(SliceProfileMap& profileMap, SliceProfileIterator spi, ExprParse::ExprCtx& ectx) {
     if (spi == profileMap.end()) return;
-    SliceProfile* sp = &(spi->second.back());
 
-    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
-        for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
-            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
-                sp = &(*rSpi);
-                break;
-            }
-        }
-    }
+    SliceProfile* sp = findValidProfile(spi, ectx);
+    if (sp == nullptr) return;
 
     sp->definitions.insert(ectx.namePos);
 };
 void ExprParse::popDef(SliceProfileMap& profileMap, SliceProfileIterator spi, ExprParse::ExprCtx& ectx) {
     if (spi == profileMap.end()) return;
-    SliceProfile* sp = &(spi->second.back());
+    
+    SliceProfile* sp = findValidProfile(spi, ectx);
+    if (sp == nullptr) return;
 
-    if (checkPosition(ectx.namePos, sp->declPosition) || ectx.containedClass != sp->nameOfContainingClass) {
-        for (auto rSpi = spi->second.rbegin(); rSpi != spi->second.rend(); ++rSpi) {
-            if (checkPosition(rSpi->declPosition, ectx.namePos) && ectx.containedClass == rSpi->nameOfContainingClass) {
-                sp = &(*rSpi);
-                break;
-            }
-        }
-    }
+    // do not delete the position related to the decl
+    if (ectx.namePos == sp->declPosition) return;
 
     sp->definitions.erase(ectx.namePos);
 };

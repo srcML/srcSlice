@@ -283,7 +283,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
             auto sliceProfileItr = data.profileMap.find(declVarName);
             SlicePosition namePos(deltaDecl->name->startPosition, deltaDecl->name->endPosition, sctx.currentFilePath);
             
-            auto sliceProfile = SliceProfile(declVarName, namePos, isPointer, true, {namePos});
+            SliceProfile sliceProfile = SliceProfile(declVarName, namePos, isPointer, true, {namePos});
             sliceProfile.variableType = isArray ? SrcSliceOperations::GenerateArrayType(declVarType, deltaDecl->name->indices.size()) : declVarType;
             sliceProfile.nameOfContainingClass = className;
             sliceProfile.classMemberVar = !className.empty();
@@ -321,16 +321,14 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                 ).first;
             }
 
-            if (deltaDecl->init) {
-                SrcSliceOperations::ParseExpr(
-                    data,
-                    sctx,
-                    className,
-                    deltaDecl->init,
-                    EXPRESSION_TYPE::NORMAL,
-                    {declVarName}
-                );
-            }
+            SrcSliceOperations::ParseExpr(
+                data,
+                sctx,
+                className,
+                deltaDecl->init,
+                EXPRESSION_TYPE::NORMAL,
+                {declVarName}
+            );
 
             for (auto& argument : deltaDecl->arguments) {
                 SrcSliceOperations::ParseExpr(
@@ -384,13 +382,17 @@ void SrcSliceOperations::ProcessSignatures(Blob& data, const SliceCtx& sctx, Fun
     }
 }
 
-void SrcSliceOperations::ProcessFunctions(Blob& data, const SliceCtx& sctx, Functions& funcs) {
+void SrcSliceOperations::ProcessFunctions(Blob& data, const SliceCtx& sctx, Functions& funcs, std::string className) {
     for (auto& func : funcs) {
         if (data.verboseMode) {
             std::cout << "[*] " << __FUNCTION__ << ":" << __LINE__  << " Processing Function Name: " << func->name.ToString() << "\n";
         }
-        ProcessInitLists(data, sctx, func, "");
-        if (func->block) ProcessStmts(data, sctx, func, func->block, "");
+
+        ProcessFunctionParameters(data, sctx, func, func->parameters, func->name.ToString(), className);
+        
+        ProcessInitLists(data, sctx, func, className);
+        
+        ProcessStmts(data, sctx, func, func->block, className);
     }
 }
 
@@ -405,32 +407,33 @@ void SrcSliceOperations::ProcessClasses(Blob& data, const SliceCtx& sctx, Classe
         ProcessDecls(data, sctx, classData->fields, classData->name.ToString());
 
         // Process Class Contructors
-        for (auto& deltaFuncElem : classData->constructors) {
-            ProcessInitLists(data, sctx, deltaFuncElem, classData->name.ToString());
-            if (deltaFuncElem->block) ProcessStmts(data, sctx, deltaFuncElem, deltaFuncElem->block, classData->name.ToString());
-        }
+        ProcessFunctions(data, sctx, classData->constructors, classData->name.ToString());
+
         // Process Class Dtor
-        if (classData->destructor && classData->destructor.GetElement()) {
-            if (classData->destructor->block) ProcessStmts(data, sctx, classData->destructor, classData->destructor->block, classData->name.ToString());
+        if (classData->destructor) {
+            ProcessFunctionParameters(data, sctx,
+                classData->destructor,
+                classData->destructor->parameters,
+                classData->destructor->name.ToString(),
+                classData->name.ToString()
+            );
+
+            ProcessStmts(data, sctx, classData->destructor, classData->destructor->block, classData->name.ToString());
         }
 
         // Process Class Methods (Member Functions)
-        for (auto& deltaFuncElem : classData->methods) {
-            if (deltaFuncElem->block) ProcessStmts(data, sctx, deltaFuncElem, deltaFuncElem->block, classData->name.ToString());
-        }
+        ProcessFunctions(data, sctx, classData->methods, classData->name.ToString());
 
         // Process Operator Overloading
-        for (auto& deltaFuncElem : classData->operators) {
-            if (deltaFuncElem->block) ProcessStmts(data, sctx, deltaFuncElem, deltaFuncElem->block, classData->name.ToString());
-        }
+        ProcessFunctions(data, sctx, classData->operators, classData->name.ToString());
 
         // Process Nested Classes
         ProcessClasses(data, sctx, classData->innerClasses);
     }
 }
 
-void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData, const FunctionInfo& funcData,
-                                            std::string className) {
+void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData,
+                                            const FunctionInfo& funcData, std::string className, SlicePosition endOfScope) {
     if (!deltaDeclData) return;
     if (!deltaDeclData->name) return;
     if (deltaDeclData->name.ToString().empty()) return;
@@ -458,6 +461,9 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
     sliceProfile.containsDeclaration = true;
 
     sliceProfile.nameOfContainingClass = className;
+
+    sliceProfile.endOfScope = endOfScope;
+    sliceProfile.isGlobal = false;
 
     sliceProfile.language = sctx.currentFileLanguage;
     sliceProfile.file = sctx.currentFilePath;
@@ -490,16 +496,14 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
         ).first;
     }
 
-    if (deltaDeclData->init) {
-        ParseExpr(
-            data,
-            sctx,
-            className,
-            deltaDeclData->init,
-            EXPRESSION_TYPE::NORMAL,
-            {declVarName}
-        );
-    }
+    ParseExpr(
+        data,
+        sctx,
+        className,
+        deltaDeclData->init,
+        EXPRESSION_TYPE::NORMAL,
+        {declVarName}
+    );
 
     for (auto& argument : deltaDeclData->arguments) {
         ParseExpr(
@@ -567,7 +571,14 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
 
             for (auto& deltaDecl : declStmtData->decls) {
                 if (!deltaDecl) continue;
-                CreateSliceProfile(data, sctx, deltaDecl, funcData, className);
+
+                SlicePosition endOfScope(
+                    block->endPosition,
+                    block->endPosition,
+                    sctx.currentFilePath
+                );
+
+                CreateSliceProfile(data, sctx, deltaDecl, funcData, className, endOfScope);
             }
         } else if (stmt.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ReturnData>)) {
             auto retstmt = std::any_cast<std::shared_ptr<srcDispatch::ReturnData>>(stmt.GetElement());
@@ -603,7 +614,14 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
 
                 for (auto& parameter : catchData->parameters) {
                     if (!parameter) continue;
-                    CreateSliceProfile(data, sctx, parameter, funcData, className);
+
+                    SlicePosition endOfScope(
+                        catchData->endPosition,
+                        catchData->endPosition,
+                        sctx.currentFilePath
+                    );
+
+                    CreateSliceProfile(data, sctx, parameter, funcData, className, endOfScope);
                 }
             }
 
@@ -726,7 +744,14 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                         if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
                             auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
                             if (!initData) continue;
-                            CreateSliceProfile(data, sctx, initData, funcData, className);
+
+                            SlicePosition endOfScope(
+                                ifData->endPosition,
+                                ifData->endPosition,
+                                sctx.currentFilePath
+                            );
+
+                            CreateSliceProfile(data, sctx, initData, funcData, className, endOfScope);
                         } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                             std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
                             ProcessExprStmt(data, sctx, exprstmt, funcData, className, EXPRESSION_TYPE::IF_CONDITION);
@@ -749,7 +774,14 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                     for (auto& elem : elseIfData->condition->conditions) {
                         if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
                             auto initData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
-                            CreateSliceProfile(data, sctx, initData, funcData, className);
+                            
+                            SlicePosition endOfScope(
+                                elseIfData->endPosition,
+                                elseIfData->endPosition,
+                                sctx.currentFilePath
+                            );
+
+                            CreateSliceProfile(data, sctx, initData, funcData, className, endOfScope);
                         } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                             std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(elem.GetElement());
                             ProcessExprStmt(data, sctx, exprstmt, funcData, className, EXPRESSION_TYPE::ELIF_CONDITION);
@@ -803,8 +835,14 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                     }
                 } else if (elem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
                     std::shared_ptr<srcDispatch::DeclData> declData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(elem.GetElement());
+
+                    SlicePosition endOfScope(
+                        switchData->endPosition,
+                        switchData->endPosition,
+                        sctx.currentFilePath
+                    );
                     
-                    CreateSliceProfile(data, sctx, declData, funcData, className);
+                    CreateSliceProfile(data, sctx, declData, funcData, className, endOfScope);
 
                     /***
                         @todo
@@ -868,7 +906,14 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
                     if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::DeclData>)) {
                         auto declData = std::any_cast<std::shared_ptr<srcDispatch::DeclData>>(initData.GetElement());
 
-                        CreateSliceProfile(data, sctx, declData, funcData, className);
+                        SlicePosition endOfScope(
+                            forData->endPosition,
+                            forData->endPosition,
+                            sctx.currentFilePath
+                        );
+
+                        CreateSliceProfile(data, sctx, declData, funcData, className, endOfScope);
+
                         ProcessExprStmt(data, sctx, declData->range, funcData, className);
                     } else if (initData.GetElement().type() == typeid(std::shared_ptr<srcDispatch::ExpressionData>)) {
                         std::shared_ptr<srcDispatch::ExpressionData> exprstmt = std::any_cast<std::shared_ptr<srcDispatch::ExpressionData>>(initData.GetElement());
@@ -956,6 +1001,7 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, std::string
                                     const ExprInfo& expr, EXPRESSION_TYPE expr_type,
                                     std::vector<std::string> lhsStack, bool isArg,
                                     srcDispatch::CallData* funcCallData, int argIndex) {
+    if (!expr) return;
     ExprParse::ExprCtx ectx(data.profileMap, &lhsStack, className);
 
     // lhsStack -> transparent stack where begin() is outter LHS and end() is inner LHS
@@ -1410,6 +1456,9 @@ void SrcSliceOperations::ProcessFunctionParameters(Blob& data, const SliceCtx& s
         sliceProf.checksum = sctx.currentFileChecksum;
         sliceProf.function = currentFunctionName;
 
+        // parameters are scoped to the function they are in
+        sliceProf.endOfScope = SlicePosition(funcData->endPosition, funcData->endPosition, sliceProf.file);
+        sliceProf.isGlobal = false;
         
         // Just add new slice profile if name already exists. Otherwise, add new entry in map.
         if (sliceProfileItr != data.profileMap.end()) {
@@ -1434,7 +1483,6 @@ void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sc
 
     // Process the parameters in a separate function
     auto& functionParameters = funcData->parameters;
-    ProcessFunctionParameters(data, sctx, funcData, functionParameters, funcData->name.ToString(), className);
     auto funcSig = data.functionSigMap.find(functionName);
 
     if (funcSig != data.functionSigMap.end()) {

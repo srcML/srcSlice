@@ -78,7 +78,7 @@ namespace SrcSliceOperations {
     // Creates Initial SliceProfiles based off a list of decl statements
     void ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmts& declStmts, std::string className = "", bool globalDecls = false);
     // Creates Initial SliceProfiles for Function Parameters and Variables Declared within the function definition
-    void ProcessFunctions(Blob& data, const SliceCtx& sctx, Functions& funcs);
+    void ProcessFunctions(Blob& data, const SliceCtx& sctx, Functions& funcs, std::string className = "");
     // Process Class Data and create slices of Class Member Variables and process Member Functions
     void ProcessClasses(Blob& data, const SliceCtx& sctx, Classes& classes);
     // Process Signatures from Free-Functions and Class Methods
@@ -90,7 +90,8 @@ namespace SrcSliceOperations {
     void ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, std::string className);
 
     // Creates Initial SliceProfile based off DeclData
-    void CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData, const FunctionInfo& funcData, std::string className);
+    void CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData,
+                            const FunctionInfo& funcData, std::string className, SlicePosition endOfScope = SlicePosition());
     // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
     void ProcessInitLists(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::string className);
     

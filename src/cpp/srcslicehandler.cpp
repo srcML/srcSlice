@@ -903,38 +903,40 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                             if (profileMap.find(sp.variableName) != profileMap.end()) {
                                 if (profileMap.find(Spi->first) != profileMap.end()) {
                                     if (!Spi->second.empty() && sliceItr != Spi->second.end()) {
+                                        SliceProfile& profile = profileMap.find(sp.variableName)->second.back();
+
                                         if (!sliceItr->isReference && !sliceItr->isPointer) {
                                             // pass by value
-                                            profileMap.find(sp.variableName)->second.back().uses.insert(
+                                            profile.uses.insert(
                                                 sliceItr->definitions.begin(),
                                                 sliceItr->definitions.end());
                                         } else {
                                             // pass by reference
-                                            profileMap.find(sp.variableName)->second.back().definitions.insert(
+                                            profile.definitions.insert(
                                                 sliceItr->definitions.begin(),
                                                 sliceItr->definitions.end());
                                         }
 
                                         // ensure we do not remove the initial decl from a slices definitions set
-                                        if (profileMap.find(sp.variableName)->second.back().declPosition != sliceItr->declPosition) {
+                                        if (profile.declPosition != sliceItr->declPosition) {
                                             // Parameter initial declaration def line is considered a use towards the argument
-                                            profileMap.find(sp.variableName)->second.back().definitions.erase(sliceItr->declPosition);
+                                            profile.definitions.erase(sliceItr->declPosition);
                                         }
-                                        profileMap.find(sp.variableName)->second.back().uses.insert(sliceItr->declPosition);
+                                        profile.uses.insert(sliceItr->declPosition);
 
-                                        profileMap.find(sp.variableName)->second.back().uses.insert(
+                                        profile.uses.insert(
                                             sliceItr->uses.begin(),
                                             sliceItr->uses.end());
 
                                         // ensure dependencies and aliases are within local-scope
-                                        if (profileMap.find(sp.variableName)->second.back().function == sliceItr->function) {
-                                            profileMap.find(sp.variableName)->second.back().aliases.insert(
-                                                profileMap.find(sp.variableName)->second.back().aliases.end(),
+                                        if (profile.function == sliceItr->function) {
+                                            profile.aliases.insert(
+                                                profile.aliases.end(),
                                                 sliceItr->aliases.begin(),
                                                 sliceItr->aliases.end()
                                             );
-                                            profileMap.find(sp.variableName)->second.back().dvars.insert(
-                                                profileMap.find(sp.variableName)->second.back().dvars.end(),
+                                            profile.dvars.insert(
+                                                profile.dvars.end(),
                                                 sliceItr->dvars.begin(),
                                                 sliceItr->dvars.end()
                                             );
