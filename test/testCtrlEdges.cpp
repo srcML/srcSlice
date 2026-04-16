@@ -695,6 +695,68 @@ int main() {
 
     std::string testName = Catch::getResultCapture().getCurrentTestName();
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+    std::cout << OK << " Passed!" << std::endl;
+}
+
+TEST_CASE( TestName("Multi-file Test"), "[srcslice]" ) {
+    std::cout << INFO << " Testing Multi-File Flows" << std::endl;
+    json produced = json::parse(FetchSlices((std::vector<std::string>){
+R"(
+void foo(int a) {
+    a = 5;
+}
+)",
+R"(
+int main() {
+    int b = 0;
+    foo(b);
+}
+)"
+    }, {"file.cpp","/utils/file2.cpp"}, true));
+
+    json expected = R"({
+    "a-2-14":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"foo",
+        "type":"int",
+        "name":"a",
+        "decl":"file.cpp:2:14",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":[],
+        "definition":["file.cpp:2:14","file.cpp:3:5"],
+        "controlEdges":[
+            ["file.cpp:2:14","file.cpp:3:5"]
+        ]
+    },
+    "b-3-9":{
+        "file":"/utils/file2.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"b",
+        "decl":"/utils/file2.cpp:3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[{"functionName":"foo","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"/utils/file2.cpp:4:5"}],
+        "use":["/utils/file2.cpp:4:9","file.cpp:2:14","file.cpp:3:5"],
+        "definition":["/utils/file2.cpp:3:9"],
+        "controlEdges":[
+            ["/utils/file2.cpp:3:9","/utils/file2.cpp:4:9"],
+            ["file.cpp:2:14","file.cpp:3:5"]
+        ]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson("", testName, produced, expected) );
+    std::cout << OK << " Passed!" << std::endl;
 }
 
 /**

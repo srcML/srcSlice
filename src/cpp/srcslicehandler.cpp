@@ -941,6 +941,11 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                                 sliceItr->dvars.end()
                                             );
                                         }
+
+                                        // move the control edges over
+                                        profile.controlEdges.insert(
+                                            sliceItr->controlEdges.begin(),
+                                            sliceItr->controlEdges.end());
                                     }
                                 }
                             } else {
