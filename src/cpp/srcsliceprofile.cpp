@@ -48,6 +48,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     aliases = rhs.aliases;
     controlEdges = rhs.controlEdges;
     cfunctions = rhs.cfunctions;
+    endOfScope = rhs.endOfScope;
     visited = rhs.visited;
     updated = rhs.updated;
     showControlEdges = rhs.showControlEdges;
@@ -83,6 +84,7 @@ bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (aliases != rhs.aliases) return false;
     if (controlEdges != rhs.controlEdges) return false;
     if (cfunctions != rhs.cfunctions) return false;
+    if (endOfScope != rhs.endOfScope) return false;
     if (visited != rhs.visited) return false;
     if (updated != rhs.updated) return false;
     if (showControlEdges != rhs.showControlEdges) return false;
@@ -245,4 +247,19 @@ void SliceProfile::merge(const SliceProfile& other) {
     dvars.insert(dvars.end(), other.dvars.begin(), other.dvars.end());
     aliases.insert(aliases.end(), other.aliases.begin(), other.aliases.end());
     cfunctions.insert(cfunctions.end(), other.cfunctions.begin(), other.cfunctions.end());
+}
+
+bool SliceProfile::inScope(const SlicePosition& pos) {
+    if (isGlobal || isFragment) {
+        return file == pos.GetFileName();
+    }
+
+    // class member variables are tricky to scope effectively
+    if (classMemberVar) {
+        return true;
+    }
+
+    if (pos < declPosition) return false;
+    if (endOfScope < pos) return false;
+    return true;
 }

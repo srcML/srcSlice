@@ -41,7 +41,7 @@ public:
             std::string filename);
 
     SlicePosition(const SlicePosition& position);
-    SlicePosition& operator=(SlicePosition rhs);
+    SlicePosition& operator=(const SlicePosition& rhs);
 
     bool operator==(const SlicePosition& rhs) const;
     bool operator!=(const SlicePosition& rhs) const;

@@ -938,6 +938,59 @@ TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::string sourceCode = R"(
 int main() {
     int a = 0;
+    cout << a;
+    if (a % 2 == 0) {
+        int a = 1;
+        a += 5;
+        cout << a;
+    }
+    cout << a;
+}
+)";
+
+    json produced = json::parse(FetchSlices(sourceCode));
+
+    json expected = R"({
+    "a-3-9":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "decl":"file.cpp:3:9",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:4:13","file.cpp:5:9","file.cpp:10:13"],
+        "definition":["file.cpp:3:9"]
+    },
+    "a-6-13":{
+        "file":"file.cpp",
+        "language":"C++",
+        "namespace":[],
+        "class":"",
+        "function":"main",
+        "type":"int",
+        "name":"a",
+        "decl":"file.cpp:6:13",
+        "dependence":[],
+        "aliases":[],
+        "calls":[],
+        "use":["file.cpp:7:9","file.cpp:8:17"],
+        "definition":["file.cpp:6:13","file.cpp:7:9"]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
+}
+
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+    std::string sourceCode = R"(
+int main() {
+    int a = 0;
     switch (a) {
         case 0:
             cout << a << endl;
@@ -982,7 +1035,7 @@ int main() {
  * Tests Slicing against classes
  */
 
- TEST_CASE( TestName("General Test"), "[srcslice]" ) {
+TEST_CASE( TestName("General Test"), "[srcslice]" ) {
     std::cout << INFO << " Testing Class Slicing" << std::endl;
 
     // Raw-Strings C++11

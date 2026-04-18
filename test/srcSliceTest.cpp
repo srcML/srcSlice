@@ -125,9 +125,9 @@ std::string FetchSlices(std::string cppSource, bool findControlEdges) {
     return RunSrcSlice(srcml, findControlEdges);
 }
 
-std::string FetchSlices(std::vector<std::string> contents, std::vector<std::string> filenames) {
+std::string FetchSlices(std::vector<std::string> contents, std::vector<std::string> filenames, bool findControlEdges) {
     std::string srcmlStr = StringsToArchive(contents, filenames);
-    return RunSrcSlice(srcmlStr, false);
+    return RunSrcSlice(srcmlStr, findControlEdges);
 }
 
 void PrintErr(const std::string testName, const std::string msg) {
