@@ -822,6 +822,11 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
     sp.visited = true;
 
     if (!sp.cfunctions.empty()) {
+        std::map<
+            SliceProfile*,
+            std::set<std::vector<SliceProfile>::iterator>
+        > complementaryProfiles;
+
         for (auto& cfunc : sp.cfunctions) {
             // if a cfunc ignore flag is enabled skip this index and continue
             if (cfunc.ignore)
@@ -946,6 +951,12 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                         profile.controlEdges.insert(
                                             sliceItr->controlEdges.begin(),
                                             sliceItr->controlEdges.end());
+
+                                        // after iterating all cfuncs we move over
+                                        // cfunc data from these complement profiles
+                                        // to avoid extra iterations over visited calls &
+                                        // not invalidate the loop
+                                        complementaryProfiles[&profile].insert(sliceItr);
                                     }
                                 }
                             } else {
@@ -972,6 +983,15 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                     std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << "\n";
                 }
                 addPartialSlice(sp);
+            }
+        }
+        // move cfunc data over
+        for (auto& [profile, cSps] : complementaryProfiles) {
+            for (auto& cSp : cSps) {
+                profile->cfunctions.insert(
+                    profile->cfunctions.end(),
+                    cSp->cfunctions.begin(),
+                    cSp->cfunctions.end());
             }
         }
     }
