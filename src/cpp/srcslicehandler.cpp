@@ -51,7 +51,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
         std::cout << "[Slicing Started]" << "\n";
 
         control.parse(&handler); // Start parsing
-        unitsScaned = true;
+        unitsScaned.store(true, std::memory_order_release);
 
         if (t.joinable())
             t.join();
