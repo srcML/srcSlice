@@ -541,7 +541,7 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
                     visited_alias.insert(aspi.variableName);
 
                     // push_back alias slice profile's aliases into the source slice aliases
-                    sp.aliases.insert(sp.aliases.end(), aspi.aliases.begin(), aspi.aliases.end());
+                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
                 }
             }
         }
@@ -639,10 +639,10 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
     if (!sp.partial) return;
 
     // collection of call data that is to be later added to the given slice profile
-    std::vector<FunctionCallData> toInsert;
+    std::vector<FunctionCallData> toInsert, toErase;
     
     for (auto itr = sp.cfunctions.begin(); itr != sp.cfunctions.end(); ++itr) {
-        FunctionCallData& cfunc = *itr;
+        FunctionCallData cfunc = *itr;
 
         // only update cfunc entries that do not have a definition position
         if (!cfunc.definitionPosition.GetFileName().empty()) {
@@ -664,7 +664,8 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
             updatedData.definitionPosition = funcSig->second[0].position;
 
             // replace old data with new data
-            cfunc = updatedData;
+            toErase.push_back(*itr);
+            toInsert.push_back(updatedData);
 
             // evaluate the slice profile based off the updatedData and if its within
             // partialSliceProfiles we want to jump to it and update it (recursively)
@@ -778,7 +779,9 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
                     // update cfunc data
                     FunctionCallData updatedData(cfunc);
                     updatedData.definitionPosition = signatures[i].position;
-                    cfunc = updatedData;
+
+                    toErase.push_back(*itr);
+                    toInsert.push_back(updatedData);
                 } else {
                     // append new cfunc data
                     FunctionCallData newData(cfunc);
@@ -789,10 +792,15 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
         }
     }
 
+    // remove outdated entries
+    for (auto& data : toErase) {
+        sp.cfunctions.erase(data);
+    }
+
     // insert the new calls into the profile after iteration
     // to not risk iterator invalidation
     for (auto& data : toInsert) {
-        sp.insertCfunction(data);
+        sp.cfunctions.insert(data);
     }
 
     // toggle off just incase so we do not run over this profile again
@@ -823,8 +831,8 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
 
     if (!sp.cfunctions.empty()) {
         std::map<
-            SliceProfile*,
-            std::set<std::vector<SliceProfile>::iterator>
+            std::string,
+            std::set<FunctionCallData>
         > complementaryProfiles;
 
         for (auto& cfunc : sp.cfunctions) {
@@ -936,12 +944,10 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                         // ensure dependencies and aliases are within local-scope
                                         if (profile.function == sliceItr->function) {
                                             profile.aliases.insert(
-                                                profile.aliases.end(),
                                                 sliceItr->aliases.begin(),
                                                 sliceItr->aliases.end()
                                             );
                                             profile.dvars.insert(
-                                                profile.dvars.end(),
                                                 sliceItr->dvars.begin(),
                                                 sliceItr->dvars.end()
                                             );
@@ -956,7 +962,9 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                         // cfunc data from these complement profiles
                                         // to avoid extra iterations over visited calls &
                                         // not invalidate the loop
-                                        complementaryProfiles[&profile].insert(sliceItr);
+                                        for (const auto& cFunc : sliceItr->cfunctions) {
+                                            complementaryProfiles[sp.variableName].insert(cFunc);
+                                        }
                                     }
                                 }
                             } else {
@@ -986,12 +994,13 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
             }
         }
         // move cfunc data over
-        for (auto& [profile, cSps] : complementaryProfiles) {
-            for (auto& cSp : cSps) {
-                profile->cfunctions.insert(
-                    profile->cfunctions.end(),
-                    cSp->cfunctions.begin(),
-                    cSp->cfunctions.end());
+        for (auto& [name, callsToInsert] : complementaryProfiles) {
+            auto spi = profileMap.find(name);
+            if (spi == profileMap.end()) continue;
+
+            SliceProfile& profile = spi->second.back();
+            for (const auto& cFunc : callsToInsert) {
+                profile.cfunctions.insert(cFunc);
             }
         }
     }

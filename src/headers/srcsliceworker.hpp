@@ -87,16 +87,16 @@ namespace SrcSliceOperations {
     // Moves over the sequence of statements and processes them in order
     // |__ Creates Initial SliceProfiles for Variables Declared within a specified Block within a Function Definition
     // |__ Extract Expressions within a specified Block within a Function Definition
-    void ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, std::string className);
+    void ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, const std::string& className);
 
     // Creates Initial SliceProfile based off DeclData
     void CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData,
-                            const FunctionInfo& funcData, std::string className, SlicePosition endOfScope = SlicePosition());
+                            const FunctionInfo& funcData, const std::string& className, SlicePosition endOfScope = SlicePosition());
     // Process Constructor Initializer Lists establishing connection between Class Members and Ctor Parameters
-    void ProcessInitLists(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::string className);
+    void ProcessInitLists(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const std::string& className);
     
     // Extract Expressions within a specified Block within a Function Definition
-    void ProcessExprStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, std::string className);
+    void ProcessExprStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, const BlockInfo& block, const std::string& className);
     
     // Capture SliceProfile Data from a given Expression within a specified Block within a Function Definition
     void ProcessExprStmt(
@@ -104,17 +104,17 @@ namespace SrcSliceOperations {
         const SliceCtx& sctx,
         const ExprInfo& expr,
         const FunctionInfo& funcData,
-        std::string className,
+        const std::string& className,
         EXPRESSION_TYPE expr_type = EXPRESSION_TYPE::NORMAL
     );
     // Parse a given Expression and return a Collection of Variable Data used to Update SliceProfiles
     void ParseExpr(
         Blob& data,
         const SliceCtx& sctx,
-        std::string className,
+        const std::string& className,
         const ExprInfo& expr, 
         EXPRESSION_TYPE expr_type,
-        std::vector<std::string> lhsStack = {},
+        std::vector<std::string>& lhsStack,
         bool isArg = false,
         srcDispatch::CallData* funcCallData = nullptr,
         int argIndex = 0
@@ -124,46 +124,46 @@ namespace SrcSliceOperations {
     // Try-Blocks contain both exprs and decls, need to extract those decls and create slice profiles
     // for them, along with capturing expressions to update collected slices
     void CollectTryBlockData(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::shared_ptr<srcDispatch::TryData>& tryBlock,
-                                std::string className);
+                                const std::string& className);
     void CollectConditionalData(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::any& cntl, const std::string& className);
     // Given a list of Function Parameters create Initial SliceProfiles for each Parameter
     void ProcessFunctionParameters(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData, std::vector<DeclInfo>& parameters,
-                                    std::string currentFunctionName, std::string className);
+                                    const std::string& currentFunctionName, const std::string& className);
     // Create a Function Signature based off given Function Data
     void ProcessFunctionSignature(Blob& data, const SliceCtx& sctx, FunctionInfo& funcData, std::string className);
 
     // Use collected function call data to push a new cfunctions entry into a referenced slice profile
     void CreateSliceCallData(
-        Blob& data, const SliceCtx& sctx, std::string functionName,
+        Blob& data, const SliceCtx& sctx, const std::string& functionName,
         int argIndex, int argc, SlicePosition functionPosition, SliceProfile& sliceProfile,
         SlicePosition invokePosition
     );
 
     // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
     // Logic constructed for use BEFORE InterProcedural
-    SliceProfile* FetchSliceProfile(Blob& data, const SliceCtx& sctx, std::string profileName, const FunctionInfo& funcData,
-        std::string className = "", std::vector<std::string> containingNameSpaces = {});
+    SliceProfile* FetchSliceProfile(Blob& data, const SliceCtx& sctx, const std::string& profileName, const FunctionInfo& funcData,
+        const std::string& className = "", std::vector<std::string> containingNameSpaces = {});
 
         
     bool IsPointerDereferenced(std::shared_ptr<srcDispatch::NameData>& varNameElem);
 
     // Take large name strings and extract the root variable name
-    std::string ExtractName(std::string elementName);
+    std::string ExtractName(const std::string& elementName);
 
     // Extract the function name within either a call or a complex function name
-    std::string GetSimpleFunctionName(std::string funcName);
+    std::string GetSimpleFunctionName(const std::string& funcName);
 
-    std::string GenerateArrayType(std::string typeString, int dim);
+    std::string GenerateArrayType(std::string& typeString, int dim);
 
-    bool StringContainsCharacters(std::string &str);
+    bool StringContainsCharacters(const std::string& str);
 
-    bool isAssignment(std::string& expr_op);
+    bool isAssignment(const std::string& expr_op);
 
-    bool isCompoundAssignment(std::string& expr_op);
+    bool isCompoundAssignment(const std::string& expr_op);
 
-    bool isLogical(std::string& expr_op);
+    bool isLogical(const std::string& expr_op);
 
-    bool isWhiteSpace(std::string& str);
+    bool isWhiteSpace(const std::string& str);
 };
 
 class SrcSliceWorker {

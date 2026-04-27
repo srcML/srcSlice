@@ -61,14 +61,14 @@ bool SrcSliceWorker::Finished() {
 
 //=======================================================================
 
-std::string SrcSliceOperations::GenerateArrayType(std::string typeString, int dim) {
+std::string SrcSliceOperations::GenerateArrayType(std::string& typeString, int dim) {
     for (int i = 0; i < dim;++i) {
         typeString += "[]";
     }
     return typeString;
 };
 
-bool SrcSliceOperations::StringContainsCharacters(std::string &str) {
+bool SrcSliceOperations::StringContainsCharacters(const std::string& str) {
     // test empty string
     if (str.empty())
         return false;
@@ -86,25 +86,25 @@ bool SrcSliceOperations::StringContainsCharacters(std::string &str) {
     return true;
 }
 
-bool SrcSliceOperations::isAssignment(std::string& expr_op) {
+bool SrcSliceOperations::isAssignment(const std::string& expr_op) {
     return (expr_op == "=") || isCompoundAssignment(expr_op);
 }
 
-bool SrcSliceOperations::isCompoundAssignment(std::string& expr_op) {
+bool SrcSliceOperations::isCompoundAssignment(const std::string& expr_op) {
     return (expr_op == "+=") || (expr_op == "-=") || (expr_op == "*=") || (expr_op == "/=") || (expr_op == "%=");
 }
 
-bool SrcSliceOperations::isLogical(std::string& expr_op) {
+bool SrcSliceOperations::isLogical(const std::string& expr_op) {
     return ( (expr_op == "<") || (expr_op == ">") || (expr_op == "<=") || (expr_op == ">=") || (expr_op == "==")
             || (expr_op == "!=") || (expr_op == "&&" || (expr_op == "||")) );
 }
 
-bool SrcSliceOperations::isWhiteSpace(std::string& str) {
+bool SrcSliceOperations::isWhiteSpace(const std::string& str) {
     return str.find_first_not_of(" \t\n\r") == std::string::npos;
 }
 
 // Extract the function name within either a call or a complex function name
-std::string SrcSliceOperations::GetSimpleFunctionName(std::string funcName) {
+std::string SrcSliceOperations::GetSimpleFunctionName(const std::string& funcName) {
     std::string simpleFunctionName = funcName;
     bool containsScope = (funcName.find_last_of("::") != std::string::npos);
     bool containsAccessor = (funcName.find_last_of(".") != std::string::npos);
@@ -151,13 +151,14 @@ bool SrcSliceOperations::IsPointerDereferenced(std::shared_ptr<srcDispatch::Name
 }
 
 // Take large name strings and extract the root variable name
-std::string SrcSliceOperations::ExtractName(std::string elementName) {
+std::string SrcSliceOperations::ExtractName(const std::string& elementName) {
     std::string target = "std::";
+    std::string subElemName;
 
     // Check if the string starts with "std::"
     if (elementName.rfind(target, 0) == 0) {
         // Remove the prefix and set it to the result
-        elementName = elementName.substr(target.size());
+        subElemName = elementName.substr(target.size());
     }
 
     std::string varName;
@@ -169,7 +170,7 @@ std::string SrcSliceOperations::ExtractName(std::string elementName) {
         'A' to 'Z': 65 to 90
     */
     bool readIn = false;
-    for (const auto& c : elementName) {
+    for (const auto& c : (subElemName.empty()) ? elementName : subElemName) {
         bool isLower = (c >= 97 && c <= 122);
         bool isUpper = (c >= 65 && c <= 90);
         bool isNumber = (c >= 48 && c <= 57);
@@ -321,13 +322,15 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                 ).first;
             }
 
+            std::vector<std::string> initLhsStack = {declVarName};
+
             SrcSliceOperations::ParseExpr(
                 data,
                 sctx,
                 className,
                 deltaDecl->init,
                 EXPRESSION_TYPE::NORMAL,
-                {declVarName}
+                initLhsStack
             );
 
             for (auto& argument : deltaDecl->arguments) {
@@ -337,7 +340,7 @@ void SrcSliceOperations::ProcessDecls(Blob& data, const SliceCtx& sctx, DeclStmt
                     className,
                     argument,
                     EXPRESSION_TYPE::NORMAL,
-                    {declVarName},
+                    initLhsStack,
                     true
                 );
             }
@@ -433,7 +436,7 @@ void SrcSliceOperations::ProcessClasses(Blob& data, const SliceCtx& sctx, Classe
 }
 
 void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, const DeclInfo& deltaDeclData,
-                                            const FunctionInfo& funcData, std::string className, SlicePosition endOfScope) {
+                                            const FunctionInfo& funcData, const std::string& className, SlicePosition endOfScope) {
     if (!deltaDeclData) return;
     if (!deltaDeclData->name) return;
     if (deltaDeclData->name.ToString().empty()) return;
@@ -496,13 +499,15 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
         ).first;
     }
 
+    std::vector<std::string> initLhsStack = {declVarName};
+
     ParseExpr(
         data,
         sctx,
         className,
         deltaDeclData->init,
         EXPRESSION_TYPE::NORMAL,
-        {declVarName}
+        initLhsStack
     );
 
     for (auto& argument : deltaDeclData->arguments) {
@@ -512,7 +517,7 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
             className,
             argument,
             EXPRESSION_TYPE::NORMAL,
-            {declVarName},
+            initLhsStack,
             true
         );
     }
@@ -521,7 +526,7 @@ void SrcSliceOperations::CreateSliceProfile(Blob& data, const SliceCtx& sctx, co
 
 void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx,
                                             const FunctionInfo& funcData,
-                                            std::string className) {
+                                            const std::string& className) {
     if (!funcData) return;
 
     // process C++ initializer lists
@@ -552,7 +557,7 @@ void SrcSliceOperations::ProcessInitLists(Blob& data, const SliceCtx& sctx,
 }
 
 void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData,
-                                        const BlockInfo& block, std::string className) {
+                                        const BlockInfo& block, const std::string& className) {
     if (!funcData || !block) return;
 
     // Capture Conditional expressions
@@ -650,14 +655,15 @@ void SrcSliceOperations::ProcessStmts(Blob& data, const SliceCtx& sctx, const Fu
 
 void SrcSliceOperations::ProcessExprStmt(Blob& data, const SliceCtx& sctx, const ExprInfo& expr,
                                             [[maybe_unused]] const FunctionInfo& funcData,
-                                            std::string className, EXPRESSION_TYPE expr_type) {
+                                            const std::string& className, EXPRESSION_TYPE expr_type) {
     if (!expr) return;
-    ParseExpr(data, sctx, className, expr, expr_type);
+    std::vector<std::string> initLhsStack = {};
+    ParseExpr(data, sctx, className, expr, expr_type, initLhsStack);
 }
 
 // Use collected function call data to push a new cfunctions entry into a referenced slice profile
 // call data gets passed into aliases if needed
-void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const SliceCtx& sctx, std::string functionName,
+void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const SliceCtx& sctx, const std::string& functionName,
                                             int argIndex, int argc, SlicePosition functionPosition,
                                             SliceProfile& sliceProfile, SlicePosition invokePosition) {
     FunctionCallData sliceCallData = FunctionCallData(
@@ -669,7 +675,7 @@ void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const 
     );
 
     // push the cfunc data into the argument SliceProfile
-    sliceProfile.insertCfunction(sliceCallData);
+    sliceProfile.cfunctions.insert(sliceCallData);
 
     // attempt to mark the cfunc towards the currentPointerReference
 
@@ -683,7 +689,7 @@ void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const 
         
         // hidden metadata to tell InterProcedural to not process this cfunctions element
         sliceCallData.ignore = true;
-        aspi->second.back().insertCfunction(sliceCallData);
+        aspi->second.back().cfunctions.insert(sliceCallData);
 
         // Alias targets are used within function calls by default as it is an expression
         aspi->second.back().uses.insert(invokePosition);
@@ -702,7 +708,7 @@ void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const 
 // for them, along with capturing expressions to update collected slices
 void SrcSliceOperations::CollectTryBlockData(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData,
                                                 std::shared_ptr<srcDispatch::TryData>& tryBlock,
-                                                std::string className) {
+                                                const std::string& className) {
     if (tryBlock->block) {
         // Collect Decls and Exprs within the block of this Try-Block
         ProcessStmts(data, sctx, funcData, tryBlock->block, className);
@@ -997,12 +1003,14 @@ void SrcSliceOperations::CollectConditionalData(Blob& data, const SliceCtx& sctx
     }
 }
 
-void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, std::string className,
+void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const std::string& className,
                                     const ExprInfo& expr, EXPRESSION_TYPE expr_type,
-                                    std::vector<std::string> lhsStack, bool isArg,
+                                    std::vector<std::string>& lhsStack, bool isArg,
                                     srcDispatch::CallData* funcCallData, int argIndex) {
     if (!expr) return;
     ExprParse::ExprCtx ectx(data.profileMap, &lhsStack, className);
+
+    size_t oldStackLen = lhsStack.size();
 
     // lhsStack -> transparent stack where begin() is outter LHS and end() is inner LHS
     std::string expr_op = ""; // most recently encountered operator token
@@ -1030,9 +1038,9 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, std::string
 
                 // parse the expressions of indices
                 for (const ExprInfo& exprInfo : nameData->indices) {
-                    ParseExpr(data, sctx, className, exprInfo, expr_type, {});
+                    std::vector<std::string> initLhsStack = {};
+                    ParseExpr(data, sctx, className, exprInfo, expr_type, initLhsStack);
                 }
-
 
                 recent_name = SrcSliceOperations::ExtractName(name);
                 ectx.spi = data.profileMap.find(recent_name);
@@ -1408,11 +1416,16 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, std::string
             ectx.lastToken.type = ExprParse::TokenType::LITERAL;
         }
     } // end of looping elements
+
+    // revert lhs stack back to the original
+    while (lhsStack.size() > oldStackLen) {
+        lhsStack.pop_back();
+    }
 }
 
 void SrcSliceOperations::ProcessFunctionParameters(Blob& data, const SliceCtx& sctx, const FunctionInfo& funcData,
-                                                    std::vector<DeclInfo>& parameters, std::string currentFunctionName,
-                                                    std::string className) {
+                                                    std::vector<DeclInfo>& parameters, const std::string& currentFunctionName,
+                                                    const std::string& className) {
     for (auto& parameter : parameters) {
         if (!parameter->name) continue;
         std::string paramName = parameter->name.ToString();
@@ -1508,8 +1521,8 @@ void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sc
 // Attempt to get the SliceProfile by finger-printing based on VariableData and containing elements (function, class, namespace)
 // Logic constructed for use BEFORE InterProcedural
 SliceProfile* SrcSliceOperations::FetchSliceProfile(Blob& data, const SliceCtx& sctx [[maybe_unused]],
-                                                    std::string profileName, const FunctionInfo& funcData,
-                                                    std::string className, std::vector<std::string> containingNameSpaces) {
+                                                    const std::string& profileName, const FunctionInfo& funcData,
+                                                    const std::string& className, std::vector<std::string> containingNameSpaces) {
     auto spi = data.profileMap.find(profileName);
     SliceProfile* probableProfile = nullptr;
 

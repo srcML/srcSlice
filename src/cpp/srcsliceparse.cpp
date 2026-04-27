@@ -91,7 +91,7 @@ void ExprParse::pushDvar(SliceProfileMap& profileMap, std::string lhsName, std::
         SliceProfile* sp = findValidProfile(rhsSpi, ectx);
         if (sp == nullptr) return;
 
-        sp->insertDvar(lhsName, ectx.namePos);
+        sp->dvars.insert(std::make_pair(lhsName, ectx.namePos));
     }
 };
 
@@ -104,7 +104,7 @@ void ExprParse::pushAlias(SliceProfileMap& profileMap, std::string lhsName, std:
         SliceProfile* sp = findValidProfile(lhsSpi, ectx);
         if (sp == nullptr) return;
 
-        sp->insertAlias(rhsName, ectx.namePos);
+        sp->aliases.insert(std::make_pair(rhsName, ectx.namePos));
         // mark the pointers current reference
         sp->currentPointerReference = rhsName;
     }
