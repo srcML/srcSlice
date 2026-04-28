@@ -76,16 +76,17 @@ srcml src/ -o src.xml -r --position --hash
 ## Options
 ```
 srcSlice (srcML Slicing Tool)
-Usage: srcslice [OPTIONS]
+Usage: srcslice [OPTIONS] input
 
 Positionals:
   input srcML FILE REQUIRED   Name of the srcML input file [Must be built using the --position and --hash flags]
 
 Options:
   -h,--help                   Print this help message and exit
-  -c,--control-edges          Display Control-Edges of the Slice
   -o,--output TEXT            Name of the JSON output file [Stdout is Default]
-  -t,--threads INT            Number of concurrent threads
+  -t,--threads INT [7]        Number of concurrent threads [Default 7]
+  -c,--control-edges          Display Control-Edges of the Slice
+  -e,--expand-calls           Generate more details in cfunction entries
   -v,--verbose                Display Debug Info when Slicing
   -p,--progress               Display Feedback Progress Bars
 ```
@@ -145,6 +146,10 @@ Generate slices and write output to **slices.json**<br>
       <td>Variable name of the slice variable</td>
     </tr>
     <tr>
+      <td><code>Decl</code></td>
+      <td>Position of the slice variable's declaration</td>
+    </tr>
+    <tr>
       <td><code>Dependence</code></td>
       <td>
         A list of variable-position pairs, containing:
@@ -169,7 +174,8 @@ Generate slices and write output to **slices.json**<br>
         <li>Function Name</li>
         <li>Argument Index</li>
         <li>Position of Function Definition</li>
-        <li>Position of Invokation</li>
+        <li>End Position of the Function Block</li>
+        <li>Position of Method Invokation</li>
         </ul>
       </td>
     </tr>
@@ -180,6 +186,10 @@ Generate slices and write output to **slices.json**<br>
     <tr>
       <td><code>Definition</code></td>
       <td>A set of positions where the slice variable is defined or redefined</td>
+    </tr>
+    <tr>
+      <td><code>Control Edges</code></td>
+      <td>A set of position pairs indicating the potential flow from a given starting point</td>
     </tr>
   </tbody>
 </table>
