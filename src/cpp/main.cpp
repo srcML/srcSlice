@@ -26,7 +26,8 @@ int main(int argc, char **argv)
     std::string inputFile = "", outputFile = "";
     int threadCount = defaultThreads();
     std::ofstream outFile;
-    bool debugMode = false, feedbackMode = false, showControlEdges = false;
+    bool verboseMode = false, feedbackMode = false,
+        showControlEdges = false, expandCalls = false;
 
     std::ostringstream ss;
     ss << "Number of concurrent threads [Default " << threadCount << "]";
@@ -36,14 +37,25 @@ int main(int argc, char **argv)
     app.add_option  ("input",   inputFile,                          "Name of the srcML input file [Must be built using the --position and --hash flags]")
         ->required()
         ->type_name("srcML FILE");
-    app.add_flag    ("-c, --control-edges", showControlEdges,       "Display Control-Edges of the Slice");
     app.add_option  ("-o, --output",  outputFile,                   "Name of the JSON output file [Stdout is Default]");
-    app.add_option  ("-t, --threads", threadCount,               ss.str())
+    app.add_option  ("-t, --threads", threadCount,                  ss.str())
         ->default_val(threadCount);
-    app.add_flag    ("-v, --verbose", debugMode,                    "Display Debug Info when Slicing");
+    
+    app.add_flag    ("-c, --control-edges", showControlEdges,       "Display Control-Edges of the Slice");
+    app.add_flag    ("-e, --expand-calls", expandCalls,             "Generate more details in cfunction entries");
+    app.add_flag    ("-v, --verbose", verboseMode,                    "Display Debug Info when Slicing");
     app.add_flag    ("-p, --progress", feedbackMode,                "Display Feedback Progress Bars");
     
     CLI11_PARSE(app, argc, argv);
+
+    CliInfo info = {
+        inputFile, outputFile,
+        threadCount,
+        showControlEdges,
+        expandCalls,
+        verboseMode,
+        feedbackMode
+    };
 
     try {
         // check if input file exists
@@ -53,7 +65,11 @@ int main(int argc, char **argv)
         }
         srcmlFile.close();
 
-        SrcSliceHandler srcSliceHandler(inputFile.c_str(), debugMode, feedbackMode, showControlEdges, threadCount);
+        if (showControlEdges) {
+            std::cout << "[\033[33mWARNING\033[0m] Computing control-edges may increase the time required to complete the program\n";
+        }
+
+        SrcSliceHandler srcSliceHandler(info);
 
         auto sliceProfileMap = srcSliceHandler.GetProfileMap();
 
@@ -75,6 +91,10 @@ int main(int argc, char **argv)
             for (auto& slice : profiles.second) {
                 if (!slice.containsDeclaration)
                     continue;
+
+                // if we need more call details in the call entries
+                // we need to set the respective bool true
+                slice.expandCalls = expandCalls;
 
                 writtenSlices = true;
                 std::string name(slice.variableName + '-' + slice.declPosition.ToNameString() + '-' + slice.checksum);

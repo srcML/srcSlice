@@ -76,6 +76,7 @@ public:
     bool updated = false;
     bool partial = false;
     bool showControlEdges = false;
+    bool expandCalls = false;
 
     std::string currentPointerReference;
     bool ignorePtrRef = false;

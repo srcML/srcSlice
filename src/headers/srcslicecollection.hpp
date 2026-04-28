@@ -51,7 +51,9 @@ public:
     bool operator>(const SlicePosition& rhs) const;
     bool operator>=(const SlicePosition& rhs) const;
 
-    std::string ToString() const;
+    std::string StartToString() const;
+    std::string EndToString() const;
+
     std::string RangeToString() const;
     std::string ToNameString() const;
     srcDispatch::DeltaElement<srcDispatch::Position> GetStart() const;
@@ -119,7 +121,7 @@ public:
         std::string funcName,
         unsigned int paramIndex,
         unsigned int argc,
-        SlicePosition defPos,
+        SlicePosition funcPos,
         SlicePosition invokePos,
         bool ignore_ = false
     );
@@ -134,10 +136,11 @@ public:
     bool operator<(const FunctionCallData& rhs) const;
     bool operator>(const FunctionCallData& rhs) const;
 
+    // for debugging
     friend std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data);
 
     SlicePosition invokePosition;
-    SlicePosition definitionPosition;
+    SlicePosition funcPos;
     bool ignore = false;
     std::string functionName;
     unsigned int parameterIndex;

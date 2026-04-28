@@ -55,6 +55,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     isPotentialArray = rhs.isPotentialArray;
     ignorePtrRef = rhs.ignorePtrRef;
     isFragment = rhs.isFragment;
+    expandCalls = rhs.expandCalls;
 }
 
 bool SliceProfile::operator==(const SliceProfile& rhs) const {
@@ -90,6 +91,7 @@ bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (isPotentialArray != rhs.isPotentialArray) return false;
     if (ignorePtrRef != rhs.ignorePtrRef) return false;
     if (isFragment != rhs.isFragment) return false;
+    if (expandCalls != rhs.expandCalls) return false;
 
     return true;
 }
@@ -117,7 +119,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
     out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
     
-    out << "    \"decl\":" << profile.declPosition.ToString() << "," << std::endl;
+    out << "    \"decl\":" << profile.declPosition.StartToString() << "," << std::endl;
 
     out << "    \"dependence\":[";
     first = true;
@@ -125,7 +127,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << "{\"" << dvar.first << "\":" << dvar.second.ToString() << "}";
+        out << "{\"" << dvar.first << "\":" << dvar.second.StartToString() << "}";
         first = false;
     }
     out << "]," << std::endl;
@@ -136,7 +138,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << "{\"" << alias.first << "\":" << alias.second.ToString() << "}";
+        out << "{\"" << alias.first << "\":" << alias.second.StartToString() << "}";
         first = false;
     }
     out << "]," << std::endl;
@@ -147,10 +149,16 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << "{\"functionName\":\"" << cfunc.functionName <<
-                "\",\"parameter\":\"" << cfunc.parameterIndex <<
-                "\",\"definitionPosition\":" << cfunc.definitionPosition.ToString() <<
-                ",\"invoke\":" << cfunc.invokePosition.ToString() << "}";
+        out << "{" <<
+                    "\"functionName\":\"" << cfunc.functionName;
+                    if (profile.expandCalls) {}
+                    out << "\",\"parameter\":\"" << cfunc.parameterIndex;
+                    out << "\",\"definitionPosition\":" << cfunc.funcPos.StartToString();
+                    if (profile.expandCalls) {
+                        out << "\",\"endOfFunction\":\"" << cfunc.funcPos.EndToString() << "\"";
+                    }
+                    out << ",\"invoke\":" << cfunc.invokePosition.StartToString() <<
+                "}";
         first = false;
     }
     out << "]," << std::endl;
@@ -162,7 +170,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << use.ToString();
+        out << use.StartToString();
         first = false;
     }
     out << "]," << std::endl;
@@ -174,7 +182,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << def.ToString();
+        out << def.StartToString();
         first = false;
     }
 
@@ -187,8 +195,8 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
             if (!first) {
                 out << ",";
             }
-            out << "[" << edge.first.ToString() <<
-            "," << edge.second.ToString() << "]";
+            out << "[" << edge.first.StartToString() <<
+            "," << edge.second.StartToString() << "]";
             first = false;
         }
         out << "]" << std::endl;

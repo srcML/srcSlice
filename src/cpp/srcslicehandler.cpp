@@ -32,20 +32,23 @@ int CPUCount() {
 #endif
 }
 
-// Use literal string filename ctor of srcSAXController (srcslice cpp main)
-SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, int threads) : verboseMode(v), progressMode(p), calculateControlEdges(ce) {
-    // if an invalid number is passed default to 5 threads
-    threadCount = (threads > 0) ? threads : 5;
+SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
+    verboseMode = info.verboseMode;
+    progressMode = info.progressMode;
+    calculateControlEdges = info.calculateControlEdges;
+    expandCalls = info.expandCalls;
+
+    // if an invalid number is passed default to 1 thread
+    threadCount = (info.threadCount > 0) ? info.threadCount : 1;
 
     unitsScaned.store(false, std::memory_order_release);
 
     std::thread t = std::thread(&SrcSliceHandler::ManageThreads, this);
 
-    srcSAXController control(filename);
+    srcSAXController control(info.inputFile);
     srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
     
-    // p -> progress display mode
-    if (p) {
+    if (progressMode) {
         // Save original buffers and Redirect cout and cerr
         IdleBar idlebar;
         std::cout << "[Slicing Started]" << "\n";
@@ -53,8 +56,7 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
         control.parse(&handler); // Start parsing
         unitsScaned.store(true, std::memory_order_release);
 
-        if (t.joinable())
-            t.join();
+        if (t.joinable()) t.join();
 
         // Restore original buffers
         idlebar.Finish("[srcSAXController Parse]");
@@ -324,7 +326,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
         }
         for (SlicePosition& data : elseifdata) {
             // if the inner context has been found skip this loop
-            if (!innerContext.ToString().empty()) break;
+            if (!innerContext.StartToString().empty()) break;
 
             if (IsContained(sLines[i], data)) {
                 innerContext = data;
@@ -332,7 +334,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
         }
         for (SlicePosition& data : elsedata) {
             // if the inner context has been found skip this loop
-            if (!innerContext.ToString().empty()) break;
+            if (!innerContext.StartToString().empty()) break;
 
             if (IsContained(sLines[i], data)) {
                 innerContext = data;
@@ -645,7 +647,7 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
         FunctionCallData cfunc = *itr;
 
         // only update cfunc entries that do not have a definition position
-        if (!cfunc.definitionPosition.GetFileName().empty()) {
+        if (!cfunc.funcPos.GetFileName().empty()) {
             continue;
         }
 
@@ -659,9 +661,9 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
             if (funcSig->second[0].parameters.empty()) continue;
             if (cfunc.argumentCount > funcSig->second[0].parameters.size()) continue;
 
-            // update definitionPosition
+            // update funcPos
             FunctionCallData updatedData(cfunc);
-            updatedData.definitionPosition = funcSig->second[0].position;
+            updatedData.funcPos = funcSig->second[0].position;
 
             // replace old data with new data
             toErase.push_back(*itr);
@@ -775,17 +777,17 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
 
                 if (sliceItr == spi->second.end())
                     continue;
-                if (cfunc.definitionPosition.GetFileName().empty()) {
+                if (cfunc.funcPos.GetFileName().empty()) {
                     // update cfunc data
                     FunctionCallData updatedData(cfunc);
-                    updatedData.definitionPosition = signatures[i].position;
+                    updatedData.funcPos = signatures[i].position;
 
                     toErase.push_back(*itr);
                     toInsert.push_back(updatedData);
                 } else {
                     // append new cfunc data
                     FunctionCallData newData(cfunc);
-                    newData.definitionPosition = signatures[i].position;
+                    newData.funcPos = signatures[i].position;
                     toInsert.push_back(newData);
                 }
             }
@@ -849,7 +851,7 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                 // function call definition line and called function
                 // def line data
                 for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
-                    if (cfunc.definitionPosition == funcSigCollection->second[sigIndex].position) {
+                    if (cfunc.funcPos == funcSigCollection->second[sigIndex].position) {
                         break;
                     }
                 }
