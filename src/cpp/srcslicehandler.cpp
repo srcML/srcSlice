@@ -32,29 +32,32 @@ int CPUCount() {
 #endif
 }
 
-// Use literal string filename ctor of srcSAXController (srcslice cpp main)
-SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, int threads) : verboseMode(v), progressMode(p), calculateControlEdges(ce) {
-    // if an invalid number is passed default to 5 threads
-    threadCount = (threads > 0) ? threads : 5;
+SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
+    verboseMode = info.verboseMode;
+    progressMode = info.progressMode;
+    calculateControlEdges = info.calculateControlEdges;
+    expandCalls = info.expandCalls;
+
+    // if an invalid number is passed default to 1 thread
+    threadCount = (info.threadCount > 0) ? info.threadCount : 1;
 
     unitsScaned.store(false, std::memory_order_release);
 
     std::thread t = std::thread(&SrcSliceHandler::ManageThreads, this);
 
-    srcSAXController control(filename);
+    // argument must be a c string (const char*) or else a saxError is thrown
+    srcSAXController control(info.inputFile.c_str());
     srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
     
-    // p -> progress display mode
-    if (p) {
+    if (progressMode) {
         // Save original buffers and Redirect cout and cerr
         IdleBar idlebar;
         std::cout << "[Slicing Started]" << "\n";
 
         control.parse(&handler); // Start parsing
-        unitsScaned = true;
+        unitsScaned.store(true, std::memory_order_release);
 
-        if (t.joinable())
-            t.join();
+        if (t.joinable()) t.join();
 
         // Restore original buffers
         idlebar.Finish("[srcSAXController Parse]");
@@ -76,7 +79,9 @@ SrcSliceHandler::SrcSliceHandler(const char* filename, bool v, bool p, bool ce, 
 }
 
 // Use string srcml buffer ctor of srcSAXController
-SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, bool ce) : verboseMode(false), calculateControlEdges(ce) {
+SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, const TestArg& info): verboseMode(false) {
+    calculateControlEdges = info.calculateControlEdges;
+
     // test-suite contains single-unit tests => multiple threads would be wasteful
     threadCount = 1;
 
@@ -111,6 +116,9 @@ void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const 
         for (const auto& includeData : unit->includes) {
             fileDependencyTable[ctx.currentFilePath].push_back(includeData->path.ToString());
         }
+
+        // lock the backlog because main and p_thread access this queue obj
+        std::lock_guard<std::mutex> lock(backlogMutex);
 
         // push worker into queue
         backlog.push(
@@ -216,12 +224,13 @@ void SrcSliceHandler::ManageThreads() {
     bool runningJobs = true;
 
     while (runningJobs) {
-        bool allDispatched = backlog.empty() && unitsScaned.load(std::memory_order_acquire);
+        // lock the backlog because main and p_thread access this queue obj
+        std::lock_guard<std::mutex> lock(backlogMutex);
+        
         int activeJobs = 0;
 
         for (int i = 0; i < threadCount; ++i) {
             if (workers[i] != nullptr) {
-                ++activeJobs;
                 if (workers[i]->Finished()) {
                     workers[i]->WaitForJob();
                     
@@ -234,23 +243,29 @@ void SrcSliceHandler::ManageThreads() {
                 } else {
                     // job is active do not continue
                     // the iteration and potentially replace this active worker
+                    ++activeJobs;
                     continue;
                 }
             }
 
             // pass pointer by reference so we can reassign its reference
             replaceWorker(&workers[i]);
+
+            // replaced workers should be marked as an active job
+            if (workers[i] != nullptr) {
+                ++activeJobs;
+            }
         }
 
         // all jobs have been dispatched and completed
         // and no jobs are active
-        if (allDispatched && activeJobs == 0) {
-            runningJobs = false;
-            continue;
-        }
+        bool allDone = unitsScaned.load(std::memory_order_acquire)
+                   && backlog.empty()
+                   && activeJobs == 0;
 
-        // prevent full utilization of CPU
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (allDone) {
+            runningJobs = false;
+        }
     }
 }
 
@@ -324,7 +339,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
         }
         for (SlicePosition& data : elseifdata) {
             // if the inner context has been found skip this loop
-            if (!innerContext.ToString().empty()) break;
+            if (!innerContext.StartToString().empty()) break;
 
             if (IsContained(sLines[i], data)) {
                 innerContext = data;
@@ -332,7 +347,7 @@ void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePos
         }
         for (SlicePosition& data : elsedata) {
             // if the inner context has been found skip this loop
-            if (!innerContext.ToString().empty()) break;
+            if (!innerContext.StartToString().empty()) break;
 
             if (IsContained(sLines[i], data)) {
                 innerContext = data;
@@ -541,7 +556,7 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
                     visited_alias.insert(aspi.variableName);
 
                     // push_back alias slice profile's aliases into the source slice aliases
-                    sp.aliases.insert(sp.aliases.end(), aspi.aliases.begin(), aspi.aliases.end());
+                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
                 }
             }
         }
@@ -639,13 +654,13 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
     if (!sp.partial) return;
 
     // collection of call data that is to be later added to the given slice profile
-    std::vector<FunctionCallData> toInsert;
+    std::vector<FunctionCallData> toInsert, toErase;
     
     for (auto itr = sp.cfunctions.begin(); itr != sp.cfunctions.end(); ++itr) {
-        FunctionCallData& cfunc = *itr;
+        FunctionCallData cfunc = *itr;
 
         // only update cfunc entries that do not have a definition position
-        if (!cfunc.definitionPosition.GetFileName().empty()) {
+        if (!cfunc.funcPos.GetFileName().empty()) {
             continue;
         }
 
@@ -659,12 +674,13 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
             if (funcSig->second[0].parameters.empty()) continue;
             if (cfunc.argumentCount > funcSig->second[0].parameters.size()) continue;
 
-            // update definitionPosition
+            // update funcPos
             FunctionCallData updatedData(cfunc);
-            updatedData.definitionPosition = funcSig->second[0].position;
+            updatedData.funcPos = funcSig->second[0].position;
 
             // replace old data with new data
-            cfunc = updatedData;
+            toErase.push_back(*itr);
+            toInsert.push_back(updatedData);
 
             // evaluate the slice profile based off the updatedData and if its within
             // partialSliceProfiles we want to jump to it and update it (recursively)
@@ -774,25 +790,32 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
 
                 if (sliceItr == spi->second.end())
                     continue;
-                if (cfunc.definitionPosition.GetFileName().empty()) {
+                if (cfunc.funcPos.GetFileName().empty()) {
                     // update cfunc data
                     FunctionCallData updatedData(cfunc);
-                    updatedData.definitionPosition = signatures[i].position;
-                    cfunc = updatedData;
+                    updatedData.funcPos = signatures[i].position;
+
+                    toErase.push_back(*itr);
+                    toInsert.push_back(updatedData);
                 } else {
                     // append new cfunc data
                     FunctionCallData newData(cfunc);
-                    newData.definitionPosition = signatures[i].position;
+                    newData.funcPos = signatures[i].position;
                     toInsert.push_back(newData);
                 }
             }
         }
     }
 
+    // remove outdated entries
+    for (auto& data : toErase) {
+        sp.cfunctions.erase(data);
+    }
+
     // insert the new calls into the profile after iteration
     // to not risk iterator invalidation
     for (auto& data : toInsert) {
-        sp.insertCfunction(data);
+        sp.cfunctions.insert(data);
     }
 
     // toggle off just incase so we do not run over this profile again
@@ -822,6 +845,11 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
     sp.visited = true;
 
     if (!sp.cfunctions.empty()) {
+        std::map<
+            std::string,
+            std::set<FunctionCallData>
+        > complementaryProfiles;
+
         for (auto& cfunc : sp.cfunctions) {
             // if a cfunc ignore flag is enabled skip this index and continue
             if (cfunc.ignore)
@@ -836,7 +864,7 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                 // function call definition line and called function
                 // def line data
                 for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
-                    if (cfunc.definitionPosition == funcSigCollection->second[sigIndex].position) {
+                    if (cfunc.funcPos == funcSigCollection->second[sigIndex].position) {
                         break;
                     }
                 }
@@ -931,12 +959,10 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                         // ensure dependencies and aliases are within local-scope
                                         if (profile.function == sliceItr->function) {
                                             profile.aliases.insert(
-                                                profile.aliases.end(),
                                                 sliceItr->aliases.begin(),
                                                 sliceItr->aliases.end()
                                             );
                                             profile.dvars.insert(
-                                                profile.dvars.end(),
                                                 sliceItr->dvars.begin(),
                                                 sliceItr->dvars.end()
                                             );
@@ -946,6 +972,14 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                                         profile.controlEdges.insert(
                                             sliceItr->controlEdges.begin(),
                                             sliceItr->controlEdges.end());
+
+                                        // after iterating all cfuncs we move over
+                                        // cfunc data from these complement profiles
+                                        // to avoid extra iterations over visited calls &
+                                        // not invalidate the loop
+                                        for (const auto& cFunc : sliceItr->cfunctions) {
+                                            complementaryProfiles[sp.variableName].insert(cFunc);
+                                        }
                                     }
                                 }
                             } else {
@@ -972,6 +1006,16 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
                     std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << "\n";
                 }
                 addPartialSlice(sp);
+            }
+        }
+        // move cfunc data over
+        for (auto& [name, callsToInsert] : complementaryProfiles) {
+            auto spi = profileMap.find(name);
+            if (spi == profileMap.end()) continue;
+
+            SliceProfile& profile = spi->second.back();
+            for (const auto& cFunc : callsToInsert) {
+                profile.cfunctions.insert(cFunc);
             }
         }
     }

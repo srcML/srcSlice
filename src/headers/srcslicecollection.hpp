@@ -51,7 +51,9 @@ public:
     bool operator>(const SlicePosition& rhs) const;
     bool operator>=(const SlicePosition& rhs) const;
 
-    std::string ToString() const;
+    std::string StartToString() const;
+    std::string EndToString() const;
+
     std::string RangeToString() const;
     std::string ToNameString() const;
     srcDispatch::DeltaElement<srcDispatch::Position> GetStart() const;
@@ -97,7 +99,7 @@ class FunctionSignatureData {
 public:
     FunctionSignatureData(){};
     FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
-                            std::string className, const SliceCtx& ctx);
+                            std::string className, bool blockDefined, const SliceCtx& ctx);
     SlicePosition position;
     std::string name;
     std::string returnType;
@@ -107,6 +109,7 @@ public:
     std::string currentFileChecksum;
     std::string currentFileLanguage;
     std::vector<std::string> containingNamespaces;
+    bool isDefined;
 };
 
 // Store meta-data about a function-call by tracking:
@@ -119,7 +122,7 @@ public:
         std::string funcName,
         unsigned int paramIndex,
         unsigned int argc,
-        SlicePosition defPos,
+        SlicePosition funcPos,
         SlicePosition invokePos,
         bool ignore_ = false
     );
@@ -134,10 +137,11 @@ public:
     bool operator<(const FunctionCallData& rhs) const;
     bool operator>(const FunctionCallData& rhs) const;
 
+    // for debugging
     friend std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data);
 
     SlicePosition invokePosition;
-    SlicePosition definitionPosition;
+    SlicePosition funcPos;
     bool ignore = false;
     std::string functionName;
     unsigned int parameterIndex;

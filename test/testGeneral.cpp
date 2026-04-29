@@ -718,7 +718,10 @@ int main() {
         "decl":"file.cpp:8:9",
         "dependence":[],
         "aliases":[],
-        "calls":[{"functionName":"factorial","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:9:18"}],
+        "calls":[
+            {"functionName":"factorial","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:4:16"},
+            {"functionName":"factorial","parameter":"1","definitionPosition":"file.cpp:2:1","invoke":"file.cpp:9:18"}
+        ],
         "use":["file.cpp:2:19","file.cpp:3:9","file.cpp:4:12","file.cpp:4:26","file.cpp:9:28"],
         "definition":["file.cpp:8:9"]
     },

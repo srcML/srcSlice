@@ -25,7 +25,7 @@ SlicePosition::SlicePosition(const SlicePosition& position) {
 
 // Creates a String of a JSON object, ie: "file.cpp:2:12"
 // based on the start position
-std::string SlicePosition::ToString() const {
+std::string SlicePosition::StartToString() const {
     std::string s;
 
     s += "\"";
@@ -43,6 +43,27 @@ std::string SlicePosition::ToString() const {
 
     return s;
 }
+// Creates a String of a JSON object, ie: "file.cpp:2:12"
+// based on the end position
+std::string SlicePosition::EndToString() const {
+    std::string s;
+
+    s += "\"";
+
+    if (!filename.empty()) {
+        s += filename;
+    }
+
+    if (end) {
+        s += ":";
+        s += end->ToString();
+    }
+
+    s += "\"";
+
+    return s;
+}
+// Creates a string formated "file:start-file:end"
 std::string SlicePosition::RangeToString() const {
     std::string s;
 
@@ -80,6 +101,7 @@ srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetEnd() const {
     return end;
 }
 std::string SlicePosition::GetFileName() const { return filename; }
+// return specific data about a position
 PositionMeta& SlicePosition::GetData() { return data; }
 
 SlicePosition& SlicePosition::operator=(const SlicePosition& rhs) {
@@ -180,8 +202,7 @@ size_t FindContextBlock(SlicePosition& sline, std::vector<SlicePosition>& group)
 
 FunctionSignatureData::FunctionSignatureData(
     srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
-    std::string className,
-    const SliceCtx& ctx) {
+    std::string className, bool blockDefined, const SliceCtx& ctx) {
     position = SlicePosition(func->startPosition, func->endPosition, ctx.currentFilePath);
     name = func->name.ToString();
     returnType = func->returnType.ToString();
@@ -191,17 +212,18 @@ FunctionSignatureData::FunctionSignatureData(
     currentFileChecksum = ctx.currentFileChecksum;
     currentFileLanguage = ctx.currentFileLanguage;
     containingNamespaces = ctx.containingNamespaces;
+    isDefined = blockDefined;
 }
 
 FunctionCallData::FunctionCallData(
     std::string funcName,
     unsigned int paramIndex,
     unsigned int argc,
-    SlicePosition defPos,
+    SlicePosition funcPos,
     SlicePosition invokePos,
     bool ignore_
 ): functionName(funcName), parameterIndex(paramIndex),
-definitionPosition(defPos), invokePosition(invokePos),
+funcPos(funcPos), invokePosition(invokePos),
 argumentCount(argc), ignore(ignore_) {};
 
 FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
@@ -209,7 +231,7 @@ FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
     invokePosition = rhs.invokePosition;
     parameterIndex = rhs.parameterIndex;
     argumentCount = rhs.argumentCount;
-    definitionPosition = rhs.definitionPosition;
+    funcPos = rhs.funcPos;
     ignore = rhs.ignore;
 };
 
@@ -220,7 +242,7 @@ FunctionCallData& FunctionCallData::operator=(const FunctionCallData& rhs) {
     invokePosition = rhs.invokePosition;
     parameterIndex = rhs.parameterIndex;
     argumentCount = rhs.argumentCount;
-    definitionPosition = rhs.definitionPosition;
+    funcPos = rhs.funcPos;
     ignore = rhs.ignore;
 
     return *this;
@@ -231,7 +253,7 @@ bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
     if (invokePosition != rhs.invokePosition) return false;
     if (parameterIndex != rhs.parameterIndex) return false;
     if (argumentCount != rhs.argumentCount) return false;
-    if (definitionPosition != rhs.definitionPosition) return false;
+    if (funcPos != rhs.funcPos) return false;
     if (ignore != rhs.ignore) return false;
     return true;
 }
@@ -244,7 +266,7 @@ bool FunctionCallData::operator<(const FunctionCallData& rhs) const {
     if (invokePosition < rhs.invokePosition) return true;
     if (argumentCount < rhs.argumentCount) return true;
     if (parameterIndex < rhs.parameterIndex) return true;
-    if (definitionPosition < rhs.definitionPosition) return true;
+    if (funcPos < rhs.funcPos) return true;
     if (ignore == false && rhs.ignore == true) return true;
     return false;
 }
@@ -254,7 +276,7 @@ bool FunctionCallData::operator>(const FunctionCallData& rhs) const {
 
 std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data) {
     outStream << "[" << data.functionName << " | " << data.parameterIndex
-    << " | " << data.definitionPosition.ToString() << " | " << data.invokePosition.ToString() << "]";
+    << " | " << data.funcPos.StartToString() << " | " << data.invokePosition.StartToString() << "]";
     return outStream;
 }
 

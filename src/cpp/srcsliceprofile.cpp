@@ -15,8 +15,8 @@ SliceProfile::SliceProfile() : containsDeclaration(false), potentialAlias(false)
 SliceProfile::SliceProfile(
         std::string name, SlicePosition decl, bool alias, bool global,
         std::set<SlicePosition> aDef, std::set<SlicePosition> aUse,
-        std::vector<FunctionCallData> cFunc,
-        std::vector<std::pair<std::string, SlicePosition>> dv,
+        std::set<FunctionCallData> cFunc,
+        std::set<std::pair<std::string, SlicePosition>> dv,
         std::set<std::pair<SlicePosition, SlicePosition>> edges,
         bool containsDecl, bool visit) :
         variableName(name), declPosition(decl), potentialAlias(alias),
@@ -41,7 +41,6 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     isReference = rhs.isReference;
     variableName = rhs.variableName;
     variableType = rhs.variableType;
-    memberVariables = rhs.memberVariables;
     definitions = rhs.definitions;
     uses = rhs.uses;
     dvars = rhs.dvars;
@@ -56,6 +55,7 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     isPotentialArray = rhs.isPotentialArray;
     ignorePtrRef = rhs.ignorePtrRef;
     isFragment = rhs.isFragment;
+    expandCalls = rhs.expandCalls;
 }
 
 bool SliceProfile::operator==(const SliceProfile& rhs) const {
@@ -77,7 +77,6 @@ bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (isReference != rhs.isReference) return false;
     if (variableName != rhs.variableName) return false;
     if (variableType != rhs.variableType) return false;
-    if (memberVariables != rhs.memberVariables) return false;
     if (definitions != rhs.definitions) return false;
     if (uses != rhs.uses) return false;
     if (dvars != rhs.dvars) return false;
@@ -92,6 +91,7 @@ bool SliceProfile::operator==(const SliceProfile& rhs) const {
     if (isPotentialArray != rhs.isPotentialArray) return false;
     if (ignorePtrRef != rhs.ignorePtrRef) return false;
     if (isFragment != rhs.isFragment) return false;
+    if (expandCalls != rhs.expandCalls) return false;
 
     return true;
 }
@@ -119,7 +119,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
     out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
     
-    out << "    \"decl\":" << profile.declPosition.ToString() << "," << std::endl;
+    out << "    \"decl\":" << profile.declPosition.StartToString() << "," << std::endl;
 
     out << "    \"dependence\":[";
     first = true;
@@ -127,7 +127,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << "{\"" << dvar.first << "\":" << dvar.second.ToString() << "}";
+        out << "{\"" << dvar.first << "\":" << dvar.second.StartToString() << "}";
         first = false;
     }
     out << "]," << std::endl;
@@ -138,7 +138,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << "{\"" << alias.first << "\":" << alias.second.ToString() << "}";
+        out << "{\"" << alias.first << "\":" << alias.second.StartToString() << "}";
         first = false;
     }
     out << "]," << std::endl;
@@ -149,10 +149,16 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << "{\"functionName\":\"" << cfunc.functionName <<
-                "\",\"parameter\":\"" << cfunc.parameterIndex <<
-                "\",\"definitionPosition\":" << cfunc.definitionPosition.ToString() <<
-                ",\"invoke\":" << cfunc.invokePosition.ToString() << "}";
+        out << "{" <<
+                    "\"functionName\":\"" << cfunc.functionName;
+                    if (profile.expandCalls) {}
+                    out << "\",\"parameter\":\"" << cfunc.parameterIndex;
+                    out << "\",\"definitionPosition\":" << cfunc.funcPos.StartToString();
+                    if (profile.expandCalls) {
+                        out << ",\"endOfFunction\":" << cfunc.funcPos.EndToString();
+                    }
+                    out << ",\"invoke\":" << cfunc.invokePosition.StartToString() <<
+                "}";
         first = false;
     }
     out << "]," << std::endl;
@@ -164,7 +170,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << use.ToString();
+        out << use.StartToString();
         first = false;
     }
     out << "]," << std::endl;
@@ -176,7 +182,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         if (!first) {
             out << ",";
         }
-        out << def.ToString();
+        out << def.StartToString();
         first = false;
     }
 
@@ -189,8 +195,8 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
             if (!first) {
                 out << ",";
             }
-            out << "[" << edge.first.ToString() <<
-            "," << edge.second.ToString() << "]";
+            out << "[" << edge.first.StartToString() <<
+            "," << edge.second.StartToString() << "]";
             first = false;
         }
         out << "]" << std::endl;
@@ -201,52 +207,28 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     return out;
 }
 
-void SliceProfile::insertDvar(std::string name, SlicePosition& sp) {
-    std::pair<std::string, SlicePosition> p = std::make_pair(name, sp);
-    bool contained = std::find(
-        dvars.begin(),
-        dvars.end(),
-        p
-    ) != dvars.end();
-
-    if (!contained) {
-        dvars.push_back(p);
+void SliceProfile::merge(SliceProfile& other) {
+    if (!other.isFragment) {
+        std::cerr << "[!] SliceProfile::Merge argument should be a fragment, merge might not be correct.\n";
     }
-}
-void SliceProfile::insertAlias(std::string name, SlicePosition& sp) {
-    std::pair<std::string, SlicePosition> p = std::make_pair(name, sp);
-    bool contained = std::find(
-        aliases.begin(),
-        aliases.end(),
-        p
-    ) != aliases.end();
-    
-    if (!contained) {
-        aliases.push_back(p);
-    }
-}
-void SliceProfile::insertCfunction(FunctionCallData fcd) {
-    bool contained = std::find(
-        cfunctions.begin(),
-        cfunctions.end(),
-        fcd
-    ) != cfunctions.end();
-    
-    if (!contained) {
-        cfunctions.push_back(fcd);
-    }
-}
-
-void SliceProfile::merge(const SliceProfile& other) {
-    if (!other.isFragment) std::cerr << "[!] SliceProfile::Merge argument should be a fragment, merge might not be correct.\n";
     
     uses.insert(other.uses.begin(), other.uses.end());
-    definitions.insert(other.definitions.begin(), other.definitions.end());
-    controlEdges.insert(other.controlEdges.begin(), other.controlEdges.end());
+    other.uses.clear();
 
-    dvars.insert(dvars.end(), other.dvars.begin(), other.dvars.end());
-    aliases.insert(aliases.end(), other.aliases.begin(), other.aliases.end());
-    cfunctions.insert(cfunctions.end(), other.cfunctions.begin(), other.cfunctions.end());
+    definitions.insert(other.definitions.begin(), other.definitions.end());
+    other.definitions.clear();
+
+    controlEdges.insert(other.controlEdges.begin(), other.controlEdges.end());
+    other.controlEdges.clear();
+
+    dvars.insert(other.dvars.begin(), other.dvars.end());
+    other.dvars.clear();
+
+    aliases.insert(other.aliases.begin(), other.aliases.end());
+    other.aliases.clear();
+
+    cfunctions.insert(other.cfunctions.begin(), other.cfunctions.end());
+    other.cfunctions.clear();
 }
 
 bool SliceProfile::inScope(const SlicePosition& pos) {

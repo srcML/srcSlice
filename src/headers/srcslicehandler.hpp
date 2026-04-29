@@ -61,15 +61,29 @@ typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::Class
 inline std::atomic_bool unitsScaned{false};
 inline std::mutex dataMutex;
 
+struct CliInfo {
+    std::string inputFile;
+    std::string outputFile;
+    int threadCount;
+    bool calculateControlEdges;
+    bool expandCalls;
+    bool verboseMode;
+    bool progressMode;
+};
+struct TestArg {
+    bool calculateControlEdges;
+    bool expandCalls;
+};
+
 class SrcSliceHandler : public srcDispatch::PolicyListener {
 public:
     ~SrcSliceHandler();
 
-    // Use literal string filename ctor of srcSAXController (srcslice cpp main)
-    SrcSliceHandler(const char* filename, bool v, bool p, bool ce, int threads);
+    // Use information from cli (main.cpp)
+    SrcSliceHandler(const CliInfo& info);
 
     // Use string srcml buffer ctor of srcSAXController
-    SrcSliceHandler(std::string& sourceCodeStr, bool ce);
+    SrcSliceHandler(std::string& sourceCodeStr, const TestArg& info);
 
     void Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override;
 
@@ -123,7 +137,9 @@ private:
     bool verboseMode = false;
     bool calculateControlEdges = false;
     bool progressMode = false;
+    bool expandCalls = false;
 
+    std::mutex backlogMutex;
     int threadCount;
     std::queue<SrcSliceWorker*> backlog;
 

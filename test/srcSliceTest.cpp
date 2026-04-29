@@ -82,9 +82,9 @@ std::string StringsToArchive(std::vector<std::string> contents, std::vector<std:
     return archive_str;
 }
 
-std::string RunSrcSlice(std::string srcml, bool computeControlEdges) {
+std::string RunSrcSlice(std::string srcml, const TestArg& info) {
     std::ostringstream output;
-    SrcSliceHandler srcSliceHandler(srcml, computeControlEdges);
+    SrcSliceHandler srcSliceHandler(srcml, info);
     std::unordered_map<std::string, std::vector<SliceProfile>> profileMap = srcSliceHandler.GetProfileMap();
 
     output << "{" << std::endl;
@@ -94,6 +94,8 @@ std::string RunSrcSlice(std::string srcml, bool computeControlEdges) {
         for (auto& slice : profiles.second) {
             if (!slice.containsDeclaration)
                 continue;
+
+            slice.expandCalls = info.expandCalls;
 
             writtenSlices = true;
             // write out the start of the json object
@@ -120,14 +122,19 @@ std::string RunSrcSlice(std::string srcml, bool computeControlEdges) {
     return stream2string;
 }
 
-std::string FetchSlices(std::string cppSource, bool findControlEdges) {
+std::string FetchSlices(std::string cppSource) {
     std::string srcml = StringToSrcML(cppSource, "file.cpp");
-    return RunSrcSlice(srcml, findControlEdges);
+    return RunSrcSlice(srcml, { false, false });
 }
 
-std::string FetchSlices(std::vector<std::string> contents, std::vector<std::string> filenames, bool findControlEdges) {
+std::string FetchSlices(std::string cppSource, const TestArg& info) {
+    std::string srcml = StringToSrcML(cppSource, "file.cpp");
+    return RunSrcSlice(srcml, info);
+}
+
+std::string FetchSlices(std::vector<std::string> contents, std::vector<std::string> filenames, const TestArg& info) {
     std::string srcmlStr = StringsToArchive(contents, filenames);
-    return RunSrcSlice(srcmlStr, findControlEdges);
+    return RunSrcSlice(srcmlStr, info);
 }
 
 void PrintErr(const std::string testName, const std::string msg) {

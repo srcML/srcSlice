@@ -10,6 +10,11 @@
 #define CATCH_CONFIG_MAIN
 #include "./srcSliceTest.hpp"
 
+TestArg data = {
+    true, // control edges
+    false // cfunc expand
+};
+
 TEST_CASE( TestName("Control-Edge Test"), "[srcslice]" ) {
     ResetCount();
     std::cout << INFO << " Testing Simple Flows" << std::endl;
@@ -26,7 +31,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -68,7 +73,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -110,7 +115,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -154,7 +159,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -201,7 +206,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -247,7 +252,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -295,7 +300,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -342,7 +347,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -391,7 +396,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -440,7 +445,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -501,7 +506,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -545,7 +550,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "i-3-14":{
@@ -607,7 +612,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "i-3-14":{
@@ -667,7 +672,7 @@ int main() {
 }
 )";
 
-    json produced = json::parse(FetchSlices(sourceCode, true));
+    json produced = json::parse(FetchSlices(sourceCode, data));
 
     json expected = R"({
     "a-3-9":{
@@ -712,7 +717,7 @@ int main() {
     foo(b);
 }
 )"
-    }, {"file.cpp","/utils/file2.cpp"}, true));
+    }, {"file.cpp","/utils/file2.cpp"}, data));
 
     json expected = R"({
     "a-2-14":{
