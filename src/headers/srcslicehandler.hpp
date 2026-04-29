@@ -70,7 +70,6 @@ struct CliInfo {
     bool verboseMode;
     bool progressMode;
 };
-
 struct TestArg {
     bool calculateControlEdges;
     bool expandCalls;
@@ -84,7 +83,7 @@ public:
     SrcSliceHandler(const CliInfo& info);
 
     // Use string srcml buffer ctor of srcSAXController
-    SrcSliceHandler(std::string& sourceCodeStr, bool ce);
+    SrcSliceHandler(std::string& sourceCodeStr, const TestArg& info);
 
     void Notify(const srcDispatch::PolicyDispatcher *policy, const srcDispatch::srcSAXEventContext &ctx) override;
 
@@ -140,6 +139,7 @@ private:
     bool progressMode = false;
     bool expandCalls = false;
 
+    std::mutex backlogMutex;
     int threadCount;
     std::queue<SrcSliceWorker*> backlog;
 

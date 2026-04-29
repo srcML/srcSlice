@@ -1497,24 +1497,31 @@ void SrcSliceOperations::ProcessFunctionSignature(Blob& data, const SliceCtx& sc
     // Process the parameters in a separate function
     auto& functionParameters = funcData->parameters;
     auto funcSig = data.functionSigMap.find(functionName);
+    bool isDefined = funcData->block;
 
     if (funcSig != data.functionSigMap.end()) {
         if (updateSignature) {
             for (auto& func : funcSig->second) {
-                if (func.parameters.empty()) continue;
+                if (func.isDefined) continue;
                 if (func.parameters.size() == functionParameters.size()) {
                     // Update marked signature
-                    func = FunctionSignatureData(funcData, className, sctx);
+                    func = FunctionSignatureData(funcData, className, isDefined, sctx);
                     break;
                 }
             }
+
+            // if we cannot find a signature to update, just insert it
+            funcSig->second.push_back({funcData, className, isDefined, sctx});
         } else {
+            // do not insert an overloaded signature that is not defined
+            if (!isDefined) return;
+            
             // overloaded function detected
-            funcSig->second.push_back({funcData, className, sctx});
+            funcSig->second.push_back({funcData, className, isDefined, sctx});
         }
     } else {
         // Insert a new signature
-        data.functionSigMap[functionName].push_back({funcData, className, sctx});
+        data.functionSigMap[functionName].push_back({funcData, className, isDefined, sctx});
     }
 }
 

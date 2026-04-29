@@ -202,8 +202,7 @@ size_t FindContextBlock(SlicePosition& sline, std::vector<SlicePosition>& group)
 
 FunctionSignatureData::FunctionSignatureData(
     srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
-    std::string className,
-    const SliceCtx& ctx) {
+    std::string className, bool blockDefined, const SliceCtx& ctx) {
     position = SlicePosition(func->startPosition, func->endPosition, ctx.currentFilePath);
     name = func->name.ToString();
     returnType = func->returnType.ToString();
@@ -213,6 +212,7 @@ FunctionSignatureData::FunctionSignatureData(
     currentFileChecksum = ctx.currentFileChecksum;
     currentFileLanguage = ctx.currentFileLanguage;
     containingNamespaces = ctx.containingNamespaces;
+    isDefined = blockDefined;
 }
 
 FunctionCallData::FunctionCallData(
@@ -223,8 +223,8 @@ FunctionCallData::FunctionCallData(
     SlicePosition invokePos,
     bool ignore_
 ): functionName(funcName), parameterIndex(paramIndex),
-funcPos(funcPos),
-invokePosition(invokePos), argumentCount(argc), ignore(ignore_) {};
+funcPos(funcPos), invokePosition(invokePos),
+argumentCount(argc), ignore(ignore_) {};
 
 FunctionCallData::FunctionCallData(const FunctionCallData& rhs) {
     functionName = rhs.functionName;

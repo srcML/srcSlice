@@ -10,6 +10,10 @@
 #define CATCH_CONFIG_MAIN
 #include "./srcSliceTest.hpp"
 
+TestArg data = {
+    false,false
+};
+
 TEST_CASE( TestName("Multi-file Test"), "[srcslice]" ) {
     ResetCount();
     std::cout << INFO << " Testing Multi-file Slicing" << std::endl;
@@ -25,7 +29,7 @@ int main() {
     int b;
 }
 )"
-    }, {"file.cpp","file2.cpp"}));
+    }, {"file.cpp","file2.cpp"}, data));
 
     json expected = R"({
     "a-3-9":{
@@ -77,7 +81,7 @@ int main() {
     foo(b);
 }
 )"
-    }, {"file.cpp","file2.cpp"}));
+    }, {"file.cpp","file2.cpp"}, data));
 
     json expected = R"({
     "a-2-14":{
@@ -129,7 +133,7 @@ int main() {
     foo(b);
 }
 )"
-    }, {"file.cpp","/utils/file2.cpp"}));
+    }, {"file.cpp","/utils/file2.cpp"}, data));
 
     json expected = R"({
     "a-2-14":{
@@ -181,7 +185,7 @@ int bar() {
     foo(b);
 }
 )"
-    }, {"/etc/file.cpp","/utils/file2.cpp"}));
+    }, {"/etc/file.cpp","/utils/file2.cpp"}, data));
 
     json expected = R"({
     "a-2-14":{
@@ -239,7 +243,7 @@ int bar() {
     foo(b, 'v');
 }
 )"
-    }, {"/etc/file.cpp","file3.cpp","/utils/file2.cpp"}));
+    }, {"/etc/file.cpp","file3.cpp","/utils/file2.cpp"}, data));
 
     json expected = R"({
     "a-2-14":{
@@ -325,7 +329,7 @@ int main() {
     mycalc::sum(x,y);
 }
 )"
-    }, {"calc.cpp","file.cpp"}));
+    }, {"calc.cpp","file.cpp"}, data));
 
     json expected = R"({
     "a-2-21":{
@@ -421,7 +425,7 @@ int main() {
     std::cout << eth.GetAmount() << std::endl;
 }
 )"
-    }, {"ether.cpp","file.cpp"}));
+    }, {"ether.cpp","file.cpp"}, data));
 
     json expected = R"({
     "amount-11-9":{
@@ -526,7 +530,7 @@ int main() {
     foo(x,y);
 }
 )"
-    }, {"file2.cpp","file.cpp"}));
+    }, {"file2.cpp","file.cpp"}, data));
 
     json expected = R"({
     "a-2-13":{
@@ -764,7 +768,7 @@ private:
 
 #endif
 )"
-    }, {"file.cpp","file.hpp"}));
+    }, {"file.cpp","file.hpp"}, data));
 
     json expected = R"({
     "sigma-5-5":{
@@ -812,23 +816,6 @@ private:
         "use":["file.cpp:19:18"],
         "definition":["file.hpp:7:20"]
     }
-    })"_json;
-
-    std::string testName = Catch::getResultCapture().getCurrentTestName();
-    REQUIRE( CompareJson("", testName, produced, expected) );
-}
-
-TEST_CASE( TestName("Multi-file Test"), "[srcslice]" ) {
-    json produced = json::parse(FetchSlices((std::vector<std::string>){
-R"(
-
-)",
-R"(
-
-)"
-    }, {"file.cpp","file.hpp"}));
-
-    json expected = R"({
     })"_json;
 
     std::string testName = Catch::getResultCapture().getCurrentTestName();

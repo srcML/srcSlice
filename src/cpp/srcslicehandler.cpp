@@ -45,7 +45,8 @@ SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
 
     std::thread t = std::thread(&SrcSliceHandler::ManageThreads, this);
 
-    srcSAXController control(info.inputFile);
+    // argument must be a c string (const char*) or else a saxError is thrown
+    srcSAXController control(info.inputFile.c_str());
     srcDispatch::srcDispatcher<srcDispatch::UnitPolicy> handler(this);
     
     if (progressMode) {
@@ -78,7 +79,9 @@ SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
 }
 
 // Use string srcml buffer ctor of srcSAXController
-SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, bool ce) : verboseMode(false), calculateControlEdges(ce) {
+SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, const TestArg& info): verboseMode(false) {
+    calculateControlEdges = info.calculateControlEdges;
+
     // test-suite contains single-unit tests => multiple threads would be wasteful
     threadCount = 1;
 
@@ -113,6 +116,9 @@ void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const 
         for (const auto& includeData : unit->includes) {
             fileDependencyTable[ctx.currentFilePath].push_back(includeData->path.ToString());
         }
+
+        // lock the backlog because main and p_thread access this queue obj
+        std::lock_guard<std::mutex> lock(backlogMutex);
 
         // push worker into queue
         backlog.push(
@@ -218,12 +224,13 @@ void SrcSliceHandler::ManageThreads() {
     bool runningJobs = true;
 
     while (runningJobs) {
-        bool allDispatched = backlog.empty() && unitsScaned.load(std::memory_order_acquire);
+        // lock the backlog because main and p_thread access this queue obj
+        std::lock_guard<std::mutex> lock(backlogMutex);
+        
         int activeJobs = 0;
 
         for (int i = 0; i < threadCount; ++i) {
             if (workers[i] != nullptr) {
-                ++activeJobs;
                 if (workers[i]->Finished()) {
                     workers[i]->WaitForJob();
                     
@@ -236,23 +243,29 @@ void SrcSliceHandler::ManageThreads() {
                 } else {
                     // job is active do not continue
                     // the iteration and potentially replace this active worker
+                    ++activeJobs;
                     continue;
                 }
             }
 
             // pass pointer by reference so we can reassign its reference
             replaceWorker(&workers[i]);
+
+            // replaced workers should be marked as an active job
+            if (workers[i] != nullptr) {
+                ++activeJobs;
+            }
         }
 
         // all jobs have been dispatched and completed
         // and no jobs are active
-        if (allDispatched && activeJobs == 0) {
-            runningJobs = false;
-            continue;
-        }
+        bool allDone = unitsScaned.load(std::memory_order_acquire)
+                   && backlog.empty()
+                   && activeJobs == 0;
 
-        // prevent full utilization of CPU
-        std::this_thread::sleep_for(std::chrono::milliseconds(50));
+        if (allDone) {
+            runningJobs = false;
+        }
     }
 }
 

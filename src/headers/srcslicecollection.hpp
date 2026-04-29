@@ -99,7 +99,7 @@ class FunctionSignatureData {
 public:
     FunctionSignatureData(){};
     FunctionSignatureData(srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::FunctionData>>& func,
-                            std::string className, const SliceCtx& ctx);
+                            std::string className, bool blockDefined, const SliceCtx& ctx);
     SlicePosition position;
     std::string name;
     std::string returnType;
@@ -109,6 +109,7 @@ public:
     std::string currentFileChecksum;
     std::string currentFileLanguage;
     std::vector<std::string> containingNamespaces;
+    bool isDefined;
 };
 
 // Store meta-data about a function-call by tracking:

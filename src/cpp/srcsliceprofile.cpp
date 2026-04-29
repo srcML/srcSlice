@@ -155,7 +155,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
                     out << "\",\"parameter\":\"" << cfunc.parameterIndex;
                     out << "\",\"definitionPosition\":" << cfunc.funcPos.StartToString();
                     if (profile.expandCalls) {
-                        out << "\",\"endOfFunction\":\"" << cfunc.funcPos.EndToString() << "\"";
+                        out << ",\"endOfFunction\":" << cfunc.funcPos.EndToString();
                     }
                     out << ",\"invoke\":" << cfunc.invokePosition.StartToString() <<
                 "}";
