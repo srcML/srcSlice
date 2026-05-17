@@ -1377,6 +1377,11 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const std::
             // use/def/call data
             std::shared_ptr<srcDispatch::CallData> callData = std::any_cast<std::shared_ptr<srcDispatch::CallData>>(exprElem.GetElement());
 
+            if (!callData->name) {
+                std::cerr << "[-] Call Name does not exist!\n";
+                continue;
+            }
+
             if (data.verboseMode) {
                 std::cout << "[*] " << __FUNCTION__ << ":" << __LINE__  << " | Parsing For Targets: " << callData->name.ToString() << "\n";
             }
