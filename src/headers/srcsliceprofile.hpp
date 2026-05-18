@@ -84,6 +84,7 @@ public:
 
     bool isFragment = false;
 
+    std::string jsonKey() const;
     friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile);
 };
 

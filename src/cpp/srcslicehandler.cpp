@@ -37,6 +37,7 @@ SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
     progressMode = info.progressMode;
     calculateControlEdges = info.calculateControlEdges;
     expandCalls = info.expandCalls;
+    expandAliases = info.expandAliases;
 
     // if an invalid number is passed default to 1 thread
     threadCount = (info.threadCount > 0) ? info.threadCount : 1;
@@ -81,6 +82,7 @@ SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
 // Use string srcml buffer ctor of srcSAXController
 SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, const TestArg& info): verboseMode(false) {
     calculateControlEdges = info.calculateControlEdges;
+    expandAliases = info.expandAliases;
 
     // test-suite contains single-unit tests => multiple threads would be wasteful
     threadCount = 1;
@@ -203,7 +205,7 @@ void SrcSliceHandler::ManageThreads() {
         
         // populates Aliases attribute in slice profiles and
         // performs crude interprocedural to connect use/def data
-        ComputeAliasInterprocedural();
+        if (expandAliases) ComputeAliasInterprocedural();
         ComputeInterprocedural();
     };
 
@@ -524,10 +526,10 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
     return Spi;
 }
 
-// Need to track Aliases we have already read through
-// InterProcedural from the normal call should also be reflected
-// if a profile with alias(s) is used in function calls
+// Similiar to ComputeInterprocedural but focuses on building
+// a more detailed alias listing for slices of pointers
 void SrcSliceHandler::ComputeAliasInterprocedural() {
+    // speed problems origin
     std::unordered_set <std::string> visited_alias;
 
     for (auto& sliceGroup : profileMap) {
@@ -535,28 +537,30 @@ void SrcSliceHandler::ComputeAliasInterprocedural() {
         for (auto& sp : sliceGroup.second) {
             if (!sp.containsDeclaration) continue;
             for (auto& alias : sp.aliases) {
+                // check if the alias has been visited
+                if (visited_alias.find(alias.first) != visited_alias.end())
+                    break;
+
                 // view aliases of the slice profile
-                auto spi = profileMap.find(alias.first);
-                if (spi == profileMap.end()) continue;
+                auto aliasProfileGroup = profileMap.find(alias.first);
+                if (aliasProfileGroup == profileMap.end()) continue;
 
                 // fingerprint the profile based on contained use
-                for (auto& aspi : spi->second) {
+                for (auto& aspi : aliasProfileGroup->second) {
                     if (!aspi.containsDeclaration) continue;
                     
-                    auto usesItr = std::find(aspi.uses.begin(), aspi.uses.end(), alias.second);
+                    auto usesItr = aspi.uses.find(alias.second);
                     if (usesItr == aspi.uses.end()) continue;
                     
                     // determine if the potential target is a pointer or reference
                     if (!aspi.isPointer && !aspi.isReference) continue;
 
-                    // check if the alias has been visited
-                    if (visited_alias.find(aspi.variableName) != visited_alias.end()) continue;
-
                     // mark alias as visited so we dont review this alias entry again (circular dependence protection)
-                    visited_alias.insert(aspi.variableName);
+                    visited_alias.insert(aspi.jsonKey());
 
                     // push_back alias slice profile's aliases into the source slice aliases
                     sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
+                    break;
                 }
             }
         }

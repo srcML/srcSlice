@@ -87,6 +87,7 @@ Options:
   -t,--threads INT [7]        Number of concurrent threads [Default 7]
   -c,--control-edges          Display Control-Edges of the Slice
   -e,--expand-calls           Generate more details in cfunction entries
+  -a,--expand-aliases         Expand Alias list
   -v,--verbose                Display Debug Info when Slicing
   -p,--progress               Display Feedback Progress Bars
 ```

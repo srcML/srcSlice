@@ -1278,91 +1278,84 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const std::
                 }
             }
         } else if (exprElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::OperatorData>)) {
+
             std::shared_ptr<srcDispatch::OperatorData> opData = std::any_cast<std::shared_ptr<srcDispatch::OperatorData>>(exprElem.GetElement());
             std::string current_op_token = opData->op.ToString();
 
             expr_op = (current_op_token == "(" || current_op_token == ")") ? expr_op : current_op_token;
 
             ectx.lastToken.prevToken = ectx.lastToken.token;
+
+            // have alias sp found incase we need it later on
+            std::string name = (ectx.spi == data.profileMap.end()) ? "" : ectx.spi->second.back().currentPointerReference;
+            auto aspi = (name.empty()) ? data.profileMap.end() : data.profileMap.find(name);
             
             // used to ensure if we just set dereferenced to true we do not instantly reset it
             bool reset = true;
 
-            if (current_op_token != "(") {
-                if (SrcSliceOperations::isAssignment(expr_op)) {
-                    std::string name = (ectx.spi == data.profileMap.end()) ? "" : ectx.spi->second.back().currentPointerReference;
-                    auto aspi = data.profileMap.find(name);
-
-                    if (!ectx.dereferenced) {
-                        // redefining a normal variable
-                        ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
-                        
-                        ExprParse::popUse(data.profileMap, ectx.spi, ectx);
-                        // if spi is a pointer then when we redefine a pointer's reference
-                        // we are not using the current reference
-                        ExprParse::popUse(data.profileMap, aspi, ectx);
-
-                        lhsStack.push_back(recent_name);
-                    } else {
-                        // redefining a pointer's reference
-                        ExprParse::pushDef(data.profileMap, aspi, ectx);
-                        ExprParse::popUse(data.profileMap, aspi, ectx);
-
-                        if (aspi != data.profileMap.end())
-                            lhsStack.push_back(aspi->second.back().variableName);
-                    }
-    
+            if (SrcSliceOperations::isAssignment(expr_op)) {
+                if (!ectx.dereferenced) {
+                    // redefining a normal variable
+                    ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
                     
-                    if (SrcSliceOperations::isCompoundAssignment(expr_op)) {
-                        // recent_name (new lhs) is used and redefined
-                        ExprParse::pushUse(data.profileMap, ectx.spi, ectx);
-    
-                        if (ectx.dereferenced) {
-                            // redefining a pointer's reference
-                            ExprParse::pushUse(data.profileMap, aspi, ectx);
-                        }
+                    ExprParse::popUse(data.profileMap, ectx.spi, ectx);
+                    // if spi is a pointer then when we redefine a pointer's reference
+                    // we are not using the current reference
+                    ExprParse::popUse(data.profileMap, aspi, ectx);
+
+                    lhsStack.push_back(recent_name);
+                } else {
+                    // redefining a pointer's reference
+                    ExprParse::pushDef(data.profileMap, aspi, ectx);
+                    ExprParse::popUse(data.profileMap, aspi, ectx);
+
+                    if (aspi != data.profileMap.end())
+                        lhsStack.push_back(aspi->second.back().variableName);
+                }
+
+                
+                if (SrcSliceOperations::isCompoundAssignment(expr_op)) {
+                    // recent_name (new lhs) is used and redefined
+                    ExprParse::pushUse(data.profileMap, ectx.spi, ectx);
+
+                    if (ectx.dereferenced) {
+                        // redefining a pointer's reference
+                        ExprParse::pushUse(data.profileMap, aspi, ectx);
                     }
-                } else if (current_op_token == "<<" || current_op_token == ">>") {
-                    if (sctx.currentFileLanguage == "C++") {
-                        if (current_op_token == "<<") {
-                            if (ExprParse::IsIO(sctx, ectx.firstNameData) == 0 || ExprParse::IsIO(sctx, ectx.firstNameData) == 1) {
-                                ectx.cppOutput = true;
-                            }
-                        } else if (current_op_token == ">>") {
-                            if (ExprParse::IsIO(sctx, ectx.firstNameData) == 2) {
-                                ectx.cppInput = true;
-                            }
-                        }
-                    }
-                } else if ((ectx.lastToken.type != ExprParse::TokenType::NAME && ectx.lastToken.prevToken != ")") || current_op_token == ")") {
-                    // a & b is a bitwise operation
-                    if (expr_op == "&") {
-                        ectx.addressOf = true;
-                    } else if (expr_op == "*") {
-                        reset = false;
-                        ectx.dereferenced = true;
-                        
-                        if (current_op_token != ")") {
-                            ++ectx.dLength;
-                        }
-                    } else if (expr_op == "++" || expr_op == "--") {
-                        ectx.prefixed = true;
+                }
+            } else if ( sctx.currentFileLanguage == "C++" && (current_op_token == "<<" || current_op_token == ">>") ) {
+                IO_TYPE io_op = ExprParse::IsIO(sctx, ectx.firstNameData);
+
+                if (io_op == IO_TYPE::STD_OUT || io_op == IO_TYPE::STD_ERR) {
+                    ectx.cppOutput = true;
+                } else if (io_op == IO_TYPE::STD_IN) {
+                    ectx.cppInput = true;
+                }
+            } else if ((ectx.lastToken.type != ExprParse::TokenType::NAME && ectx.lastToken.prevToken != ")") || current_op_token == ")") {
+                // a & b is a bitwise operation
+                if (expr_op == "&") {
+                    ectx.addressOf = true;
+                } else if (expr_op == "*") {
+                    reset = false;
+                    ectx.dereferenced = true;
+                    
+                    if (current_op_token != ")") {
+                        ++ectx.dLength;
                     }
                 } else if (expr_op == "++" || expr_op == "--") {
-                    // postfixing
-                    if (ectx.lastToken.type == ExprParse::TokenType::NAME || ectx.lastToken.prevToken == ")") {
-                        if (ectx.dereferenced) {
-                            // redefining a pointer's reference
-                            std::string name = (ectx.spi == data.profileMap.end()) ? "" : ectx.spi->second.back().currentPointerReference;
-                            auto aspi = data.profileMap.find(name);
-                            
-                            ExprParse::pushDef(data.profileMap, aspi, ectx);
-                            ExprParse::pushUse(data.profileMap, aspi, ectx);
-                        } else {
-                            // normal variable
-                            ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
-                            ExprParse::pushUse(data.profileMap, ectx.spi, ectx);
-                        }
+                    ectx.prefixed = true;
+                }
+            } else if (expr_op == "++" || expr_op == "--") {
+                // postfixing
+                if (ectx.lastToken.type == ExprParse::TokenType::NAME || ectx.lastToken.prevToken == ")") {
+                    if (ectx.dereferenced) {
+                        // redefining a pointer's reference
+                        ExprParse::pushDef(data.profileMap, aspi, ectx);
+                        ExprParse::pushUse(data.profileMap, aspi, ectx);
+                    } else {
+                        // normal variable
+                        ExprParse::pushDef(data.profileMap, ectx.spi, ectx);
+                        ExprParse::pushUse(data.profileMap, ectx.spi, ectx);
                     }
                 }
             }

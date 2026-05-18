@@ -67,12 +67,14 @@ struct CliInfo {
     int threadCount;
     bool calculateControlEdges;
     bool expandCalls;
+    bool expandAliases;
     bool verboseMode;
     bool progressMode;
 };
 struct TestArg {
     bool calculateControlEdges;
     bool expandCalls;
+    bool expandAliases;
 };
 
 class SrcSliceHandler : public srcDispatch::PolicyListener {
@@ -138,6 +140,7 @@ private:
     bool calculateControlEdges = false;
     bool progressMode = false;
     bool expandCalls = false;
+    bool expandAliases = false;
 
     std::mutex backlogMutex;
     int threadCount;

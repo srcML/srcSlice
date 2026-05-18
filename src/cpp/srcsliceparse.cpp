@@ -9,30 +9,28 @@
 
 #include <srcsliceparse.hpp>
 
-// Returns a numeric id based on the type of C++ IO operation is within given NameData
-// -1 => None | 0 => cout | 1 => cerr | 2 => cin
-int ExprParse::IsIO(const SliceCtx& sctx, const srcDispatch::NameData* nameDataPtr) {
+IO_TYPE ExprParse::IsIO(const SliceCtx& sctx, const srcDispatch::NameData* nameDataPtr) {
     if (nameDataPtr == nullptr || sctx.currentFileLanguage != "C++") {
-        return -1;
+        return IO_TYPE::NONE;
     }
 
     // check for straight up simple call
-    if (nameDataPtr->name == "cout") return 0;
-    else if (nameDataPtr->name == "cerr") return 1;
-    else if (nameDataPtr->name == "cin") return 2;
+    if (nameDataPtr->name == "cout") return IO_TYPE::STD_OUT;
+    else if (nameDataPtr->name == "cerr") return IO_TYPE::STD_ERR;
+    else if (nameDataPtr->name == "cin") return IO_TYPE::STD_IN;
 
     // check for scoped-call
     for (const auto& nameElem : nameDataPtr->names) {
         if (nameElem.GetElement().type() == typeid(std::shared_ptr<srcDispatch::NameData>)) {
             std::shared_ptr<srcDispatch::NameData> nameData = std::any_cast<std::shared_ptr<srcDispatch::NameData>>(nameElem.GetElement());
             
-            if (nameData->name.ToString() == "cout") return 0;
-            else if (nameData->name.ToString() == "cerr") return 1;
-            else if (nameData->name.ToString() == "cin") return 2;
+            if (nameData->name == "cout") return IO_TYPE::STD_OUT;
+            else if (nameData->name == "cerr") return IO_TYPE::STD_ERR;
+            else if (nameData->name == "cin") return IO_TYPE::STD_IN;
         }
     }
 
-    return -1;
+    return IO_TYPE::NONE;
 };
 
 /**

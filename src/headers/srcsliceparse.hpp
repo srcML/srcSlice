@@ -15,6 +15,8 @@
 typedef std::unordered_map<std::string, std::vector<SliceProfile>>::iterator SliceProfileIterator;
 typedef std::unordered_map<std::string, std::vector<SliceProfile>> SliceProfileMap;
 
+enum class IO_TYPE { NONE, STD_OUT, STD_ERR, STD_IN };
+
 namespace ExprParse {
     enum class TokenType {
         NONE,
@@ -67,9 +69,8 @@ namespace ExprParse {
         std::vector<std::string>* lhsStackPtr = nullptr;
     };
 
-    // Returns a numeric id based on the type of C++ IO operation is within given NameData
-    // -1 => None | 0 => cout | 1 => cerr | 2 => cin
-    int IsIO(const SliceCtx& sctx, const srcDispatch::NameData* nameDataPtr = nullptr);
+    // Determines the type of IO operation occuring within a provided NameData object
+    IO_TYPE IsIO(const SliceCtx& sctx, const srcDispatch::NameData* nameDataPtr = nullptr);
 
     /**
      * Find the root name within a complex name

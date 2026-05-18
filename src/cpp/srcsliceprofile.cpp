@@ -100,8 +100,8 @@ bool SliceProfile::operator!=(const SliceProfile& rhs) const {
 }
 
 std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
-    out << "    \"file\":\"" << profile.file << "\"," << std::endl;
-    out << "    \"language\":\"" << profile.language << "\"," << std::endl;
+    out << "    \"file\":\"" << profile.file << "\"," << "\n";
+    out << "    \"language\":\"" << profile.language << "\"," << "\n";
     
     out << "    \"namespace\":[";
     bool first = true;
@@ -112,14 +112,14 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "\"" << nameSpace.substr(0, nameSpace.find(' ')) << "\"";
         first = false;
     }
-    out << "]," << std::endl;
+    out << "]," << "\n";
 
-    out << "    \"class\":\"" << profile.nameOfContainingClass << "\"," << std::endl;
-    out << "    \"function\":\"" << profile.function << "\"," << std::endl;
-    out << "    \"type\":\"" << profile.variableType << "\"," << std::endl;
-    out << "    \"name\":\"" << profile.variableName << "\"," << std::endl;
+    out << "    \"class\":\"" << profile.nameOfContainingClass << "\"," << "\n";
+    out << "    \"function\":\"" << profile.function << "\"," << "\n";
+    out << "    \"type\":\"" << profile.variableType << "\"," << "\n";
+    out << "    \"name\":\"" << profile.variableName << "\"," << "\n";
     
-    out << "    \"decl\":" << profile.declPosition.StartToString() << "," << std::endl;
+    out << "    \"decl\":" << profile.declPosition.StartToString() << "," << "\n";
 
     out << "    \"dependence\":[";
     first = true;
@@ -130,7 +130,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "{\"" << dvar.first << "\":" << dvar.second.StartToString() << "}";
         first = false;
     }
-    out << "]," << std::endl;
+    out << "]," << "\n";
 
     out << "    \"aliases\":[";
     first = true;
@@ -141,7 +141,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << "{\"" << alias.first << "\":" << alias.second.StartToString() << "}";
         first = false;
     }
-    out << "]," << std::endl;
+    out << "]," << "\n";
 
     out << "    \"calls\":[";
     first = true;
@@ -161,7 +161,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
                 "}";
         first = false;
     }
-    out << "]," << std::endl;
+    out << "]," << "\n";
 
     // "use": [ { "start": "2:10", "end": "2:17" }, ... ]
     out << "    \"use\":[";
@@ -173,7 +173,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
         out << use.StartToString();
         first = false;
     }
-    out << "]," << std::endl;
+    out << "]," << "\n";
 
     // "definition": [ { "start": "2:10", "end": "2:17" }, ... ]
     out << "    \"definition\":[";
@@ -187,7 +187,7 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
     }
 
     if (profile.showControlEdges) {
-        out << "]," << std::endl;
+        out << "]," << "\n";
 
         out << "    \"controlEdges\":[";
         first = true;
@@ -199,9 +199,9 @@ std::ostream& operator<<(std::ostream& out, SliceProfile& profile) {
             "," << edge.second.StartToString() << "]";
             first = false;
         }
-        out << "]" << std::endl;
+        out << "]" << "\n";
     } else {
-        out << "]" << std::endl;
+        out << "]" << "\n";
     }
 
     return out;
@@ -244,4 +244,8 @@ bool SliceProfile::inScope(const SlicePosition& pos) {
     if (pos < declPosition) return false;
     if (endOfScope < pos) return false;
     return true;
+}
+
+std::string SliceProfile::jsonKey() const {
+    return variableName + '-' + declPosition.ToNameString() + '-' + checksum;
 }
