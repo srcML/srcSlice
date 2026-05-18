@@ -27,7 +27,8 @@ int main(int argc, char **argv)
     int threadCount = defaultThreads();
     std::ofstream outFile;
     bool verboseMode = false, feedbackMode = false,
-        showControlEdges = false, expandCalls = false;
+        showControlEdges = false, expandCalls = false,
+        expandAliases = false;
 
     std::ostringstream ss;
     ss << "Number of concurrent threads [Default " << threadCount << "]";
@@ -43,7 +44,8 @@ int main(int argc, char **argv)
     
     app.add_flag    ("-c, --control-edges", showControlEdges,       "Display Control-Edges of the Slice");
     app.add_flag    ("-e, --expand-calls", expandCalls,             "Generate more details in cfunction entries");
-    app.add_flag    ("-v, --verbose", verboseMode,                    "Display Debug Info when Slicing");
+    app.add_flag    ("-a, --expand-aliases", expandAliases,         "Expand Alias list");
+    app.add_flag    ("-v, --verbose", verboseMode,                  "Display Debug Info when Slicing");
     app.add_flag    ("-p, --progress", feedbackMode,                "Display Feedback Progress Bars");
     
     CLI11_PARSE(app, argc, argv);
@@ -53,6 +55,7 @@ int main(int argc, char **argv)
         threadCount,
         showControlEdges,
         expandCalls,
+        expandAliases,
         verboseMode,
         feedbackMode
     };
@@ -67,6 +70,10 @@ int main(int argc, char **argv)
 
         if (showControlEdges) {
             std::cout << "[\033[33mWARNING\033[0m] Computing control-edges may increase the time required to complete the program\n";
+        }
+
+        if (expandAliases) {
+            std::cout << "[\033[33mWARNING\033[0m] Expanding Pointer Aliasing may increase the time required to complete the program\n";
         }
 
         SrcSliceHandler srcSliceHandler(info);
@@ -84,7 +91,7 @@ int main(int argc, char **argv)
         }
 
         // opening of the entire JSON object
-        sliceOutput << "{" << std::endl;
+        sliceOutput << "{\n";
         bool writtenSlices = false;
 
         for (auto& profiles : sliceProfileMap) {
@@ -99,9 +106,9 @@ int main(int argc, char **argv)
                 writtenSlices = true;
                 std::string name(slice.variableName + '-' + slice.declPosition.ToNameString() + '-' + slice.checksum);
 
-                sliceOutput << "\"" << name << "\":{" << std::endl;
+                sliceOutput << "\"" << slice.jsonKey() << "\":{\n";
                 sliceOutput << slice;
-                sliceOutput << "}," << std::endl;
+                sliceOutput << "},\n";
             }
         }
 
@@ -119,20 +126,20 @@ int main(int argc, char **argv)
 
         // write to either stdout or output file
         if (!outputFile.empty()) {
-            std::cout << "Writing to :: " << outputFile << std::endl;
+            std::cout << "Writing to :: " << outputFile << "\n";
             outFile << stream2string;
         } else {
             std::cout << stream2string;
         }
     } catch (const std::exception& e) {
-        std::cout << "\033[31m" << e.what() << "\033[0m" << std::endl;
+        std::cout << "\033[31m" << e.what() << "\033[0m" << "\n";
         return 3;
     }
 
     // ensure if we do have an output file we close it
     // alert user that an output file has been created
     if (!outputFile.empty()) {
-        std::cout << "Output Saved to :: " << outputFile << std::endl;
+        std::cout << "Output Saved to :: " << outputFile << "\n";
         outFile.close();
     }
 }
