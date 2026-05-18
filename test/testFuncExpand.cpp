@@ -11,11 +11,12 @@
 #include "./srcSliceTest.hpp"
 
 TestArg data = {
-    false, // control edges
-    true // cfunc expand
+    false,  // control edges
+    true,   // cfunc expand
+    false   // alias expand
 };
 
-TEST_CASE( TestName("Control-Edge Test"), "[srcslice]" ) {
+TEST_CASE( TestName("Call Expansion Test"), "[srcslice]" ) {
     ResetCount();
     std::cout << INFO << " Testing Cfunction Expansion" << std::endl;
 
@@ -84,7 +85,7 @@ int main() {
     REQUIRE( CompareJson(sourceCode, testName, produced, expected) );
 }
 
-TEST_CASE( TestName("Control-Edge Test"), "[srcslice]" ) {
+TEST_CASE( TestName("Call Expansion Test"), "[srcslice]" ) {
     // Raw-Strings C++11
     std::string sourceCode = R"(
 class Remer {

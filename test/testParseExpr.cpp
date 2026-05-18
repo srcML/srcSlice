@@ -5403,7 +5403,7 @@ int main() {
         "name":"mptr",
         "decl":"file.cpp:5:11",
         "dependence":[],
-        "aliases":[{"p":"file.cpp:5:19"},{"a":"file.cpp:4:15"}],
+        "aliases":[{"p":"file.cpp:5:19"}],
         "calls":[],
         "use":[],
         "definition":["file.cpp:5:11"]
