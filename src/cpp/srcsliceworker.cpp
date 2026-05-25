@@ -1216,50 +1216,27 @@ void SrcSliceOperations::ParseExpr(Blob& data, const SliceCtx& sctx, const std::
                                     }
                                 }
 
+                                // could not locate potential signatures
                                 if (signatures.empty()) {
-                                    size_t sigIndex = 0;
-                                    
-                                    for (sigIndex = 0; sigIndex < funcSig->second.size(); ++sigIndex) {
-                                        if (funcSig->second[sigIndex].parameters.empty()) continue;
-
-                                        bool argumentInBounds = (argIndex-1 < funcSig->second[sigIndex].parameters.size());
-                                        if (!argumentInBounds) continue;
-
-                                        bool validArgCount = (funcCallData->arguments.size() <= funcSig->second[sigIndex].parameters.size());
-                                        if (!validArgCount) continue;
-
-                                        if (!potentialContainingClass.empty()) {
-                                            // check if the call data has the matching class name
-                                            bool matchingClass = (funcSig->second[sigIndex].containingClass == potentialContainingClass);
-                                            if (!matchingClass) continue;
-                                        }
-                                        
-                                        if (funcCallData->arguments.size() < funcSig->second[sigIndex].parameters.size()) {
-                                            signatures.push_back(funcSig->second[sigIndex]);
-                                        }
+                                    if (data.verboseMode) {
+                                        std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  <<
+                                            " | Potential Signature not found for -> " << simpleFunctionName << "\n";
                                     }
-
-                                    // could not locate potential signatures
-                                    if (sigIndex >= funcSig->second.size()) {
-                                        if (data.verboseMode)
-                                            std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__  <<
-                                                " | Potential Signature not found for -> " << simpleFunctionName << "\n";
-        
-                                        CreateSliceCallData(data, sctx, simpleFunctionName, argIndex,
-                                            argc, SlicePosition(), sliceProfileItr->second.back(),
+    
+                                    CreateSliceCallData(data, sctx, simpleFunctionName, argIndex,
+                                        argc, SlicePosition(), sliceProfileItr->second.back(),
+                                        invokePosition
+                                    );
+                                } else {
+                                    for (auto& funcSig : signatures) {
+                                        // the call argc is within the range of available params
+                                        // this signature is a possible target => create callData
+                                        CreateSliceCallData(
+                                            data, sctx, simpleFunctionName, argIndex,
+                                            argc, funcSig.position, sliceProfileItr->second.back(), 
                                             invokePosition
                                         );
                                     }
-                                }
-
-                                for (auto& funcSig : signatures) {
-                                    // the call argc is within the range of available params
-                                    // this signature is a possible target => create callData
-                                    CreateSliceCallData(
-                                        data, sctx, simpleFunctionName, argIndex,
-                                        argc, funcSig.position, sliceProfileItr->second.back(), 
-                                        invokePosition
-                                    );
                                 }
                             }
                         } else {
