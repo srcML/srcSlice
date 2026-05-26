@@ -677,6 +677,10 @@ void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const 
     // push the cfunc data into the argument SliceProfile
     sliceProfile.cfunctions.insert(sliceCallData);
 
+    // if we do not have a functions decl position label the profile as partial
+    // to attempt to resolve the call once more units are processed
+    sliceProfile.partial = functionPosition.GetFileName().empty();
+
     // attempt to mark the cfunc towards the currentPointerReference
 
     std::vector<std::string> visited; // ensure we do not enter circular dependence

@@ -262,16 +262,23 @@ bool FunctionCallData::operator!=(const FunctionCallData& rhs) const {
 }
 
 bool FunctionCallData::operator<(const FunctionCallData& rhs) const {
-    if (functionName < rhs.functionName) return true;
-    if (invokePosition < rhs.invokePosition) return true;
-    if (argumentCount < rhs.argumentCount) return true;
-    if (parameterIndex < rhs.parameterIndex) return true;
-    if (funcPos < rhs.funcPos) return true;
-    if (ignore == false && rhs.ignore == true) return true;
+    if (functionName != rhs.functionName)
+        return functionName < rhs.functionName;
+    if (invokePosition != rhs.invokePosition)
+        return invokePosition < rhs.invokePosition;
+    if (argumentCount != rhs.argumentCount)
+        return argumentCount < rhs.argumentCount;
+    if (parameterIndex != rhs.parameterIndex)
+        return parameterIndex < rhs.parameterIndex;
+    if (funcPos != rhs.funcPos)
+        return funcPos < rhs.funcPos;
+    if (ignore != rhs.ignore)
+        return ignore < rhs.ignore;
+        
     return false;
 }
 bool FunctionCallData::operator>(const FunctionCallData& rhs) const {
-    return !(*this < rhs);
+    return rhs < *this;
 }
 
 std::ostream& operator<<(std::ostream& outStream, const FunctionCallData& data) {
