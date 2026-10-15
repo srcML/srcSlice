@@ -19,13 +19,32 @@ of it, and potential aliases.
 
 ## Building srcSlice
 
-### Prepare dependencies:
+### Install Dependencies
+<details>
+<summary>Install srcML</summary>
+
 This is a srcML tool, if you do not have srcML installed you must install it.
-You can download an installer [here](https://www.srcml.org/#download) or you can
+You can download an installer [here](https://www.srcml.org/#download) or you can build from source.
 ```bash
 # After running 'make' when building srcML, run 'make install' to ensure cmake can find the srcML package when building srcSlice
 git clone --recursive https://github.com/srcML/srcML.git
 ```
+<hr>
+</details>
+
+### User Installation (no test-suite)
+```console
+git clone --recursive https://github.com/srcML/srcSlice.git
+cmake srcSlice/ -B build -DBUILD_TESTS=OFF
+cmake --build build --target install
+```
+
+### Developer Build
+```console
+git clone --recursive https://github.com/srcML/srcSlice.git
+cmake srcSlice/ -B build
+```
+
 This project uses the `nlohmann json` for handling JSON
 ```bash
 # Linux
@@ -33,22 +52,6 @@ apt install nlohmann-json3-dev
 sudo pacman -S nlohmann-json
 # macOS
 brew install nlohmann-json
-```
-
-### Preparing srcSlice:
-```bash
-# Clone srcSlice repository
-git clone --recursive https://github.com/srcML/srcSlice.git
-
-# (This guide assumes the cloned directory and build directory are at the same working directory)
-mkdir build
-cd build
-
-# Run cmake to create the build files and run make to build the executable
-cmake ../srcSlice
-
-# You can run make but it will take longer
-make srcslice
 ```
 
 <br>

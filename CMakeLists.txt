@@ -7,8 +7,7 @@
 cmake_minimum_required(VERSION 3.20)
 project(srcSlice)
 
-# enable ctest
-enable_testing()
+option(BUILD_TESTS "Build the test suite" ON)
 
 # find needed libraries
 find_package(LibXml2 REQUIRED)
@@ -30,7 +29,13 @@ include_directories(${LIBXML2_INCLUDE_DIR}
                     src/headers)
 
 add_subdirectory(src)
-add_subdirectory(test)
+
+# enable ctest and development testing
+if(BUILD_TESTS)
+    enable_testing()
+    add_subdirectory(test)
+endif()
+
 add_subdirectory(srcDispatch)
 
 # custom make target to strictly test srcSlice test suite
