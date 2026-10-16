@@ -504,23 +504,23 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
 
     auto Spi = profileMap.find(funcSig.parameters.at(paramIndex)->name.ToString());
     for (auto& param : funcSig.parameters) {
-        if (param && param->name && param->name.GetElement()) {
-            if (profileMap.find(param->name.ToString()) == profileMap.end()) {
-                if (verboseMode) {
-                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Could not find SliceProfile for parameter '"
-                    << param->name.ToString() << "' of function '" << funcName << "'" << "\n";
-                }
-                continue;
-            }
+        if (!param) continue;
+        if (!param->name) continue;
 
-            SliceProfile& argSp = profileMap.find(param->name.ToString())->second.back();
+        auto argSpi = profileMap.find(param->name.ToString());
 
-            if (argSp.visited) {
-                return Spi;
-            } else {
-                ResolveCall(argSp);
+        if (argSpi == profileMap.end()) {
+            if (verboseMode) {
+                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Could not find SliceProfile for parameter '"
+                << param->name.ToString() << "' of function '" << funcName << "'" << "\n";
             }
+            continue;
         }
+
+        if (argSpi->second.back().visited) {
+            return Spi;
+        }
+        ResolveCall(argSpi->second.back());
     }
 
     return Spi;
@@ -848,179 +848,161 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
     // label the profile as visited to avoid circular profile linkage
     sp.visited = true;
 
-    if (!sp.cfunctions.empty()) {
-        std::map<
-            std::string,
-            std::set<FunctionCallData>
-        > complementaryProfiles;
+    if (sp.cfunctions.empty()) return;
 
-        for (auto& cfunc : sp.cfunctions) {
-            // if a cfunc ignore flag is enabled skip this index and continue
-            if (cfunc.ignore)
+    // set of call data an argument (sp) inherits
+    // from its associated parameter ( ArgumentProfile(...) )
+    std::set<FunctionCallData> callsToInsert;
+
+    for (auto& cfunc : sp.cfunctions) {
+        // if a cfunc ignore flag is enabled skip this index and continue
+        if (cfunc.ignore)
+            continue;
+
+        auto funcSigCollection = functionSigMap.find(cfunc.functionName);
+
+        // no func. sig. group found
+        if (funcSigCollection == functionSigMap.end()) {
+            if (verboseMode) {
+                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << "\n";
+            }
+            addPartialSlice(sp);
+            continue;
+        }
+
+        size_t sigIndex = 0;
+        
+        // Attempt to fingerprint the right signature based on
+        // function call definition line and called function
+        // def line data
+        for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
+            if (cfunc.funcPos == funcSigCollection->second[sigIndex].position) {
+                break;
+            }
+        }
+
+        if (sigIndex >= funcSigCollection->second.size()) {
+            addPartialSlice(sp);
+            continue; // no signature could be found
+        }
+
+        if (funcSigCollection->second[sigIndex].name.empty()) {
+            continue; // the name is not usable in computation
+        }
+
+        std::string simpleFunctionName = SrcSliceOperations::GetSimpleFunctionName(funcSigCollection->second[sigIndex].name);
+
+        unsigned int ArgProfParam = cfunc.parameterIndex - 1;
+
+        // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
+
+        /*** @todo look for potential issues with overload case */
+
+        bool matchingName = cfunc.functionName == simpleFunctionName;
+        bool containsParameters = !funcSigCollection->second[sigIndex].parameters.empty();
+        bool validSigIndex = sigIndex < funcSigCollection->second.size();
+        bool validArgIndex = ArgProfParam < funcSigCollection->second[sigIndex].parameters.size();
+
+        if (!matchingName || !containsParameters || !validSigIndex || !validArgIndex) {
+            continue;
+        }
+
+        if (!funcSigCollection->second[sigIndex].parameters[ArgProfParam]->name) {
+            continue;
+        }
+
+        // Only run this section if the parameter name can be extracted
+        auto argProfileGroup = ArgumentProfile(
+            cfunc.functionName,
+            funcSigCollection->second[sigIndex],
+            ArgProfParam
+        );
+
+        if (argProfileGroup == profileMap.end()) {
+            if (verboseMode) {
+                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | ArgumentProfile could not resolve SliceProfile for Call '"
+                << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << "\n";
+            }
+            continue;
+        }
+
+        auto argSliceItr = argProfileGroup->second.begin();
+        for (argSliceItr = argProfileGroup->second.begin(); argSliceItr != argProfileGroup->second.end(); ++argSliceItr) {
+            if (!argSliceItr->containsDeclaration)
+                continue;
+            if (SrcSliceOperations::GetSimpleFunctionName(argSliceItr->function) != cfunc.functionName)
                 continue;
 
-            auto funcSigCollection = functionSigMap.find(cfunc.functionName);
+            auto paramDecl = funcSigCollection->second[sigIndex].parameters[ArgProfParam];
+            SlicePosition paramDeclPos(
+                paramDecl->name->startPosition,
+                paramDecl->name->endPosition,
+                funcSigCollection->second[sigIndex].currentFilePath
+            );
 
-            if (funcSigCollection != functionSigMap.end()) {
-                size_t sigIndex = 0;
-                
-                // Attempt to fingerprint the right signature based on
-                // function call definition line and called function
-                // def line data
-                for (sigIndex = 0; sigIndex < funcSigCollection->second.size(); ++sigIndex) {
-                    if (cfunc.funcPos == funcSigCollection->second[sigIndex].position) {
-                        break;
-                    }
-                }
-
-                if (sigIndex >= funcSigCollection->second.size()) {
-                    addPartialSlice(sp);
-                    continue; // no signature could be found
-                }
-
-                if (funcSigCollection->second[sigIndex].name.empty()) {
-                    continue; // the name is not usable in computation
-                }
-
-                std::string simpleFunctionName = SrcSliceOperations::GetSimpleFunctionName(funcSigCollection->second[sigIndex].name);
-
-                unsigned int ArgProfParam = cfunc.parameterIndex - 1;
-
-                // Ensure before we run ArgumentProfile that parameters has non-zero size and can be indexed safely
-
-                /*** @todo look for potential issues with overload case */
-
-                bool matchingName = cfunc.functionName == simpleFunctionName;
-                bool containsParameters = !funcSigCollection->second[sigIndex].parameters.empty();
-                bool validSigIndex = sigIndex < funcSigCollection->second.size();
-                bool validArgIndex = ArgProfParam < funcSigCollection->second[sigIndex].parameters.size();
-
-                if (matchingName && containsParameters && validSigIndex && validArgIndex) {
-                    if (funcSigCollection->second[sigIndex].parameters[ArgProfParam]->name) {
-                        // Only run this section if the parameter name can be extracted
-                        auto Spi = ArgumentProfile(
-                            cfunc.functionName,
-                            funcSigCollection->second[sigIndex],
-                            ArgProfParam
-                        );
-
-                        if (Spi != profileMap.end()) {
-                            auto sliceItr = Spi->second.begin();
-                            std::string desiredVariableName = sliceItr->variableName;
-
-                            for (sliceItr = Spi->second.begin(); sliceItr != Spi->second.end(); ++sliceItr) {
-                                if (sliceItr->containsDeclaration) {
-                                    if (sliceItr->variableName != desiredVariableName) {
-                                        continue;
-                                    }
-                                    if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != cfunc.functionName) {
-                                        continue;
-                                    }
-
-                                    auto paramDecl = funcSigCollection->second[sigIndex].parameters[ArgProfParam];
-                                    SlicePosition paramDeclPos(
-                                        paramDecl->name->startPosition,
-                                        paramDecl->name->endPosition,
-                                        funcSigCollection->second[sigIndex].currentFilePath
-                                    );
-
-                                    if (sliceItr->declPosition != paramDeclPos) {
-                                        continue;
-                                    }
-
-                                    break;
-                                }
-                            }
-
-                            if (profileMap.find(sp.variableName) != profileMap.end()) {
-                                if (profileMap.find(Spi->first) != profileMap.end()) {
-                                    if (!Spi->second.empty() && sliceItr != Spi->second.end()) {
-                                        SliceProfile& profile = profileMap.find(sp.variableName)->second.back();
-
-                                        if (!sliceItr->isReference && !sliceItr->isPointer) {
-                                            // pass by value
-                                            profile.uses.insert(
-                                                sliceItr->definitions.begin(),
-                                                sliceItr->definitions.end());
-                                        } else {
-                                            // pass by reference
-                                            profile.definitions.insert(
-                                                sliceItr->definitions.begin(),
-                                                sliceItr->definitions.end());
-                                        }
-
-                                        // ensure we do not remove the initial decl from a slices definitions set
-                                        if (profile.declPosition != sliceItr->declPosition) {
-                                            // Parameter initial declaration def line is considered a use towards the argument
-                                            profile.definitions.erase(sliceItr->declPosition);
-                                        }
-                                        profile.uses.insert(sliceItr->declPosition);
-
-                                        profile.uses.insert(
-                                            sliceItr->uses.begin(),
-                                            sliceItr->uses.end());
-
-                                        // ensure dependencies and aliases are within local-scope
-                                        if (profile.function == sliceItr->function) {
-                                            profile.aliases.insert(
-                                                sliceItr->aliases.begin(),
-                                                sliceItr->aliases.end()
-                                            );
-                                            profile.dvars.insert(
-                                                sliceItr->dvars.begin(),
-                                                sliceItr->dvars.end()
-                                            );
-                                        }
-
-                                        // move the control edges over
-                                        profile.controlEdges.insert(
-                                            sliceItr->controlEdges.begin(),
-                                            sliceItr->controlEdges.end());
-
-                                        // after iterating all cfuncs we move over
-                                        // cfunc data from these complement profiles
-                                        // to avoid extra iterations over visited calls &
-                                        // not invalidate the loop
-                                        for (const auto& cFunc : sliceItr->cfunctions) {
-                                            complementaryProfiles[sp.variableName].insert(cFunc);
-                                        }
-                                    }
-                                }
-                            } else {
-                                if (verboseMode) {
-                                    std::cout << std::boolalpha << "Is '" << sp.variableName << "' a Map Entry? "
-                                              << (profileMap.find(sp.variableName) != profileMap.end())
-                                              << " | Is Spi '" << Spi->first << "' a Map Entry? " << (profileMap.find(Spi->first) != profileMap.end())
-                                              << " | Is The sliceItr Valid? " << (sliceItr != Spi->second.end()) << "\n";
-
-                                    std::cout << "Tried Accessing Slice Variable :: " << sp.variableName << "\n";
-                                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | An Error has Occured in `ComputeInterprocedural`" << "\n";
-                                }
-                            }
-                        } else {
-                            if (verboseMode) {
-                                std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | ArgumentProfile could not resolve SliceProfile for Call '"
-                                << cfunc.functionName << "[" << ArgProfParam << "]" << "'" << "\n";
-                            }
-                        }
-                    }
-                }
-            } else {
-                if (verboseMode) {
-                    std::cout << "[-] " << __FUNCTION__ << ":" << __LINE__ << " | Cannot find Function Signature Collection for '" << cfunc.functionName << "'" << "\n";
-                }
-                addPartialSlice(sp);
+            // potential match found for parameter slice associated with argument (sp)
+            if (argSliceItr->declPosition == paramDeclPos) {
+                break;
             }
         }
-        // move cfunc data over
-        for (auto& [name, callsToInsert] : complementaryProfiles) {
-            auto spi = profileMap.find(name);
-            if (spi == profileMap.end()) continue;
 
-            SliceProfile& profile = spi->second.back();
-            for (const auto& cFunc : callsToInsert) {
-                profile.cfunctions.insert(cFunc);
-            }
+        if (argSliceItr == argProfileGroup->second.end())
+            continue;
+
+        // sp unions slice data from the argSliceItr because
+        // sp is passed into some method and resolves to argSliceItr
+
+        if (!argSliceItr->isReference && !argSliceItr->isPointer) {
+            // pass by value
+            sp.uses.insert(
+                argSliceItr->definitions.begin(),
+                argSliceItr->definitions.end());
+        } else {
+            // pass by reference
+            sp.definitions.insert(
+                argSliceItr->definitions.begin(),
+                argSliceItr->definitions.end());
         }
+
+        // ensure we do not remove the initial decl from a slices definitions set
+        if (sp.declPosition != argSliceItr->declPosition) {
+            // Parameter initial declaration def line is considered a use towards the argument
+            sp.definitions.erase(argSliceItr->declPosition);
+        }
+        sp.uses.insert(argSliceItr->declPosition);
+
+        sp.uses.insert(
+            argSliceItr->uses.begin(),
+            argSliceItr->uses.end());
+
+        // ensure dependencies and aliases are within local-scope
+        if (sp.function == argSliceItr->function) {
+            sp.aliases.insert(
+                argSliceItr->aliases.begin(),
+                argSliceItr->aliases.end()
+            );
+            sp.dvars.insert(
+                argSliceItr->dvars.begin(),
+                argSliceItr->dvars.end()
+            );
+        }
+
+        // move the control edges over
+        sp.controlEdges.insert(
+            argSliceItr->controlEdges.begin(),
+            argSliceItr->controlEdges.end());
+
+        // after iterating all cfuncs we move over
+        // cfunc data from these complement profiles
+        // to avoid extra iterations over visited calls &
+        // not invalidate the loop
+        for (const auto& cFunc : argSliceItr->cfunctions) {
+            callsToInsert.insert(cFunc);
+        }
+    }
+    
+    // move cfunc data over
+    for (const auto& cFunc : callsToInsert) {
+        sp.cfunctions.insert(cFunc);
     }
 }

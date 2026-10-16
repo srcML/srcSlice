@@ -142,6 +142,7 @@ public:
 
     SlicePosition invokePosition;
     SlicePosition funcPos;
+    // hidden metadata to tell InterProcedural to not process this cfunctions element
     bool ignore = false;
     std::string functionName;
     unsigned int parameterIndex;

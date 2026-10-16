@@ -104,6 +104,7 @@ bool SrcSliceOperations::isWhiteSpace(const std::string& str) {
 }
 
 // Extract the function name within either a call or a complex function name
+// strips away scoping|points-to operators|other from a name string
 std::string SrcSliceOperations::GetSimpleFunctionName(const std::string& funcName) {
     std::string simpleFunctionName = funcName;
     bool containsScope = (funcName.find_last_of("::") != std::string::npos);
@@ -691,7 +692,15 @@ void SrcSliceOperations::CreateSliceCallData(Blob& data, [[maybe_unused]] const 
         if (std::find(visited.begin(), visited.end(), referenceName) != visited.end()) break;
         visited.push_back(referenceName);
         
-        // hidden metadata to tell InterProcedural to not process this cfunctions element
+        /*
+            srcSlice does not track a pointer's reference, by the time Interprocedural
+            is ran srcSlice has no knowledge about what the reference is NOR what
+            line-span a particular pointer-ref had.
+
+            Pointer Analysis is extremely tricky and srcSlice is not a
+            pointer-analysis tool, thus it only supports simple limited
+            pointer analysis.
+        */
         sliceCallData.ignore = true;
         aspi->second.back().cfunctions.insert(sliceCallData);
 
