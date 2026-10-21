@@ -135,7 +135,12 @@ bool SlicePosition::operator<(const SlicePosition& rhs) const {
     if (start->GetLine() > rhs.start->GetLine()) return false;
     if (start->GetLine() < rhs.start->GetLine()) return true;
 
-    return start->GetColumn() < rhs.start->GetColumn();
+    // column comparison
+    if (start->GetColumn() > rhs.start->GetColumn()) return false;
+    if (start->GetColumn() < rhs.start->GetColumn()) return true;
+
+    // file name lexicographical comparison
+    return filename < rhs.filename;
 }
 bool SlicePosition::operator<=(const SlicePosition& rhs) const {
     return (*this < rhs) || *this == rhs;
