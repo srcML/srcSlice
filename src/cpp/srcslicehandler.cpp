@@ -517,10 +517,25 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
             continue;
         }
 
-        if (argSpi->second.back().visited) {
-            return Spi;
+        for (SliceProfile& profile : argSpi->second) {
+            // attempt to finger-print based on contained file
+            if (profile.file != funcSig.currentFilePath)
+                continue;
+
+            // attempt to finger-print based on decl position
+            SlicePosition paramPos(
+                funcSig.parameters.at(paramIndex)->startPosition,
+                funcSig.parameters.at(paramIndex)->endPosition,
+                funcSig.currentFilePath
+            );
+            if (profile.declPosition != paramPos)
+                continue;
+
+            if (profile.visited) {
+                return Spi;
+            }
+            ResolveCall(profile);
         }
-        ResolveCall(argSpi->second.back());
     }
 
     return Spi;
