@@ -821,3 +821,92 @@ private:
     std::string testName = Catch::getResultCapture().getCurrentTestName();
     REQUIRE( CompareJson("", testName, produced, expected) );
 }
+
+TEST_CASE( TestName("Multi-file Test"), "[srcslice]" ) {
+    json produced = json::parse(FetchSlices((std::vector<std::string>){
+R"(void foo(int p) { p = 1; }
+)",
+R"(void bar(int q) { q = 2; }
+int main() { int v = 0; foo(v); bar(v); }
+)"
+    }, {"a.cpp","b.cpp"}, data));
+
+    json expected = R"({
+    "v-2-18": {
+        "file": "b.cpp",
+        "language": "C++",
+        "namespace": [],
+        "class": "",
+        "function": "main",
+        "type": "int",
+        "name": "v",
+        "decl": "b.cpp:2:18",
+        "dependence": [],
+        "aliases": [],
+        "calls": [
+            {
+                "functionName": "bar",
+                "parameter": "1",
+                "definitionPosition": "b.cpp:1:1",
+                "invoke": "b.cpp:2:33"
+            },
+            {
+                "functionName": "foo",
+                "parameter": "1",
+                "definitionPosition": "a.cpp:1:1",
+                "invoke": "b.cpp:2:25"
+            }
+        ],
+        "use": [
+            "a.cpp:1:14",
+            "b.cpp:1:14",
+            "a.cpp:1:19",
+            "b.cpp:1:19",
+            "b.cpp:2:29",
+            "b.cpp:2:37"
+        ],
+        "definition": [
+            "b.cpp:2:18"
+        ]
+    },
+    "q-1-14": {
+        "file": "b.cpp",
+        "language": "C++",
+        "namespace": [],
+        "class": "",
+        "function": "bar",
+        "type": "int",
+        "name": "q",
+        "decl": "b.cpp:1:14",
+        "dependence": [],
+        "aliases": [],
+        "calls": [],
+        "use": [],
+        "definition": [
+            "b.cpp:1:14",
+            "b.cpp:1:19"
+        ]
+    },
+    "p-1-14": {
+        "file": "a.cpp",
+        "language": "C++",
+        "namespace": [],
+        "class": "",
+        "function": "foo",
+        "type": "int",
+        "name": "p",
+        "decl": "a.cpp:1:14",
+        "dependence": [],
+        "aliases": [],
+        "calls": [],
+        "use": [],
+        "definition": [
+            "a.cpp:1:14",
+            "a.cpp:1:19"
+        ]
+    }
+    })"_json;
+
+    std::string testName = Catch::getResultCapture().getCurrentTestName();
+    REQUIRE( CompareJson("", testName, produced, expected) );
+}
