@@ -59,7 +59,6 @@ typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::Funct
 typedef std::vector<srcDispatch::DeltaElement<std::shared_ptr<srcDispatch::ClassData>>> Classes;
 
 inline std::atomic_bool unitsScaned{false};
-inline std::mutex dataMutex;
 
 struct CliInfo {
     std::string inputFile;

@@ -132,8 +132,6 @@ void SrcSliceHandler::Notify(const srcDispatch::PolicyDispatcher *policy, const 
 void SrcSliceHandler::ManageThreads() {
     auto MergeStructures = [this](SrcSliceWorker* worker) {
         if (worker == nullptr) return;
-
-        std::lock_guard<std::mutex> lock(dataMutex);
         Blob& data = worker->data;
 
         // manually move map entry values, merge will not merge if the keys between both maps exist
@@ -210,6 +208,9 @@ void SrcSliceHandler::ManageThreads() {
     };
 
     auto replaceWorker = [this](SrcSliceWorker** worker) {
+        // lock the backlog because main and p_thread access this queue obj
+        std::lock_guard<std::mutex> lock(backlogMutex);
+
         if (!backlog.empty()) {
             if (backlog.front() != nullptr) {
                 // start worker
@@ -226,9 +227,6 @@ void SrcSliceHandler::ManageThreads() {
     bool runningJobs = true;
 
     while (runningJobs) {
-        // lock the backlog because main and p_thread access this queue obj
-        std::lock_guard<std::mutex> lock(backlogMutex);
-        
         int activeJobs = 0;
 
         for (int i = 0; i < threadCount; ++i) {
