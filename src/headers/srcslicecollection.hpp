@@ -59,6 +59,7 @@ public:
     srcDispatch::DeltaElement<srcDispatch::Position> GetStart() const;
     srcDispatch::DeltaElement<srcDispatch::Position> GetEnd() const;
     std::string GetFileName() const;
+    bool HasDefinition() const;
     PositionMeta& GetData();
 private:
     std::string filename;

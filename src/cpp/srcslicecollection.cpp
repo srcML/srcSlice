@@ -103,6 +103,9 @@ srcDispatch::DeltaElement<srcDispatch::Position> SlicePosition::GetEnd() const {
 std::string SlicePosition::GetFileName() const { return filename; }
 // return specific data about a position
 PositionMeta& SlicePosition::GetData() { return data; }
+bool SlicePosition::HasDefinition() const {
+    return !filename.empty() && start;
+}
 
 SlicePosition& SlicePosition::operator=(const SlicePosition& rhs) {
     if (this == &rhs) return *this;
@@ -259,7 +262,6 @@ bool FunctionCallData::operator==(const FunctionCallData& rhs) const {
     if (parameterIndex != rhs.parameterIndex) return false;
     if (argumentCount != rhs.argumentCount) return false;
     if (funcPos != rhs.funcPos) return false;
-    if (ignore != rhs.ignore) return false;
     return true;
 }
 bool FunctionCallData::operator!=(const FunctionCallData& rhs) const {
@@ -277,8 +279,6 @@ bool FunctionCallData::operator<(const FunctionCallData& rhs) const {
         return parameterIndex < rhs.parameterIndex;
     if (funcPos != rhs.funcPos)
         return funcPos < rhs.funcPos;
-    if (ignore != rhs.ignore)
-        return ignore < rhs.ignore;
         
     return false;
 }

@@ -38,6 +38,9 @@ public:
     bool operator==(const SliceProfile& rhs) const;
     bool operator!=(const SliceProfile& rhs) const;
 
+    std::string jsonKey() const;
+    friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile);
+
     SlicePosition declPosition;
     std::string file;
     std::string function;
@@ -87,9 +90,6 @@ public:
     bool isPotentialArray = false;
 
     bool isFragment = false;
-
-    std::string jsonKey() const;
-    friend std::ostream& operator<<(std::ostream& out, SliceProfile& profile);
 };
 
 #endif

@@ -107,14 +107,13 @@ public:
     // if a profile with alias(s) is used in function calls
     void ComputeAliasInterprocedural();
     void ComputeInterprocedural();
-    // Perform a second pass over the system dictionary performing another round of ComputeInterprocedural
-    // against slices who have cfunction elements that could not resolve on the initial pass
-    void Finalize();
+    
+    void Stage2();
+    void Stage3();
 
     void mergeFragments(std::vector<SliceProfile>& profiles);
-    void ModifySlice(SliceProfile& sp);
-    void ResolveCall(SliceProfile& sp);
     void UpdateCalls(SliceProfile& sp);
+    void ResolveCalls(SliceProfile& sp);
 
     // thread target for managing SrcSliceWorker jobs
     void ManageThreads();

@@ -55,6 +55,7 @@ SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
         IdleBar idlebar;
         std::cout << "[Slicing Started]" << "\n";
 
+        auto start = std::chrono::steady_clock::now();
         control.parse(&handler); // Start parsing
         unitsScaned.store(true, std::memory_order_release);
 
@@ -62,20 +63,30 @@ SrcSliceHandler::SrcSliceHandler(const CliInfo& info) {
 
         // Restore original buffers
         idlebar.Finish("[srcSAXController Parse]");
+
         idlebar.Reset();
+        Stage2();
+        idlebar.Finish("[Stage-2]");
 
-        Finalize();
-
-        // Restore original buffers
-        idlebar.Finish("[Second-Pass]");
+        idlebar.Reset();
+        Stage3();
+        idlebar.Finish("[Stage-3]");
+        
         std::cout << "[Slicing Finished]" << "\n";
+        
+        auto end = std::chrono::steady_clock::now();
+        auto elapsed_ms = std::chrono::duration_cast<std::chrono::milliseconds>(end - start).count();
+        elapsed_ms /= 1000;
+        elapsed_ms /= 60;
+        std::cout << "Estimate Elapsed Time: " << elapsed_ms << " min\n";
     } else {
         control.parse(&handler); // Start parsing
 
         unitsScaned.store(true, std::memory_order_release);
         if (t.joinable()) t.join();
 
-        Finalize();
+        Stage2();
+        Stage3();
     }
 }
 
@@ -99,7 +110,8 @@ SrcSliceHandler::SrcSliceHandler(std::string& sourceCodeStr, const TestArg& info
     unitsScaned.store(true, std::memory_order_release);
     if (t.joinable()) t.join();
 
-    Finalize();
+    Stage2();
+    Stage3();
 }
 
 SrcSliceHandler::~SrcSliceHandler() {
@@ -197,14 +209,6 @@ void SrcSliceHandler::ManageThreads() {
                 - gather partial slices that later are dealt with via
                   the second pass (finalize)
         */
-
-        // Handles Collecting Control-Edges
-        if (calculateControlEdges) ComputeControlPaths();
-        
-        // populates Aliases attribute in slice profiles and
-        // performs crude interprocedural to connect use/def data
-        if (expandAliases) ComputeAliasInterprocedural();
-        ComputeInterprocedural();
     };
 
     auto replaceWorker = [this](SrcSliceWorker** worker) {
@@ -273,234 +277,19 @@ std::unordered_map<std::string, std::vector<SliceProfile>>& SrcSliceHandler::Get
     return profileMap;
 }
 
-// Find forward control-edges between conditional conditions. ie: if -> else if -> else
-void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
-    /** @todo
-     * Checking metadata within each SlicePosition, connect sline[i] to a sline[k] where k > i
-     * corresponding if conditions to preceding elif conditions or the first sline within an else
-    */
 
-    for (size_t i = 0; i < sLines.size() - 1; ++i) {
-        // sline[i] must be within the condition block of an if or else-if
-        if (!sLines[i].GetData().isIfCondition && !sLines[i].GetData().isElifCondition)
-            continue;
-
-        // find the condition context base
-        SlicePosition baseBlock;
-        for (SlicePosition& data : ifdata) {
-            if (sLines[i] < data) continue;
-            if (IsContained(sLines[i], data)) {
-                baseBlock = data;
-            }
-        }
-        for (SlicePosition& data : elseifdata) {
-            if (sLines[i] < data) continue;
-            if (IsContained(sLines[i], data)) {
-                baseBlock = data;
-            }
-        }
-
-        if (baseBlock.GetFileName().empty()) continue;
-
-        // find the preceding sline[k]
-        size_t k = i+1;
-        while (k < sLines.size()) {
-            if (!IsContained(sLines[k], baseBlock)) break;
-            ++k;
-        }
-        if (k == sLines.size()) continue;
-        
-        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
-    }
-}
-
-// Collects the forward exiting control-flows of conditionals. ie: exiting conditional body
-void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
-    /** @todo
-     * Find the context if_stmt the sline[i] is within to find the first sline[k] not contained in the context if_stmt where k > i
-     * sline[i] must be the sline that occurs LAST within the inner context of the if_stmt context (specific if, elif, else block)
-    */
-
-    for (size_t i = 0; i < sLines.size() - 1; ++i) {
-        // skip slines that are within the conditions
-        if (sLines[i].GetData().isIfCondition || sLines[i].GetData().isElifCondition)
-            continue;
-
-        // sline[i] must be contained within the block of either an if, else-if, or else statement
-        size_t ctxIndex = FindContextBlock(sLines[i], ifStmts);
-        if (ctxIndex == -1) continue;
-
-        // find inner-most context of sline[i]
-        SlicePosition innerContext;
-        for (SlicePosition& data : ifdata) {
-            if (IsContained(sLines[i], data)) {
-                innerContext = data;
-            }
-        }
-        for (SlicePosition& data : elseifdata) {
-            // if the inner context has been found skip this loop
-            if (!innerContext.StartToString().empty()) break;
-
-            if (IsContained(sLines[i], data)) {
-                innerContext = data;
-            }
-        }
-        for (SlicePosition& data : elsedata) {
-            // if the inner context has been found skip this loop
-            if (!innerContext.StartToString().empty()) break;
-
-            if (IsContained(sLines[i], data)) {
-                innerContext = data;
-            }
-        }
-
-        // check if sline[i] is the last sline within the inner-most context
-        bool isExitPath = false;
-        size_t k = i+1;
-        while (k < sLines.size()) {
-            // if sline[k] is contained within the inner-most context
-            // then sline[i], sline[k] is not an exit-path
-            if (IsContained(sLines[k], innerContext)) {
-                break;
-            }
-
-            // check if sline[k] is outside of the if_stmt context
-            if (!IsContained(sLines[k], ifStmts[ctxIndex])) {
-                isExitPath = true;
-                break;
-            }
-
-            ++k;
-        }
-        if (!isExitPath) continue;
-
-        
-        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
-    }
-}
-
-// srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
-// we are not focusing on backwards-flows.
-void SrcSliceHandler::ComputeControlPaths() {
-    auto InBlock = [this](SlicePosition& sline, std::vector<SlicePosition>& groups) -> bool {
-        // groups are focused on if, elif, else position ranges
-        size_t ctxIndex = -1;
-        if (groups.size() > 1) {
-            ctxIndex = FindContextBlock(sline, ifStmts);
-            if (ctxIndex == -1) return false;
-        }
-
-        for (auto& data : groups) {
-            // if there is nesting we only want to be concerned with data related to the if_stmt context
-            if (ctxIndex != -1 && IsContained(ifStmts[ctxIndex], data)) {
-                continue;
-            }
-
-            if (IsContained(sline, data)) {
-                return true;
-            }
-        }
-        return false;
-    };
-    
-    auto InLoop = [](SlicePosition& sline, std::vector<SlicePosition>& loopdata) -> bool {
-        size_t ctxIndex = -1;
-        if (loopdata.size() > 1) {
-            ctxIndex = FindContextBlock(sline, loopdata);
-            if (ctxIndex == -1) return false;
-        }
-
-        for (auto& data : loopdata) {
-            if (ctxIndex != -1 && IsContained(loopdata[ctxIndex], data)) {
-                continue;
-            }
-
-            if (IsContained(sline, data)) {
-                return true;
-            }
-        }
-        return false;
-    };
-
-    for (auto& varGroup : profileMap) {
-        for (auto& profile : varGroup.second) {
-            if (!profile.containsDeclaration) continue;
-
-            // Collect the slice lines and put them in numerical order
-            std::set<SlicePosition> sLinesOrdered;
-            sLinesOrdered.insert(profile.definitions.begin(), profile.definitions.end());
-            sLinesOrdered.insert(profile.uses.begin(), profile.uses.end());
-
-            // Convert set into vector using vector ctor
-            std::vector<SlicePosition> sLines(sLinesOrdered.begin(), sLinesOrdered.end());
-
-            // Handles controledges based from: for-loops, while-loops, do-while-loops
-            for (auto& loop : loopdata) {
-                SlicePosition predecessor;    // origin position
-                SlicePosition falseSuccessor; // where to go when loop-condition is false
-                SlicePosition trueSuccessor;  // where to go when loop-condition is true (first sline within loop block)
-
-                for (auto& sline : sLines) {
-                    // see if the sline is before the loop or in the loop-control statement
-                    if (predecessor.GetFileName().empty() && IsContained(sline, loop)) {
-                        predecessor = sline;
-                        continue;
-                    }
-
-                    // find the first sline outside the loop-block
-                    if (falseSuccessor.GetFileName().empty() && sline > loop && !IsContained(sline, loop)) {
-                        falseSuccessor = sline;
-                        continue;
-                    }
-
-                    // find the first sline inside the loop-block
-                    if (trueSuccessor.GetFileName().empty() && IsContained(sline, loop)) {
-                        trueSuccessor = sline;
-                        continue;
-                    }
-                }
-
-                bool validPositions = !predecessor.GetFileName().empty() && !trueSuccessor.GetFileName().empty() && !falseSuccessor.GetFileName().empty();
-                if (validPositions && predecessor < falseSuccessor) {
-                    profile.controlEdges.insert(
-                        std::make_pair(predecessor, trueSuccessor)
-                    );
-                    profile.controlEdges.insert(
-                        std::make_pair(predecessor, falseSuccessor)
-                    );
-                }
-            }
-
-            // Create sline pairs between successive lines with case of if-else matching
-            for (size_t i = 0; i < sLines.size() - 1; ++i) {
-                if ( !(InBlock(sLines[i], ifdata) && (InBlock(sLines[i+1], elseifdata) || InBlock(sLines[i+1], elsedata)) ) ) {
-                    profile.controlEdges.insert(
-                        std::make_pair(sLines[i], sLines[i+1])
-                    );
-                }
-
-                // if the sline[i] does not belong to any loop or condition block
-                // then connect this sline to the first successive sline[k] that
-                // does not also belong to any loop or condiiton block
-                if (!InLoop(sLines[i], loopdata) && !InBlock(sLines[i], ifdata) && !InBlock(sLines[i], elseifdata) && !InBlock(sLines[i], elsedata)) {
-                    profile.controlEdges.insert(
-                        std::make_pair(sLines[i], sLines[i+1])
-                    );
-                }
-            }
-
-            // Find Exit-Paths and Outer-Paths that are not initially found from this algorithm
-            ComputeExitPaths(profile.controlEdges, sLines);
-            ComputeOuterPaths(profile.controlEdges, sLines);
-        }
-    }
-}
 
 SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcName, FunctionSignatureData& funcSig, int paramIndex) {
-    if (funcSig.parameters.empty()) return profileMap.end();
-    if (paramIndex >= funcSig.parameters.size()) return profileMap.end();
+    if (
+        funcSig.parameters.empty() ||
+        paramIndex < 0 ||
+        paramIndex >= funcSig.parameters.size()
+    ) return profileMap.end();
 
-    auto Spi = profileMap.find(funcSig.parameters.at(paramIndex)->name.ToString());
+    const auto& target = funcSig.parameters[paramIndex];
+    if (!target || !target->name) return profileMap.end();
+
+    auto Spi = profileMap.find(target->name.ToString());
     for (auto& param : funcSig.parameters) {
         if (!param) continue;
         if (!param->name) continue;
@@ -522,75 +311,38 @@ SliceProfileIterator SrcSliceHandler::ArgumentProfile(const std::string& funcNam
 
             // attempt to finger-print based on decl position
             SlicePosition paramPos(
-                funcSig.parameters.at(paramIndex)->startPosition,
-                funcSig.parameters.at(paramIndex)->endPosition,
+                funcSig.parameters.at(paramIndex)->name->startPosition,
+                funcSig.parameters.at(paramIndex)->name->endPosition,
                 funcSig.currentFilePath
             );
             if (profile.declPosition != paramPos)
                 continue;
 
-            if (profile.visited) {
-                return Spi;
-            }
-            ResolveCall(profile);
+            if (profile.visited) return Spi;
+
+            ResolveCalls(profile);
         }
     }
 
     return Spi;
 }
 
-// Similiar to ComputeInterprocedural but focuses on building
-// a more detailed alias listing for slices of pointers
-void SrcSliceHandler::ComputeAliasInterprocedural() {
-    // speed problems origin
-    std::unordered_set <std::string> visited_alias;
 
-    for (auto& sliceGroup : profileMap) {
-        // expand list of potential targets (aliases)
-        for (auto& sp : sliceGroup.second) {
-            if (!sp.containsDeclaration) continue;
-            for (auto& alias : sp.aliases) {
-                // check if the alias has been visited
-                if (visited_alias.find(alias.first) != visited_alias.end())
-                    break;
 
-                // view aliases of the slice profile
-                auto aliasProfileGroup = profileMap.find(alias.first);
-                if (aliasProfileGroup == profileMap.end()) continue;
+void SrcSliceHandler::Stage2() {
+    if (verboseMode || progressMode) std::cout << "[*] Performing Stage-2" << "\n";
 
-                // fingerprint the profile based on contained use
-                for (auto& aspi : aliasProfileGroup->second) {
-                    if (!aspi.containsDeclaration) continue;
-                    
-                    auto usesItr = aspi.uses.find(alias.second);
-                    if (usesItr == aspi.uses.end()) continue;
-                    
-                    // determine if the potential target is a pointer or reference
-                    if (!aspi.isPointer && !aspi.isReference) continue;
-
-                    // mark alias as visited so we dont review this alias entry again (circular dependence protection)
-                    visited_alias.insert(aspi.jsonKey());
-
-                    // push_back alias slice profile's aliases into the source slice aliases
-                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
-                    break;
-                }
-            }
-        }
-    }
-}
-
-void SrcSliceHandler::Finalize() {
-    if (verboseMode || progressMode) std::cout << "[*] Performing Second-Pass" << "\n";
+    /** Merge Fragement Slices + Update as many undefined calls as possible */
 
     for (auto& [name, profiles] : profileMap) {
         mergeFragments(profiles);
         for (auto& profile : profiles) {
-            if (profile.partial) ModifySlice(profile);
+            if (!profile.partial) continue;
+            UpdateCalls(profile);
         }
     }
 
-    if (verboseMode || progressMode) std::cout << "[*] Finished Second-Pass" << "\n";
+    if (verboseMode || progressMode) std::cout << "[*] Finished Stage-2" << "\n";
 }
 
 void SrcSliceHandler::mergeFragments(std::vector<SliceProfile>& profiles) {
@@ -646,42 +398,31 @@ void SrcSliceHandler::mergeFragments(std::vector<SliceProfile>& profiles) {
     }
 }
 
-// modular reusable component
-void SrcSliceHandler::ModifySlice(SliceProfile& sp) {
+void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
     // do not revisit profiles
     if (sp.updated) return;
 
-    // make sp as unvisited before passing it into ResolveCall
-    sp.visited = false;
+    // do not read/modify the slice if its not a partial
+    if (!sp.partial) return;
+    if (sp.cfunctions.empty()) return;
+
+    // toggle off just incase so we do not run over this profile again
+    sp.partial = false;
 
     // mark the slice as updated so we do not push
     // duplicate addresses into the partialSlices container
     sp.updated = true;
 
-    // attempt to update the cfunctions entries with the full function-signature dictionary
-    UpdateCalls(sp);
-
-    // attempt ComputeInterprocedural against the slice profile (sp)
-    // sp gets marked as visited once again
-    ResolveCall(sp);
-}
-
-void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
-    // do not read/modify the slice if its not a partial
-    if (!sp.partial) return;
-
     // collection of call data that is to be later added to the given slice profile
     std::vector<FunctionCallData> toInsert, toErase;
     
     for (auto itr = sp.cfunctions.begin(); itr != sp.cfunctions.end(); ++itr) {
-        FunctionCallData cfunc = *itr;
-
         // only update cfunc entries that do not have a definition position
-        if (!cfunc.funcPos.GetFileName().empty()) {
+        if (itr->funcPos.HasDefinition()) {
             continue;
         }
 
-        std::string name = cfunc.functionName;
+        std::string name = itr->functionName;
         auto funcSig = functionSigMap.find(name);
 
         if (funcSig == functionSigMap.end()) continue;
@@ -689,137 +430,44 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
         // if there is only one record of a function signature
         if (funcSig->second.size() == 1) {
             if (funcSig->second[0].parameters.empty()) continue;
-            if (cfunc.argumentCount > funcSig->second[0].parameters.size()) continue;
+            if (itr->argumentCount > funcSig->second[0].parameters.size()) continue;
 
             // update funcPos
-            FunctionCallData updatedData(cfunc);
+            FunctionCallData updatedData(*itr);
             updatedData.funcPos = funcSig->second[0].position;
 
             // replace old data with new data
             toErase.push_back(*itr);
             toInsert.push_back(updatedData);
-
-            // evaluate the slice profile based off the updatedData and if its within
-            // partialSliceProfiles we want to jump to it and update it (recursively)
-            // before passing it back into inter-procedural
-            unsigned int ArgProfParam = updatedData.parameterIndex - 1;
-
-            /**
-             * @todo may need to remove argument profile usage,
-             * interprocedural skips if the argument cant be
-             * resolved from a given call
-             **/
-
-            // argument slice profile
-            auto spi = ArgumentProfile(
-                updatedData.functionName,
-                funcSig->second[0],
-                ArgProfParam
-            );
-
-            if (spi == profileMap.end()) continue;
-
-            auto sliceItr = spi->second.begin();
-            std::string desiredVariableName = sliceItr->variableName;
-
-            for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
-                if (!sliceItr->containsDeclaration)
-                    continue;
-                if (sliceItr->variableName != desiredVariableName)
-                    continue;
-                if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != updatedData.functionName)
-                    continue;
-
-                auto paramDecl = funcSig->second[0].parameters[ArgProfParam];
-                SlicePosition paramDeclPos(
-                    paramDecl->name->startPosition,
-                    paramDecl->name->endPosition,
-                    sliceItr->file
-                );
-
-                if (sliceItr->declPosition != paramDeclPos)
-                    continue;
-
-                break;
-            }
         } else {
             // if a function is overloaded
 
-            unsigned int ArgProfParam = cfunc.parameterIndex - 1;
-            std::vector<FunctionSignatureData> signatures;
+            std::vector<FunctionSignatureData> potentials;
 
             for (auto& funcData : funcSig->second) {
-                if (cfunc.argumentCount == funcData.parameters.size()) {
-                    signatures.push_back(funcData);
+                if (itr->argumentCount == funcData.parameters.size()) {
+                    potentials.push_back(funcData);
                 }
             }
 
-            if (signatures.empty()) {
+            if (potentials.empty()) {
+                /** try to catch methods with pre-defined parameters */
                 for (auto& funcData : funcSig->second) {
-                    if (cfunc.argumentCount == 0 || cfunc.argumentCount >= funcData.parameters.size()) continue;
+                    if (itr->argumentCount == 0 || itr->argumentCount >= funcData.parameters.size()) continue;
                     // 1 <= argCount < paramCount
-                    signatures.push_back(funcData);
+                    potentials.push_back(funcData);
                 }
             }
 
-            // update the current cfunc and add new entries per possible signature
-            for (size_t i = 0; i < signatures.size(); ++i) {
+            // remove the old-call (itr) and append new calls based on potentials
+            FunctionCallData oldCall(*itr); // tmp-copy
+            toErase.push_back(*itr);
 
-                /**
-                 * @todo may need to remove argument profile usage,
-                 * interprocedural skips if the argument cant be
-                 * resolved from a given call
-                 **/
-
-                // argument slice profile
-                auto spi = ArgumentProfile(
-                    cfunc.functionName,
-                    signatures[i],
-                    ArgProfParam
-                );
-
-                if (spi == profileMap.end())
-                    continue;
-
-                auto sliceItr = spi->second.begin();
-                std::string desiredVariableName = sliceItr->variableName;
-
-                for (sliceItr = spi->second.begin(); sliceItr != spi->second.end(); ++sliceItr) {
-                    if (!sliceItr->containsDeclaration)
-                        continue;
-                    if (sliceItr->variableName != desiredVariableName)
-                        continue;
-                    if (SrcSliceOperations::GetSimpleFunctionName(sliceItr->function) != cfunc.functionName)
-                        continue;
-
-                    auto paramDecl = signatures[i].parameters[ArgProfParam];
-                    SlicePosition paramDeclPos(
-                        paramDecl->name->startPosition,
-                        paramDecl->name->endPosition,
-                        sliceItr->file
-                    );
-
-                    if (sliceItr->declPosition != paramDeclPos)
-                        continue;
-
-                    break;
-                }
-
-                if (sliceItr == spi->second.end())
-                    continue;
-                if (cfunc.funcPos.GetFileName().empty()) {
-                    // update cfunc data
-                    FunctionCallData updatedData(cfunc);
-                    updatedData.funcPos = signatures[i].position;
-
-                    toErase.push_back(*itr);
-                    toInsert.push_back(updatedData);
-                } else {
-                    // append new cfunc data
-                    FunctionCallData newData(cfunc);
-                    newData.funcPos = signatures[i].position;
-                    toInsert.push_back(newData);
-                }
+            for (size_t i = 0; i < potentials.size(); ++i) {
+                // update the copy to update the function definition
+                oldCall.funcPos = potentials[i].position;
+                // push_back the altered copy
+                toInsert.push_back(oldCall);
             }
         }
     }
@@ -834,20 +482,36 @@ void SrcSliceHandler::UpdateCalls(SliceProfile& sp) {
     for (auto& data : toInsert) {
         sp.cfunctions.insert(data);
     }
+}
 
-    // toggle off just incase so we do not run over this profile again
-    sp.partial = false;
+
+
+void SrcSliceHandler::Stage3() {
+    if (verboseMode || progressMode)
+        std::cout << "[*] Starting Stage-3" << "\n";
+    
+    // Handles Collecting Control-Edges
+    if (calculateControlEdges) ComputeControlPaths();
+    
+    // populates Aliases attribute in slice profiles and
+    // performs crude interprocedural to connect use/def data
+    if (expandAliases) ComputeAliasInterprocedural();
+    
+    ComputeInterprocedural();
+
+    if (verboseMode || progressMode)
+        std::cout << "[*] Finished Stage-3" << "\n";
 }
 
 void SrcSliceHandler::ComputeInterprocedural() {
     for (auto& [name, profiles] : profileMap) {
         for (auto& sp : profiles) {
-            ResolveCall(sp);
+            ResolveCalls(sp);
         }
     }
 }
 
-void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
+void SrcSliceHandler::ResolveCalls(SliceProfile &sp) {
     // safety to ensure we avoid circular profile linkage
     if (sp.visited) return;
     // ignore profiles with no value
@@ -1017,5 +681,272 @@ void SrcSliceHandler::ResolveCall(SliceProfile &sp) {
     // move cfunc data over
     for (const auto& cFunc : callsToInsert) {
         sp.cfunctions.insert(cFunc);
+    }
+}
+
+// Similiar to ComputeInterprocedural but focuses on building
+// a more detailed alias listing for slices of pointers
+void SrcSliceHandler::ComputeAliasInterprocedural() {
+    // speed problems origin
+    std::unordered_set <std::string> visited_alias;
+
+    for (auto& sliceGroup : profileMap) {
+        // expand list of potential targets (aliases)
+        for (auto& sp : sliceGroup.second) {
+            if (!sp.containsDeclaration) continue;
+            for (auto& alias : sp.aliases) {
+                // check if the alias has been visited
+                if (visited_alias.find(alias.first) != visited_alias.end())
+                    break;
+
+                // view aliases of the slice profile
+                auto aliasProfileGroup = profileMap.find(alias.first);
+                if (aliasProfileGroup == profileMap.end()) continue;
+
+                // fingerprint the profile based on contained use
+                for (auto& aspi : aliasProfileGroup->second) {
+                    if (!aspi.containsDeclaration) continue;
+                    
+                    auto usesItr = aspi.uses.find(alias.second);
+                    if (usesItr == aspi.uses.end()) continue;
+                    
+                    // determine if the potential target is a pointer or reference
+                    if (!aspi.isPointer && !aspi.isReference) continue;
+
+                    // mark alias as visited so we dont review this alias entry again (circular dependence protection)
+                    visited_alias.insert(aspi.jsonKey());
+
+                    // push_back alias slice profile's aliases into the source slice aliases
+                    sp.aliases.insert(aspi.aliases.begin(), aspi.aliases.end());
+                    break;
+                }
+            }
+        }
+    }
+}
+
+
+
+
+// Find forward control-edges between conditional conditions. ie: if -> else if -> else
+void SrcSliceHandler::ComputeOuterPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
+    /** @todo
+     * Checking metadata within each SlicePosition, connect sline[i] to a sline[k] where k > i
+     * corresponding if conditions to preceding elif conditions or the first sline within an else
+    */
+
+    for (size_t i = 0; i < sLines.size() - 1; ++i) {
+        // sline[i] must be within the condition block of an if or else-if
+        if (!sLines[i].GetData().isIfCondition && !sLines[i].GetData().isElifCondition)
+            continue;
+
+        // find the condition context base
+        SlicePosition baseBlock;
+        for (SlicePosition& data : ifdata) {
+            if (sLines[i] < data) continue;
+            if (IsContained(sLines[i], data)) {
+                baseBlock = data;
+            }
+        }
+        for (SlicePosition& data : elseifdata) {
+            if (sLines[i] < data) continue;
+            if (IsContained(sLines[i], data)) {
+                baseBlock = data;
+            }
+        }
+
+        if (baseBlock.GetFileName().empty()) continue;
+
+        // find the preceding sline[k]
+        size_t k = i+1;
+        while (k < sLines.size()) {
+            if (!IsContained(sLines[k], baseBlock)) break;
+            ++k;
+        }
+        if (k == sLines.size()) continue;
+        
+        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
+    }
+}
+
+// Collects the forward exiting control-flows of conditionals. ie: exiting conditional body
+void SrcSliceHandler::ComputeExitPaths(std::set<std::pair<SlicePosition,SlicePosition>>& controlEdges, std::vector<SlicePosition>& sLines) {
+    /** @todo
+     * Find the context if_stmt the sline[i] is within to find the first sline[k] not contained in the context if_stmt where k > i
+     * sline[i] must be the sline that occurs LAST within the inner context of the if_stmt context (specific if, elif, else block)
+    */
+
+    for (size_t i = 0; i < sLines.size() - 1; ++i) {
+        // skip slines that are within the conditions
+        if (sLines[i].GetData().isIfCondition || sLines[i].GetData().isElifCondition)
+            continue;
+
+        // sline[i] must be contained within the block of either an if, else-if, or else statement
+        size_t ctxIndex = FindContextBlock(sLines[i], ifStmts);
+        if (ctxIndex == -1) continue;
+
+        // find inner-most context of sline[i]
+        SlicePosition innerContext;
+        for (SlicePosition& data : ifdata) {
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+        for (SlicePosition& data : elseifdata) {
+            // if the inner context has been found skip this loop
+            if (!innerContext.HasDefinition()) break;
+
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+        for (SlicePosition& data : elsedata) {
+            // if the inner context has been found skip this loop
+            if (!innerContext.HasDefinition()) break;
+
+            if (IsContained(sLines[i], data)) {
+                innerContext = data;
+            }
+        }
+
+        // check if sline[i] is the last sline within the inner-most context
+        bool isExitPath = false;
+        size_t k = i+1;
+        while (k < sLines.size()) {
+            // if sline[k] is contained within the inner-most context
+            // then sline[i], sline[k] is not an exit-path
+            if (IsContained(sLines[k], innerContext)) {
+                break;
+            }
+
+            // check if sline[k] is outside of the if_stmt context
+            if (!IsContained(sLines[k], ifStmts[ctxIndex])) {
+                isExitPath = true;
+                break;
+            }
+
+            ++k;
+        }
+        if (!isExitPath) continue;
+
+        
+        controlEdges.insert(std::make_pair(sLines[i], sLines[k]));
+    }
+}
+
+// srcSlice focuses on Forward-Slicing, therefor our Control-Flows are going to be forward-flowing
+// we are not focusing on backwards-flows.
+void SrcSliceHandler::ComputeControlPaths() {
+    auto InBlock = [this](SlicePosition& sline, std::vector<SlicePosition>& groups) -> bool {
+        // groups are focused on if, elif, else position ranges
+        size_t ctxIndex = -1;
+        if (groups.size() > 1) {
+            ctxIndex = FindContextBlock(sline, ifStmts);
+            if (ctxIndex == -1) return false;
+        }
+
+        for (auto& data : groups) {
+            // if there is nesting we only want to be concerned with data related to the if_stmt context
+            if (ctxIndex != -1 && IsContained(ifStmts[ctxIndex], data)) {
+                continue;
+            }
+
+            if (IsContained(sline, data)) {
+                return true;
+            }
+        }
+        return false;
+    };
+    
+    auto InLoop = [](SlicePosition& sline, std::vector<SlicePosition>& loopdata) -> bool {
+        size_t ctxIndex = -1;
+        if (loopdata.size() > 1) {
+            ctxIndex = FindContextBlock(sline, loopdata);
+            if (ctxIndex == -1) return false;
+        }
+
+        for (auto& data : loopdata) {
+            if (ctxIndex != -1 && IsContained(loopdata[ctxIndex], data)) {
+                continue;
+            }
+
+            if (IsContained(sline, data)) {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    for (auto& varGroup : profileMap) {
+        for (auto& profile : varGroup.second) {
+            if (!profile.containsDeclaration) continue;
+
+            // Collect the slice lines and put them in numerical order
+            std::set<SlicePosition> sLinesOrdered;
+            sLinesOrdered.insert(profile.definitions.begin(), profile.definitions.end());
+            sLinesOrdered.insert(profile.uses.begin(), profile.uses.end());
+
+            // Convert set into vector using vector ctor
+            std::vector<SlicePosition> sLines(sLinesOrdered.begin(), sLinesOrdered.end());
+
+            // Handles controledges based from: for-loops, while-loops, do-while-loops
+            for (auto& loop : loopdata) {
+                SlicePosition predecessor;    // origin position
+                SlicePosition falseSuccessor; // where to go when loop-condition is false
+                SlicePosition trueSuccessor;  // where to go when loop-condition is true (first sline within loop block)
+
+                for (auto& sline : sLines) {
+                    // see if the sline is before the loop or in the loop-control statement
+                    if (predecessor.GetFileName().empty() && IsContained(sline, loop)) {
+                        predecessor = sline;
+                        continue;
+                    }
+
+                    // find the first sline outside the loop-block
+                    if (falseSuccessor.GetFileName().empty() && sline > loop && !IsContained(sline, loop)) {
+                        falseSuccessor = sline;
+                        continue;
+                    }
+
+                    // find the first sline inside the loop-block
+                    if (trueSuccessor.GetFileName().empty() && IsContained(sline, loop)) {
+                        trueSuccessor = sline;
+                        continue;
+                    }
+                }
+
+                bool validPositions = !predecessor.GetFileName().empty() && !trueSuccessor.GetFileName().empty() && !falseSuccessor.GetFileName().empty();
+                if (validPositions && predecessor < falseSuccessor) {
+                    profile.controlEdges.insert(
+                        std::make_pair(predecessor, trueSuccessor)
+                    );
+                    profile.controlEdges.insert(
+                        std::make_pair(predecessor, falseSuccessor)
+                    );
+                }
+            }
+
+            // Create sline pairs between successive lines with case of if-else matching
+            for (size_t i = 0; i < sLines.size() - 1; ++i) {
+                if ( !(InBlock(sLines[i], ifdata) && (InBlock(sLines[i+1], elseifdata) || InBlock(sLines[i+1], elsedata)) ) ) {
+                    profile.controlEdges.insert(
+                        std::make_pair(sLines[i], sLines[i+1])
+                    );
+                }
+
+                // if the sline[i] does not belong to any loop or condition block
+                // then connect this sline to the first successive sline[k] that
+                // does not also belong to any loop or condiiton block
+                if (!InLoop(sLines[i], loopdata) && !InBlock(sLines[i], ifdata) && !InBlock(sLines[i], elseifdata) && !InBlock(sLines[i], elsedata)) {
+                    profile.controlEdges.insert(
+                        std::make_pair(sLines[i], sLines[i+1])
+                    );
+                }
+            }
+
+            // Find Exit-Paths and Outer-Paths that are not initially found from this algorithm
+            ComputeExitPaths(profile.controlEdges, sLines);
+            ComputeOuterPaths(profile.controlEdges, sLines);
+        }
     }
 }

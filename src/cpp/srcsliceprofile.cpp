@@ -34,28 +34,40 @@ SliceProfile::SliceProfile(const SliceProfile& rhs) {
     checksum = rhs.checksum;
     potentialAlias = rhs.potentialAlias;
     dereferenced = rhs.dereferenced;
+
     isGlobal = rhs.isGlobal;
     classMemberVar = rhs.classMemberVar;
     containsDeclaration = rhs.containsDeclaration;
+
     isPointer = rhs.isPointer;
     isReference = rhs.isReference;
+
     variableName = rhs.variableName;
     variableType = rhs.variableType;
+
     definitions = rhs.definitions;
     uses = rhs.uses;
+
     dvars = rhs.dvars;
     aliases = rhs.aliases;
-    controlEdges = rhs.controlEdges;
     cfunctions = rhs.cfunctions;
+
     endOfScope = rhs.endOfScope;
+
+    controlEdges = rhs.controlEdges;
+
     visited = rhs.visited;
     updated = rhs.updated;
+    partial = rhs.partial;
+
     showControlEdges = rhs.showControlEdges;
+    expandCalls = rhs.expandCalls;
+
     currentPointerReference = rhs.currentPointerReference;
     isPotentialArray = rhs.isPotentialArray;
     ignorePtrRef = rhs.ignorePtrRef;
+    
     isFragment = rhs.isFragment;
-    expandCalls = rhs.expandCalls;
 }
 
 bool SliceProfile::operator==(const SliceProfile& rhs) const {
